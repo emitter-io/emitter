@@ -3,8 +3,8 @@ MAINTAINER Roman Atachiants "roman@misakai.com"
 
 # Make sure we have S3 & additional libraries
 RUN apt-get update -qq \
-	&& apt-get install -y s3cmd git wget
-	&& git clone "https://github.com/emitter-io/emitter.git" "/app"
+	&& apt-get install -y s3cmd git wget \
+	&& git clone "https://github.com/emitter-io/emitter.git" "/app" \
 	&& dotnet restore -v Minimal
 
 # Application will be in app folder
