@@ -1,16 +1,21 @@
-FROM misakai/mono:4.2.1
-MAINTAINER Roman Atachiants "roman@emitter.io"
+FROM microsoft/dotnet:1.0.0-preview2-sdk
+MAINTAINER Roman Atachiants "roman@misakai.com"
 
-# Make sure we have additional libraries
+# Make sure we have S3 & additional libraries
 RUN apt-get update -qq \
-	&& apt-get install -y libgdiplus libcurl3 libxml2 wget libc6 libc6-dev
+	&& apt-get install -y s3cmd git wget
+	&& git clone "https://github.com/emitter-io/emitter.git" "/app"
+	&& dotnet restore -v Minimal
 
 # Application will be in app folder
 WORKDIR /app
-ADD . /app
+ADD deploy.sh /
 
 # Emitter ports
 EXPOSE 8080
 EXPOSE 4000
 
-CMD ["/bin/bash", "/app/deploy.sh"]
+# Volumes for faster deploy
+VOLUME /app
+VOLUME /root/.nuget/packages
+CMD ["/bin/bash", "/deploy.sh"]
