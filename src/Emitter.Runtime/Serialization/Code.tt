@@ -1,0 +1,37 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+<#
+
+#>
+using System;
+
+namespace Emitter.Serialization
+{
+	/// <summary>
+	/// Represents a character code constants for fast parsing.
+	/// </summary>
+	internal static class Code
+	{
+		public const byte LF = 10;
+		public const byte CR = 13;
+		public const byte PLUS = 43;
+		public const byte MINUS = 45;
+		public const byte SPACE = 32;
+		public const byte TAB = 9;
+        public const byte DOT = 46;
+        public const byte COLON = 58;
+<# for(byte i=48; i <= 57; ++i) {#>
+		public const byte DIGIT_<#= ((char)i).ToString() #> = <#= i.ToString() #>;
+<# } #>
+<# for(byte i=65; i <= 90; ++i) {#>
+		public const byte <#= ((char)i).ToString() #> = <#= i.ToString() #>;
+<# } #>
+<# for(byte i=97; i <= 122; ++i) {#>
+		public const byte <#= ((char)i).ToString() #> = <#= i.ToString() #>;
+<# } #>
+	}
+}

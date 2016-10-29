@@ -1,0 +1,29 @@
+{
+  "title": "Emitter.Server",
+  "copyright": "Misakai Ltd.",
+  "description": "Emitter.io - the clustered publish/subscribe MQTT broker.",
+  "version": "1.0.0-*",
+  "buildOptions": {
+    "emitEntryPoint": true,
+    "allowUnsafe": true,
+    "optimize": true
+  },
+
+  "dependencies": {
+    "Emitter.Runtime": "1.0.0-*",
+    "System.Diagnostics.TextWriterTraceListener": "4.0.0",
+    "Microsoft.NETCore.App": {
+      "type": "platform",
+      "version": "1.0.0"
+    }
+  },
+
+  "frameworks": {
+    "netcoreapp1.0": {
+      "imports": "dnxcore50",
+      "buildOptions": {
+        "define": [ "DOTNET" ]
+      }
+    }
+  }
+}
