@@ -16,9 +16,9 @@ namespace Emitter
         {
             // Print out fingerprint
             // Service.Logger.Log("Machine: " + Service.Providers.Resolve<AddressProvider>().GetFingerprint());
-            NetTrace.Enabled = true;
-            NetTrace.Listeners.Add(new ConsoleTraceListener());
-            NetTrace.TraceMesh = true;
+            //NetTrace.Enabled = true;
+            //NetTrace.Listeners.Add(new ConsoleTraceListener());
+            //NetTrace.TraceMesh = true;
             //NetTrace.TraceChannel = true;
 
             // Load the configuration and check the license
@@ -29,15 +29,8 @@ namespace Emitter
                 Service.Logger.Log("Creating a new dummy license, do not use this for production.");
                 license = new SecurityLicense();
                 license.EncryptionKey = "0000000000000000000000";
+                license.Type = SecurityLicenseType.OnPremise;
                 SecurityLicense.Current = license;
-            }
-
-            if (license.Type == SecurityLicenseType.Cloud)
-            {
-                // Setup providers used by our cloud
-                EmitterConfig.Default.Provider.ContractProviderName = nameof(HttpContractProvider);
-                EmitterConfig.Default.Provider.LoggingProviderName = nameof(EmitterLoggingProvider);
-                EmitterConfig.Default.Provider.CertificateProviderName = nameof(VaultCertificateProvider);
             }
 
             try
