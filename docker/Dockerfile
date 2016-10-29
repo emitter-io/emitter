@@ -5,6 +5,7 @@ MAINTAINER Roman Atachiants "roman@misakai.com"
 RUN apt-get update -qq \
 	&& apt-get install -y s3cmd git wget \
 	&& git clone "https://github.com/emitter-io/emitter.git" "/app" \
+	&& cd /app \
 	&& dotnet restore -v Minimal
 
 # Application will be in app folder
