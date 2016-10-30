@@ -14,23 +14,22 @@ namespace Emitter
         /// </summary>
         private static void Main(string[] args)
         {
-            // Print out fingerprint
-            // Service.Logger.Log("Machine: " + Service.Providers.Resolve<AddressProvider>().GetFingerprint());
-            //NetTrace.Enabled = true;
-            //NetTrace.Listeners.Add(new ConsoleTraceListener());
-            //NetTrace.TraceMesh = true;
-            //NetTrace.TraceChannel = true;
-
             // Load the configuration and check the license
             EmitterConfig.Initialize(args);
             var license = SecurityLicense.LoadAndVerify(EmitterConfig.Default.License);
             if (license == null)
             {
-                Service.Logger.Log("Creating a new dummy license, do not use this for production.");
-                license = new SecurityLicense();
-                license.EncryptionKey = "0000000000000000000000";
-                license.Type = SecurityLicenseType.OnPremise;
-                SecurityLicense.Current = license;
+                // Generate new license
+                var newLicense = EmitterLicenseGenerator.Default.GenerateLicense();
+                Service.Logger.Log(LogLevel.Warning, "New license: " + newLicense.Sign());
+
+                // Generate new secret key
+                var newSecret = EmitterLicenseGenerator.Default.GenerateSecretKey(newLicense);
+                Service.Logger.Log(LogLevel.Warning, "New secret key: " + newSecret.Value);
+
+                // Note to user
+                Service.Logger.Log(LogLevel.Warning, "New license and secret key were generated, please store them in a secure location and restart the server with the license provided.");
+                SecurityLicense.Current = newLicense;
             }
 
             try
