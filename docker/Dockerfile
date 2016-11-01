@@ -7,6 +7,8 @@ RUN apt-get update -qq \
 	&& mkdir /tmp/emitter \
 	&& cd /tmp/emitter \
 	&& git clone "https://github.com/emitter-io/emitter.git" "/tmp/emitter" \
+	&& cd /tmp/emitter \
+	&& dotnet restore -v Minimal \
 	&& cd /tmp/emitter/src/Emitter.Server \
 	&& dotnet publish -c Release --output /app \
 	&& rm -rf /tmp/emitter
