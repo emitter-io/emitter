@@ -1,3 +1,5 @@
+![](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/logo/emitter_logo_blue.png)
+
 # Emitter: Clustered Publish-Subscribe Broker
 > Emitter is a free open source real-time messaging service that connects all devices. This publish-subscribe messaging API is built for speed and security.
 
