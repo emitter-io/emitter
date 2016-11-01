@@ -9,7 +9,7 @@ Emitter can be used for online gaming and mobile apps by satisfying the requirem
 
 [![Join the chat at https://gitter.im/emitter-io/public](https://badges.gitter.im/emitter-io/public.svg)](https://gitter.im/emitter-io/public?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
 [![Build status](https://ci.appveyor.com/api/projects/status/6im4291ao9i664ix?svg=true)](https://ci.appveyor.com/project/Kelindar/emitter)
-[![Twitter Follow](https://img.shields.io/twitter/follow/emitter_io.svg?style=social&label=Follow)]()
+[![Twitter Follow](https://img.shields.io/twitter/follow/emitter_io.svg?style=social&label=Follow)](https://twitter.com/emitter_io)
 
 ## Server Quick Start
 
@@ -72,8 +72,8 @@ Alternatively, you can use [Visual Studio IDE](https://www.visualstudio.com/) to
 
 ## Deploying as Docker Container
 
-[![Docker Automated buil](https://img.shields.io/docker/automated/emitter/server.svg)]()
-[![Docker Pulls](https://img.shields.io/docker/pulls/emitter/server.svg)]()
+[![Docker Automated build](https://img.shields.io/docker/automated/emitter/server.svg)](https://hub.docker.com/r/emitter/server/)
+[![Docker Pulls](https://img.shields.io/docker/pulls/emitter/server.svg)](https://hub.docker.com/r/emitter/server/)
 
 Emitter is convinently packaged as a docker container. To run the emitter service on a single server, use the command below. Once the server is started, it will generate a new security configuration, you can then re-run the same command with an additional environment variable -e EMITTER_LICENSE set to the provided value.
 
