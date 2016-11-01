@@ -18,23 +18,32 @@
 namespace Emitter
 {
     /// <summary>
-    /// Contals all of the constants we use in this project.
+    /// Represents a helper function for option retrieval.
     /// </summary>
-    internal static class EmitterConst
+    internal static class EmitterOption
     {
-        // Separator for the channel (eg: forex/+/usd/)
-        public const char Separator = '/';
+        /// <summary>
+        /// The time-to-live option
+        /// </summary>
+        public const string TimeToLive = "ttl";
 
-        // The maximum frame size
-        public const int FrameSize = 1 * 1024 * 1024; // 1MB
+        /// <summary>
+        /// The last history option
+        /// </summary>
+        public const string LastHistory = "last";
 
-        // Various sizes of the packet elements
-        public const int DefaultTTL = 3600;
+        /// <summary>
+        /// Attempts to get an option.
+        /// </summary>
+        public static bool TryGet(EmitterChannel channel, string option, int defaultValue, out int value)
+        {
+            // Do we have the option?
+            value = defaultValue;
+            if (channel.Options == null || !channel.Options.ContainsKey(option))
+                return false;
 
-        // The prefix for the API methods
-        public const string ApiPrefix = "emitter";
-
-        // Transient TTL value
-        public const int Transient = 0;
+            // Do we have a TTL with the message?
+            return int.TryParse(channel.Options[option], out value);
+        }
     }
 }

@@ -15,26 +15,27 @@
 *************************************************************************/
 #endregion Copyright (c) 2009-2016 Misakai Ltd.
 
-namespace Emitter
+using System;
+using System.Linq;
+using Emitter.Text.Json;
+
+namespace Emitter.Configuration
 {
     /// <summary>
-    /// Contals all of the constants we use in this project.
+    /// Represents a configuration for any storage provider.
     /// </summary>
-    internal static class EmitterConst
+    public class ConfigOfStorage
     {
-        // Separator for the channel (eg: forex/+/usd/)
-        public const char Separator = '/';
+        /// <summary>
+        /// Gets or sets the storage location.
+        /// </summary>
+        [JsonProperty("location")]
+        public string Location = "";
 
-        // The maximum frame size
-        public const int FrameSize = 1 * 1024 * 1024; // 1MB
-
-        // Various sizes of the packet elements
-        public const int DefaultTTL = 3600;
-
-        // The prefix for the API methods
-        public const string ApiPrefix = "emitter";
-
-        // Transient TTL value
-        public const int Transient = 0;
+        /// <summary>
+        /// Gets or sets the connection string for the storage.
+        /// </summary>
+        [JsonProperty("connection")]
+        public string Connection = "";
     }
 }

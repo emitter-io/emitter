@@ -11,6 +11,7 @@ var semversion      = semver.valid(basePackageVer + "-dev" + buildNumber);
 // Set version on several projects
 setVersion("../src/emitter.runtime/project.json");
 setVersion("../src/emitter.server/project.json");
+setVersion("../src/emitter.storage.s3/project.json");
 
 /**
  * Set the version on the particular file. 

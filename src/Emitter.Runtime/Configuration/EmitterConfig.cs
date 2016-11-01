@@ -18,7 +18,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Net;
 using Emitter.Collections;
 using Emitter.Providers;
 using Emitter.Text.Json;
@@ -127,148 +126,24 @@ namespace Emitter.Configuration
         /// Gets or sets the cluster config.
         /// </summary>
         [JsonProperty("cluster")]
-        public ClusterConfig Cluster = new ClusterConfig();
+        public ConfigOfCluster Cluster = new ConfigOfCluster();
 
         /// <summary>
         /// Gets or sets the vault config.
         /// </summary>
         [JsonProperty("vault")]
-        public VaultConfig Vault = new VaultConfig();
+        public ConfigOfVault Vault = new ConfigOfVault();
+
+        /// <summary>
+        /// Gets or sets the storage config.
+        /// </summary>
+        [JsonProperty("storage")]
+        public ConfigOfStorage Storage = new ConfigOfStorage();
 
         /// <summary>
         /// Gets or sets the providers config
         /// </summary>
         [JsonProperty("providers")]
-        public ProviderConfig Provider = new ProviderConfig();
-    }
-
-    public class ClusterConfig
-    {
-        /// <summary>
-        /// The address to broadcast
-        /// </summary>
-        [JsonProperty("broadcast")]
-        public string BroadcastAddress = "public";
-
-        /// <summary>
-        /// Gets or sets the mesh port.
-        /// </summary>
-        [JsonProperty("port")]
-        public int Port = 4000;
-
-        /// <summary>
-        /// Gets or sets the seed hostname address.
-        /// </summary>
-        [JsonProperty("seed")]
-        public string Seed = "127.0.0.1:4000";
-
-        /// <summary>
-        /// Gets or sets the cluster key.
-        /// </summary>
-        [JsonProperty("key")]
-        public string ClusterKey = "emitter-io";
-
-        /// <summary>
-        /// Resolve the seed endpoints.
-        /// </summary>
-        [JsonIgnore]
-        public IPEndPoint SeedEndpoint
-        {
-            get
-            {
-                // Parse as URI
-                Uri uri;
-                if (!Uri.TryCreate("tcp://" + Seed, UriKind.Absolute, out uri))
-                    return null;
-
-                // Resolve DNS
-                var task = Dns.GetHostAddressesAsync(uri.DnsSafeHost);
-                task.Wait();
-
-                // Get the port
-                var port = uri.IsDefaultPort ? Port : uri.Port;
-                var addr = uri.HostNameType == UriHostNameType.Dns
-                    ? task.Result.LastOrDefault()
-                    : IPAddress.Parse(uri.Host);
-
-                return new IPEndPoint(addr, port);
-            }
-        }
-
-        /// <summary>
-        /// Gets the endpoint to broadcast within the mesh.
-        /// </summary>
-        [JsonIgnore]
-        public IPEndPoint BroadcastEndpoint
-        {
-            get
-            {
-                IPAddress address = null;
-                var addressString = this.BroadcastAddress.ToLower();
-                if (addressString == "public")
-                    address = Service.Providers.Resolve<AddressProvider>().GetExternal();
-                if (addressString == "local")
-                    address = IPAddress.Parse("127.0.0.1");
-
-                if (address == null && !IPAddress.TryParse(addressString, out address))
-                {
-                    Service.Logger.Log(LogLevel.Error, "Unable to parse " + addressString + " as a valid IP Address. Using 127.0.0.1 instead.");
-                    address = IPAddress.Parse("127.0.0.1");
-                }
-
-                return new IPEndPoint(address, Port);
-            }
-        }
-    }
-
-    public class VaultConfig
-    {
-        /// <summary>
-        /// Gets or sets the vault address.
-        /// </summary>
-        [JsonProperty("address")]
-        public string Address = "";
-
-        /// <summary>
-        /// Gets or sets the vault app-id.
-        /// </summary>
-        [JsonProperty("app")]
-        public string Application = "";
-
-        /// <summary>
-        /// Checks whether the vault is configured
-        /// </summary>
-        [JsonIgnore]
-        public bool HasVault
-        {
-            get { return !string.IsNullOrWhiteSpace(this.Address) && !string.IsNullOrWhiteSpace(this.Application); }
-        }
-    }
-
-    public class ProviderConfig
-    {
-        /// <summary>
-        /// Gets or sets the cluster key.
-        /// </summary>
-        [JsonProperty("contract")]
-        public string ContractProviderName = nameof(SingleContractProvider);
-
-        /// <summary>
-        /// Gets or sets the logging.
-        /// </summary>
-        [JsonProperty("logging")]
-        public string LoggingProviderName = nameof(MultiTextLoggingProvider);
-
-        /// <summary>
-        /// Gets or sets the certificate provider.
-        /// </summary>
-        [JsonProperty("certificate")]
-        public string CertificateProviderName = nameof(FileCertificateProvider);
-
-        /// <summary>
-        /// Gets or sets the storage.
-        /// </summary>
-        [JsonProperty("storage")]
-        public string StorageProviderName = null;
+        public ConfigOfProviders Provider = new ConfigOfProviders();
     }
 }

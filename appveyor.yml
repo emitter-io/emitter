@@ -17,13 +17,13 @@ assembly_info:
 
 before_build:
 - cmd: >-
-    dotnet restore src\Emitter.Server && dotnet restore src\Emitter.Runtime
+    dotnet restore src\Emitter.Server && dotnet restore src\Emitter.Runtime && dotnet restore src\Emitter.Storage.S3
 
     cd build && npm install && node add-project-version.js && cd..
 
 build_script:
 - cmd: >-
-    dotnet pack src\Emitter.Runtime --configuration Release --output "Emitter" && dotnet pack src\Emitter.Server --configuration Release --output "Emitter"
+    dotnet pack src\Emitter.Runtime --configuration Release --output "Emitter" && dotnet pack src\Emitter.Storage.S3 --configuration Release --output "Emitter" && dotnet pack src\Emitter.Server --configuration Release --output "Emitter"
 test: off
 
 artifacts:

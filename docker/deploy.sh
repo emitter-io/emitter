@@ -1,2 +1,2 @@
 #!/bin/bash 
-dotnet run -c Release
+dotnet Emitter.Server.dll

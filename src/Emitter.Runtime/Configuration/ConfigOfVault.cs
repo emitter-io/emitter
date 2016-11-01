@@ -15,26 +15,36 @@
 *************************************************************************/
 #endregion Copyright (c) 2009-2016 Misakai Ltd.
 
-namespace Emitter
+using System;
+using System.Linq;
+using Emitter.Text.Json;
+
+namespace Emitter.Configuration
 {
     /// <summary>
-    /// Contals all of the constants we use in this project.
+    /// Represents a configuration for Hashicorp's Vault.
     /// </summary>
-    internal static class EmitterConst
+    public class ConfigOfVault
     {
-        // Separator for the channel (eg: forex/+/usd/)
-        public const char Separator = '/';
+        /// <summary>
+        /// Gets or sets the vault address.
+        /// </summary>
+        [JsonProperty("address")]
+        public string Address = "";
 
-        // The maximum frame size
-        public const int FrameSize = 1 * 1024 * 1024; // 1MB
+        /// <summary>
+        /// Gets or sets the vault app-id.
+        /// </summary>
+        [JsonProperty("app")]
+        public string Application = "";
 
-        // Various sizes of the packet elements
-        public const int DefaultTTL = 3600;
-
-        // The prefix for the API methods
-        public const string ApiPrefix = "emitter";
-
-        // Transient TTL value
-        public const int Transient = 0;
+        /// <summary>
+        /// Checks whether the vault is configured
+        /// </summary>
+        [JsonIgnore]
+        public bool HasVault
+        {
+            get { return !string.IsNullOrWhiteSpace(this.Address) && !string.IsNullOrWhiteSpace(this.Application); }
+        }
     }
 }
