@@ -1,7 +1,7 @@
 ![](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/logo/emitter_logo_blue.png)
 
 # Emitter: Clustered Publish-Subscribe Broker
-> Emitter is a free open source real-time messaging service that connects all devices. This publish-subscribe messaging API is built for speed and security.
+> [Emitter is a free open source real-time messaging service](https://emitter.io) that connects all devices. This publish-subscribe messaging API is built for speed and security.
 
 Emitter is a real-time communication service for connecting online devices. Infrastructure and APIs for IoT, gaming, apps and real-time web. At its core, emitter.io is a distributed, scalable and fault-tolerant publish-subscribe messaging platform based on MQTT protocol and featuring message storage.
 
