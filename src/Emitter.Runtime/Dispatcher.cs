@@ -23,7 +23,7 @@ using Emitter.Network;
 namespace Emitter
 {
     /// <summary>
-    /// Represents core operations such as publish, subscribe and links into NATS and Cassandra.
+    /// Represents core operations such as publish, subscribe.
     /// </summary>
     internal static class Dispatcher
     {
