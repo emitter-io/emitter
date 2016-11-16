@@ -34,13 +34,7 @@ namespace Emitter.Network
         public static ProcessingState OnConnect(IClient client, MqttConnectPacket packet)
         {
             // Set the protocol version to the client
-            client.Context = new MqttContext(
-                packet.ProtocolVersion,
-                packet.IsEmitter,
-                packet.ClientId,
-                packet.Username
-                );
-
+            client.Context = new MqttContext(packet);
             switch (packet.ProtocolVersion)
             {
                 case MqttProtocolVersion.V3_1: break;
@@ -131,7 +125,9 @@ namespace Emitter.Network
             HandlePublish.Process(client, packet.Channel, packet.Message);
 
             // Send the ack and stop the processing
-            client.SendMqttPuback(packet.MessageId);
+            if (client.Context.QoS > QoS.AtMostOnce)
+                client.SendMqttPuback(packet.MessageId);
+
             return ProcessingState.Stop;
         }
 

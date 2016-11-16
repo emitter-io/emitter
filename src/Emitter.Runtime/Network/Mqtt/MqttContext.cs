@@ -25,14 +25,28 @@ namespace Emitter.Network
     public sealed class MqttContext
     {
         /// <summary>
+        /// Constructs a context from the connect packet.
+        /// </summary>
+        /// <param name="packet">The packet to use.</param>
+        internal MqttContext(MqttConnectPacket packet)
+        {
+            this.Version = packet.ProtocolVersion;
+            this.QoS = packet.QoS;
+            this.IsEmitter = packet.IsEmitter;
+            this.ClientId = packet.ClientId;
+            this.Username = packet.Username;
+        }
+
+        /// <summary>
         /// Creates a new context.
         /// </summary>
         /// <param name="version">The version of MQTT.</param>
         /// <param name="isEmitter">Whether this is our special implementation.</param>
         /// <param name="id">The client id specified in the MQTT connect packet.</param>
-        public MqttContext(MqttProtocolVersion version, bool isEmitter, string id, string username)
+        public MqttContext(MqttProtocolVersion version, QoS qos, bool isEmitter, string id, string username)
         {
             this.Version = version;
+            this.QoS = qos;
             this.IsEmitter = isEmitter;
             this.ClientId = id;
             this.Username = username;
@@ -47,6 +61,11 @@ namespace Emitter.Network
         /// Whether this is our special implementation.
         /// </summary>
         public readonly bool IsEmitter;
+
+        /// <summary>
+        /// Gets the quality of service requested
+        /// </summary>
+        public readonly QoS QoS;
 
         /// <summary>
         /// Gets the MQTT client id passed during the connect.

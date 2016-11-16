@@ -95,7 +95,7 @@ namespace Emitter.Network
         {
             get
             {
-                return new MqttContext(MqttProtocolVersion.VEmitter, true, "broker", "broker");
+                return new MqttContext(MqttProtocolVersion.VEmitter, QoS.AtMostOnce, true, "broker", "broker");
             }
             set
             {
