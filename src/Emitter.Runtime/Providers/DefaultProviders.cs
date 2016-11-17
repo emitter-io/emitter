@@ -34,6 +34,7 @@ namespace Emitter.Providers
             {typeof(CorsProvider), typeof(DefaultCorsProvider)},
             {typeof(AddressProvider), typeof(DefaultAddressProvider)},
             {typeof(HealthProvider), typeof(DefaultHealthProvider)},
+            {typeof(AnalyticsProvider), typeof(EmitterAnalyticsProvider)},
         };
 
         /// <summary>

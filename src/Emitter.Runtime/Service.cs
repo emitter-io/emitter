@@ -467,6 +467,10 @@ namespace Emitter
             Http.Register(new HandleKeyGen());
             Http.Register(new DebugHttp());
 
+            // Send analytics about this server launch. This is to gather global statistics about the number
+            // of unique machines that use emitter.
+            Providers.Resolve<AnalyticsProvider>().Track("emitter", "launch");
+
             // Timer scheduler slice loop
             while (IsRunning)
             {
