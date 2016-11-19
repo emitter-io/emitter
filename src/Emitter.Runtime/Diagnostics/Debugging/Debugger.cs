@@ -87,15 +87,18 @@ namespace Emitter.Diagnostics
             {
                 // Send some objects
                 var handles = new List<DebugHandle>();
-                foreach (var mesh in Service.Mesh.Members)
-                    handles.Add(DebugHandle.Inspect(mesh));
+                //foreach (var mesh in Service.Mesh.Members)
+                //    handles.Add(DebugHandle.Inspect(mesh));
+                handles.Add(
+                    DebugHandle.Inspect(Service.Registry.Collection)
+                    );
 
-                foreach (var client in Service.Clients)
+                /*foreach (var client in Service.Clients)
                 {
                     if (client.Channel?.Binding is MeshBinding)
                         continue;
                     handles.Add(DebugHandle.Inspect(client));
-                }
+                }*/
 
                 if (handles.Count == 0)
                     return;

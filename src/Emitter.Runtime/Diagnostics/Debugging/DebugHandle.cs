@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using Emitter.Replication;
 using Emitter.Text.Json;
 
 namespace Emitter.Diagnostics
@@ -127,6 +128,24 @@ namespace Emitter.Diagnostics
                 // Get the type
                 var type = target.GetType();
                 var info = type.GetTypeInfo();
+
+                // Is it a replicated dictionary?
+                var replicated = target as IReplicatedCollection;
+                if (replicated != null)
+                {
+                    foreach (var entry in replicated.GetEntries())
+                    {
+                        var entryType = entry.GetType();
+                        var entryKey = entryType.GetField("Key").GetValue(entry);
+                        var entryValue = entryType.GetField("Value").GetValue(entry);
+
+                        // Inspect the value
+                        this.Members[entryKey.ToString()] = PopulateValue(
+                            entryValue
+                            );
+                    }
+                    return;
+                }
 
                 // Get the properties
                 var properties = info
