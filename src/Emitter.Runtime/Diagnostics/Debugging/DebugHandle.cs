@@ -138,9 +138,14 @@ namespace Emitter.Diagnostics
                         var entryType = entry.GetType();
                         var entryKey = entryType.GetField("Key").GetValue(entry);
                         var entryValue = entryType.GetField("Value").GetValue(entry);
+                        var entryVersion = entryType.GetField("Version").GetValue(entry);
+                        var entryDeleted = (bool)entryType.GetField("Deleted").GetValue(entry);
+
+                        // Format the key
+                        var key = string.Format("{0}: v{1}{2}", entryKey.ToString(), entryVersion.ToString(), entryDeleted ? "(-)" : "");
 
                         // Inspect the value
-                        this.Members[entryKey.ToString()] = PopulateValue(
+                        this.Members[key] = PopulateValue(
                             entryValue
                             );
                     }
