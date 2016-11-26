@@ -901,7 +901,7 @@ namespace Emitter
                     catch (Exception ex)
                     {
                         // Log the weird exception
-                        ex.Log();
+                        Service.Logger.Log(ex);
                     }
                 }
             }

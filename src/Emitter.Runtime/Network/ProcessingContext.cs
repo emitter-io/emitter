@@ -521,7 +521,7 @@ namespace Emitter.Network
 #if DEBUG
             catch (Exception ex)
             {
-                ex.Log();
+                Service.Logger.Log(ex);
             }
 #endif
             finally

@@ -417,7 +417,7 @@ namespace Emitter
             }
             catch (Exception ex)
             {
-                ex.Log();
+                Service.Logger.Log(ex);
             }
 
             // Invoke shutdown

@@ -54,7 +54,7 @@ namespace Emitter.Network
             }
             catch (Exception ex)
             {
-                ex.Log();
+                Service.Logger.Log(ex);
             }
 
             return ProcessingState.Success;

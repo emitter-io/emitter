@@ -591,7 +591,7 @@ namespace Emitter
                     return;
                 }*/
 #if DEBUG
-                catch (Exception ex) { ex.Log(); return; }
+                catch (Exception ex) { Service.Logger.Log(ex); return; }
 #else
                 catch (Exception) { return; }
 #endif

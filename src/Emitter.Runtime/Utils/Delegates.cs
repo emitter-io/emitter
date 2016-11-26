@@ -20,12 +20,6 @@ using System;
 namespace Emitter
 {
     /// <summary>
-    /// Represents a conditional method.
-    /// </summary>
-    /// <returns>A boolean result of the condition.</returns>
-    public delegate bool Conditional();
-
-    /// <summary>
     /// Encapsulates a method that has two parameters passed by reference and does not return a value.
     /// </summary>
     /// <typeparam name="T1">The type of the first parameter of the method that this delegate encapsulates.</typeparam>
