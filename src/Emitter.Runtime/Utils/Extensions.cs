@@ -31,7 +31,7 @@ namespace Emitter
     /// <summary>
     /// Cryptography extensions for various classes.
     /// </summary>
-    internal static class Extensions
+    public static class Extensions
     {
         #region Private Members
 
