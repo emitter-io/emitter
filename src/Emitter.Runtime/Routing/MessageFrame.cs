@@ -18,7 +18,6 @@
 using System;
 using System.Runtime.CompilerServices;
 using Emitter.Collections;
-using Emitter.Diagnostics;
 
 namespace Emitter
 {
@@ -167,102 +166,99 @@ namespace Emitter
             // Since we're having some nice assurances by nanomsg, just set to begin
             Parser.State = ParseState.OP_HEADER;
 
-            // Start measuring
-            using (Profiler.Default.Measure("Messaging.TryParse"))
+            // Set the length
+            var length = frame.Count;
+
+            // Pin the buffer so the GC won't move it
+            fixed (byte* pArray = frame.Array)
             {
-                // Set the length
-                var length = frame.Count;
-
-                // Pin the buffer so the GC won't move it
-                fixed (byte* pArray = frame.Array)
+                byte* pBuffer = (pArray + frame.Offset);
+                byte b; int i;
+                for (i = 0; i < length; ++i)
                 {
-                    byte* pBuffer = (pArray + frame.Offset);
-                    byte b; int i;
-                    for (i = 0; i < length; ++i)
+                    // Get the current byte
+                    b = *(pBuffer + i);
+
+                    // Switch over the current parser state
+                    switch (Parser.State)
                     {
-                        // Get the current byte
-                        b = *(pBuffer + i);
+                        // We need to read the contract number, simply an int.
+                        case ParseState.OP_HEADER:
+                            // Read the first byte, which tells us whether this is a full message or a reference
+                            Parser.State = ParseState.OP_CONTRACT;
+                            break;
 
-                        // Switch over the current parser state
-                        switch (Parser.State)
-                        {
-                            // We need to read the contract number, simply an int.
-                            case ParseState.OP_HEADER:
-                                // Read the first byte, which tells us whether this is a full message or a reference
-                                Parser.State = ParseState.OP_CONTRACT;
-                                break;
+                        // We need to read the contract number, simply an int.
+                        case ParseState.OP_CONTRACT:
 
-                            // We need to read the contract number, simply an int.
-                            case ParseState.OP_CONTRACT:
+                            // Read the contract first
+                            Parser.Contract = (*(pBuffer + i)) << 24
+                                | (*(pBuffer + i + 1) << 16)
+                                | (*(pBuffer + i + 2) << 8)
+                                | (*(pBuffer + i + 3));
 
-                                // Read the contract first
-                                Parser.Contract = (*(pBuffer + i)) << 24
-                                    | (*(pBuffer + i + 1) << 16)
-                                    | (*(pBuffer + i + 2) << 8)
-                                    | (*(pBuffer + i + 3));
+                            i += 4;
+                            Parser.State = ParseState.OP_CHANNEL;
+                            break;
 
-                                i += 4;
-                                Parser.State = ParseState.OP_CHANNEL;
-                                break;
+                        // Start reading the channel, remember the offset
+                        case ParseState.OP_CHANNEL:
+                            Parser.Offset = i;
+                            Parser.State = ParseState.OP_CHANNEL_CONTENT;
+                            break;
 
-                            // Start reading the channel, remember the offset
-                            case ParseState.OP_CHANNEL:
-                                Parser.Offset = i;
-                                Parser.State = ParseState.OP_CHANNEL_CONTENT;
-                                break;
+                        // Channel is delimited by \0, so we need to wait until we have it
+                        case ParseState.OP_CHANNEL_CONTENT:
+                            if (b == (byte)0)
+                            {
+                                //Parser.Prefix = new string((sbyte*)pBuffer, Parser.Offset - 5, i - Parser.Offset + 5);
+                                //Parser.Channel = new string((sbyte*)pBuffer, Parser.Offset - 1, i - Parser.Offset);
 
-                            // Channel is delimited by \0, so we need to wait until we have it
-                            case ParseState.OP_CHANNEL_CONTENT:
-                                if (b == (byte)0)
-                                {
-                                    //Parser.Prefix = new string((sbyte*)pBuffer, Parser.Offset - 5, i - Parser.Offset + 5);
-                                    //Parser.Channel = new string((sbyte*)pBuffer, Parser.Offset - 1, i - Parser.Offset);
+                                Parser.Prefix = Memory.CopyString(pBuffer + Parser.Offset - 5, i - Parser.Offset + 5);
+                                Parser.Channel = Memory.CopyString(pBuffer + Parser.Offset - 1, i - Parser.Offset);
+                                Parser.State = ParseState.OP_MESSAGE_LENGTH;
+                            }
+                            break;
 
-                                    Parser.Prefix = Memory.CopyString(pBuffer + Parser.Offset - 5, i - Parser.Offset + 5);
-                                    Parser.Channel = Memory.CopyString(pBuffer + Parser.Offset - 1, i - Parser.Offset);
-                                    Parser.State = ParseState.OP_MESSAGE_LENGTH;
-                                }
-                                break;
+                        // Reading the message length
+                        case ParseState.OP_MESSAGE_LENGTH:
 
-                            // Reading the message length
-                            case ParseState.OP_MESSAGE_LENGTH:
+                            // Read the contract first
+                            Parser.MessageLength = (*(pBuffer + i)) << 24
+                                | (*(pBuffer + i + 1) << 16)
+                                | (*(pBuffer + i + 2) << 8)
+                                | (*(pBuffer + i + 3));
 
-                                // Read the contract first
-                                Parser.MessageLength = (*(pBuffer + i)) << 24
-                                    | (*(pBuffer + i + 1) << 16)
-                                    | (*(pBuffer + i + 2) << 8)
-                                    | (*(pBuffer + i + 3));
+                            i += 4;
+                            Parser.State = ParseState.OP_MESSAGE;
+                            break;
 
-                                i += 4;
-                                Parser.State = ParseState.OP_MESSAGE;
-                                break;
+                        // Reading the message body
+                        case ParseState.OP_MESSAGE:
 
-                            // Reading the message body
-                            case ParseState.OP_MESSAGE:
+                            // Skip the bytes, simply return the segment
+                            var contract = Parser.Contract;
+                            var channel = Parser.Channel;
+                            var message = new ArraySegment<byte>(
+                                frame.Array, frame.Offset + i - 1, Parser.MessageLength
+                                );
 
-                                // Skip the bytes, simply return the segment
-                                var contract = Parser.Contract;
-                                var channel = Parser.Channel;
-                                var message = new ArraySegment<byte>(
-                                    frame.Array, frame.Offset + i - 1, Parser.MessageLength
-                                    );
+                            // Invoke the callback
+                            i += Parser.MessageLength;
 
-                                // Invoke the callback
-                                i += Parser.MessageLength;
+                            // Send the message to current subscriptions
+                            Dispatcher.ForwardToClients(contract, channel, message);
+                            Parser.State = ParseState.OP_HEADER;
 
-                                // Send the message to current subscriptions
-                                Dispatcher.ForwardToClients(contract, channel, message);
-                                Parser.State = ParseState.OP_HEADER;
+                            // Console.WriteLine("user={0} channel={1} msg={2}", Parser.Contract, Parser.Channel, Parser.Message);
+                            break;
 
-                                // Console.WriteLine("user={0} channel={1} msg={2}", Parser.Contract, Parser.Channel, Parser.Message);
-                                break;
-
-                            default:
-                                goto ParseError;
-                        }
+                        default:
+                            goto ParseError;
                     }
                 }
             }
+
             return;
 
             ParseError:

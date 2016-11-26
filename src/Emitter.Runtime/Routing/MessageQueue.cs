@@ -19,7 +19,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using Emitter.Collections;
-using Emitter.Diagnostics;
 using Emitter.Network.Mesh;
 
 namespace Emitter
@@ -63,52 +62,49 @@ namespace Emitter
             {
                 try
                 {
-                    // Measure one send
-                    using (Profiler.Default.Measure("MessageQueue.Flush"))
+                    // Go through all the connections
+                    foreach (var server in Service.Mesh.Members)
                     {
-                        // Go through all the connections
-                        foreach (var server in Service.Mesh.Members)
+                        // Get the message queue
+                        var mq = server.Session as MessageQueue;
+                        if (mq == null || server.State != ServerState.Online)
+                            continue;
+
+                        // Acquire a lock on the current frame so we can push it to the pending queue
+                        lock (mq.PublishLock)
                         {
-                            // Get the message queue
-                            var mq = server.Session as MessageQueue;
-                            if (mq == null || server.State != ServerState.Online)
-                                continue;
-
-                            // Acquire a lock on the current frame so we can push it to the pending queue
-                            lock (mq.PublishLock)
+                            // If frame is empty, ignore
+                            if (mq.CurrentFrame.Length > 0)
                             {
-                                // If frame is empty, ignore
-                                if (mq.CurrentFrame.Length > 0)
-                                {
-                                    // The frame is not full, but push it anyway
-                                    mq.FrameQueue.Enqueue(mq.CurrentFrame);
-                                    mq.CurrentFrame = MessageFrame.Acquire();
-                                }
+                                // The frame is not full, but push it anyway
+                                mq.FrameQueue.Enqueue(mq.CurrentFrame);
+                                mq.CurrentFrame = MessageFrame.Acquire();
                             }
+                        }
 
-                            MessageFrame frame;
-                            while (mq.FrameQueue.TryDequeue(out frame))
+                        MessageFrame frame;
+                        while (mq.FrameQueue.TryDequeue(out frame))
+                        {
+                            try
                             {
-                                try
-                                {
-                                    // Send the buffer
-                                    server.Send(
-                                        MeshFrame.Acquire(frame.AsSegment())
-                                        );
-                                }
-                                catch (Exception ex)
-                                {
-                                    // Catch all exceptions here and print it out
-                                    Service.Logger.Log(ex);
-                                }
-                                finally
-                                {
-                                    // Once the frame is sent, release it
-                                    frame.TryRelease();
-                                }
+                                // Send the buffer
+                                server.Send(
+                                    MeshFrame.Acquire(frame.AsSegment())
+                                    );
+                            }
+                            catch (Exception ex)
+                            {
+                                // Catch all exceptions here and print it out
+                                Service.Logger.Log(ex);
+                            }
+                            finally
+                            {
+                                // Once the frame is sent, release it
+                                frame.TryRelease();
                             }
                         }
                     }
+
                     // Wait for the messages to queue up
                     Thread.Sleep(2);
                 }
