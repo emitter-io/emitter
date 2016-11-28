@@ -10,8 +10,12 @@
   },
 
   "dependencies": {
-    "Emitter.Runtime": "1.0.0-*",
-    "Emitter.Storage.S3": "1.0.0-*",
+    "Emitter.Runtime": {
+      "target": "project"
+    },
+    "Emitter.Storage.S3": {
+      "target": "project"
+    },
     "System.Diagnostics.TextWriterTraceListener": "4.0.0",
     "Microsoft.NETCore.App": {
       "type": "platform",
