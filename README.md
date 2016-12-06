@@ -33,6 +33,14 @@ This message shows that a new security configuration was generated, you can then
 
 Finally, open a browser and navigate to **<http://127.0.0.1:8080/keygen>** in order to generate your key. Now you can use the secret key generated to create channel keys, which allow you to secure individual channels and start using emitter.
 
+## Sandbox
+
+## Introduction
+Emitter has a [sandbox](https://emitter.io/login) - a free cloud cluster which allows you to quickly try out the platform and see how simple it is to create connected, real-time applications. The movie below shows you how to create your sandbox account and create a simple hello-world application within **5 minutes**.
+
+[![Getting Started With Emitter](https://s3-eu-west-1.amazonaws.com/emitter.io/content/img/wiki/thumb1.png)](https://www.youtube.com/watch?v=WyPMeIgfxSM "Getting Started With Emitter")
+
+
 ## Usage Example
 
 The code below shows a small example of usage of emitter with the Javascript SDK. As you can see, the API exposes straightforward methods such as `publish` and `subscribe` which can take binary payload and are secured through channel keys.
