@@ -16,7 +16,7 @@ Emitter can be used for online gaming and mobile apps by satisfying the requirem
 The quick way to start an Emitter broker is by using `docker run` command as shown below. Alternatively, you might compile this repository and use `dotnet` CLI or Visual Studio to rebuild and run from source. 
 
 ```shell
-docker run -d -p 8080:8080 emitter/server
+docker run -d --name emitter -p 8080:8080 --privileged --restart=unless-stopped emitter/server
 ```
 The command above starts a new server and if no configuration or environment variables were supplied, it will print out a message similar to the message below once the server has started:
 
