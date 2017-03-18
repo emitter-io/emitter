@@ -17,7 +17,7 @@ build_script:
 test: off
 
 artifacts:
-- path: **\*.nupkg
+- path: '**\*.nupkg'
 
 deploy:
   - provider: Environment
