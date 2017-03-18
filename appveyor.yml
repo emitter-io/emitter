@@ -13,11 +13,11 @@ before_build:
 
 build_script:
 - cmd: >-
-    dotnet pack src\Emitter.Runtime --configuration Release --output "Emitter" && dotnet pack src\Emitter.Storage.S3 --configuration Release --output "Emitter" && dotnet pack src\Emitter.Server --configuration Release --output "Emitter"
+    dotnet pack src\Emitter.Runtime --configuration Release && dotnet pack src\Emitter.Storage.S3 --configuration Release && dotnet pack src\Emitter.Server --configuration Release
 test: off
 
 artifacts:
-- path: Emitter\**\*.nupkg
+- path: /.*\.nupkg/
 
 deploy:
   - provider: Environment
