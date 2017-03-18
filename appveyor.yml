@@ -13,7 +13,7 @@ before_build:
 
 build_script:
 - cmd: >-
-    dotnet pack src\Emitter.Runtime --configuration Release --version-suffix "dev-{build}"  && dotnet pack src\Emitter.Storage.S3 --configuration Release --version-suffix "dev-{build}" && dotnet pack src\Emitter.Server --configuration Release  --version-suffix "dev-{build}"
+    dotnet pack src\Emitter.Runtime --configuration Release --version-suffix 'dev-{build}'  && dotnet pack src\Emitter.Storage.S3 --configuration Release --version-suffix 'dev-{build}' && dotnet pack src\Emitter.Server --configuration Release  --version-suffix 'dev-{build}'
 
 test: off
 
