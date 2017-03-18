@@ -4,8 +4,8 @@ os: Visual Studio 2017
 assembly_info:
   patch: true
   file: '**\AssemblyInfo.*'
-  assembly_version: '1.0.{build}'
-  assembly_file_version: '1.0.{build}'
+  assembly_version: '1.0.0.{build}'
+  assembly_file_version: '1.0.0.{build}'
 
 before_build:
 - cmd: >-
@@ -24,7 +24,7 @@ deploy:
   - provider: Environment
     name: Public S3
     artifact: /.*\.nupkg/
-    on:
+    on:                 
       branch: master
 
   - provider: NuGet
