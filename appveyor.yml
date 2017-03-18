@@ -7,6 +7,15 @@ assembly_info:
   assembly_version: '1.0.0.{build}'
   assembly_file_version: '1.0.0.{build}'
 
+before_build:
+- cmd: >-
+    dotnet restore src\Emitter.Server && dotnet restore src\Emitter.Runtime && dotnet restore src\Emitter.Storage.S3
+
+build_script:
+- cmd: >-
+    dotnet pack src\Emitter.Runtime --configuration Release --output "Emitter" && dotnet pack src\Emitter.Storage.S3 --configuration Release --output "Emitter" && dotnet pack src\Emitter.Server --configuration Release --output "Emitter"
+test: off
+
 artifacts:
 - path: Emitter\**\*.nupkg
 
