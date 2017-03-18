@@ -1,4 +1,4 @@
-FROM microsoft/dotnet:1.0.0-preview2-sdk
+FROM microsoft/dotnet:1.1-sdk
 MAINTAINER Roman Atachiants "roman@misakai.com"
 
 # Make sure we have S3 & additional libraries
