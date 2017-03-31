@@ -29,6 +29,23 @@ namespace Emitter.Replication
     /// </summary>
     public sealed class ReplicatedVersion : ISerializable
     {
+        #region Clock
+        /// <summary>
+        /// The current connection id.
+        /// </summary>
+        private static long Tick = DateTime.UtcNow.Ticks;
+
+        /// <summary>
+        /// This creates a new connection identifier and returns it atomically.
+        /// </summary>
+        /// <returns></returns>
+        private static long GetTime()
+        {
+            return Interlocked.Increment(ref Tick);
+        }
+
+        #endregion
+
         /// <summary>
         /// This is the version for the node itself. This way we can avoid storing the node identifier
         /// within the vector and only hit the dictionary when updating someone else's state.
@@ -81,7 +98,7 @@ namespace Emitter.Replication
         /// <returns>The latest version.</returns>
         public long Increment()
         {
-            return Interlocked.Increment(ref this.Version);
+            return this.Version = GetTime();
         }
 
         /// <summary>

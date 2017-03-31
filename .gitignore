@@ -216,3 +216,9 @@ Emitter.Network/Emitter.Network.nuget.targets
 Emitter.Security/Emitter.Security.nuget.targets
 Emitter/Emitter.nuget.targets
 .vs/
+src/Emitter.Runtime/build/Emitter.Runtime.deps.json
+src/Emitter.Server/build/Emitter.Server.deps.json
+src/Emitter.Server/build/Emitter.Server.runtimeconfig.json
+src/Emitter.Storage.S3/build/Emitter.Storage.S3.deps.json
+test/Emitter.Runtime.Tests/build/Emitter.Runtime.Tests.deps.json
+test/Emitter.Runtime.Tests/build/Emitter.Runtime.Tests.runtimeconfig.json
