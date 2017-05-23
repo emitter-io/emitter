@@ -42,7 +42,7 @@ namespace Emitter.Network
         /// The target access type (r, w, rw).
         /// </summary>
         [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
-        public string Type = null;
+        public string Type = "";
 
         /// <summary>
         /// The time to live for the key.
