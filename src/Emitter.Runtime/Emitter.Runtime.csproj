@@ -18,6 +18,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NETCore.Runtime" Version="1.0.2-*" />
     <PackageReference Include="Microsoft.NETCore.Platforms" Version="1.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
     <PackageReference Include="System.Collections.NonGeneric" Version="4.0.1-*" />
     <PackageReference Include="System.Collections.Specialized" Version="4.0.1-*" />
     <PackageReference Include="System.ComponentModel.TypeConverter" Version="4.1.0" />

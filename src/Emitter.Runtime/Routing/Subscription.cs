@@ -21,7 +21,7 @@ using System.Linq;
 using Emitter.Network;
 using Emitter.Network.Mesh;
 using Emitter.Replication;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter
 {

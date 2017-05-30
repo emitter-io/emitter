@@ -18,7 +18,7 @@
 using System;
 using System.Text;
 using Emitter.Security;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter
 {

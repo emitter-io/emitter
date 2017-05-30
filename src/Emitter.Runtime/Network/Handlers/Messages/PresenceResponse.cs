@@ -17,7 +17,7 @@
 
 using System;
 using System.Collections.Generic;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter.Network
 {

@@ -21,7 +21,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Emitter.Network.Http;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter.Security
 {

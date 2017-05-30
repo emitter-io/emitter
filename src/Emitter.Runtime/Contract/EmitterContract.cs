@@ -20,7 +20,7 @@ using System.Linq;
 using Emitter.Diagnostics;
 using Emitter.Replication;
 using Emitter.Security;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter
 {

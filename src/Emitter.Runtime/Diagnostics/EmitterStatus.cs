@@ -21,7 +21,7 @@ using System;
 using Newtonsoft.Json;
 #else
 
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 #endif
 
