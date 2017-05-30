@@ -20,7 +20,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using Emitter.Security;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter.Diagnostics
 {

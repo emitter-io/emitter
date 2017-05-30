@@ -22,7 +22,7 @@ using System.Linq;
 using System.Net;
 using System.Reflection;
 using Emitter.Replication;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter.Diagnostics
 {
@@ -288,7 +288,7 @@ namespace Emitter.Diagnostics
                 return "{empty}";
 
             // Serialize the members
-            return JsonConvert.SerializeObject(this.Members, Text.Json.Formatting.Indented);
+            return JsonConvert.SerializeObject(this.Members, Newtonsoft.Json.Formatting.Indented);
         }
 
         #endregion Serialization Members

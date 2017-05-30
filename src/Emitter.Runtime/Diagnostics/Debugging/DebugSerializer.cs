@@ -16,7 +16,7 @@
 #endregion Copyright (c) 2009-2016 Misakai Ltd.
 
 using System;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter.Diagnostics
 {
