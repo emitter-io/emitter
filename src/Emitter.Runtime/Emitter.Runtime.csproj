@@ -18,6 +18,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NETCore.Runtime" Version="1.0.2-*" />
     <PackageReference Include="Microsoft.NETCore.Platforms" Version="1.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
     <PackageReference Include="System.Collections.NonGeneric" Version="4.0.1-*" />
     <PackageReference Include="System.Collections.Specialized" Version="4.0.1-*" />
     <PackageReference Include="System.ComponentModel.TypeConverter" Version="4.1.0" />
@@ -26,7 +27,7 @@
     <PackageReference Include="System.Diagnostics.TraceSource" Version="4.0.0-*" />
     <PackageReference Include="System.Threading.Thread" Version="4.0.0-*" />
     <PackageReference Include="System.Threading.ThreadPool" Version="4.0.10-*" />
-    <PackageReference Include="System.Runtime.Numerics" Version="4.0.1-*" />
+    <PackageReference Include="System.Runtime.Numerics" Version="4.3.0" />
     <PackageReference Include="System.Runtime.Serialization.Primitives" Version="4.1.1-*" />
     <PackageReference Include="System.Reflection.TypeExtensions" Version="4.1.0-*" />
     <PackageReference Include="System.Net.NameResolution" Version="4.0.0-*" />

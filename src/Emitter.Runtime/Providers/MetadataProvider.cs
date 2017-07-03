@@ -20,7 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Emitter.Collections;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter.Providers
 {

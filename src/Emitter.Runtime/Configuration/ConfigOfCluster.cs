@@ -19,7 +19,7 @@ using System;
 using System.Linq;
 using System.Net;
 using Emitter.Providers;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter.Configuration
 {

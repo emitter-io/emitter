@@ -5,7 +5,7 @@ using System.Text;
 using Emitter.Configuration;
 using Emitter.Diagnostics;
 using Emitter.Security;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter
 {

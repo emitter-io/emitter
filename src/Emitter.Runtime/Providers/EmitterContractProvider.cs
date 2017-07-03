@@ -21,7 +21,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Emitter.Network.Http;
 using Emitter.Security;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter.Providers
 {

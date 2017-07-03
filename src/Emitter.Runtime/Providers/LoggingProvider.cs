@@ -22,7 +22,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Emitter.Network;
-using Emitter.Text.Json;
+using Newtonsoft.Json;
 
 namespace Emitter.Providers
 {
