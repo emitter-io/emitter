@@ -128,6 +128,8 @@ namespace Emitter.Network
                     var adapters = NetworkInterface.GetAllNetworkInterfaces();
                     foreach (NetworkInterface adapter in adapters)
                     {
+						if (adapter.OperationalStatus != OperationalStatus.Up)
+							continue;
                         var properties = adapter.GetIPProperties();
                         foreach (IPAddressInformation unicast in properties.UnicastAddresses)
                         {
