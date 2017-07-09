@@ -16,10 +16,11 @@ package tcp
 
 import (
 	"errors"
-	"github.com/emitter-io/emitter/logging"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/emitter-io/emitter/logging"
 )
 
 // Handler is a callback which gets called when a new connection is accepted.

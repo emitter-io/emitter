@@ -4,7 +4,10 @@
         "**/.DS_Store": true,
         ".gitignore": true,
         "vendor/": true,
-        ".vscode": true
+        ".vscode": true,
+        "build*": true,
+        "LICENSE": true,
+        "appveyor.yml": true
     },
     
     "go.formatTool": "gofmt",

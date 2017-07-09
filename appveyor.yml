@@ -1,0 +1,36 @@
+version: 2.0.{build}
+platform: x64
+branches:  
+  only:
+    - nextgen
+
+clone_folder: c:\go\src\github.com\emitter-io\emitter
+
+environment:  
+  GOPATH: c:\go
+
+install:  
+  - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
+  - go version
+
+build_script:
+- cmd: .\build.bat
+
+test_script:
+- go test github.com\emitter-io\emitter\...
+
+artifacts:  
+  - path: build/*
+    name: binary
+
+deploy:
+  - provider: GitHub
+    auth_token:
+      secure: ImwOgsH/e1F+reDfqNIvoQ773FZHsjQt/4znrFdxUVrs1VNpFK9IUaW4hIL/yl4c
+    release: 'v$(appveyor_build_version)'
+    description: 'This is Emitter broker build v$(appveyor_build_version).'
+    draft: true
+    prerelease: true
+    artifact: binary
+    on:
+      branch: nextgen

@@ -5,8 +5,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/emitter-io/emitter/network/http"
+	"encoding/json"
 	"errors"
+	"github.com/emitter-io/emitter/network/http"
 )
 
 // VaultClient represents a lightweight vault client.
@@ -70,21 +71,22 @@ func (c *vaultClient) ReadSecret(secretName string) (string, error) {
 }
 
 // ReadSecret reads a secret from the vault.
-func (c *vaultClient) ReadStsCredentials(credentialsName string) (string, error) {
-	/*output, err := c.get("/aws/sts/" + credentialsName)
+func (c *vaultClient) ReadCredentials(credentialsName string) (*AwsCredentials, error) {
+	output, err := c.get("/aws/sts/" + credentialsName)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	if secret, ok := output.Data["value"]; ok {
-		value := secret.(string)
-		if value != "" {
-			return value, nil
+	if s, err := json.Marshal(output.Data); err == nil {
+		creds := new(AwsCredentials)
+		if err := json.Unmarshal(s, creds); err == nil {
+			creds.Duration = time.Duration(output.LeaseDuration) * time.Second
+			creds.Expires = time.Now().UTC().Add(creds.Duration)
+			return creds, nil
 		}
 	}
 
-	return "", errors.New("Unable to find or parse secret " + secretName)*/
-	return "", nil
+	return nil, errors.New("Unable to find or parse credentials " + credentialsName)
 }
 
 // Get issues an HTTP GET to a vault server.

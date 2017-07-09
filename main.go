@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/emitter-io/emitter/broker"
 	"github.com/emitter-io/emitter/config"
-	"github.com/emitter-io/emitter/emitter"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/security"
@@ -17,13 +17,14 @@ func main() {
 	logging.SetWriter(os.Stdout, true)
 
 	// Parse the configuration
+	// TODO: emitter.conf should come from command line args
 	cfg, err := config.ReadOrCreate("emitter.conf", security.NewEnvironmentProvider(), security.NewVaultProvider(address.Fingerprint()))
 	if err != nil {
 		panic("Unable to parse configuration, due to " + err.Error())
 	}
 
 	// Setup the new service
-	svc, err := emitter.NewService(cfg)
+	svc, err := broker.NewService(cfg)
 	if err != nil {
 		panic(err.Error())
 	}
