@@ -9,7 +9,7 @@ import (
 
 func TestNewLicense(t *testing.T) {
 	input := "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
-	output, err := NewLicense(input)
+	output, err := ParseLicense(input)
 	if err != nil {
 		t.Error(err)
 	}

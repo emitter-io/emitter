@@ -114,7 +114,7 @@ func TestBase64SelfDecode(t *testing.T) {
 }
 
 func TestNewCipher(t *testing.T) {
-	license, err := NewLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
+	license, err := ParseLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
 	if err != nil {
 		t.Error(err)
 	}

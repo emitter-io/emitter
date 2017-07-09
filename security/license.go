@@ -43,8 +43,8 @@ type License struct {
 	Type          uint32    // Gets or sets the license type.
 }
 
-// NewLicense decrypts the license and verifies it.
-func NewLicense(data string) (*License, error) {
+// ParseLicense decrypts the license and verifies it.
+func ParseLicense(data string) (*License, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("No license was found, please provide a valid license key through the configuration file, an EMITTER_LICENSE environment variable or a valid vault key 'secrets/emitter/license'")
 	}

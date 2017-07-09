@@ -66,7 +66,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	// Parse the license
 	logging.LogAction("service", "external address is "+address.External().String())
 	logging.LogAction("service", "reading the license...")
-	if s.License, err = security.NewLicense(cfg.License); err != nil {
+	if s.License, err = security.ParseLicense(cfg.License); err != nil {
 		return nil, err
 	}
 
