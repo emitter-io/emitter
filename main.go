@@ -17,6 +17,7 @@ func main() {
 	logging.SetWriter(os.Stdout, true)
 
 	// Parse the configuration
+	// TODO: emitter.conf should come from command line args
 	cfg, err := config.ReadOrCreate("emitter.conf", security.NewEnvironmentProvider(), security.NewVaultProvider(address.Fingerprint()))
 	if err != nil {
 		panic("Unable to parse configuration, due to " + err.Error())

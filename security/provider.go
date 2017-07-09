@@ -15,11 +15,11 @@
 package security
 
 import (
+	"errors"
 	"os"
 	"strings"
 
 	"github.com/emitter-io/emitter/config"
-	"errors"
 )
 
 // Provider represents a contract for a security provider.
