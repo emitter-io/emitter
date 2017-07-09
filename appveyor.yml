@@ -27,21 +27,10 @@ deploy:
   - provider: GitHub
     auth_token:
       secure: ImwOgsH/e1F+reDfqNIvoQ773FZHsjQt/4znrFdxUVrs1VNpFK9IUaW4hIL/yl4c
-    release: 'Build v$(appveyor_build_version)'
-    description: 'This is Emitter broker prerelease v$(appveyor_build_version) for the latest commit.'
-    draft: false
+    release: 'Emitter v$(appveyor_build_version)'
+    description: 'This is Emitter broker build v$(appveyor_build_version).'
+    draft: true
     prerelease: true
     artifact: binary
     on:
       branch: nextgen
-
-  - provider: GitHub
-    auth_token:
-      secure: ImwOgsH/e1F+reDfqNIvoQ773FZHsjQt/4znrFdxUVrs1VNpFK9IUaW4hIL/yl4c
-    release: 'Release $(appveyor_repo_tag_name).'
-    description: 'This is Emitter broker release, tagged as $(appveyor_repo_tag_name).'
-    draft: true
-    prerelease: false
-    artifact: binary
-    on:
-      appveyor_repo_tag: true
