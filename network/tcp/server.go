@@ -15,8 +15,8 @@
 package tcp
 
 import (
-	"bitbucket.org/emitter/emitter/logging"
 	"errors"
+	"github.com/emitter-io/emitter/logging"
 	"net"
 	"sync"
 	"time"

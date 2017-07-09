@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	"bitbucket.org/emitter/emitter/network/http"
+	"github.com/emitter-io/emitter/network/http"
 	"errors"
 )
 

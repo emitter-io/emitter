@@ -18,7 +18,7 @@ import (
 	"os"
 	"strings"
 
-	"bitbucket.org/emitter/emitter/config"
+	"github.com/emitter-io/emitter/config"
 	"errors"
 )
 

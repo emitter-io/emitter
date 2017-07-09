@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
-	"bitbucket.org/emitter/emitter/config"
-	"bitbucket.org/emitter/emitter/emitter"
-	"bitbucket.org/emitter/emitter/logging"
-	"bitbucket.org/emitter/emitter/network/address"
-	"bitbucket.org/emitter/emitter/security"
-	"bitbucket.org/emitter/emitter/utils"
+	"github.com/emitter-io/emitter/config"
+	"github.com/emitter-io/emitter/emitter"
+	"github.com/emitter-io/emitter/logging"
+	"github.com/emitter-io/emitter/network/address"
+	"github.com/emitter-io/emitter/security"
+	"github.com/emitter-io/emitter/utils"
 )
 
 func main() {

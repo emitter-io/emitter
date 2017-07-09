@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"io"
 
-	"bitbucket.org/emitter/emitter/collection"
-	"bitbucket.org/emitter/emitter/config"
+	"github.com/emitter-io/emitter/collection"
+	"github.com/emitter-io/emitter/config"
 )
 
 // buffers are reusable fixed-side buffers for faster encoding.

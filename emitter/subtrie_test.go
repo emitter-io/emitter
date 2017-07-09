@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"bitbucket.org/emitter/emitter/utils"
+	"github.com/emitter-io/emitter/utils"
 	"github.com/stretchr/testify/assert"
 )
 

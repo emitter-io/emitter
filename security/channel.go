@@ -18,8 +18,8 @@ import (
 	"reflect"
 	"unsafe"
 
-	"bitbucket.org/emitter/emitter/config"
-	"bitbucket.org/emitter/emitter/utils"
+	"github.com/emitter-io/emitter/config"
+	"github.com/emitter-io/emitter/utils"
 )
 
 // Channel types

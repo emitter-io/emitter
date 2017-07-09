@@ -15,7 +15,7 @@
 package emitter
 
 import (
-	"bitbucket.org/emitter/emitter/security"
+	"github.com/emitter-io/emitter/security"
 )
 
 // Ssid represents a subscription ID which contains a contract and a list of hashes

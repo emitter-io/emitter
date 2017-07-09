@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"bitbucket.org/emitter/emitter/config"
+	"github.com/emitter-io/emitter/config"
 )
 
 type devNull struct{}

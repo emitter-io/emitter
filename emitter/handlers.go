@@ -1,7 +1,7 @@
 package emitter
 
 import (
-	"bitbucket.org/emitter/emitter/security"
+	"github.com/emitter-io/emitter/security"
 )
 
 // EventError represents an event code which provides a more de.

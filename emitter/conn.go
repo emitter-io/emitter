@@ -19,9 +19,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"bitbucket.org/emitter/emitter/logging"
-	"bitbucket.org/emitter/emitter/network/mqtt"
-	"bitbucket.org/emitter/emitter/security"
+	"github.com/emitter-io/emitter/logging"
+	"github.com/emitter-io/emitter/network/mqtt"
+	"github.com/emitter-io/emitter/security"
 )
 
 var logConnection = logging.AddLogger("[conn] connection %s id=%u64")
