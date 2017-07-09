@@ -1,0 +1,5 @@
+# Breaking changes
+
+- The expiration time in the channel key is now using Unix timestamp instead of .NET ticks. This requires previously generated keys with an expiration to be regenerated.
+- New channel parser now more strict and enforces the trailing slash '/' (e.g.: "a/b/c/" will parse and "a/b/c" won't parse)
+- Configuration for TCP/TLS now accepts golang address format, (eg.: ":8080" would listen to all addresses and port 8080)

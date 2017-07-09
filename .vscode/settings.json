@@ -1,0 +1,14 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.DS_Store": true,
+        ".gitignore": true,
+        "vendor/": true,
+        ".vscode": true
+    },
+    
+    "go.formatTool": "gofmt",
+    "go.formatFlags": [
+        "-s"
+    ]
+}
