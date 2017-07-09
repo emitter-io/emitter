@@ -27,7 +27,7 @@ deploy:
   - provider: GitHub
     auth_token:
       secure: ImwOgsH/e1F+reDfqNIvoQ773FZHsjQt/4znrFdxUVrs1VNpFK9IUaW4hIL/yl4c
-    release: 'Emitter v$(appveyor_build_version)'
+    release: 'v$(appveyor_build_version)'
     description: 'This is Emitter broker build v$(appveyor_build_version).'
     draft: true
     prerelease: true
