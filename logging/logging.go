@@ -498,7 +498,7 @@ func (lw *logWriter) writeLogDataToFile(idx uint32, kinds []reflect.Kind, segs [
 	// write number of string segments between variable parts
 	// we don't need to write the number of kinds here because it is always
 	// equal to the number of segments minus 1
-	if len(segs) > math.MaxUint32 {
+	if len(segs) > math.MaxInt32 {
 		// what the hell are you logging?!
 		panic("Too many log line segments")
 	}
