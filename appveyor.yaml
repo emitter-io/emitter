@@ -1,0 +1,26 @@
+version: 2.0.{build}
+
+platform: x64
+
+branches:  
+  only:
+    - nextgen
+
+clone_folder: c:\go\src\github.com\emitter-io\emitter
+
+environment:  
+  GOPATH: c:\go
+
+install:  
+  - echo %PATH%
+  - echo %GOPATH%
+  - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
+  - go version
+  - go env
+
+build_script:
+- cmd: .\build.bat
+
+artifacts:  
+  - path: build/*
+    name: binary

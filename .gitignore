@@ -16,3 +16,4 @@ debug
 cluster.log
 coverage.html
 status.html
+build/*
