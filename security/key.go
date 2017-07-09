@@ -18,11 +18,6 @@ import (
 	"time"
 )
 
-// Contract represents an interface for a contract.
-type Contract interface {
-	Validate(key Key) bool // Validate checks the security key with the contract.
-}
-
 // Access types for a security key.
 const (
 	AllowNone      = uint32(0)              // Key has no privileges.
