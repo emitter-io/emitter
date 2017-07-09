@@ -1,4 +1,4 @@
-package emitter
+package broker
 
 import (
 	"github.com/emitter-io/emitter/security"

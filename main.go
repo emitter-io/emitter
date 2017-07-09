@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/emitter-io/emitter/broker"
 	"github.com/emitter-io/emitter/config"
-	"github.com/emitter-io/emitter/emitter"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/security"
@@ -24,7 +24,7 @@ func main() {
 	}
 
 	// Setup the new service
-	svc, err := emitter.NewService(cfg)
+	svc, err := broker.NewService(cfg)
 	if err != nil {
 		panic(err.Error())
 	}
