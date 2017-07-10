@@ -47,7 +47,9 @@ func (s Ssid) GetHashCode() uint32 {
 // ------------------------------------------------------------------------------------
 
 // Subscriber is a value associated with a subscription.
-type Subscriber interface{}
+type Subscriber interface {
+	Send(channel []byte, payload []byte) error
+}
 
 // ------------------------------------------------------------------------------------
 

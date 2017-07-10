@@ -130,27 +130,47 @@ func (c *Conn) Process() {
 			}
 
 		case mqtt.TypeOfDisconnect:
-			break
 
 		case mqtt.TypeOfPublish:
 			packet := msg.(*mqtt.Publish)
-			ack := mqtt.Puback{
+			/*ack := mqtt.Puback{
 				MessageID: packet.MessageID,
-			}
+			}*/
 
 			if err := c.onPublish(packet.Topic, packet.Payload); err != nil {
 				// TODO: Handle Error
 			}
 
 			// Acknowledge the publication
-			if _, err := ack.EncodeTo(c.socket); err != nil {
+			/*if _, err := ack.EncodeTo(c.socket); err != nil {
 				logging.LogError("conn", "puback send", err)
 				break
-			}
-			break
+			}*/
 
 		}
 	}
+}
+
+// Send forwards the message to the underlying client.
+func (c *Conn) Send(channel []byte, payload []byte) error {
+	packet := mqtt.Publish{
+		Header: &mqtt.StaticHeader{
+			QOS: 0, // TODO when we'll support more QoS
+		},
+		MessageID: 0,       // TODO
+		Topic:     channel, // The channel for this message.
+		Payload:   payload, // The payload for this message.
+	}
+
+	println("sending message to " + string(channel))
+
+	// Acknowledge the publication
+	if _, err := packet.EncodeTo(c.socket); err != nil {
+		logging.LogError("conn", "message send", err)
+		return err
+	}
+
+	return nil
 }
 
 // Subscribe subscribes to a particular channel.

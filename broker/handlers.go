@@ -27,34 +27,65 @@ var (
 // OnSubscribe is a handler for MQTT Subscribe events.
 func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 
-	return nil
-}
-
-// OnUnsubscribe is a handler for MQTT Unsubscribe events.
-func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
-
-	return nil
-}
-
-// OnPublish is a handler for MQTT Publish events.
-func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	// Parse the channel
 	channel := security.ParseChannel(mqttTopic)
 	if channel.ChannelType == security.ChannelInvalid {
 		return ErrBadRequest
 	}
 
-	// Publish should only have static channel strings
-	if channel.ChannelType == security.ChannelStatic {
+	// Attempt to parse the key
+	key, err := c.service.Cipher.DecryptKey(channel.Key)
+	if err != nil {
+		// TODO
+	}
+
+	// Subscribe the client to the channel
+	c.Subscribe(key.Contract(), channel)
+
+	return nil
+}
+
+// OnUnsubscribe is a handler for MQTT Unsubscribe events.
+func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
+
+	// Parse the channel
+	channel := security.ParseChannel(mqttTopic)
+	if channel.ChannelType == security.ChannelInvalid {
+		return ErrBadRequest
+	}
+
+	// Attempt to parse the key
+	key, err := c.service.Cipher.DecryptKey(channel.Key)
+	if err != nil {
+		// TODO
+	}
+
+	// Unsubscribe the client from the channel
+	ssid := NewSsid(key.Contract(), channel)
+	c.Unsubscribe(ssid)
+
+	return nil
+}
+
+// OnPublish is a handler for MQTT Publish events.
+func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
+
+	// Parse the channel
+	channel := security.ParseChannel(mqttTopic)
+	if channel.ChannelType != security.ChannelStatic {
 		return ErrForbidden
 	}
 
 	// Is this a special api request?
-	if TryProcessAPIRequest(channel) {
+	/*if TryProcessAPIRequest(channel) {
 		return nil
-	}
+	}*/
 
 	// Attempt to parse the key
+	key, err := c.service.Cipher.DecryptKey(channel.Key)
+	if err != nil {
+		// TODO
+	}
 
 	// Has the key expired?
 
@@ -71,6 +102,14 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	// Do we have a TTL with the message?
 
 	// Check if the key has a TTL and also can store (soft permission)
+
+	// Iterate through all subscribers and send them the message
+	ssid := NewSsid(key.Contract(), channel)
+	for _, subscriber := range c.service.subscriptions.Lookup(ssid) {
+
+		println("sending message to " + string(channel.Channel))
+		subscriber.Send(channel.Channel, payload)
+	}
 
 	return nil
 }

@@ -2,9 +2,9 @@ package security
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
-	"time"
 )
 
 func TestKeyIsEmpty(t *testing.T) {
