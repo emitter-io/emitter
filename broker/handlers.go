@@ -106,8 +106,6 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	// Iterate through all subscribers and send them the message
 	ssid := NewSsid(key.Contract(), channel)
 	for _, subscriber := range c.service.subscriptions.Lookup(ssid) {
-
-		println("sending message to " + string(channel.Channel))
 		subscriber.Send(channel.Channel, payload)
 	}
 
