@@ -103,8 +103,7 @@ namespace Emitter.Replication
 
                 // Propagate upwards
                 var notify = this.Parent as IReplicatedCollection;
-                if (notify != null)
-                    notify.OnChildUpdate(this.Key);
+                notify?.OnChildUpdate(this.Key);
             }
         }
 
@@ -121,7 +120,7 @@ namespace Emitter.Replication
         }
 
         /// <summary>
-        /// Gets the value by the key, adds if if no value was found.
+        /// Gets the value by the key, adds it if no value was found.
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
