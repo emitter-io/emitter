@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"encoding/json"
 	"github.com/emitter-io/emitter/security"
 	"math"
 	"math/rand"
@@ -17,8 +18,15 @@ const (
 	QueryTargetChannel = 3
 )
 
+type keyGenMessage struct {
+	Key     string `json:"key"`
+	Channel string `json:"channel"`
+	Type    string `json:"type"`
+	TTL     int32  `json:"ttl"`
+}
+
 // TryProcessAPIRequest attempts to generate the key and returns the result.
-func TryProcessAPIRequest(channel *security.Channel) bool {
+func TryProcessAPIRequest(channel *security.Channel, payload []byte) bool {
 	defer func() {
 		// Send the response, always
 	}()
@@ -36,7 +44,7 @@ func TryProcessAPIRequest(channel *security.Channel) bool {
 
 	switch channel.Query[1] {
 	case RequestKeygen:
-		return true
+		return ProcessKeyGen(channel, payload)
 	case RequestPresence:
 		return true
 	default:
@@ -45,7 +53,13 @@ func TryProcessAPIRequest(channel *security.Channel) bool {
 
 }
 
-func ProcessKeyGen(channel *security.Channel) bool {
+func ProcessKeyGen(channel *security.Channel, payload []byte) bool {
+	// Deserialize the payload.
+	message := keyGenMessage{}
+	if err := json.Unmarshal(payload, &message); err != nil {
+		return false
+	}
+
 	// Attempt to parse the key, this should be a master key
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.

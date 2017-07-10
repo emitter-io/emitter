@@ -150,3 +150,9 @@ func (k Key) IsExpired() bool {
 func (k Key) IsMaster() bool {
 	return k.Permissions() == AllowMaster
 }
+
+// TryParse attempts to parse a string into a Key.
+func (k Key) TryParse(value string) bool {
+	// Todo
+	return false
+}

@@ -77,7 +77,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	}
 
 	// Is this a special api request?
-	/*if TryProcessAPIRequest(channel) {
+	/*if TryProcessAPIRequest(channel, payload) {
 		return nil
 	}*/
 
