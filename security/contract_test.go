@@ -27,13 +27,12 @@ func TestSingleContractProvider_GetById(t *testing.T) {
 
 	contract := new(SingleContractProvider)
 	contract.Create(license)
-	contractByID := contract.GetByID(license.Contract)
-	contractByWrongID := contract.GetByID(0)
+	contractByID := contract.Get(license.Contract)
+	contractByWrongID := contract.Get(0)
 	assert.NotNil(t, contractByID)
 	assert.Nil(t, contractByWrongID)
 }
 
-/*
 func TestSingleContractProvider_Validate(t *testing.T) {
 	license, err := ParseLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
 	if err != nil {
@@ -43,5 +42,10 @@ func TestSingleContractProvider_Validate(t *testing.T) {
 	contract := new(SingleContractProvider)
 	contractData := contract.Create(license)
 
-	assert.True(t, contractData.Validate(license.EncryptionKey))
-}*/
+	key := Key(make([]byte, 24))
+	key.SetMaster(1)
+	key.SetContract(license.Contract)
+	key.SetSignature(license.Signature)
+
+	assert.True(t, contractData.Validate(key))
+}
