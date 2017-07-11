@@ -21,3 +21,10 @@ func TestGetHash(t *testing.T) {
 		t.Errorf("Hash %d is not equal to %d", h, 1815237614)
 	}
 }
+
+func TestGetHash2(t *testing.T) {
+	h := GetHash([]byte("hello world"))
+	if h != 4008393376 {
+		t.Errorf("Hash %d is not equal to %d", h, 1815237614)
+	}
+}

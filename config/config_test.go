@@ -34,8 +34,13 @@ func Test_write(t *testing.T) {
 }
 
 func TestClusterKey(t *testing.T) {
-	c := ClusterConfig{ClusterKey: "hi"}
+	c := ClusterConfig{}
+
+	assert.Nil(t, c.Key())
+
+	c.ClusterKey = "hi"
 	key := c.Key()
+
 	assert.True(t, true, len(key) == 16)
 	assert.Equal(t, []byte{0x91, 0x3c, 0xca, 0x63, 0xe1, 0x36, 0x9, 0xc7, 0x86, 0x59, 0xa2, 0xd2, 0x16, 0x4, 0x50, 0xf1}, key)
 }
@@ -44,14 +49,19 @@ func Test_declassify(t *testing.T) {
 	c := NewDefault()
 	m := new(secretStoreMock)
 	m.On("GetSecret", "emitter/tcp").Return(":999")
+	m.On("GetSecret", "emitter/cluster/port").Return("123")
 	m.On("GetSecret", "emitter/vault/address").Return("hello")
 	m.On("GetSecret", mock.Anything).Return("")
 
 	expected := NewDefault()
 	expected.TCPPort = ":999"
 	expected.Vault.Address = "hello"
+	expected.Cluster.Port = 123
 
 	c.declassify("emitter", m)
 
 	assert.EqualValues(t, expected, c)
+
+	c.Vault.Application = "abc"
+	assert.True(t, c.HasVault())
 }
