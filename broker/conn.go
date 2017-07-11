@@ -66,8 +66,6 @@ func (c *Conn) Process() {
 			break
 		}
 
-		println(msg.Type())
-
 		switch msg.Type() {
 
 		// We got an attempt to connect to MQTT.
@@ -161,8 +159,6 @@ func (c *Conn) Send(channel []byte, payload []byte) error {
 		Topic:     channel, // The channel for this message.
 		Payload:   payload, // The payload for this message.
 	}
-
-	println("sending message to " + string(channel))
 
 	// Acknowledge the publication
 	if _, err := packet.EncodeTo(c.socket); err != nil {
