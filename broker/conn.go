@@ -21,6 +21,7 @@ import (
 
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/mqtt"
+	"github.com/emitter-io/emitter/perf"
 	"github.com/emitter-io/emitter/security"
 )
 
@@ -41,6 +42,7 @@ type Conn struct {
 	id      uint64                   // The identifier of the connection.
 	service *Service                 // The service for this connection.
 	subs    map[uint32]*Subscription // The subscriptions for this connection.
+	count   *perf.NetworkCounters    // The cached network counters.
 }
 
 // NewConn creates a new connection.
@@ -49,6 +51,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		id:      nextIdentifier(),
 		service: s,
 		socket:  t,
+		count:   s.Counters.NewNetworkCounters(),
 	}
 
 	logging.Log(logConnection, "created", c.id)
@@ -58,6 +61,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 // Process processes the messages.
 func (c *Conn) Process() {
 	defer c.Close()
+	count := c.count
 
 	for {
 		msg, err := mqtt.DecodePacket(c.socket)
@@ -66,6 +70,7 @@ func (c *Conn) Process() {
 			break
 		}
 
+		count.PacketsIn.Increment()
 		switch msg.Type() {
 
 		// We got an attempt to connect to MQTT.
@@ -135,6 +140,7 @@ func (c *Conn) Process() {
 				MessageID: packet.MessageID,
 			}*/
 
+			count.MessagesIn.Increment()
 			if err := c.onPublish(packet.Topic, packet.Payload); err != nil {
 				// TODO: Handle Error
 			}
@@ -161,11 +167,16 @@ func (c *Conn) Send(channel []byte, payload []byte) error {
 	}
 
 	// Acknowledge the publication
-	if _, err := packet.EncodeTo(c.socket); err != nil {
+	n, err := packet.EncodeTo(c.socket)
+	if err != nil {
 		logging.LogError("conn", "message send", err)
 		return err
 	}
 
+	// Track statistics about the outgoing message
+	c.count.MessagesOut.Increment()
+	c.count.PacketsOut.Increment()
+	c.count.TrafficOut.IncrementBy(int64(n))
 	return nil
 }
 

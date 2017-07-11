@@ -26,6 +26,24 @@ type statusOfNetwork struct {
 	Compression        float64 `json:"compression"`
 }
 
-// StatusReporter represents a status reporter which periodically reports statistics
-type StatusReporter struct {
+// NewNetworkCounters creates a shortcut structure for network counters.
+func (c *Counters) NewNetworkCounters() *NetworkCounters {
+	return &NetworkCounters{
+		MessagesIn:  c.GetCounter("net.message.in"),
+		MessagesOut: c.GetCounter("net.message.out"),
+		PacketsIn:   c.GetCounter("net.packet.in"),
+		PacketsOut:  c.GetCounter("net.packet.out"),
+		TrafficIn:   c.GetCounter("net.traffic.in"),
+		TrafficOut:  c.GetCounter("net.traffic.out"),
+	}
+}
+
+// NetworkCounters represents a shortcut structure for some of the frequently used network counters.
+type NetworkCounters struct {
+	MessagesIn  Counter // The counter for incoming messages.
+	MessagesOut Counter // The counter for outgoing messages.
+	PacketsIn   Counter // The counter for incoming packets.
+	PacketsOut  Counter // The counter for outgoing packets.
+	TrafficIn   Counter // The counter for incoming traffic.
+	TrafficOut  Counter // The counter for outgoing traffic.
 }

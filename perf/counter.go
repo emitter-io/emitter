@@ -37,7 +37,7 @@ func (c *Counters) GetCounter(name string) Counter {
 	if !ok {
 		c.Lock()
 		if v, ok = c.counters[name]; !ok {
-			v = &counterImpl{name, 0}
+			v = &counterImpl{0, name}
 			c.counters[name] = v
 		}
 		c.Unlock()
@@ -48,8 +48,8 @@ func (c *Counters) GetCounter(name string) Counter {
 // ------------------------------------------------------------------------------------
 
 type counterImpl struct {
-	name  string
 	value int64
+	name  string
 }
 
 // Increment increases counter by one.

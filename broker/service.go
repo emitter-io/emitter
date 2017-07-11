@@ -30,6 +30,7 @@ import (
 	"github.com/emitter-io/emitter/network/listener"
 	"github.com/emitter-io/emitter/network/tcp"
 	"github.com/emitter-io/emitter/network/websocket"
+	"github.com/emitter-io/emitter/perf"
 	"github.com/emitter-io/emitter/security"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/serf/serf"
@@ -38,6 +39,7 @@ import (
 // Service represents the main structure.
 type Service struct {
 	Closing       chan bool         // The channel for closing signal.
+	Counters      *perf.Counters    // The performance counters for this service.
 	Cipher        *security.Cipher  // The cipher to use for decoding and encoding keys.
 	License       *security.License // The licence for this emitter server.
 	Config        *config.Config    // The configuration for the service.
@@ -52,6 +54,7 @@ type Service struct {
 func NewService(cfg *config.Config) (s *Service, err error) {
 	s = &Service{
 		Closing:       make(chan bool),
+		Counters:      perf.NewCounters(),
 		Config:        cfg,
 		subscriptions: NewSubscriptionTrie(),
 		events:        make(chan serf.Event),
@@ -144,7 +147,15 @@ func (s *Service) Listen() {
 			}
 
 			println(strings.Join(members, ", "))
-			time.Sleep(5000 * time.Millisecond)
+			msgin := s.Counters.GetCounter("net.message.in")
+			msgout := s.Counters.GetCounter("net.message.out")
+
+			msg := msgin.Value() + msgout.Value()
+			msgin.Reset()
+			msgout.Reset()
+
+			println("messages/sec = ", msg)
+			time.Sleep(1000 * time.Millisecond)
 		}
 	}()
 
