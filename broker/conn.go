@@ -54,20 +54,21 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		count:   s.Counters.NewNetworkCounters(),
 	}
 
+	s.Counters.GetCounter("net.conn").Increment()
 	logging.Log(logConnection, "created", c.id)
 	return c
 }
 
 // Process processes the messages.
-func (c *Conn) Process() {
+func (c *Conn) Process() error {
 	defer c.Close()
 	count := c.count
 
 	for {
+		// Decode an incoming MQTT packet
 		msg, err := mqtt.DecodePacket(c.socket)
 		if err != nil {
-			logging.LogError("conn", "read from transport", err)
-			break
+			return err
 		}
 
 		count.PacketsIn.Increment()
@@ -80,8 +81,7 @@ func (c *Conn) Process() {
 			// Write the ack
 			ack := mqtt.Connack{ReturnCode: 0x00}
 			if _, err := ack.EncodeTo(c.socket); err != nil {
-				logging.LogError("conn", "connack send", err)
-				break
+				return err
 			}
 
 		// We got an attempt to subscribe to a channel.
@@ -104,8 +104,7 @@ func (c *Conn) Process() {
 
 			// Acknowledge the subscription
 			if _, err := ack.EncodeTo(c.socket); err != nil {
-				logging.LogError("conn", "suback send", err)
-				break
+				return err
 			}
 
 		// We got an attempt to unsubscribe from a channel.
@@ -120,25 +119,21 @@ func (c *Conn) Process() {
 
 			// Acknowledge the unsubscription
 			if _, err := ack.EncodeTo(c.socket); err != nil {
-				logging.LogError("conn", "unsuback send", err)
-				break
+				return err
 			}
 
 		// We got an MQTT ping response, respond appropriately.
 		case mqtt.TypeOfPingreq:
 			ack := mqtt.Pingresp{}
 			if _, err := ack.EncodeTo(c.socket); err != nil {
-				logging.LogError("conn", "connack send", err)
-				break
+				return err
 			}
 
 		case mqtt.TypeOfDisconnect:
+			return nil
 
 		case mqtt.TypeOfPublish:
 			packet := msg.(*mqtt.Publish)
-			/*ack := mqtt.Puback{
-				MessageID: packet.MessageID,
-			}*/
 
 			count.MessagesIn.Increment()
 			if err := c.onPublish(packet.Topic, packet.Payload); err != nil {
@@ -146,11 +141,12 @@ func (c *Conn) Process() {
 			}
 
 			// Acknowledge the publication
-			/*if _, err := ack.EncodeTo(c.socket); err != nil {
-				logging.LogError("conn", "puback send", err)
-				break
-			}*/
-
+			if packet.Header.QOS > 0 {
+				ack := mqtt.Puback{MessageID: packet.MessageID}
+				if _, err := ack.EncodeTo(c.socket); err != nil {
+					return err
+				}
+			}
 		}
 	}
 }
@@ -223,5 +219,7 @@ func (c *Conn) Close() error {
 		c.Unsubscribe(s.Ssid)
 	}
 
+	// Decrement the connection counter and close the transport
+	c.service.Counters.GetCounter("net.conn").Decrement()
 	return c.socket.Close()
 }
