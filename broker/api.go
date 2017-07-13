@@ -1,10 +1,13 @@
 package broker
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"github.com/emitter-io/emitter/security"
+	"github.com/emitter-io/emitter/utils"
 	"math"
-	"math/rand"
+	"math/big"
+	"time"
 )
 
 const (
@@ -25,8 +28,36 @@ type keyGenMessage struct {
 	TTL     int32  `json:"ttl"`
 }
 
+func (m *keyGenMessage) expires() time.Time {
+	if m.TTL == 0 {
+		return time.Time{}
+	}
+	return time.Now().Add(time.Second).UTC()
+}
+
+func (m *keyGenMessage) access() uint32 {
+	required := security.AllowNone
+
+	for i := 0; i < len(m.Type); i++ {
+		switch c := m.Type[i]; c {
+		case 'r':
+			required |= security.AllowRead
+		case 'w':
+			required |= security.AllowWrite
+		case 's':
+			required |= security.AllowStore
+		case 'l':
+			required |= security.AllowLoad
+		case 'p':
+			required |= security.AllowPresence
+		}
+	}
+
+	return required
+}
+
 // TryProcessAPIRequest attempts to generate the key and returns the result.
-func TryProcessAPIRequest(channel *security.Channel, payload []byte) bool {
+func TryProcessAPIRequest(c *Conn, channel *security.Channel, payload []byte) bool {
 	defer func() {
 		// Send the response, always
 	}()
@@ -44,7 +75,8 @@ func TryProcessAPIRequest(channel *security.Channel, payload []byte) bool {
 
 	switch channel.Query[1] {
 	case RequestKeygen:
-		return ProcessKeyGen(channel, payload)
+		ProcessKeyGen(c, channel, payload)
+		return true
 	case RequestPresence:
 		return true
 	default:
@@ -53,27 +85,45 @@ func TryProcessAPIRequest(channel *security.Channel, payload []byte) bool {
 
 }
 
-func ProcessKeyGen(channel *security.Channel, payload []byte) bool {
+// ProcessKeyGen processes a keygen request.
+func ProcessKeyGen(c *Conn, channel *security.Channel, payload []byte) error {
 	// Deserialize the payload.
 	message := keyGenMessage{}
 	if err := json.Unmarshal(payload, &message); err != nil {
-		return false
+		return err
 	}
 
 	// Attempt to parse the key, this should be a master key
+	masterKey, err := c.service.Cipher.DecryptKey([]byte(message.Key))
+	if err != nil {
+		return err
+	}
+	if !masterKey.IsMaster() || masterKey.IsExpired() {
+		return ErrUnauthorized
+	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract := c.service.ContractProvider.Get(masterKey.Contract())
+	if contract == nil {
+		return ErrNotFound
+	}
 
 	// Validate the contract
+	if !contract.Validate(masterKey) {
+		return ErrUnauthorized
+	}
 
 	// Generate the key
 	key := security.Key(make([]byte, 24))
-	key.SetSalt(uint16(rand.Intn(math.MaxInt16)))
-	key.SetMaster(2)
-	key.SetContract(123)
-	key.SetSignature(777)
-	//key.SetPermissions(AllowReadWrite)
-	key.SetTarget(56789)
-	//key.SetExpires(time.Unix(1497683272, 0).UTC())
-	return false
+
+	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt16))
+	key.SetSalt(uint16(n.Uint64()))
+	key.SetMaster(masterKey.Master())
+	key.SetContract(masterKey.Contract())
+	key.SetSignature(masterKey.Signature())
+	key.SetPermissions(message.access())
+	key.SetTarget(utils.GetHash([]byte(message.Channel)))
+	key.SetExpires(message.expires())
+
+	return nil
 }

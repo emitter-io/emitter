@@ -40,7 +40,7 @@ func (c *contract) Validate(key Key) bool {
 // ContractProvider represents an interface for a contract provider.
 type ContractProvider interface {
 	// Creates a new instance of a Contract in the underlying data storage.
-	Create() Contract
+	Create() (Contract, error)
 	Get(id int32) Contract
 }
 
@@ -60,7 +60,7 @@ func NewSingleContractProvider(license *License) *SingleContractProvider {
 }
 
 // Create a contract, the SingleContractProvider way.
-func (p *SingleContractProvider) Create(license *License) (Contract, error) {
+func (p *SingleContractProvider) Create() (Contract, error) {
 	return nil, errors.New("Single contract provider can not create contracts")
 }
 

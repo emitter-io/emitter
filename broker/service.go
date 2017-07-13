@@ -38,16 +38,17 @@ import (
 
 // Service represents the main structure.
 type Service struct {
-	Closing       chan bool         // The channel for closing signal.
-	Counters      *perf.Counters    // The performance counters for this service.
-	Cipher        *security.Cipher  // The cipher to use for decoding and encoding keys.
-	License       *security.License // The licence for this emitter server.
-	Config        *config.Config    // The configuration for the service.
-	subscriptions *SubscriptionTrie // The subscription matching trie.
-	http          *http.Server      // The underlying HTTP server.
-	tcp           *tcp.Server       // The underlying TCP server.
-	cluster       *serf.Serf        // The gossip-based cluster mechanism.
-	events        chan serf.Event   // The channel for receiving gossip events.
+	Closing          chan bool                 // The channel for closing signal.
+	Counters         *perf.Counters            // The performance counters for this service.
+	Cipher           *security.Cipher          // The cipher to use for decoding and encoding keys.
+	License          *security.License         // The licence for this emitter server.
+	Config           *config.Config            // The configuration for the service.
+	ContractProvider security.ContractProvider // The contract provider for the service.
+	subscriptions    *SubscriptionTrie         // The subscription matching trie.
+	http             *http.Server              // The underlying HTTP server.
+	tcp              *tcp.Server               // The underlying TCP server.
+	cluster          *serf.Serf                // The gossip-based cluster mechanism.
+	events           chan serf.Event           // The channel for receiving gossip events.
 }
 
 // NewService creates a new service.

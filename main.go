@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math/rand"
 	"os"
 	"time"
 
@@ -28,6 +27,7 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
+	svc.ContractProvider = security.NewSingleContractProvider(svc.License)
 
 	// Flush the log
 	utils.Repeat(func() {
@@ -35,9 +35,6 @@ func main() {
 			println("Unable to flush logger, due to " + err.Error())
 		}
 	}, 100*time.Millisecond, svc.Closing)
-
-	// Initialize the rand function for key generation.
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	// Listen and serve
 	svc.Listen()
