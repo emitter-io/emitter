@@ -1,14 +1,12 @@
 package collection
 
 import (
-	"bytes"
 	"testing"
 )
 
 func TestBufferPool(t *testing.T) {
-	size := 4
 	capacity := 1024
-	bufPool := NewBufferPool(size, capacity)
+	bufPool := NewBufferPool(capacity)
 	b := bufPool.Get()
 
 	// Check the cap before we use the buffer.
@@ -21,25 +19,13 @@ func TestBufferPool(t *testing.T) {
 	b.Grow(capacity * 3)
 	bufPool.Put(b)
 
-	// Add some additional buffers to fill up the pool.
-	for i := 0; i < size; i++ {
-		bufPool.Put(bytes.NewBuffer(make([]byte, 0, bufPool.size*2)))
+}
+
+func BenchmarkBufferPool(b *testing.B) {
+	pool := NewBufferPool(100)
+
+	for n := 0; n < b.N; n++ {
+		b := pool.Get()
+		pool.Put(b)
 	}
-
-	// Check that oversized buffers are being replaced.
-	if len(bufPool.pool) < size {
-		t.Fatalf("buffer pool too small: got %v want %v", len(bufPool.pool), size)
-	}
-
-	// Close the channel so we can iterate over it.
-	close(bufPool.pool)
-
-	// Check that there are buffers of the correct capacity in the pool.
-	for buffer := range bufPool.pool {
-		if cap(buffer.Bytes()) != bufPool.size {
-			t.Fatalf("returned buffers wrong capacity: got %v want %v",
-				cap(buffer.Bytes()), capacity)
-		}
-	}
-
 }

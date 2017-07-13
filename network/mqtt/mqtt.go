@@ -24,7 +24,7 @@ import (
 )
 
 // buffers are reusable fixed-side buffers for faster encoding.
-var buffers = collection.NewBufferPool(64, config.MaxMessageSize)
+var buffers = collection.NewBufferPool(config.MaxMessageSize)
 
 // reserveForHeader reserves the bytes for a header.
 var reserveForHeader = []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0}

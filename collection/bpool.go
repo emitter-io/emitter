@@ -16,46 +16,33 @@ package collection
 
 import (
 	"bytes"
+	"sync"
 )
 
 // BufferPool represents a thread safe buffer pool
 type BufferPool struct {
-	pool chan *bytes.Buffer
-	size int
+	sync.Pool
 }
 
 // NewBufferPool creates a new BufferPool bounded to the given size.
-func NewBufferPool(initialCapacity int, bufferSize int) (bp *BufferPool) {
+func NewBufferPool(bufferSize int) (bp *BufferPool) {
 	return &BufferPool{
-		pool: make(chan *bytes.Buffer, initialCapacity),
-		size: bufferSize,
+		sync.Pool{
+			New: func() interface{} {
+				return bytes.NewBuffer(make([]byte, 0, bufferSize))
+			},
+		},
 	}
 }
 
 // Get gets a Buffer from the SizedBufferPool, or creates a new one if none are
 // available in the pool. Buffers have a pre-allocated capacity.
-func (bp *BufferPool) Get() (b *bytes.Buffer) {
-	select {
-	case b = <-bp.pool: // reuse existing buffer
-	default:
-		// create new buffer
-		b = bytes.NewBuffer(make([]byte, 0, bp.size))
-	}
-	return
+func (bp *BufferPool) Get() *bytes.Buffer {
+	return bp.Pool.Get().(*bytes.Buffer)
 }
 
 // Put returns the given Buffer to the SizedBufferPool.
 func (bp *BufferPool) Put(b *bytes.Buffer) {
 	b.Reset()
-
-	// Release buffers over our maximum capacity and re-create a pre-sized
-	// buffer to replace it.
-	if cap(b.Bytes()) > bp.size {
-		b = bytes.NewBuffer(make([]byte, 0, bp.size))
-	}
-
-	select {
-	case bp.pool <- b:
-	default: // Discard the buffer if the pool is full.
-	}
+	bp.Pool.Put(b)
 }
