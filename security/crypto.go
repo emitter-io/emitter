@@ -16,6 +16,7 @@ package security
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -59,7 +60,7 @@ func NewCipher(value string) (*Cipher, error) {
 	}
 
 	if len(value) != 22 || len(data) != 16 {
-		return nil, fmt.Errorf("Key provided is invalid")
+		return nil, errors.New("Key provided is invalid")
 	}
 
 	cipher := new(Cipher)
@@ -75,6 +76,9 @@ func NewCipher(value string) (*Cipher, error) {
 
 // DecryptKey decrypts the security key from a base64 encoded string.
 func (c *Cipher) DecryptKey(buffer []byte) (Key, error) {
+	if len(buffer) != 32 {
+		return nil, errors.New("Key provided is invalid")
+	}
 
 	// Warning: we do a base64 decode in the same underlying buffer, to save up
 	// on memory allocations. Keep in mind that the previous data will be lost.

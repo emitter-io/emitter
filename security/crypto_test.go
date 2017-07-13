@@ -31,6 +31,7 @@ func TestEncryptDecrypt(t *testing.T) {
 		key     string
 		channel string
 		acl     string
+		err     bool
 	}{
 		{
 			key:     "0TJnt4yZPL73zt35h1UTIFsYBLetyD_g",
@@ -47,12 +48,21 @@ func TestEncryptDecrypt(t *testing.T) {
 			channel: "a/b/c",
 			acl:     "sl",
 		},
+		{
+			key: "",
+			err: true,
+		},
+		{
+			key: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa*",
+			err: true,
+		},
 	}
 
 	for _, tc := range tests {
 		key, err := cipher.DecryptKey([]byte(tc.key))
-		if err != nil {
-			t.Error(err)
+		assert.Equal(t, tc.err, err != nil, tc.key)
+		if tc.err {
+			continue
 		}
 
 		assert.Equal(t, int32(989603869), key.Contract())
@@ -76,17 +86,6 @@ func BenchmarkBase64(b *testing.B) {
 	}
 }
 
-/*func BenchmarkBase64Std(b *testing.B) {
-	v := []byte("0TJnt4yZPL73zt35h1UTIFsYBLetyD_g")
-	o := make([]byte, 24)
-
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = base64.RawURLEncoding.Decode(o, v)
-	}
-}*/
-
 func TestBase64Decode(t *testing.T) {
 	v := []byte("0TJnt4yZPL73zt35h1UTIFsYBLetyD_g")
 	o1 := make([]byte, 24)
@@ -98,6 +97,7 @@ func TestBase64Decode(t *testing.T) {
 	assert.Equal(t, o1, o2)
 	assert.Equal(t, n1, n2)
 	assert.Equal(t, e1, e2)
+
 }
 
 func TestBase64SelfDecode(t *testing.T) {
@@ -127,4 +127,5 @@ func TestNewCipher(t *testing.T) {
 	expected := [4]uint32{3443472288, 896798054, 972856492, 1831128908}
 
 	assert.EqualValues(t, expected, cipher.key)
+
 }
