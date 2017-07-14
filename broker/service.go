@@ -87,8 +87,10 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	}()
 
 	// Create the cluster
-	if s.cluster, err = serf.Create(s.clusterConfig(cfg)); err != nil {
-		return nil, err
+	if cfg.Cluster != nil {
+		if s.cluster, err = serf.Create(s.clusterConfig(cfg)); err != nil {
+			return nil, err
+		}
 	}
 
 	// Hook up signal handling
