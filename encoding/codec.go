@@ -8,9 +8,9 @@ import (
 )
 
 // Encode serializes the content and writes it to a byte array.
-func Encode(kind uint8, content interface{}) ([]byte, error) {
+func Encode(content interface{}) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
-	err := EncodeTo(buf, kind, content)
+	err := EncodeTo(buf, content)
 	return buf.Bytes(), err
 }
 
@@ -20,8 +20,7 @@ func Decode(buf []byte, out interface{}) error {
 }
 
 // EncodeTo encodes the content and writes it to a writer.
-func EncodeTo(writer io.Writer, kind uint8, content interface{}) error {
-	writer.Write([]byte{kind})
+func EncodeTo(writer io.Writer, content interface{}) error {
 	handle := codec.MsgpackHandle{}
 	encoder := codec.NewEncoder(writer, &handle)
 	err := encoder.Encode(content)

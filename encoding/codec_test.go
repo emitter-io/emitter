@@ -17,11 +17,11 @@ func TestEncodeDecode(t *testing.T) {
 		Channel: "Hello World",
 	}
 
-	encoded, err := Encode(1, v)
+	encoded, err := Encode(v)
 	assert.NoError(t, err)
 
 	o := testStruct{}
-	err = Decode(encoded[1:], &o)
+	err = Decode(encoded, &o)
 	assert.NoError(t, err)
 	assert.Equal(t, v, o)
 

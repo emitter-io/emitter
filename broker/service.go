@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/config"
+	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/listener"
@@ -180,8 +181,13 @@ func (s *Service) Join(peers ...string) error {
 // payload. The events must be fairly small, and if the  size limit is exceeded
 // and error will be returned. If coalesce is enabled, nodes are allowed to
 // coalesce this event.
-func (s *Service) Broadcast(name string, payload []byte, coalesce bool) error {
-	return s.cluster.UserEvent(name, payload, coalesce)
+func (s *Service) Broadcast(name string, message interface{}) error {
+	buffer, err := encoding.Encode(message)
+	if err != nil {
+		return err
+	}
+
+	return s.cluster.UserEvent(name, buffer, true)
 }
 
 // Occurs when a new connection is accepted.
