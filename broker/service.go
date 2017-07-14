@@ -148,14 +148,6 @@ func (s *Service) Listen() {
 			}
 
 			println(strings.Join(members, ", "))
-			msgin := s.Counters.GetCounter("net.message.in")
-			msgout := s.Counters.GetCounter("net.message.out")
-
-			msg := msgin.Value() + msgout.Value()
-			msgin.Reset()
-			msgout.Reset()
-
-			println("messages/sec = ", msg)
 			time.Sleep(1000 * time.Millisecond)
 		}
 	}()
