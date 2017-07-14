@@ -16,6 +16,8 @@ package security
 
 import (
 	"errors"
+	//"github.com/emitter-io/emitter/collection"
+	//"github.com/emitter-io/emitter/network/http"
 )
 
 // Contract represents an interface for a contract.
@@ -25,9 +27,9 @@ type Contract interface {
 
 // contract represents a contract (user account).
 type contract struct {
-	ID        int32  // Gets or sets the contract id.
-	MasterID  uint16 // Gets or sets the master id.
-	Signature int32  // Gets or sets the signature of the contract.
+	ID        int32  `json:"id"`     // Gets or sets the contract id.
+	MasterID  uint16 `json:"sign"`   // Gets or sets the master id.
+	Signature int32  `json:"master"` // Gets or sets the signature of the contract.
 }
 
 // Validate validates the contract data against a key.
@@ -44,7 +46,7 @@ type ContractProvider interface {
 	Get(id int32) Contract
 }
 
-//SingleContractProvider provide contracts on premise.
+// SingleContractProvider provides contracts on premise.
 type SingleContractProvider struct {
 	owner *contract
 }
@@ -59,7 +61,7 @@ func NewSingleContractProvider(license *License) *SingleContractProvider {
 	return p
 }
 
-// Create a contract, the SingleContractProvider way.
+// Create creates a contract, the SingleContractProvider way.
 func (p *SingleContractProvider) Create() (Contract, error) {
 	return nil, errors.New("Single contract provider can not create contracts")
 }
@@ -71,3 +73,47 @@ func (p *SingleContractProvider) Get(id int32) Contract {
 	}
 	return p.owner
 }
+
+/*
+// HTTPContractProvider provides contracts over http.
+type HTTPContractProvider struct {
+	owner *contract
+	cache *collection.ConcurrentMap
+}
+
+// NewHTTPContractProvider creates a new single contract provider.
+func NewHTTPContractProvider(license *License) *HTTPContractProvider {
+	p := new(HTTPContractProvider)
+	p.owner = new(contract)
+	p.owner.MasterID = 1
+	p.owner.ID = license.Contract
+	p.owner.Signature = license.Signature
+	p.cache = collection.NewConcurrentMap()
+	return p
+}
+
+// Create creates a contract, the HTTPContractProvider way.
+func (p *HTTPContractProvider) Create() (Contract, error) {
+	return nil, errors.New("HTTP contract provider can not create contracts")
+}
+
+// Get returns a ContractData fetched by its id.
+// TODO : transform id in uint32 everywhere.
+func (p *HTTPContractProvider) Get(id int32) Contract {
+	//contract, ok := p.cache.Get(uint32(id))
+	//if !ok {
+
+	//}
+	return nil
+	//return Contract(contract)
+}
+
+func (p *HTTPContractProvider) fetchContract(id int32) *Contract {
+	c := new(Contract)
+	err := http.Get("http://meta.emitter.io/v1/contract/", c)
+	if err != nil {
+		return nil
+	}
+	return c
+}
+*/

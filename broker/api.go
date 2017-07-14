@@ -3,22 +3,17 @@ package broker
 import (
 	"crypto/rand"
 	"encoding/json"
-	"github.com/emitter-io/emitter/security"
-	"github.com/emitter-io/emitter/utils"
 	"math"
 	"math/big"
 	"time"
+
+	"github.com/emitter-io/emitter/security"
+	"github.com/emitter-io/emitter/utils"
 )
 
 const (
 	RequestKeygen   = 548658350
 	RequestPresence = 3869262148
-)
-
-const (
-	QueryType          = 1
-	QueryActualKey     = 2 // As opposed to 'emitter/'
-	QueryTargetChannel = 3
 )
 
 type keyGenMessage struct {
@@ -75,7 +70,7 @@ func TryProcessAPIRequest(c *Conn, channel *security.Channel, payload []byte) bo
 
 	switch channel.Query[1] {
 	case RequestKeygen:
-		ProcessKeyGen(c, channel, payload)
+		ProcessKeyGen(c.service, channel, payload)
 		return true
 	case RequestPresence:
 		return true
@@ -86,7 +81,7 @@ func TryProcessAPIRequest(c *Conn, channel *security.Channel, payload []byte) bo
 }
 
 // ProcessKeyGen processes a keygen request.
-func ProcessKeyGen(c *Conn, channel *security.Channel, payload []byte) error {
+func ProcessKeyGen(s *Service, channel *security.Channel, payload []byte) error {
 	// Deserialize the payload.
 	message := keyGenMessage{}
 	if err := json.Unmarshal(payload, &message); err != nil {
@@ -94,7 +89,7 @@ func ProcessKeyGen(c *Conn, channel *security.Channel, payload []byte) error {
 	}
 
 	// Attempt to parse the key, this should be a master key
-	masterKey, err := c.service.Cipher.DecryptKey([]byte(message.Key))
+	masterKey, err := s.Cipher.DecryptKey([]byte(message.Key))
 	if err != nil {
 		return err
 	}
@@ -103,7 +98,7 @@ func ProcessKeyGen(c *Conn, channel *security.Channel, payload []byte) error {
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := c.service.ContractProvider.Get(masterKey.Contract())
+	contract := s.ContractProvider.Get(masterKey.Contract())
 	if contract == nil {
 		return ErrNotFound
 	}

@@ -25,7 +25,7 @@ func TestSingleContractProvider_Create(t *testing.T) {
 	}
 
 	p := NewSingleContractProvider(license)
-	contract, err := p.Create(license)
+	contract, err := p.Create()
 
 	assert.Nil(t, contract)
 	assert.Error(t, err)
