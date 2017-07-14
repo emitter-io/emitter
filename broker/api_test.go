@@ -12,6 +12,7 @@ func TestProcessKeygen(t *testing.T) {
 
 	cfg := config.NewDefault()
 	cfg.License = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
+	cfg.Cluster = nil
 	svc, _ := NewService(cfg)
 	svc.ContractProvider = security.NewSingleContractProvider(svc.License)
 
