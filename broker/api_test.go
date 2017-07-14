@@ -12,10 +12,7 @@ func TestProcessKeygen(t *testing.T) {
 
 	cfg := config.NewDefault()
 	cfg.License = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
-	svc, err := NewService(cfg)
-	if err != nil {
-		panic(err.Error())
-	}
+	svc, _ := NewService(cfg)
 	svc.ContractProvider = security.NewSingleContractProvider(svc.License)
 
 	channel := security.ParseChannel([]byte("emitter/keygen/"))
@@ -26,6 +23,6 @@ func TestProcessKeygen(t *testing.T) {
 	}
 	payload, _ := json.Marshal(&message)
 
-	err = ProcessKeyGen(svc, channel, payload)
+	err := ProcessKeyGen(svc, channel, payload)
 	assert.Nil(t, err)
 }
