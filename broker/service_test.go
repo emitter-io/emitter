@@ -2,9 +2,11 @@ package broker
 
 import (
 	"testing"
+	"time"
 
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/network/address"
+	"github.com/hashicorp/serf/serf"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,6 +18,26 @@ func TestService_clusterConfig(t *testing.T) {
 	assert.Equal(t, o.MemberlistConfig.SecretKey, cfg.Cluster.Key())
 	assert.Equal(t, o.MemberlistConfig.AdvertiseAddr, address.External().String())
 	assert.Equal(t, o.MemberlistConfig.BindPort, cfg.Cluster.Port)
+}
+
+func TestService_clusterEventLoop(t *testing.T) {
+	assert.NotPanics(t, func() {
+		s := new(Service)
+		s.Closing = make(chan bool)
+		s.events = make(chan serf.Event, 10)
+		timeout := time.After(50 * time.Millisecond)
+		go func() {
+			for {
+				select {
+				case <-timeout:
+					close(s.Closing)
+				}
+			}
+		}()
+
+		s.events <- serf.UserEvent{Name: "test event"}
+		s.clusterEventLoop()
+	})
 }
 
 func TestService_Name(t *testing.T) {

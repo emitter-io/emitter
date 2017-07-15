@@ -15,6 +15,7 @@
 package broker
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -125,7 +126,9 @@ func (s *Service) clusterEventLoop() {
 		case e := <-s.events:
 			if e.EventType() == serf.EventUser {
 				event := e.(serf.UserEvent)
-				s.onEvent(&event)
+				if err := s.onEvent(&event); err != nil {
+					logging.LogError("service", "event received", err)
+				}
 			}
 		}
 	}
@@ -213,8 +216,31 @@ func (s *Service) onRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 // Occurs when a new cluster event is received.
-func (s *Service) onEvent(event *serf.UserEvent) {
-	fmt.Printf("%+v\n", *event)
+func (s *Service) onEvent(e *serf.UserEvent) error {
+	switch e.Name {
+	case "+":
+		// This is a subscription event which occurs when a client is subscribed to a node.
+		var event SubscriptionEvent
+		encoding.Decode(e.Payload, &event)
+
+		if event.Node != s.Name() {
+			fmt.Printf("%+v\n", event)
+		}
+
+	case "-":
+		// This is an unsubscription event which occurs when a client is unsubscribed from a node.
+		var event SubscriptionEvent
+		encoding.Decode(e.Payload, &event)
+
+		if event.Node != s.Name() {
+			fmt.Printf("%+v\n", event)
+		}
+
+	default:
+		return errors.New("received unknown event name: " + e.Name)
+	}
+
+	return nil
 }
 
 // OnSignal starts the signal processing and makes su
