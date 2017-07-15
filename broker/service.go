@@ -50,6 +50,7 @@ type Service struct {
 	tcp              *tcp.Server               // The underlying TCP server.
 	cluster          *serf.Serf                // The gossip-based cluster mechanism.
 	events           chan serf.Event           // The channel for receiving gossip events.
+	name             string                    // The name of the service.
 }
 
 // NewService creates a new service.
@@ -100,6 +101,7 @@ func (s *Service) clusterConfig(cfg *config.Config) *serf.Config {
 	if c.NodeName == "" {
 		c.NodeName = fmt.Sprintf("%s%d", address.Fingerprint(), cfg.Cluster.Port)
 	}
+	s.name = c.NodeName
 
 	// Use the public IP address if necessary
 	if cfg.Cluster.Broadcast == "public" {
@@ -107,6 +109,11 @@ func (s *Service) clusterConfig(cfg *config.Config) *serf.Config {
 	}
 
 	return c
+}
+
+// Name returns the local service name.
+func (s *Service) Name() string {
+	return s.name
 }
 
 // Listens to incoming cluster events.

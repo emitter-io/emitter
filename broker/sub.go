@@ -82,13 +82,9 @@ type Subscription struct {
 
 // ------------------------------------------------------------------------------------
 
-// SubscribeEvent represents a message sent when a subscription is registered.
-type SubscribeEvent struct {
+// SubscriptionEvent represents a message sent when a subscription is added or removed.
+type SubscriptionEvent struct {
+	Node    string // Gets or sets the node identifier for this event.
 	Ssid    Ssid   // Gets or sets the SSID (parsed channel) for this subscription.
 	Channel string // Gets or sets the channel for this subscription.
-}
-
-// UnsubscribeEvent represents a message sent when a subscription is unregistered.
-type UnsubscribeEvent struct {
-	Ssid Ssid // Gets or sets the SSID (parsed channel) for this subscription.
 }

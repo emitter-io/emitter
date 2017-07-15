@@ -192,7 +192,8 @@ func (c *Conn) Subscribe(contract int32, channel *security.Channel) {
 		c.subs[hkey] = sub
 
 		// Broadcast the subscription within our cluster
-		c.service.Broadcast("SUB", SubscribeEvent{
+		c.service.Broadcast("+", SubscriptionEvent{
+			Node:    c.service.Name(),
 			Ssid:    ssid,
 			Channel: string(channel.Channel),
 		})
@@ -210,7 +211,8 @@ func (c *Conn) Unsubscribe(ssid Ssid) {
 		delete(c.subs, hkey)
 
 		// Broadcast the unsubscription within our cluster
-		c.service.Broadcast("UNS", UnsubscribeEvent{
+		c.service.Broadcast("-", SubscriptionEvent{
+			Node: c.service.Name(),
 			Ssid: ssid,
 		})
 	}
