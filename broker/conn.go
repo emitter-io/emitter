@@ -178,7 +178,7 @@ func (c *Conn) Send(channel []byte, payload []byte) error {
 }
 
 // Subscribe subscribes to a particular channel.
-func (c *Conn) Subscribe(contract int32, channel *security.Channel) {
+func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 	ssid := NewSsid(contract, channel)
 	hkey := ssid.GetHashCode()
 

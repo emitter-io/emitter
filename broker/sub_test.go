@@ -17,6 +17,6 @@ func TestSsid(t *testing.T) {
 	}
 
 	ssid := NewSsid(0, &c)
-	assert.Equal(t, int32(0), ssid.Contract())
+	assert.Equal(t, uint32(0), ssid.Contract())
 	assert.Equal(t, uint32(0x2c), ssid.GetHashCode())
 }

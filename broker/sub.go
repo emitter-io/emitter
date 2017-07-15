@@ -23,7 +23,7 @@ import (
 type Ssid []uint32
 
 // NewSsid creates a new Ssid.
-func NewSsid(contract int32, c *security.Channel) Ssid {
+func NewSsid(contract uint32, c *security.Channel) Ssid {
 	ssid := make([]uint32, 0, len(c.Query)+1)
 	ssid = append(ssid, uint32(contract))
 	ssid = append(ssid, c.Query...)
@@ -31,8 +31,8 @@ func NewSsid(contract int32, c *security.Channel) Ssid {
 }
 
 // Contract gets the contract part from Ssid.
-func (s Ssid) Contract() int32 {
-	return int32(s[0])
+func (s Ssid) Contract() uint32 {
+	return uint32(s[0])
 }
 
 // GetHashCode combines the ssid into a single hash.
