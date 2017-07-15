@@ -47,10 +47,11 @@ func NewDefault() *Config {
 		TLSPort: ":8443",
 		Vault:   &VaultConfig{},
 		Cluster: &ClusterConfig{
-			Broadcast:  "public",
-			Port:       4000,
-			Seed:       "127.0.0.1:4000",
-			ClusterKey: "emitter-io",
+			Broadcast:    "public",
+			Port:         4000,
+			Seed:         "127.0.0.1:4000",
+			ClusterKey:   "emitter-io",
+			SnapshotPath: "cluster.log",
 		},
 	}
 }
@@ -72,11 +73,12 @@ type VaultConfig struct {
 
 // ClusterConfig represents the configuration for the cluster.
 type ClusterConfig struct {
-	NodeName   string `json:"node,omitempty"` // The name of the node to use.
-	Broadcast  string `json:"broadcast"`      // The address to broadcast.
-	Port       int    `json:"port"`           // The port used for gossip.'
-	Seed       string `json:"seed"`           // The seed address (or a domain name) for cluster join.
-	ClusterKey string `json:"key"`            // The cluster passphrase for the handshake.
+	NodeName     string `json:"node,omitempty"` // The name of the node to use.
+	Broadcast    string `json:"broadcast"`      // The address to broadcast.
+	Port         int    `json:"port"`           // The port used for gossip.'
+	Seed         string `json:"seed"`           // The seed address (or a domain name) for cluster join.
+	ClusterKey   string `json:"key"`            // The cluster passphrase for the handshake.
+	SnapshotPath string `json:"snapshot"`       // The cluster log file used for snapshotting.
 }
 
 // Key returns the key based on the passphrase

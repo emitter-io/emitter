@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"time"
 
@@ -15,9 +16,18 @@ import (
 func main() {
 	logging.SetWriter(os.Stdout, true)
 
+	// Process command-line arguments
+	argConfig := flag.String("config", "emitter.conf", "The configuration file to use for the broker.")
+	argHelp := flag.Bool("help", false, "Shows the help and usage instead of running the broker.")
+	flag.Parse()
+	if *argHelp {
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
 	// Parse the configuration
 	// TODO: emitter.conf should come from command line args
-	cfg, err := config.ReadOrCreate("emitter.conf", security.NewEnvironmentProvider(), security.NewVaultProvider(address.Fingerprint()))
+	cfg, err := config.ReadOrCreate(*argConfig, security.NewEnvironmentProvider(), security.NewVaultProvider(address.Fingerprint()))
 	if err != nil {
 		panic("Unable to parse configuration, due to " + err.Error())
 	}

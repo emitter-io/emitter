@@ -52,6 +52,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		service: s,
 		socket:  t,
 		count:   s.Counters.NewNetworkCounters(),
+		subs:    make(map[uint32]*Subscription),
 	}
 
 	s.Counters.GetCounter("net.conn").Increment()
@@ -187,7 +188,7 @@ func (c *Conn) Subscribe(contract int32, channel *security.Channel) {
 	}
 
 	// Add the subscription
-	if sub, err := c.service.subscriptions.Subscribe(ssid, string(channel.Channel), c); err != nil {
+	if sub, err := c.service.subscriptions.Subscribe(ssid, string(channel.Channel), c); err == nil {
 		c.subs[hkey] = sub
 
 		// Broadcast the subscription within our cluster

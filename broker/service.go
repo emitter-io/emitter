@@ -80,22 +80,6 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		return nil, err
 	}
 
-	go func() {
-		select {
-		case e := <-s.events:
-			println("Event: " + e.String())
-		}
-	}()
-
-	// Create the cluster
-	if cfg.Cluster != nil {
-		if s.cluster, err = serf.Create(s.clusterConfig(cfg)); err != nil {
-			return nil, err
-		}
-	}
-
-	// Hook up signal handling
-	s.hookSignals()
 	return s, nil
 }
 
@@ -105,7 +89,7 @@ func (s *Service) clusterConfig(cfg *config.Config) *serf.Config {
 	c.RejoinAfterLeave = true
 	c.NodeName = address.Fingerprint() //fmt.Sprintf("%s:%d", address.External().String(), cfg.Cluster.Port) // TODO: fix this
 	c.EventCh = s.events
-	c.SnapshotPath = "cluster.log"
+	c.SnapshotPath = cfg.Cluster.SnapshotPath
 	c.MemberlistConfig = memberlist.DefaultWANConfig()
 	c.MemberlistConfig.BindPort = cfg.Cluster.Port
 	c.MemberlistConfig.AdvertisePort = cfg.Cluster.Port
@@ -125,20 +109,35 @@ func (s *Service) clusterConfig(cfg *config.Config) *serf.Config {
 	return c
 }
 
-// OnSignal starts the signal processing and makes su
-func (s *Service) hookSignals() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		for sig := range c {
-			s.OnSignal(sig)
+// Listens to incoming cluster events.
+func (s *Service) clusterEventLoop() {
+	for {
+		select {
+		case <-s.Closing:
+			return
+		case e := <-s.events:
+			if e.EventType() == serf.EventUser {
+				event := e.(serf.UserEvent)
+				s.onEvent(&event)
+			}
 		}
-	}()
+	}
 }
 
 // Listen starts the service.
-func (s *Service) Listen() {
-	defer logging.Flush()
+func (s *Service) Listen() (err error) {
+	defer s.Close()
+	s.hookSignals()
+
+	// Create the cluster if required
+	if s.Config.Cluster != nil {
+		if s.cluster, err = serf.Create(s.clusterConfig(s.Config)); err != nil {
+			return err
+		}
+
+		// Listen on cluster event loop
+		go s.clusterEventLoop()
+	}
 
 	// Join our seed
 	s.Join(s.Config.Cluster.Seed)
@@ -169,6 +168,8 @@ func (s *Service) Listen() {
 	if l.Serve(); err != nil {
 		logging.LogError("service", "starting the listener", err)
 	}
+
+	return nil
 }
 
 // Join attempts to join a set of existing peers.
@@ -204,6 +205,22 @@ func (s *Service) onRequest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Occurs when a new cluster event is received.
+func (s *Service) onEvent(event *serf.UserEvent) {
+	fmt.Printf("%+v\n", *event)
+}
+
+// OnSignal starts the signal processing and makes su
+func (s *Service) hookSignals() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		for sig := range c {
+			s.OnSignal(sig)
+		}
+	}()
+}
+
 // OnSignal will be called when a OS-level signal is received.
 func (s *Service) OnSignal(sig os.Signal) {
 	switch sig {
@@ -211,16 +228,21 @@ func (s *Service) OnSignal(sig os.Signal) {
 		fallthrough
 	case syscall.SIGINT:
 		logging.LogAction("service", fmt.Sprintf("received signal %s, exiting...", sig.String()))
-		_ = logging.Flush()
-
-		// Gracefully leave the cluster and shutdown the listener.
-		if s.cluster != nil {
-			_ = s.cluster.Leave()
-			_ = s.cluster.Shutdown()
-		}
-
-		// Notify we're closed
-		close(s.Closing)
-		os.Exit(0)
+		s.Close()
 	}
+}
+
+// Close closes gracefully the service.,
+func (s *Service) Close() {
+	_ = logging.Flush()
+
+	// Gracefully leave the cluster and shutdown the listener.
+	if s.cluster != nil {
+		_ = s.cluster.Leave()
+		_ = s.cluster.Shutdown()
+	}
+
+	// Notify we're closed
+	close(s.Closing)
+	os.Exit(0)
 }
