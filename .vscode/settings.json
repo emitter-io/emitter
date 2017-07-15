@@ -15,5 +15,12 @@
         "-s"
     ],
     "go.coverOnSave": true,
-    "go.coverageOptions":"showUncoveredCodeOnly"
+    "go.coverageOptions":"showUncoveredCodeOnly",
+
+      
+    "TodoParser":
+    {
+        "folderExclude": ["vendor"]
+    }
+
 }
