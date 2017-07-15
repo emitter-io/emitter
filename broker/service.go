@@ -69,7 +69,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	}
 
 	// Attach handlers
-	s.tcp.Handler = s.onAccept
+	s.tcp.Handler = s.onAcceptConn
 	http.HandleFunc("/", s.onRequest)
 
 	// Parse the license
@@ -112,6 +112,8 @@ func (s *Service) clusterConfig(cfg *config.Config) *serf.Config {
 		c.MemberlistConfig.AdvertiseAddr = address.External().String()
 	}
 
+	// Configure routing
+	c.Tags["route"] = fmt.Sprintf("%s:%d", c.MemberlistConfig.AdvertiseAddr, cfg.Cluster.Route)
 	return c
 }
 
@@ -150,6 +152,9 @@ func (s *Service) Listen() (err error) {
 
 		// Listen on cluster event loop
 		go s.clusterEventLoop()
+		if err := tcp.ServeAsync(s.Config.Cluster.Route, s.Closing, s.onAcceptPeer); err != nil {
+			panic(err)
+		}
 	}
 
 	// Join our seed
@@ -204,16 +209,21 @@ func (s *Service) Broadcast(name string, message interface{}) error {
 	return s.cluster.UserEvent(name, buffer, true)
 }
 
-// Occurs when a new connection is accepted.
-func (s *Service) onAccept(t net.Conn) {
+// Occurs when a new client connection is accepted.
+func (s *Service) onAcceptConn(t net.Conn) {
 	conn := s.newConn(t)
 	go conn.Process()
+}
+
+// Occurs when a new peer connection is accepted.
+func (s *Service) onAcceptPeer(t net.Conn) {
+
 }
 
 // Occurs when a new HTTP request is received.
 func (s *Service) onRequest(w http.ResponseWriter, r *http.Request) {
 	if ws, ok := websocket.TryUpgrade(w, r); ok {
-		s.onAccept(ws)
+		s.onAcceptConn(ws)
 		return
 	}
 }

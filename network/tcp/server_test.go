@@ -29,3 +29,14 @@ func TestServe(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestServeAsync(t *testing.T) {
+
+	closing := make(chan bool)
+	err := ServeAsync(99999999, closing, nil)
+	assert.Error(t, err)
+
+	err = ServeAsync(999, closing, nil)
+	assert.NoError(t, err)
+	close(closing)
+}

@@ -49,7 +49,7 @@ func NewDefault() *Config {
 			AdvertiseAddr: "public",
 			Route:         4000,
 			Gossip:        4001,
-			Seed:          "127.0.0.1:4000",
+			Seed:          "127.0.0.1:4001",
 			ClusterKey:    "emitter-io",
 			SnapshotPath:  "cluster.log",
 		},

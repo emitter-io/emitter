@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"fmt"
 	"github.com/emitter-io/emitter/logging"
 )
 
@@ -35,6 +36,20 @@ type Server struct {
 
 	Handler Handler
 	Closing chan bool
+}
+
+// ServeAsync creates a TCP listener and starts the server.
+func ServeAsync(port int, closing chan bool, handler Handler) error {
+	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		return err
+	}
+
+	server := new(Server)
+	server.Closing = closing
+	server.Handler = handler
+	go server.Serve(l)
+	return nil
 }
 
 // Serve accepts the connections and fires the callback

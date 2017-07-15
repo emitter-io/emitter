@@ -54,8 +54,9 @@ func (m *ConcurrentMap) GetOrCreate(key uint32, create func() interface{}) inter
 
 	v, ok := m.dict[key]
 	if !ok {
-		v = create()
-		m.dict[key] = v
+		if v = create(); v != nil {
+			m.dict[key] = v
+		}
 	}
 
 	atomic.AddInt32(&m.read, -1)
