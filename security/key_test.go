@@ -25,8 +25,8 @@ func TestKey(t *testing.T) {
 
 	assert.Equal(t, uint16(999), key.Salt())
 	assert.Equal(t, uint16(2), key.Master())
-	assert.Equal(t, int32(123), key.Contract())
-	assert.Equal(t, int32(777), key.Signature())
+	assert.Equal(t, uint32(123), key.Contract())
+	assert.Equal(t, uint32(777), key.Signature())
 	assert.Equal(t, AllowReadWrite, key.Permissions())
 	assert.Equal(t, uint32(56789), key.Target())
 	assert.Equal(t, time.Unix(1497683272, 0).UTC(), key.Expires())

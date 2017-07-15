@@ -62,12 +62,12 @@ func (k Key) SetMaster(value uint16) {
 }
 
 // Contract gets the contract id.
-func (k Key) Contract() int32 {
-	return int32(k[4])<<24 | int32(k[5])<<16 | int32(k[6])<<8 | int32(k[7])
+func (k Key) Contract() uint32 {
+	return uint32(k[4])<<24 | uint32(k[5])<<16 | uint32(k[6])<<8 | uint32(k[7])
 }
 
 // SetContract sets the contract id.
-func (k Key) SetContract(value int32) {
+func (k Key) SetContract(value uint32) {
 	k[4] = byte(value >> 24)
 	k[5] = byte(value >> 16)
 	k[6] = byte(value >> 8)
@@ -75,12 +75,12 @@ func (k Key) SetContract(value int32) {
 }
 
 // Signature gets the signature of the contract.
-func (k Key) Signature() int32 {
-	return int32(k[8])<<24 | int32(k[9])<<16 | int32(k[10])<<8 | int32(k[11])
+func (k Key) Signature() uint32 {
+	return uint32(k[8])<<24 | uint32(k[9])<<16 | uint32(k[10])<<8 | uint32(k[11])
 }
 
 // SetSignature sets the signature of the contract.
-func (k Key) SetSignature(value int32) {
+func (k Key) SetSignature(value uint32) {
 	k[8] = byte(value >> 24)
 	k[9] = byte(value >> 16)
 	k[10] = byte(value >> 8)

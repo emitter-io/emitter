@@ -65,7 +65,7 @@ func TestEncryptDecrypt(t *testing.T) {
 			continue
 		}
 
-		assert.Equal(t, int32(989603869), key.Contract())
+		assert.Equal(t, uint32(989603869), key.Contract())
 		encrypted, err := cipher.EncryptKey(key)
 		if err != nil {
 			t.Error(err)

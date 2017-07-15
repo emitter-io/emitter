@@ -37,8 +37,8 @@ const (
 // License represents a security license for the service.
 type License struct {
 	EncryptionKey string    // Gets or sets the encryption key.
-	Contract      int32     // Gets or sets the contract id.
-	Signature     int32     // Gets or sets the signature of the contract.
+	Contract      uint32    // Gets or sets the contract id.
+	Signature     uint32    // Gets or sets the signature of the contract.
 	Expires       time.Time // Gets or sets the expiration date for the license.
 	Type          uint32    // Gets or sets the license type.
 }
@@ -64,8 +64,8 @@ func ParseLicense(data string) (*License, error) {
 	// Parse the license
 	license := License{
 		EncryptionKey: base64.RawURLEncoding.EncodeToString(raw[0:16]),
-		Contract:      int32(binary.BigEndian.Uint32(raw[16:20])),
-		Signature:     int32(binary.BigEndian.Uint32(raw[20:24])),
+		Contract:      uint32(binary.BigEndian.Uint32(raw[16:20])),
+		Signature:     uint32(binary.BigEndian.Uint32(raw[20:24])),
 		Expires:       time.Unix(expiry, 0),
 		Type:          binary.BigEndian.Uint32(raw[28:32]),
 	}

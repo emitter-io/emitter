@@ -27,9 +27,9 @@ type Contract interface {
 
 // contract represents a contract (user account).
 type contract struct {
-	ID        int32  `json:"id"`     // Gets or sets the contract id.
+	ID        uint32 `json:"id"`     // Gets or sets the contract id.
 	MasterID  uint16 `json:"sign"`   // Gets or sets the master id.
-	Signature int32  `json:"master"` // Gets or sets the signature of the contract.
+	Signature uint32 `json:"master"` // Gets or sets the signature of the contract.
 }
 
 // Validate validates the contract data against a key.
@@ -43,7 +43,7 @@ func (c *contract) Validate(key Key) bool {
 type ContractProvider interface {
 	// Creates a new instance of a Contract in the underlying data storage.
 	Create() (Contract, error)
-	Get(id int32) Contract
+	Get(id uint32) Contract
 }
 
 // SingleContractProvider provides contracts on premise.
@@ -67,7 +67,7 @@ func (p *SingleContractProvider) Create() (Contract, error) {
 }
 
 // Get returns a ContractData fetched by its id.
-func (p *SingleContractProvider) Get(id int32) Contract {
+func (p *SingleContractProvider) Get(id uint32) Contract {
 	if p.owner == nil || p.owner.ID != id {
 		return nil
 	}
@@ -100,12 +100,12 @@ func (p *HTTPContractProvider) Create() (Contract, error) {
 // Get returns a ContractData fetched by its id.
 // TODO : transform id in uint32 everywhere.
 func (p *HTTPContractProvider) Get(id int32) Contract {
-	//contract, ok := p.cache.Get(uint32(id))
+	contract, ok := p.cache.Get(uint32(id))
 	//if !ok {
 
 	//}
-	return nil
-	//return Contract(contract)
+	//return nil
+	return contract.(Contract)
 }
 
 func (p *HTTPContractProvider) fetchContract(id int32) *Contract {
