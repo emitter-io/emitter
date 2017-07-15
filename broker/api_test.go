@@ -2,10 +2,11 @@ package broker
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/security"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestProcessKeygen(t *testing.T) {
