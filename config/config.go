@@ -45,13 +45,13 @@ func NewDefault() *Config {
 	return &Config{
 		TCPPort: ":8080",
 		TLSPort: ":8443",
-		Vault:   &VaultConfig{},
 		Cluster: &ClusterConfig{
-			Broadcast:    "public",
-			Port:         4000,
-			Seed:         "127.0.0.1:4000",
-			ClusterKey:   "emitter-io",
-			SnapshotPath: "cluster.log",
+			AdvertiseAddr: "public",
+			Route:         4000,
+			Gossip:        4001,
+			Seed:          "127.0.0.1:4000",
+			ClusterKey:    "emitter-io",
+			SnapshotPath:  "cluster.log",
 		},
 	}
 }
@@ -73,12 +73,35 @@ type VaultConfig struct {
 
 // ClusterConfig represents the configuration for the cluster.
 type ClusterConfig struct {
-	NodeName     string `json:"node,omitempty"` // The name of the node to use.
-	Broadcast    string `json:"broadcast"`      // The address to broadcast.
-	Port         int    `json:"port"`           // The port used for gossip.'
-	Seed         string `json:"seed"`           // The seed address (or a domain name) for cluster join.
-	ClusterKey   string `json:"key"`            // The cluster passphrase for the handshake.
-	SnapshotPath string `json:"snapshot"`       // The cluster log file used for snapshotting.
+
+	// The name of this node. This must be unique in the cluster. If this is not set, Emitter
+	// will set it to the external IP address of the running machine.
+	NodeName string `json:"node,omitempty"`
+
+	// The address to advertise for both gossip and message routing. This is used for nat
+	// traversal.
+	AdvertiseAddr string `json:"advertise"`
+
+	// Forwarding message bus configuration is used for routing the TCP publish/subcribe messages
+	// between peers in the cluster.
+	Route int `json:"route"`
+
+	// Gossip configuration of the endpoint for managing the cluster. Both TCP and UDP ports
+	// will need to be accessible. This is used for both binding and advertised port.
+	Gossip int `json:"gossip"`
+
+	// The seed address (or a domain name) for cluster join.
+	Seed string `json:"seed"`
+
+	// ClusterKey is used to initialize the primary encryption key in a keyring. This key
+	// is used for encrypting all the gossip messages (message-level encryption).
+	ClusterKey string `json:"key"`
+
+	// SnapshotPath if provided is used to snapshot live nodes as well
+	// as lamport clock values. When Emitter is started with a snapshot,
+	// it will attempt to join all the previously known nodes until one
+	// succeeds and will also avoid replaying old user events.
+	SnapshotPath string `json:"snapshot,omitempty"`
 }
 
 // Key returns the key based on the passphrase

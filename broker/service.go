@@ -25,6 +25,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/logging"
@@ -50,6 +51,7 @@ type Service struct {
 	http             *http.Server              // The underlying HTTP server.
 	tcp              *tcp.Server               // The underlying TCP server.
 	cluster          *serf.Serf                // The gossip-based cluster mechanism.
+	peers            *collection.ConcurrentMap // The map of all the connected peers for this server.
 	events           chan serf.Event           // The channel for receiving gossip events.
 	name             string                    // The name of the service.
 }
@@ -83,6 +85,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	}
 
 	return s, nil
+
 }
 
 // Creates a configuration for the cluster
@@ -93,19 +96,19 @@ func (s *Service) clusterConfig(cfg *config.Config) *serf.Config {
 	c.EventCh = s.events
 	c.SnapshotPath = cfg.Cluster.SnapshotPath
 	c.MemberlistConfig = memberlist.DefaultWANConfig()
-	c.MemberlistConfig.BindPort = cfg.Cluster.Port
-	c.MemberlistConfig.AdvertisePort = cfg.Cluster.Port
+	c.MemberlistConfig.BindPort = cfg.Cluster.Gossip
+	c.MemberlistConfig.AdvertisePort = cfg.Cluster.Gossip
 	c.MemberlistConfig.SecretKey = cfg.Cluster.Key()
 
 	// Set the node name
 	c.NodeName = cfg.Cluster.NodeName
 	if c.NodeName == "" {
-		c.NodeName = fmt.Sprintf("%s%d", address.Fingerprint(), cfg.Cluster.Port)
+		c.NodeName = fmt.Sprintf("%s%d", address.Fingerprint(), cfg.Cluster.Gossip)
 	}
 	s.name = c.NodeName
 
 	// Use the public IP address if necessary
-	if cfg.Cluster.Broadcast == "public" {
+	if cfg.Cluster.AdvertiseAddr == "public" {
 		c.MemberlistConfig.AdvertiseAddr = address.External().String()
 	}
 
@@ -262,6 +265,7 @@ func (s *Service) OnSignal(sig os.Signal) {
 	case syscall.SIGINT:
 		logging.LogAction("service", fmt.Sprintf("received signal %s, exiting...", sig.String()))
 		s.Close()
+		os.Exit(0)
 	}
 }
 
@@ -277,5 +281,4 @@ func (s *Service) Close() {
 
 	// Notify we're closed
 	close(s.Closing)
-	os.Exit(0)
 }

@@ -45,6 +45,23 @@ func (m *ConcurrentMap) Get(key uint32) (v interface{}, ok bool) {
 	return
 }
 
+// GetOrCreate retrieves an element from the map or creates it using a factory function.
+func (m *ConcurrentMap) GetOrCreate(key uint32, create func() interface{}) interface{} {
+	atomic.AddInt32(&m.read, 1)
+	for atomic.LoadInt32(&m.lock) > 0 {
+		runtime.Gosched()
+	}
+
+	v, ok := m.dict[key]
+	if !ok {
+		v = create()
+		m.dict[key] = v
+	}
+
+	atomic.AddInt32(&m.read, -1)
+	return v
+}
+
 // Set sets an element to the map.
 func (m *ConcurrentMap) Set(key uint32, value interface{}) {
 	for !atomic.CompareAndSwapInt32(&m.lock, 0, 1) {

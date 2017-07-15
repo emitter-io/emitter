@@ -66,7 +66,7 @@ func NewVaultProvider(user string) *VaultProvider {
 
 // Configure configures the security provider.
 func (p *VaultProvider) Configure(c *config.Config) error {
-	if !c.HasVault() {
+	if c.HasVault() {
 		p.client = newVaultClient(c.Vault.Address)
 		p.app = c.Vault.Application
 

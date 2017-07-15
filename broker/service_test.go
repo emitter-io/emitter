@@ -17,7 +17,7 @@ func TestService_clusterConfig(t *testing.T) {
 	o := s.clusterConfig(cfg)
 	assert.Equal(t, o.MemberlistConfig.SecretKey, cfg.Cluster.Key())
 	assert.Equal(t, o.MemberlistConfig.AdvertiseAddr, address.External().String())
-	assert.Equal(t, o.MemberlistConfig.BindPort, cfg.Cluster.Port)
+	assert.Equal(t, o.MemberlistConfig.BindPort, cfg.Cluster.Gossip)
 }
 
 func TestService_clusterEventLoop(t *testing.T) {
@@ -30,7 +30,7 @@ func TestService_clusterEventLoop(t *testing.T) {
 			for {
 				select {
 				case <-timeout:
-					close(s.Closing)
+					s.Close()
 				}
 			}
 		}()
