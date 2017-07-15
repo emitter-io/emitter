@@ -47,6 +47,7 @@ func TestClusterKey(t *testing.T) {
 
 func Test_declassify(t *testing.T) {
 	c := NewDefault()
+	c.Vault = new(VaultConfig)
 	m := new(secretStoreMock)
 	m.On("GetSecret", "emitter/tcp").Return(":999")
 	m.On("GetSecret", "emitter/cluster/gossip").Return("123")
@@ -55,6 +56,7 @@ func Test_declassify(t *testing.T) {
 
 	expected := NewDefault()
 	expected.TCPPort = ":999"
+	expected.Vault = new(VaultConfig)
 	expected.Vault.Address = "hello"
 	expected.Cluster.Gossip = 123
 

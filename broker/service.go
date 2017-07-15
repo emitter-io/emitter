@@ -113,6 +113,7 @@ func (s *Service) clusterConfig(cfg *config.Config) *serf.Config {
 	}
 
 	// Configure routing
+	c.Tags = make(map[string]string)
 	c.Tags["route"] = fmt.Sprintf("%s:%d", c.MemberlistConfig.AdvertiseAddr, cfg.Cluster.Route)
 	return c
 }
