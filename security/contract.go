@@ -16,8 +16,8 @@ package security
 
 import (
 	"errors"
-	//"github.com/emitter-io/emitter/collection"
-	//"github.com/emitter-io/emitter/network/http"
+	"github.com/emitter-io/emitter/collection"
+	"github.com/emitter-io/emitter/network/http"
 )
 
 // Contract represents an interface for a contract.
@@ -43,7 +43,7 @@ func (c *contract) Validate(key Key) bool {
 type ContractProvider interface {
 	// Creates a new instance of a Contract in the underlying data storage.
 	Create() (Contract, error)
-	Get(id uint32) Contract
+	Get(id uint32) (Contract, error)
 }
 
 // SingleContractProvider provides contracts on premise.
@@ -67,14 +67,13 @@ func (p *SingleContractProvider) Create() (Contract, error) {
 }
 
 // Get returns a ContractData fetched by its id.
-func (p *SingleContractProvider) Get(id uint32) Contract {
+func (p *SingleContractProvider) Get(id uint32) (Contract, error) {
 	if p.owner == nil || p.owner.ID != id {
-		return nil
+		return nil, nil
 	}
-	return p.owner
+	return p.owner, nil
 }
 
-/*
 // HTTPContractProvider provides contracts over http.
 type HTTPContractProvider struct {
 	owner *contract
@@ -98,22 +97,21 @@ func (p *HTTPContractProvider) Create() (Contract, error) {
 }
 
 // Get returns a ContractData fetched by its id.
-// TODO : transform id in uint32 everywhere.
-func (p *HTTPContractProvider) Get(id int32) Contract {
-	contract, ok := p.cache.Get(uint32(id))
-	//if !ok {
-
-	//}
-	//return nil
-	return contract.(Contract)
-}
-
-func (p *HTTPContractProvider) fetchContract(id int32) *Contract {
-	c := new(Contract)
-	err := http.Get("http://meta.emitter.io/v1/contract/", c)
-	if err != nil {
-		return nil
+func (p *HTTPContractProvider) Get(id uint32) (c Contract, err error) {
+	contract, ok := p.cache.Get(id)
+	if !ok {
+		return p.fetchContract(id)
 	}
-	return c
+	return contract.(Contract), err
 }
-*/
+
+func (p *HTTPContractProvider) fetchContract(id uint32) (*contract, error) {
+	c := new(contract)
+	err := http.Get("http://meta.emitter.io/v1/contract/", c)
+
+	if err != nil {
+		p.cache.Set(c.ID, c)
+	}
+
+	return c, err
+}
