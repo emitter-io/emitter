@@ -38,8 +38,8 @@ func TestSingleContractProvider_Get(t *testing.T) {
 	}
 
 	p := NewSingleContractProvider(license)
-	contractByID, err := p.Get(license.Contract)
-	contractByWrongID, err := p.Get(0)
+	contractByID := p.Get(license.Contract)
+	contractByWrongID := p.Get(0)
 	assert.NotNil(t, contractByID)
 	assert.Nil(t, contractByWrongID)
 }
@@ -51,7 +51,7 @@ func TestSingleContractProvider_Validate(t *testing.T) {
 	}
 
 	p := NewSingleContractProvider(license)
-	contract, err := p.Get(license.Contract)
+	contract := p.Get(license.Contract)
 
 	key := Key(make([]byte, 24))
 	key.SetMaster(1)

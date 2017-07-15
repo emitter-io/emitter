@@ -16,6 +16,7 @@ package security
 
 import (
 	"errors"
+	"fmt"
 	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/network/http"
 )
@@ -43,7 +44,7 @@ func (c *contract) Validate(key Key) bool {
 type ContractProvider interface {
 	// Creates a new instance of a Contract in the underlying data storage.
 	Create() (Contract, error)
-	Get(id uint32) (Contract, error)
+	Get(id uint32) Contract
 }
 
 // SingleContractProvider provides contracts on premise.
@@ -67,11 +68,11 @@ func (p *SingleContractProvider) Create() (Contract, error) {
 }
 
 // Get returns a ContractData fetched by its id.
-func (p *SingleContractProvider) Get(id uint32) (Contract, error) {
+func (p *SingleContractProvider) Get(id uint32) Contract {
 	if p.owner == nil || p.owner.ID != id {
-		return nil, nil
+		return nil
 	}
-	return p.owner, nil
+	return p.owner
 }
 
 // HTTPContractProvider provides contracts over http.
@@ -97,21 +98,22 @@ func (p *HTTPContractProvider) Create() (Contract, error) {
 }
 
 // Get returns a ContractData fetched by its id.
-func (p *HTTPContractProvider) Get(id uint32) (c Contract, err error) {
+func (p *HTTPContractProvider) Get(id uint32) Contract {
 	contract, ok := p.cache.Get(id)
 	if !ok {
 		return p.fetchContract(id)
 	}
-	return contract.(Contract), err
+	return contract.(Contract)
 }
 
-func (p *HTTPContractProvider) fetchContract(id uint32) (*contract, error) {
+func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
 	c := new(contract)
-	err := http.Get("http://meta.emitter.io/v1/contract/", c)
+	query := fmt.Sprintf("http://meta.emitter.io/v1/contract/%d", int32(id)) // meta currently requires a signed int
+	err := http.Get(query, c)
 
 	if err != nil {
 		p.cache.Set(c.ID, c)
 	}
 
-	return c, err
+	return c
 }

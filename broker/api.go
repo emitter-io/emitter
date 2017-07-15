@@ -98,7 +98,7 @@ func ProcessKeyGen(s *Service, channel *security.Channel, payload []byte) error 
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, err := s.ContractProvider.Get(masterKey.Contract())
+	contract := s.ContractProvider.Get(masterKey.Contract())
 	if contract == nil {
 		return ErrNotFound
 	}
