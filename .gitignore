@@ -18,3 +18,5 @@ coverage.html
 status.html
 build/*
 *.log
+*.bat
+*.conf
