@@ -47,8 +47,27 @@ func (m *PeerManager) newPeer(conn net.Conn) *Peer {
 	return &Peer{service: m.service, socket: conn}
 }
 
+// GetMember retrieves the member by its id
+func (m *PeerManager) getMember(node string) *serf.Member {
+	cluster := m.service.cluster
+	for _, m := range cluster.Members() {
+		if m.Name == node {
+			return &m
+		}
+	}
+
+	return nil
+}
+
 // Get retrieves a peer from the manager, if not find it attempts to connect to a peer.
-func (m *PeerManager) Get(member *serf.Member) (peer *Peer, ok bool) {
+func (m *PeerManager) Get(node string) (peer *Peer, ok bool) {
+	// First we need to find the member
+	member := m.getMember(node)
+	if member == nil {
+		return nil, false
+	}
+
+	// Attempt to retrieve the associated peer
 	key := utils.GetHash([]byte(member.Name))
 	peer, ok = m.peers.GetOrCreate(key, func() interface{} {
 		addr := member.Tags["route"]
