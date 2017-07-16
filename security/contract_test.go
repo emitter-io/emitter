@@ -1,6 +1,7 @@
 package security
 
 import (
+	"github.com/emitter-io/emitter/network/http"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -68,9 +69,16 @@ func TestHTTPContractProvider_Get(t *testing.T) {
 	license, _ := ParseLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
 
 	p := NewHTTPContractProvider(license)
-	//contractByID := p.Get(license.Contract)
+	oldGet := http.Get
+	defer func() {
+		http.Get = oldGet
+	}()
+
+	http.Get = mockGet
+	contractByID := p.Get(1)
 	contractByWrongID := p.Get(0)
-	//assert.NotNil(t, contractByID)
+	http.Get = oldGet
+	assert.NotNil(t, contractByID)
 	assert.Nil(t, contractByWrongID)
 }
 
@@ -85,4 +93,14 @@ func TestHTTPContractProvider_Validate(t *testing.T) {
 	key.SetSignature(license.Signature)
 
 	assert.True(t, contract.Validate(key))
+}
+
+func mockGet(url string, output interface{}, headers ...http.HeaderValue) error {
+	if url == "http://meta.emitter.io/v1/contract/1" {
+		c := new(contract)
+		c.ID = 1
+		output = c
+		return nil
+	}
+	return nil
 }
