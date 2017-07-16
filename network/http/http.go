@@ -26,7 +26,7 @@ func NewHeader(header, value string) HeaderValue {
 }
 
 // Get is a utility function which issues an HTTP Get on a specified URL. The encoding is JSON.
-func Get(url string, output interface{}, headers ...HeaderValue) error {
+var Get = func(url string, output interface{}, headers ...HeaderValue) error {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func Get(url string, output interface{}, headers ...HeaderValue) error {
 
 // Post is a utility function which marshals and issues an HTTP post on a specified URL. The
 // encoding is JSON.
-func Post(url string, body interface{}, output interface{}, headers ...HeaderValue) error {
+var Post = func(url string, body interface{}, output interface{}, headers ...HeaderValue) error {
 	b, err := json.Marshal(body)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func Post(url string, body interface{}, output interface{}, headers ...HeaderVal
 }
 
 // UnmarshalJSON unmarshals the given io.Reader pointing to a JSON, into a desired object
-func UnmarshalJSON(r io.Reader, out interface{}) error {
+var UnmarshalJSON = func(r io.Reader, out interface{}) error {
 	if r == nil {
 		return errors.New("'io.Reader' being decoded is nil")
 	}
