@@ -167,12 +167,12 @@ func (s *Service) onRequest(w http.ResponseWriter, r *http.Request) {
 
 // Occurs when a peer has a new subscription.
 func (s *Service) onSubscribe(event *cluster.SubscriptionEvent) {
-
+	fmt.Printf("%v subscribed to %v (ssid: %v)\n", event.Node, event.Channel, event.Ssid)
 }
 
 // Occurs when a peer has unsubscribed.
 func (s *Service) onUnsubscribe(event *cluster.SubscriptionEvent) {
-
+	fmt.Printf("%v subscribed to %v (ssid: %v)\n", event.Node, event.Channel, event.Ssid)
 }
 
 // OnSignal will be called when a OS-level signal is received.
