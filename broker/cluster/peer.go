@@ -12,8 +12,9 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package broker
+package cluster
 
+/*
 import (
 	"net"
 
@@ -78,3 +79,4 @@ func (m *PeerManager) Get(node string) (peer *Peer, ok bool) {
 	}).(*Peer)
 	return
 }
+*/

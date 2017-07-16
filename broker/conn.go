@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/perf"
@@ -192,8 +193,8 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 		c.subs[hkey] = sub
 
 		// Broadcast the subscription within our cluster
-		c.service.Broadcast("+", SubscriptionEvent{
-			Node:    c.service.Name(),
+		c.service.Broadcast("+", cluster.SubscriptionEvent{
+			Node:    c.service.LocalName(),
 			Ssid:    ssid,
 			Channel: string(channel.Channel),
 		})
@@ -211,8 +212,8 @@ func (c *Conn) Unsubscribe(ssid Ssid) {
 		delete(c.subs, hkey)
 
 		// Broadcast the unsubscription within our cluster
-		c.service.Broadcast("-", SubscriptionEvent{
-			Node: c.service.Name(),
+		c.service.Broadcast("-", cluster.SubscriptionEvent{
+			Node: c.service.LocalName(),
 			Ssid: ssid,
 		})
 	}
