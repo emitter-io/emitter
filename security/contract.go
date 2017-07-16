@@ -111,9 +111,10 @@ func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
 	query := fmt.Sprintf("http://meta.emitter.io/v1/contract/%d", int32(id)) // meta currently requires a signed int
 	err := http.Get(query, c)
 
-	if err != nil {
-		p.cache.Set(c.ID, c)
+	if err != nil || c.ID == 0 {
+		return nil
 	}
 
+	p.cache.Set(c.ID, c)
 	return c
 }
