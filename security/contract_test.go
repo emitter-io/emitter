@@ -78,23 +78,11 @@ func TestHTTPContractProvider_Get(t *testing.T) {
 
 	http.Get = mockGet
 	contractByID := p.Get(1)
+	contractByID = p.Get(1)
 	contractByWrongID := p.Get(0)
 	http.Get = oldGet
 	assert.NotNil(t, contractByID)
 	assert.Nil(t, contractByWrongID)
-}
-
-func TestHTTPContractProvider_Validate(t *testing.T) {
-	license, _ := ParseLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
-	p := NewSingleContractProvider(license)
-	contract := p.Get(license.Contract)
-
-	key := Key(make([]byte, 24))
-	key.SetMaster(1)
-	key.SetContract(license.Contract)
-	key.SetSignature(license.Signature)
-
-	assert.True(t, contract.Validate(key))
 }
 
 func mockGet(url string, output interface{}, headers ...http.HeaderValue) error {
