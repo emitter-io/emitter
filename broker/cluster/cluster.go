@@ -1,3 +1,17 @@
+/**********************************************************************************
+* Copyright (c) 2009-2017 Misakai Ltd.
+* This program is free software: you can redistribute it and/or modify it under the
+* terms of the GNU Affero General Public License as published by the  Free Software
+* Foundation, either version 3 of the License, or(at your option) any later version.
+*
+* This program is distributed  in the hope that it  will be useful, but WITHOUT ANY
+* WARRANTY;  without even  the implied warranty of MERCHANTABILITY or FITNESS FOR A
+* PARTICULAR PURPOSE.  See the GNU Affero General Public License  for  more details.
+*
+* You should have  received a copy  of the  GNU Affero General Public License along
+* with this program. If not, see<http://www.gnu.org/licenses/>.
+************************************************************************************/
+
 package cluster
 
 import (
@@ -16,11 +30,13 @@ import (
 
 // Cluster represents a cluster manager.
 type Cluster struct {
-	name    string          // The name of the local node.
-	closing chan bool       // The closing channel.
-	gossip  *serf.Serf      // The gossip-based cluster mechanism.
-	config  *serf.Config    // The configuration for gossip.
-	events  chan serf.Event // The channel for receiving gossip events.
+	name          string                   // The name of the local node.
+	closing       chan bool                // The closing channel.
+	gossip        *serf.Serf               // The gossip-based cluster mechanism.
+	config        *serf.Config             // The configuration for gossip.
+	events        chan serf.Event          // The channel for receiving gossip events.
+	OnSubscribe   func(*SubscriptionEvent) // Delegate to invoke when the subscription event is received.
+	OnUnsubscribe func(*SubscriptionEvent) // Delegate to invoke when the subscription event is received.
 }
 
 // NewCluster creates a new cluster manager.
@@ -36,14 +52,14 @@ func NewCluster(cfg *config.ClusterConfig, closing chan bool) (*Cluster, error) 
 }
 
 // Listen creates the listener and serves the cluster.
-func (s *Cluster) Listen(port int) (err error) {
-	if s.gossip, err = serf.Create(s.config); err != nil {
+func (c *Cluster) Listen(port int) (err error) {
+	if c.gossip, err = serf.Create(c.config); err != nil {
 		return
 	}
 
 	// Listen on cluster event loop
-	go s.clusterEventLoop()
-	err = tcp.ServeAsync(port, s.closing, s.onAcceptPeer)
+	go c.clusterEventLoop()
+	err = tcp.ServeAsync(port, c.closing, c.onAcceptPeer)
 	return
 }
 
@@ -128,7 +144,7 @@ func (c *Cluster) onEvent(e *serf.UserEvent) error {
 		encoding.Decode(e.Payload, &event)
 
 		if event.Node != c.LocalName() {
-			fmt.Printf("%+v\n", event)
+			c.OnSubscribe(&event)
 		}
 
 	case "-":
@@ -137,7 +153,7 @@ func (c *Cluster) onEvent(e *serf.UserEvent) error {
 		encoding.Decode(e.Payload, &event)
 
 		if event.Node != c.LocalName() {
-			fmt.Printf("%+v\n", event)
+			c.OnUnsubscribe(&event)
 		}
 
 	default:

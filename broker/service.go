@@ -79,6 +79,10 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		if s.cluster, err = cluster.NewCluster(cfg.Cluster, s.Closing); err != nil {
 			return nil, err
 		}
+
+		// Attach delegates
+		s.cluster.OnSubscribe = s.onSubscribe
+		s.cluster.OnUnsubscribe = s.onUnsubscribe
 	}
 
 	return s, nil
@@ -161,19 +165,18 @@ func (s *Service) onRequest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// OnSignal starts the signal processing and makes su
-func (s *Service) hookSignals() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		for sig := range c {
-			s.OnSignal(sig)
-		}
-	}()
+// Occurs when a peer has a new subscription.
+func (s *Service) onSubscribe(event *cluster.SubscriptionEvent) {
+
+}
+
+// Occurs when a peer has unsubscribed.
+func (s *Service) onUnsubscribe(event *cluster.SubscriptionEvent) {
+
 }
 
 // OnSignal will be called when a OS-level signal is received.
-func (s *Service) OnSignal(sig os.Signal) {
+func (s *Service) onSignal(sig os.Signal) {
 	switch sig {
 	case syscall.SIGTERM:
 		fallthrough
@@ -182,6 +185,17 @@ func (s *Service) OnSignal(sig os.Signal) {
 		s.Close()
 		os.Exit(0)
 	}
+}
+
+// OnSignal starts the signal processing and makes su
+func (s *Service) hookSignals() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		for sig := range c {
+			s.onSignal(sig)
+		}
+	}()
 }
 
 // Close closes gracefully the service.,
