@@ -1,9 +1,11 @@
 package security
 
 import (
+	"encoding/json"
+	"testing"
+
 	"github.com/emitter-io/emitter/network/http"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestNewSingleContractProvider(t *testing.T) {
@@ -97,10 +99,7 @@ func TestHTTPContractProvider_Validate(t *testing.T) {
 
 func mockGet(url string, output interface{}, headers ...http.HeaderValue) error {
 	if url == "http://meta.emitter.io/v1/contract/1" {
-		c := new(contract)
-		c.ID = 1
-		output = c
-		return nil
+		return json.Unmarshal([]byte(`{"id": 1}`), output)
 	}
 	return nil
 }
