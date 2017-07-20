@@ -17,22 +17,32 @@ package cluster
 import (
 	"net"
 
-	"github.com/emitter-io/emitter/collection"
+	"github.com/emitter-io/emitter/logging"
 )
+
+var logConnection = logging.AddLogger("[peer] connection %s (remote: %s)")
 
 // Peer represents a peer broker.
 type Peer struct {
 	socket net.Conn // The transport used to read and write messages.
 }
 
-// PeerManager manages the emitter broker peers
-type PeerManager struct {
-	peers *collection.ConcurrentMap // The internal map of the peers.
-}
-
 // NewPeer creates a new peer for the connection.
 func newPeer(conn net.Conn) *Peer {
+	logging.Log(logConnection, "opened", conn.RemoteAddr().String())
 	return &Peer{socket: conn}
+}
+
+// Send forwards the message to the remote server.
+func (c *Peer) Send(channel []byte, payload []byte) error {
+
+	return nil
+}
+
+// Close terminates the connection.
+func (c *Peer) Close() error {
+	logging.Log(logConnection, "closed", c.socket.RemoteAddr().String())
+	return c.socket.Close()
 }
 
 /*

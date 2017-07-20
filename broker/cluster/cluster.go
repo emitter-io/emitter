@@ -19,24 +19,27 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/tcp"
+	"github.com/emitter-io/emitter/utils"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/serf/serf"
 )
 
 // Cluster represents a cluster manager.
 type Cluster struct {
-	name          string                   // The name of the local node.
-	closing       chan bool                // The closing channel.
-	gossip        *serf.Serf               // The gossip-based cluster mechanism.
-	config        *serf.Config             // The configuration for gossip.
-	events        chan serf.Event          // The channel for receiving gossip events.
-	OnSubscribe   func(*SubscriptionEvent) // Delegate to invoke when the subscription event is received.
-	OnUnsubscribe func(*SubscriptionEvent) // Delegate to invoke when the subscription event is received.
+	name          string                    // The name of the local node.
+	closing       chan bool                 // The closing channel.
+	gossip        *serf.Serf                // The gossip-based cluster mechanism.
+	config        *serf.Config              // The configuration for gossip.
+	peers         *collection.ConcurrentMap // The internal map of the peers.
+	events        chan serf.Event           // The channel for receiving gossip events.
+	OnSubscribe   func(*SubscriptionEvent)  // Delegate to invoke when the subscription event is received.
+	OnUnsubscribe func(*SubscriptionEvent)  // Delegate to invoke when the subscription event is received.
 }
 
 // NewCluster creates a new cluster manager.
@@ -44,6 +47,7 @@ func NewCluster(cfg *config.ClusterConfig, closing chan bool) (*Cluster, error) 
 	cluster := new(Cluster)
 	cluster.events = make(chan serf.Event)
 	cluster.closing = closing
+	cluster.peers = collection.NewConcurrentMap()
 	if err := cluster.configure(cfg); err != nil {
 		return nil, err
 	}
@@ -59,7 +63,7 @@ func (c *Cluster) Listen(port int) (err error) {
 
 	// Listen on cluster event loop
 	go c.clusterEventLoop()
-	err = tcp.ServeAsync(port, c.closing, c.onAcceptPeer)
+	err = tcp.ServeAsync(port, c.closing, c.onAccept)
 	return
 }
 
@@ -185,18 +189,36 @@ func (c *Cluster) onUserEvent(e *serf.UserEvent) error {
 }
 
 // Occurs when a new peer connection is accepted.
-func (c *Cluster) onAcceptPeer(t net.Conn) {
+func (c *Cluster) onAccept(t net.Conn) {
+	// TODO: just register the peer
 
 }
 
 // PeerConnect connects to the peer node.
 func (c *Cluster) peerConnect(node serf.Member) {
+	addr := node.Tags["route"]
 
+	// Dial the peer who just joined
+	if conn, err := net.Dial("tcp", addr); err != nil {
+		key := utils.GetHash([]byte(node.Name))
+		peer := newPeer(conn)
+		c.peers.Set(key, peer)
+	}
 }
 
 // PeerDisconnect disconnects from the peer node.
 func (c *Cluster) peerDisconnect(node serf.Member) {
+	key := utils.GetHash([]byte(node.Name))
+	if v, ok := c.peers.Get(key); ok {
 
+		// Delete the key from the concurrent map
+		c.peers.Delete(key)
+
+		// Disconnect the peer as well
+		if peer := v.(*Peer); peer != nil {
+			peer.Close()
+		}
+	}
 }
 
 // GetMember retrieves the member by its id.
