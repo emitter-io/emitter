@@ -107,11 +107,24 @@ func (c *Cluster) clusterEventLoop() {
 			return
 		case e := <-c.events:
 			switch e.EventType() {
-			case serf.EventMemberJoin:
 
+			// Handles when a new member joins the cluster. When this happens, we need to
+			// try to connect to the new node for message forwarding.
+			case serf.EventMemberJoin:
+				event := e.(serf.MemberEvent)
+				for _, m := range event.Members {
+					c.peerConnect(m)
+				}
+
+			// Handles when a member failed or left the cluster, we need to make sure we
+			// are disconnected from our message forwarding.
 			case serf.EventMemberFailed:
 				fallthrough
 			case serf.EventMemberLeave:
+				event := e.(serf.MemberEvent)
+				for _, m := range event.Members {
+					c.peerDisconnect(m)
+				}
 
 			// Handles user event which in this case is subscription or unsubscription.
 			case serf.EventUser:
@@ -174,6 +187,26 @@ func (c *Cluster) onUserEvent(e *serf.UserEvent) error {
 // Occurs when a new peer connection is accepted.
 func (c *Cluster) onAcceptPeer(t net.Conn) {
 
+}
+
+// PeerConnect connects to the peer node.
+func (c *Cluster) peerConnect(node serf.Member) {
+
+}
+
+// PeerDisconnect disconnects from the peer node.
+func (c *Cluster) peerDisconnect(node serf.Member) {
+
+}
+
+// GetMember retrieves the member by its id.
+func (c *Cluster) getMember(node string) *serf.Member {
+	for _, m := range c.gossip.Members() {
+		if m.Name == node {
+			return &m
+		}
+	}
+	return nil
 }
 
 // Close terminates/leaves the cluster gracefully.

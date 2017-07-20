@@ -14,26 +14,28 @@
 
 package cluster
 
-/*
 import (
 	"net"
 
 	"github.com/emitter-io/emitter/collection"
-	"github.com/emitter-io/emitter/utils"
-	"github.com/hashicorp/serf/serf"
 )
 
 // Peer represents a peer broker.
 type Peer struct {
-	service *Service // The service for this connection.
-	socket  net.Conn // The transport used to read and write messages.
+	socket net.Conn // The transport used to read and write messages.
 }
 
 // PeerManager manages the emitter broker peers
 type PeerManager struct {
-	service *Service                  // The service for this connection.
-	peers   *collection.ConcurrentMap // The internal map of the peers.
+	peers *collection.ConcurrentMap // The internal map of the peers.
 }
+
+// NewPeer creates a new peer for the connection.
+func newPeer(conn net.Conn) *Peer {
+	return &Peer{socket: conn}
+}
+
+/*
 
 // NewPeerManager creates a new manager for the peers.
 func NewPeerManager(service *Service) *PeerManager {
@@ -41,11 +43,6 @@ func NewPeerManager(service *Service) *PeerManager {
 		service: service,
 		peers:   collection.NewConcurrentMap(),
 	}
-}
-
-// NewPeer creates a new peer for the connection.
-func (m *PeerManager) newPeer(conn net.Conn) *Peer {
-	return &Peer{service: m.service, socket: conn}
 }
 
 // GetMember retrieves the member by its id
