@@ -172,7 +172,7 @@ func (s *Service) onSubscribe(event *cluster.SubscriptionEvent) {
 
 // Occurs when a peer has unsubscribed.
 func (s *Service) onUnsubscribe(event *cluster.SubscriptionEvent) {
-	fmt.Printf("%v subscribed to %v (ssid: %v)\n", event.Node, event.Channel, event.Ssid)
+	fmt.Printf("%v unsubscribed from ssid: %v\n", event.Node, event.Ssid)
 }
 
 // OnSignal will be called when a OS-level signal is received.

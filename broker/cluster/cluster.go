@@ -106,9 +106,17 @@ func (c *Cluster) clusterEventLoop() {
 		case <-c.closing:
 			return
 		case e := <-c.events:
-			if e.EventType() == serf.EventUser {
+			switch e.EventType() {
+			case serf.EventMemberJoin:
+
+			case serf.EventMemberFailed:
+				fallthrough
+			case serf.EventMemberLeave:
+
+			// Handles user event which in this case is subscription or unsubscription.
+			case serf.EventUser:
 				event := e.(serf.UserEvent)
-				if err := c.onEvent(&event); err != nil {
+				if err := c.onUserEvent(&event); err != nil {
 					logging.LogError("service", "event received", err)
 				}
 			}
@@ -136,14 +144,14 @@ func (c *Cluster) Broadcast(name string, message interface{}) error {
 }
 
 // Occurs when a new cluster event is received.
-func (c *Cluster) onEvent(e *serf.UserEvent) error {
+func (c *Cluster) onUserEvent(e *serf.UserEvent) error {
 	switch e.Name {
 	case "+":
 		// This is a subscription event which occurs when a client is subscribed to a node.
 		var event SubscriptionEvent
 		encoding.Decode(e.Payload, &event)
 
-		if event.Node != c.LocalName() {
+		if c.OnSubscribe != nil && event.Node != c.LocalName() {
 			c.OnSubscribe(&event)
 		}
 
@@ -152,7 +160,7 @@ func (c *Cluster) onEvent(e *serf.UserEvent) error {
 		var event SubscriptionEvent
 		encoding.Decode(e.Payload, &event)
 
-		if event.Node != c.LocalName() {
+		if c.OnUnsubscribe != nil && event.Node != c.LocalName() {
 			c.OnUnsubscribe(&event)
 		}
 
