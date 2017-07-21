@@ -110,3 +110,23 @@ func TestParseChannel(t *testing.T) {
 		}
 	}
 }
+
+func TestGetChannelTTL(t *testing.T) {
+	str := "emitter/a/?ttl=1200"
+	str2 := "emitter/a/?ttl=1200a"
+	str3 := "emitter/a/"
+	channel := ParseChannel([]byte(str))
+	channel2 := ParseChannel([]byte(str2))
+	channel3 := ParseChannel([]byte(str3))
+
+	hasValue, ttl := channel.TTL()
+	hasValue2, _ := channel2.TTL()
+	hasValue3, _ := channel3.TTL()
+
+	assert.Equal(t, hasValue, true)
+	assert.Equal(t, ttl, uint32(1200))
+
+	assert.Equal(t, hasValue2, false)
+
+	assert.Equal(t, hasValue3, false)
+}

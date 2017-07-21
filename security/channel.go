@@ -16,6 +16,7 @@ package security
 
 import (
 	"reflect"
+	"strconv"
 	"unsafe"
 
 	"github.com/emitter-io/emitter/config"
@@ -42,6 +43,23 @@ type Channel struct {
 	Query       []uint32        // Gets or sets the full ssid.
 	Options     []ChannelOption // Gets or sets the options.
 	ChannelType uint8
+}
+
+func (c *Channel) Target() uint32 {
+	return c.Query[0]
+}
+
+// TODO why not a map of options?
+func (c *Channel) TTL() (bool, uint32) {
+	for i := 0; i < len(c.Options); i++ {
+		if len(c.Options[i].Key) == 3 && c.Options[i].Key == "ttl" {
+			if val, err := strconv.ParseUint(c.Options[i].Value, 10, 32); err == nil {
+				return true, uint32(val)
+			}
+			return false, 0
+		}
+	}
+	return false, 0
 }
 
 // ParseChannel attempts to parse the channel from the underlying slice.
