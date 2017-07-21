@@ -165,20 +165,16 @@ func (c *Cluster) onUserEvent(e *serf.UserEvent) error {
 	switch e.Name {
 	case "+":
 		// This is a subscription event which occurs when a client is subscribed to a node.
-		var event SubscriptionEvent
-		encoding.Decode(e.Payload, &event)
-
+		event := decodeSubscriptionEvent(e.Payload)
 		if c.OnSubscribe != nil && event.Node != c.LocalName() {
-			c.OnSubscribe(&event)
+			c.OnSubscribe(event)
 		}
 
 	case "-":
 		// This is an unsubscription event which occurs when a client is unsubscribed from a node.
-		var event SubscriptionEvent
-		encoding.Decode(e.Payload, &event)
-
+		event := decodeSubscriptionEvent(e.Payload)
 		if c.OnUnsubscribe != nil && event.Node != c.LocalName() {
-			c.OnUnsubscribe(&event)
+			c.OnUnsubscribe(event)
 		}
 
 	default:

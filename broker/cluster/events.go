@@ -14,8 +14,33 @@
 
 package cluster
 
+import (
+	"github.com/emitter-io/emitter/encoding"
+)
+
 // SubscriptionEvent represents a message sent when a subscription is added or removed.
 type SubscriptionEvent struct {
 	Ssid []uint32 // Gets or sets the SSID (parsed channel) for this subscription.
 	Node string   // Gets or sets the node identifier for this event.
+}
+
+// decodeSubscriptionEvent decodes the event from the payload.
+func decodeSubscriptionEvent(payload []byte) *SubscriptionEvent {
+	var event SubscriptionEvent
+	encoding.Decode(payload, &event)
+	return &event
+}
+
+// HandshakeEvent represents a message used to confirm the identity of a remote server
+// which is trying to connect.
+type HandshakeEvent struct {
+	Key  string // Gets or sets the handshake key to verify.
+	Node string // Gets or sets the node identifier for this event.
+}
+
+// decodeHandshakeEvent decodes the event from the payload.
+func decodeHandshakeEvent(payload []byte) *HandshakeEvent {
+	var event HandshakeEvent
+	encoding.Decode(payload, &event)
+	return &event
 }
