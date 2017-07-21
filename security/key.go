@@ -150,3 +150,9 @@ func (k Key) IsExpired() bool {
 func (k Key) IsMaster() bool {
 	return k.Permissions() == AllowMaster
 }
+
+// HasPermission check whether the key provides some permission.
+func (k Key) HasPermission(flag uint32) bool {
+	p := k.Permissions()
+	return (p & flag) == flag
+}

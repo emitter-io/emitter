@@ -50,7 +50,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 	// Attempt to parse the key
 	key, err := c.service.Cipher.DecryptKey(channel.Key)
 	if err != nil {
-		// TODO
+		return ErrBadRequest
 	}
 
 	// Subscribe the client to the channel
@@ -71,7 +71,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 	// Attempt to parse the key
 	key, err := c.service.Cipher.DecryptKey(channel.Key)
 	if err != nil {
-		// TODO
+		return ErrBadRequest
 	}
 
 	// Unsubscribe the client from the channel
@@ -86,14 +86,19 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 
 	// Parse the channel
 	channel := security.ParseChannel(mqttTopic)
+	if channel.ChannelType == security.ChannelInvalid {
+		return ErrBadRequest
+	}
+
+	// Publish should only have static channel strings
 	if channel.ChannelType != security.ChannelStatic {
 		return ErrForbidden
 	}
 
 	// Is this a special api request?
-	/*if TryProcessAPIRequest(channel, payload) {
+	if TryProcessAPIRequest(c, channel, payload) {
 		return nil
-	}*/
+	}
 
 	// Attempt to parse the key
 	key, err := c.service.Cipher.DecryptKey(channel.Key)
@@ -102,21 +107,47 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	}
 
 	// Has the key expired?
+	if key.IsExpired() {
+		return ErrUnauthorized
+	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-
-	// Check if the payment state is valid
+	contract := c.service.ContractProvider.Get(key.Contract())
+	if contract == nil {
+		return ErrNotFound
+	}
 
 	// Validate the contract
+	if !contract.Validate(key) {
+		return ErrUnauthorized
+	}
 
 	// Check if the key has the permission to write here
+	if !key.HasPermission(security.AllowWrite) {
+		return ErrUnauthorized
+	}
 
 	// Check if the key has the permission for the required channel
+	if key.Target() != 0 && key.Target() != channel.Target() {
+		return ErrUnauthorized
+	}
 
 	// Do we have a TTL with the message?
+	hasTTL, _ := channel.TTL()
 
-	// Check if the key has a TTL and also can store (soft permission)
+	// In case of ttl, check the key provides the permission to store (soft permission)
+	if hasTTL && !key.HasPermission(security.AllowStore) {
+		//ttl = 0
+	}
 
+	/*
+		// Only call into the storage service if necessary
+		if (ttl > 0 && Services.Storage != null)
+		{
+			// If we have a storage service, store the message
+			Services.Storage.AppendAsync(contractId, ssid, ttl, message);
+		}
+	*/
 	// Iterate through all subscribers and send them the message
 	ssid := NewSsid(key.Contract(), channel)
 	for _, subscriber := range c.service.subscriptions.Lookup(ssid) {
