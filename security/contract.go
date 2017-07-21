@@ -21,6 +21,12 @@ import (
 	"github.com/emitter-io/emitter/network/http"
 )
 
+// The contract's state possible values.
+const (
+	ContractStateAllowed = uint8(iota)
+	ContractStateRefused
+)
+
 // Contract represents an interface for a contract.
 type Contract interface {
 	Validate(key Key) bool // Validate checks the security key with the contract.
@@ -31,13 +37,15 @@ type contract struct {
 	ID        uint32 `json:"id"`     // Gets or sets the contract id.
 	MasterID  uint16 `json:"sign"`   // Gets or sets the master id.
 	Signature uint32 `json:"master"` // Gets or sets the signature of the contract.
+	State     uint8  `json:"state"`
 }
 
 // Validate validates the contract data against a key.
 func (c *contract) Validate(key Key) bool {
 	return c.MasterID == key.Master() &&
 		c.Signature == key.Signature() &&
-		c.ID == key.Contract()
+		c.ID == key.Contract() &&
+		c.State == ContractStateAllowed
 }
 
 // ContractProvider represents an interface for a contract provider.
