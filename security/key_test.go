@@ -40,4 +40,5 @@ func TestKey(t *testing.T) {
 
 	key.SetPermissions(AllowMaster)
 	assert.True(t, key.IsMaster())
+	assert.True(t, key.HasPermission(AllowMaster))
 }

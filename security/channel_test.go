@@ -117,6 +117,7 @@ func TestGetChannelTTL(t *testing.T) {
 		ttl     uint32
 		ok      bool
 	}{
+		{channel: "emitter/a/?ttl=42&abc=9", ttl: 42, ok: true},
 		{channel: "emitter/a/?ttl=1200", ttl: 1200, ok: true},
 		{channel: "emitter/a/?ttl=1200a", ok: false},
 		{channel: "emitter/a/", ok: false},
