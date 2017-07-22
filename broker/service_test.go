@@ -6,6 +6,7 @@ import (
 
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/network/mqtt"
+	"github.com/emitter-io/emitter/security"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,6 +21,7 @@ func TestPubsub(t *testing.T) {
 
 	// Start the broker asynchronously
 	broker, svcErr := NewService(cfg)
+	broker.ContractProvider = security.NewSingleContractProvider(broker.License)
 	assert.NoError(t, svcErr)
 	defer close(broker.Closing)
 	go broker.Listen()

@@ -105,41 +105,44 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	if err != nil {
 		// TODO
 	}
-	/*
-		// Has the key expired?
-		if key.IsExpired() {
-			return ErrUnauthorized
-		}
 
-		// Attempt to fetch the contract using the key. Underneath, it's cached.
-		contract := c.service.ContractProvider.Get(key.Contract())
-		if contract == nil {
-			return ErrNotFound
-		}
+	// Has the key expired?
+	if key.IsExpired() {
+		return ErrUnauthorized
+	}
 
-		// Validate the contract
-		if !contract.Validate(key) {
-			return ErrUnauthorized
-		}
+	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract := c.service.ContractProvider.Get(key.Contract())
+	if contract == nil {
+		return ErrNotFound
+	}
 
-		// Check if the key has the permission to write here
-		if !key.HasPermission(security.AllowWrite) {
-			return ErrUnauthorized
-		}
+	// Validate the contract
+	if !contract.Validate(key) {
+		return ErrUnauthorized
+	}
 
-		// Check if the key has the permission for the required channel
-		if key.Target() != 0 && key.Target() != channel.Target() {
-			return ErrUnauthorized
-		}
+	// Check if the key has the permission to write here
+	if !key.HasPermission(security.AllowWrite) {
+		return ErrUnauthorized
+	}
 
-		// Do we have a TTL with the message?
-		hasTTL, _ := channel.TTL()
+	// Check if the key has the permission for the required channel
 
-		// In case of ttl, check the key provides the permission to store (soft permission)
-		if hasTTL && !key.HasPermission(security.AllowStore) {
-			//ttl = 0
-		}
-	*/
+	kt := key.Target()
+	ct := channel.Target()
+	if kt != 0 && kt != ct {
+		return ErrUnauthorized
+	}
+
+	// Do we have a TTL with the message?
+	_, hasTTL := channel.TTL()
+
+	// In case of ttl, check the key provides the permission to store (soft permission)
+	if hasTTL && !key.HasPermission(security.AllowStore) {
+		//ttl = 0
+	}
+
 	/*
 		// Only call into the storage service if necessary
 		if (ttl > 0 && Services.Storage != null)
