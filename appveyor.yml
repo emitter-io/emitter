@@ -17,7 +17,7 @@ build_script:
 - cmd: .\build.bat
 
 test_script:
-- go test github.com\emitter-io\emitter\...
+- go test -race github.com\emitter-io\emitter\...
 
 artifacts:  
   - path: build/*
