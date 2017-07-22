@@ -193,7 +193,7 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 
 	// Add the subscription
 	if sub, err := c.service.subscriptions.Subscribe(ssid, string(channel.Channel), c); err == nil {
-		c.subs[hkey] = sub
+		c.subs[hkey] = sub // TODO: this will race
 
 		// Broadcast the subscription within our cluster
 		c.service.Broadcast("+", cluster.SubscriptionEvent{

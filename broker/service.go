@@ -58,9 +58,13 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		tcp:           new(tcp.Server),
 	}
 
+	// Create a new HTTP request multiplexer
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", s.onRequest)
+
 	// Attach handlers
+	s.http.Handler = mux
 	s.tcp.Handler = s.onAcceptConn
-	http.HandleFunc("/", s.onRequest)
 
 	// Parse the license
 	logging.LogAction("service", "external address is "+address.External().String())
@@ -91,6 +95,10 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 
 // LocalName returns the local node name.
 func (s *Service) LocalName() string {
+	if s.cluster == nil {
+		return address.Fingerprint()
+	}
+
 	return s.cluster.LocalName()
 }
 
@@ -104,10 +112,10 @@ func (s *Service) Listen() (err error) {
 		if s.cluster.Listen(s.Config.Cluster.Route); err != nil {
 			panic(err)
 		}
-	}
 
-	// Join our seed
-	s.Join(s.Config.Cluster.Seed)
+		// Join our seed
+		s.Join(s.Config.Cluster.Seed)
+	}
 
 	/*go func() {
 		for {
@@ -149,6 +157,10 @@ func (s *Service) Join(peers ...string) error {
 // and error will be returned. If coalesce is enabled, nodes are allowed to
 // coalesce this event.
 func (s *Service) Broadcast(name string, message interface{}) error {
+	if s.cluster == nil {
+		return nil
+	}
+
 	return s.cluster.Broadcast(name, message)
 }
 
