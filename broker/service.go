@@ -167,13 +167,15 @@ func (s *Service) onRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 // Occurs when a peer has a new subscription.
-func (s *Service) onSubscribe(event cluster.SubscriptionEvent) {
+func (s *Service) onSubscribe(peer *cluster.Peer, event cluster.SubscriptionEvent) {
 	fmt.Printf("%v subscribed to ssid: %v\n", event.Node, event.Ssid)
+	s.subscriptions.Subscribe(event.Ssid, event.Channel, peer)
 }
 
 // Occurs when a peer has unsubscribed.
-func (s *Service) onUnsubscribe(event cluster.SubscriptionEvent) {
+func (s *Service) onUnsubscribe(peer *cluster.Peer, event cluster.SubscriptionEvent) {
 	fmt.Printf("%v unsubscribed from ssid: %v\n", event.Node, event.Ssid)
+	// TODO
 }
 
 // Occurs when a message is received from a peer.

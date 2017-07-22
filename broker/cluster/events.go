@@ -20,8 +20,9 @@ import (
 
 // SubscriptionEvent represents a message sent when a subscription is added or removed.
 type SubscriptionEvent struct {
-	Ssid []uint32 // Gets or sets the SSID (parsed channel) for this subscription.
-	Node string   // Gets or sets the node identifier for this event.
+	Ssid    []uint32 // Gets or sets the SSID (parsed channel) for this subscription.
+	Channel string   // Gets or sets the channel name.
+	Node    string   // Gets or sets the node identifier for this event.
 }
 
 // decodeSubscriptionEvent decodes the event from the payload.

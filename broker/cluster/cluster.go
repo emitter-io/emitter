@@ -31,15 +31,15 @@ import (
 
 // Cluster represents a cluster manager.
 type Cluster struct {
-	name          string                    // The name of the local node.
-	closing       chan bool                 // The closing channel.
-	gossip        *serf.Serf                // The gossip-based cluster mechanism.
-	config        *serf.Config              // The configuration for gossip.
-	peers         *collection.ConcurrentMap // The internal map of the peers.
-	events        chan serf.Event           // The channel for receiving gossip events.
-	OnSubscribe   func(SubscriptionEvent)   // Delegate to invoke when the subscription event is received.
-	OnUnsubscribe func(SubscriptionEvent)   // Delegate to invoke when the subscription event is received.
-	OnMessage     func(Message)             // Delegate to invoke when a new message is received.
+	name          string                         // The name of the local node.
+	closing       chan bool                      // The closing channel.
+	gossip        *serf.Serf                     // The gossip-based cluster mechanism.
+	config        *serf.Config                   // The configuration for gossip.
+	peers         *collection.ConcurrentMap      // The internal map of the peers.
+	events        chan serf.Event                // The channel for receiving gossip events.
+	OnSubscribe   func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
+	OnUnsubscribe func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
+	OnMessage     func(Message)                  // Delegate to invoke when a new message is received.
 }
 
 // NewCluster creates a new cluster manager.
@@ -165,16 +165,20 @@ func (c *Cluster) onUserEvent(e *serf.UserEvent) error {
 	switch e.Name {
 	case "+":
 		// This is a subscription event which occurs when a client is subscribed to a node.
-		event := decodeSubscriptionEvent(e.Payload)
+		event := *decodeSubscriptionEvent(e.Payload)
 		if c.OnSubscribe != nil && event.Node != c.LocalName() {
-			c.OnSubscribe(*event)
+			if peer, ok := c.getPeer(event.Node); ok {
+				c.OnSubscribe(peer, event)
+			}
 		}
 
 	case "-":
 		// This is an unsubscription event which occurs when a client is unsubscribed from a node.
-		event := decodeSubscriptionEvent(e.Payload)
+		event := *decodeSubscriptionEvent(e.Payload)
 		if c.OnUnsubscribe != nil && event.Node != c.LocalName() {
-			c.OnUnsubscribe(*event)
+			if peer, ok := c.getPeer(event.Node); ok {
+				c.OnUnsubscribe(peer, event)
+			}
 		}
 
 	default:
@@ -238,16 +242,22 @@ func (c *Cluster) peerConnect(node serf.Member) {
 // PeerDisconnect disconnects from the peer node.
 func (c *Cluster) peerDisconnect(node serf.Member) {
 	key := peerKey(node.Name)
-	if v, ok := c.peers.Get(key); ok {
-
+	if peer, ok := c.getPeer(node.Name); ok {
 		// Delete the key from the concurrent map
 		c.peers.Delete(key)
 
 		// Disconnect the peer as well
-		if peer := v.(*Peer); peer != nil {
-			peer.Close()
-		}
+		peer.Close()
 	}
+}
+
+// GetPeer retrieves a peer from the registry.
+func (c *Cluster) getPeer(name string) (*Peer, bool) {
+	if v, ok := c.peers.Get(peerKey(name)); ok {
+		return v.(*Peer), true
+	}
+
+	return nil, false
 }
 
 // GetMember retrieves the member by its id.

@@ -197,8 +197,9 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 
 		// Broadcast the subscription within our cluster
 		c.service.Broadcast("+", cluster.SubscriptionEvent{
-			Node: c.service.LocalName(),
-			Ssid: ssid,
+			Node:    c.service.LocalName(),
+			Ssid:    ssid,
+			Channel: string(channel.Channel),
 		})
 	}
 }
