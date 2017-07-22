@@ -48,12 +48,13 @@ func decodeHandshakeEvent(decoder encoding.Decoder) (out *HandshakeEvent, err er
 
 // MessageFrame represents a message frame which is sent through the wire to the
 // remote server and contains a set of messages
-type MessageFrame []Message
+type MessageFrame []*Message
 
 // Message represents a message which has to be routed.
 type Message struct {
-	Channel []byte // The channel for the message
-	Payload []byte // The payload of the message
+	Ssid    []uint32 // The Ssid of the message
+	Channel []byte   // The channel of the message
+	Payload []byte   // The payload of the message
 }
 
 // decodeMessageFrame decodes the message frame from the decoder.

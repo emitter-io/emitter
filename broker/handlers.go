@@ -105,41 +105,41 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	if err != nil {
 		// TODO
 	}
+	/*
+		// Has the key expired?
+		if key.IsExpired() {
+			return ErrUnauthorized
+		}
 
-	// Has the key expired?
-	if key.IsExpired() {
-		return ErrUnauthorized
-	}
+		// Attempt to fetch the contract using the key. Underneath, it's cached.
+		contract := c.service.ContractProvider.Get(key.Contract())
+		if contract == nil {
+			return ErrNotFound
+		}
 
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := c.service.ContractProvider.Get(key.Contract())
-	if contract == nil {
-		return ErrNotFound
-	}
+		// Validate the contract
+		if !contract.Validate(key) {
+			return ErrUnauthorized
+		}
 
-	// Validate the contract
-	if !contract.Validate(key) {
-		return ErrUnauthorized
-	}
+		// Check if the key has the permission to write here
+		if !key.HasPermission(security.AllowWrite) {
+			return ErrUnauthorized
+		}
 
-	// Check if the key has the permission to write here
-	if !key.HasPermission(security.AllowWrite) {
-		return ErrUnauthorized
-	}
+		// Check if the key has the permission for the required channel
+		if key.Target() != 0 && key.Target() != channel.Target() {
+			return ErrUnauthorized
+		}
 
-	// Check if the key has the permission for the required channel
-	if key.Target() != 0 && key.Target() != channel.Target() {
-		return ErrUnauthorized
-	}
+		// Do we have a TTL with the message?
+		hasTTL, _ := channel.TTL()
 
-	// Do we have a TTL with the message?
-	hasTTL, _ := channel.TTL()
-
-	// In case of ttl, check the key provides the permission to store (soft permission)
-	if hasTTL && !key.HasPermission(security.AllowStore) {
-		//ttl = 0
-	}
-
+		// In case of ttl, check the key provides the permission to store (soft permission)
+		if hasTTL && !key.HasPermission(security.AllowStore) {
+			//ttl = 0
+		}
+	*/
 	/*
 		// Only call into the storage service if necessary
 		if (ttl > 0 && Services.Storage != null)
@@ -151,7 +151,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	// Iterate through all subscribers and send them the message
 	ssid := NewSsid(key.Contract(), channel)
 	for _, subscriber := range c.service.subscriptions.Lookup(ssid) {
-		subscriber.Send(channel.Channel, payload)
+		subscriber.Send(ssid, channel.Channel, payload)
 	}
 
 	return nil

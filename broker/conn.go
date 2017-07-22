@@ -157,7 +157,7 @@ func (c *Conn) Process() error {
 }
 
 // Send forwards the message to the underlying client.
-func (c *Conn) Send(channel []byte, payload []byte) error {
+func (c *Conn) Send(ssid []uint32, channel []byte, payload []byte) error {
 	packet := mqtt.Publish{
 		Header: &mqtt.StaticHeader{
 			QOS: 0, // TODO when we'll support more QoS

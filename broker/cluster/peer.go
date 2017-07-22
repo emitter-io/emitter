@@ -43,7 +43,7 @@ type Peer struct {
 
 	OnClosing   func()                            // Handler which is invoked when the peer is closing is received.
 	OnHandshake func(*Peer, HandshakeEvent) error // Handler which is invoked when a handshake is received.
-	OnMessage   func(Message)                     // Handler which is invoked when a new message is received.
+	OnMessage   func(*Message)                    // Handler which is invoked when a new message is received.
 }
 
 // NewPeer creates a new peer for the connection.
@@ -62,12 +62,12 @@ func newPeer(conn net.Conn) *Peer {
 }
 
 // Send forwards the message to the remote server.
-func (c *Peer) Send(channel []byte, payload []byte) error {
+func (c *Peer) Send(ssid []uint32, channel []byte, payload []byte) error {
 	c.Lock()
 	defer c.Unlock()
 
 	// Send simply appends the message to a frame
-	c.frame = append(c.frame, Message{Channel: channel, Payload: payload})
+	c.frame = append(c.frame, &Message{Ssid: ssid, Channel: channel, Payload: payload})
 	return nil
 }
 
@@ -81,7 +81,7 @@ func (c *Peer) processSendQueue() {
 			// Encode the current frame
 			c.Lock()
 			err := encoder.Encode(c.frame)
-			c.frame = c.frame[0:0]
+			c.frame = c.frame[:0]
 			c.Unlock()
 
 			// Something went wrong during the encoding
@@ -101,6 +101,8 @@ func (c *Peer) processSendQueue() {
 
 // Handshake sends a handshake message to the peer.
 func (c *Peer) Handshake(node string) error {
+	c.Lock()
+	defer c.Unlock()
 	if c.handshaken {
 		return nil // Avoid sending the handshake recursively.
 	}

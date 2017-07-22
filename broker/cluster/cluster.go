@@ -39,7 +39,7 @@ type Cluster struct {
 	events        chan serf.Event                // The channel for receiving gossip events.
 	OnSubscribe   func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
 	OnUnsubscribe func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
-	OnMessage     func(Message)                  // Delegate to invoke when a new message is received.
+	OnMessage     func(*Message)                 // Delegate to invoke when a new message is received.
 }
 
 // NewCluster creates a new cluster manager.

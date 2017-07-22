@@ -179,8 +179,15 @@ func (s *Service) onUnsubscribe(peer *cluster.Peer, event cluster.SubscriptionEv
 }
 
 // Occurs when a message is received from a peer.
-func (s *Service) onPeerMessage(m cluster.Message) {
+func (s *Service) onPeerMessage(m *cluster.Message) {
 	fmt.Printf("message from peer on '%v' \n", string(m.Channel))
+
+	// Iterate through all subscribers and send them the message
+	for _, subscriber := range s.subscriptions.Lookup(Ssid(m.Ssid)) {
+		if _, local := subscriber.(*Conn); local {
+			subscriber.Send(m.Ssid, m.Channel, m.Payload)
+		}
+	}
 }
 
 // OnSignal will be called when a OS-level signal is received.

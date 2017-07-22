@@ -38,8 +38,8 @@ func Test_decodeHandshakeEvent(t *testing.T) {
 
 func Test_decodeMessageFrame(t *testing.T) {
 	frame := MessageFrame{
-		Message{Channel: []byte("a/b/c/"), Payload: []byte("hello abc")},
-		Message{Channel: []byte("a/b/"), Payload: []byte("hello ab")},
+		&Message{Channel: []byte("a/b/c/"), Payload: []byte("hello abc")},
+		&Message{Channel: []byte("a/b/"), Payload: []byte("hello ab")},
 	}
 
 	buffer, err := encoding.Encode(&frame)
