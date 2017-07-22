@@ -31,11 +31,14 @@ type Provider interface {
 
 // EnvironmentProvider represents a security provider which uses environment variables to store secrets.
 type EnvironmentProvider struct {
+	lookup func(string) (string, bool)
 }
 
 // NewEnvironmentProvider creates a new environment security provider.
-func NewEnvironmentProvider() Provider {
-	return new(EnvironmentProvider)
+func NewEnvironmentProvider() *EnvironmentProvider {
+	return &EnvironmentProvider{
+		lookup: os.LookupEnv,
+	}
 }
 
 // Configure configures the security provider.
@@ -46,7 +49,7 @@ func (p *EnvironmentProvider) Configure(c *config.Config) error {
 // GetSecret retrieves a secret from the provider
 func (p *EnvironmentProvider) GetSecret(secretName string) (string, bool) {
 	name := strings.ToUpper(strings.Replace(secretName, "/", "_", -1))
-	return os.LookupEnv(name)
+	return p.lookup(name)
 }
 
 // ------------------------------------------------------------------------------------
@@ -66,17 +69,15 @@ func NewVaultProvider(user string) *VaultProvider {
 
 // Configure configures the security provider.
 func (p *VaultProvider) Configure(c *config.Config) error {
-	if c.HasVault() {
-		p.client = newVaultClient(c.Vault.Address)
-		p.app = c.Vault.Application
-
-		// Authenticate the provider
-		if err := p.client.Authenticate(p.app, p.user); err != nil {
-			return err
-		}
-		return nil
+	if !c.HasVault() {
+		return errors.New("Unable to configure Vault provider")
 	}
-	return errors.New("Unable to configure Vault provider")
+
+	p.client = newVaultClient(c.Vault.Address)
+	p.app = c.Vault.Application
+
+	// Authenticate the provider
+	return p.client.Authenticate(p.app, p.user)
 }
 
 // GetSecret retrieves a secret from the provider

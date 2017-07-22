@@ -57,7 +57,7 @@ func (c *vaultClient) Authenticate(app string, user string) error {
 		return err
 	}
 
-	// Unable to authentify within Vault
+	// Unable to authenticate with Vault
 	if output.Auth == nil {
 		return errors.New("Unable to perform vault authentication for user " + user)
 	}
@@ -119,9 +119,9 @@ func (c *vaultClient) get(url string) (output *vaultSecret, err error) {
 // Post issues an HTTP POST to a vault server.
 func (c *vaultClient) post(url string, body interface{}) (output *vaultSecret, err error) {
 	var headers []http.HeaderValue
-	if c.IsAuthenticated() {
+	/*if c.IsAuthenticated() {
 		headers = append(headers, http.NewHeader("X-Vault-Token", c.token))
-	}
+	}*/
 
 	// Issue the HTTP Post
 	output = new(vaultSecret)
