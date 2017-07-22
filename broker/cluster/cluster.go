@@ -190,12 +190,17 @@ func (c *Cluster) onUserEvent(e *serf.UserEvent) error {
 
 // Occurs when a new handshake is received. This allows us to validate the handshake and
 // at least check whether a peer with this node name is already connected or not.
-func (c *Cluster) onHandshake(e HandshakeEvent) error {
-	logging.LogAction("cluster", "handshake received from "+e.Node)
+func (c *Cluster) onHandshake(peer *Peer, e HandshakeEvent) error {
 	if _, exists := c.peers.Get(peerKey(e.Node)); exists {
 		return errors.New("Already connected to peer " + e.Node)
 	}
 
+	// Accepted the handshake, add to our registry
+	logging.LogAction("cluster", "handshake accepted from "+e.Node)
+	c.peers.Set(peerKey(e.Node), peer)
+
+	// Handshake with the peer (will only be sent once)
+	peer.Handshake(c.LocalName())
 	return nil
 }
 
@@ -228,14 +233,16 @@ func (c *Cluster) peerConnect(node serf.Member) {
 		return
 	}
 
-	// Create a new peer with the appropriate delegates attached, note that
-	// we don't need the onHandshake delegate since we're the ones who dial
+	// Create a new peer with the appropriate delegates attached.
 	peer := newPeer(conn)
+	peer.OnHandshake = c.onHandshake
 	peer.OnMessage = c.OnMessage
-	c.peers.Set(peerKey(node.Name), peer)
 
 	// Send the handshake through
 	peer.Handshake(c.LocalName()) // TODO check error
+
+	// Start the processing goroutine
+	go peer.Process()
 
 }
 
