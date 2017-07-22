@@ -50,16 +50,16 @@ func (c *Channel) Target() uint32 {
 }
 
 // TODO why not a map of options?
-func (c *Channel) TTL() (bool, uint32) {
+func (c *Channel) TTL() (uint32, bool) {
 	for i := 0; i < len(c.Options); i++ {
 		if len(c.Options[i].Key) == 3 && c.Options[i].Key == "ttl" {
 			if val, err := strconv.ParseUint(c.Options[i].Value, 10, 32); err == nil {
-				return true, uint32(val)
+				return uint32(val), true
 			}
-			return false, 0
+			return 0, false
 		}
 	}
-	return false, 0
+	return 0, false
 }
 
 // ParseChannel attempts to parse the channel from the underlying slice.

@@ -112,21 +112,21 @@ func TestParseChannel(t *testing.T) {
 }
 
 func TestGetChannelTTL(t *testing.T) {
-	str := "emitter/a/?ttl=1200"
-	str2 := "emitter/a/?ttl=1200a"
-	str3 := "emitter/a/"
-	channel := ParseChannel([]byte(str))
-	channel2 := ParseChannel([]byte(str2))
-	channel3 := ParseChannel([]byte(str3))
+	tests := []struct {
+		channel string
+		ttl     uint32
+		ok      bool
+	}{
+		{channel: "emitter/a/?ttl=1200", ttl: 1200, ok: true},
+		{channel: "emitter/a/?ttl=1200a", ok: false},
+		{channel: "emitter/a/", ok: false},
+	}
 
-	hasValue, ttl := channel.TTL()
-	hasValue2, _ := channel2.TTL()
-	hasValue3, _ := channel3.TTL()
+	for _, tc := range tests {
+		channel := ParseChannel([]byte(tc.channel))
+		ttl, hasValue := channel.TTL()
 
-	assert.Equal(t, hasValue, true)
-	assert.Equal(t, ttl, uint32(1200))
-
-	assert.Equal(t, hasValue2, false)
-
-	assert.Equal(t, hasValue3, false)
+		assert.Equal(t, tc.ttl, ttl)
+		assert.Equal(t, hasValue, tc.ok)
+	}
 }
