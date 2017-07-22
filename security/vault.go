@@ -15,12 +15,12 @@
 package security
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"time"
 
-	"encoding/json"
-	"errors"
 	"github.com/emitter-io/emitter/network/http"
 )
 
@@ -53,18 +53,13 @@ func (c *vaultClient) Authenticate(app string, user string) error {
 		User: user,
 	})
 
-	if err != nil {
-		return err
-	}
-
 	// Unable to authenticate with Vault
-	if output.Auth == nil {
-		return errors.New("Unable to perform vault authentication for user " + user)
+	if err == nil && output.Auth != nil {
+		c.token = output.Auth.ClientToken
+		return nil
 	}
 
-	// Success
-	c.token = output.Auth.ClientToken
-	return nil
+	return errors.New("Unable to perform vault authentication for user " + user)
 }
 
 // ReadSecret reads a secret from the vault.
@@ -93,7 +88,7 @@ func (c *vaultClient) ReadCredentials(credentialsName string) (*AwsCredentials, 
 
 	if s, err := json.Marshal(output.Data); err == nil {
 		creds := new(AwsCredentials)
-		if err := json.Unmarshal(s, creds); err == nil {
+		if err := json.Unmarshal(s, creds); err == nil && creds.AccessKey != "" {
 			creds.Duration = time.Duration(output.LeaseDuration) * time.Second
 			creds.Expires = time.Now().UTC().Add(creds.Duration)
 			return creds, nil
@@ -118,12 +113,10 @@ func (c *vaultClient) get(url string) (output *vaultSecret, err error) {
 
 // Post issues an HTTP POST to a vault server.
 func (c *vaultClient) post(url string, body interface{}) (output *vaultSecret, err error) {
-	var headers []http.HeaderValue
-	/*if c.IsAuthenticated() {
-		headers = append(headers, http.NewHeader("X-Vault-Token", c.token))
-	}*/
 
-	// Issue the HTTP Post
+	// Note: The HTTP post is used for authentication only right now, hence no need
+	// to add the X-Vault-Token.
+	var headers []http.HeaderValue
 	output = new(vaultSecret)
 	err = http.Post(c.address+"/v1"+url, body, output, headers...)
 	return

@@ -75,6 +75,38 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 }
 
+func Test_encrypt(t *testing.T) {
+	// Just an error test since everything is already covered by other tests
+	cipher := &Cipher{key: [4]uint32{3443472288, 896798054, 972856492, 1831128908}}
+	err := cipher.encrypt(make([]byte, 10))
+	assert.Error(t, err)
+}
+
+func Test_decodeKey(t *testing.T) {
+	// Just an error test since everything is already covered by other tests
+	defer func(m [256]byte) { decodeMap = m }(decodeMap)
+	for i := 0; i < len(decodeMap); i++ {
+		decodeMap[i] = 1
+	}
+
+	in1 := []byte("#")
+	_, err1 := decodeKey(make([]byte, 32), in1)
+	assert.Error(t, err1)
+	assert.NotEmpty(t, err1.Error())
+
+	for i := 0; i < len(decodeMap); i++ {
+		decodeMap[i] = byte(i)
+	}
+
+	for i := 0; i < 255; i++ {
+		assert.NotPanics(t, func() {
+			in2 := []byte{0, byte(i)}
+			decodeKey(make([]byte, 32), in2)
+		})
+	}
+
+}
+
 func BenchmarkBase64(b *testing.B) {
 	v := []byte("0TJnt4yZPL73zt35h1UTIFsYBLetyD_g")
 	o := make([]byte, 24)
@@ -97,7 +129,6 @@ func TestBase64Decode(t *testing.T) {
 	assert.Equal(t, o1, o2)
 	assert.Equal(t, n1, n2)
 	assert.Equal(t, e1, e2)
-
 }
 
 func TestBase64SelfDecode(t *testing.T) {
@@ -114,18 +145,21 @@ func TestBase64SelfDecode(t *testing.T) {
 }
 
 func TestNewCipher(t *testing.T) {
-	license, err := ParseLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
-	if err != nil {
-		t.Error(err)
+	tests := []struct {
+		key      string
+		expected [4]uint32
+		err      bool
+	}{
+		{key: "zT83oDV0DWY5_JysbSTPTA", expected: [4]uint32{3443472288, 896798054, 972856492, 1831128908}},
+		{key: "#%#%^", err: true},
+		{key: "aaa", err: true},
 	}
 
-	cipher, err := NewCipher(license.EncryptionKey)
-	if err != nil {
-		t.Error(err)
+	for _, tc := range tests {
+		cipher, err := NewCipher(tc.key)
+		assert.Equal(t, tc.err, err != nil)
+		if !tc.err {
+			assert.EqualValues(t, tc.expected, cipher.key)
+		}
 	}
-
-	expected := [4]uint32{3443472288, 896798054, 972856492, 1831128908}
-
-	assert.EqualValues(t, expected, cipher.key)
-
 }

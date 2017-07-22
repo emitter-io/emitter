@@ -17,7 +17,6 @@ package security
 import (
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"strconv"
 )
 
@@ -119,18 +118,14 @@ func (c *Cipher) EncryptKey(k Key) (string, error) {
 
 	// Then encrypt the key using the master key
 	err := c.encrypt(buffer)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.RawURLEncoding.EncodeToString(buffer), nil
+	return base64.RawURLEncoding.EncodeToString(buffer), err
 }
 
 // encrypt encrypts the data. This is done in-place and it's actually
 // going to modify the underlying buffer.
 func (c *Cipher) encrypt(data []byte) error {
 	if len(data) != 24 {
-		return fmt.Errorf("The security key should be 24-bytes long")
+		return errors.New("The security key should be 24-bytes long")
 	}
 
 	key := &c.key

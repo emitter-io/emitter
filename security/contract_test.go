@@ -76,18 +76,17 @@ func TestHTTPContractProvider_Get(t *testing.T) {
 		http.Get = oldGet
 	}()
 
-	http.Get = mockGet
+	http.Get = func(url string, output interface{}, headers ...http.HeaderValue) error {
+		if url == "http://meta.emitter.io/v1/contract/1" {
+			return json.Unmarshal([]byte(`{"id": 1}`), output)
+		}
+		return nil
+	}
+
 	contractByID := p.Get(1)
 	contractByID = p.Get(1)
 	contractByWrongID := p.Get(0)
 	http.Get = oldGet
 	assert.NotNil(t, contractByID)
 	assert.Nil(t, contractByWrongID)
-}
-
-func mockGet(url string, output interface{}, headers ...http.HeaderValue) error {
-	if url == "http://meta.emitter.io/v1/contract/1" {
-		return json.Unmarshal([]byte(`{"id": 1}`), output)
-	}
-	return nil
 }
