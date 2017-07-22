@@ -20,7 +20,7 @@ func TestProcessKeygen(t *testing.T) {
 	channel := security.ParseChannel([]byte("emitter/keygen/"))
 	message := keyGenMessage{
 		Key:     "kBCZch5re3Ue-kpG1Aa8Vo7BYvXZ3UwR",
-		Channel: "test",
+		Channel: "a/b/c/",
 		Type:    "rw",
 	}
 	payload, _ := json.Marshal(&message)

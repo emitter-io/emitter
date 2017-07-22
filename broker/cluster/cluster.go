@@ -25,7 +25,6 @@ import (
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/tcp"
-	"github.com/emitter-io/emitter/utils"
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/serf/serf"
 )
@@ -38,8 +37,9 @@ type Cluster struct {
 	config        *serf.Config              // The configuration for gossip.
 	peers         *collection.ConcurrentMap // The internal map of the peers.
 	events        chan serf.Event           // The channel for receiving gossip events.
-	OnSubscribe   func(*SubscriptionEvent)  // Delegate to invoke when the subscription event is received.
-	OnUnsubscribe func(*SubscriptionEvent)  // Delegate to invoke when the subscription event is received.
+	OnSubscribe   func(SubscriptionEvent)   // Delegate to invoke when the subscription event is received.
+	OnUnsubscribe func(SubscriptionEvent)   // Delegate to invoke when the subscription event is received.
+	OnMessage     func(Message)             // Delegate to invoke when a new message is received.
 }
 
 // NewCluster creates a new cluster manager.
@@ -134,7 +134,7 @@ func (c *Cluster) clusterEventLoop() {
 			case serf.EventUser:
 				event := e.(serf.UserEvent)
 				if err := c.onUserEvent(&event); err != nil {
-					logging.LogError("service", "event received", err)
+					logging.LogError("cluster", "event received", err)
 				}
 			}
 		}
@@ -167,14 +167,14 @@ func (c *Cluster) onUserEvent(e *serf.UserEvent) error {
 		// This is a subscription event which occurs when a client is subscribed to a node.
 		event := decodeSubscriptionEvent(e.Payload)
 		if c.OnSubscribe != nil && event.Node != c.LocalName() {
-			c.OnSubscribe(event)
+			c.OnSubscribe(*event)
 		}
 
 	case "-":
 		// This is an unsubscription event which occurs when a client is unsubscribed from a node.
 		event := decodeSubscriptionEvent(e.Payload)
 		if c.OnUnsubscribe != nil && event.Node != c.LocalName() {
-			c.OnUnsubscribe(event)
+			c.OnUnsubscribe(*event)
 		}
 
 	default:
@@ -184,27 +184,60 @@ func (c *Cluster) onUserEvent(e *serf.UserEvent) error {
 	return nil
 }
 
-// Occurs when a new peer connection is accepted.
-func (c *Cluster) onAccept(t net.Conn) {
-	// TODO: just register the peer
+// Occurs when a new handshake is received. This allows us to validate the handshake and
+// at least check whether a peer with this node name is already connected or not.
+func (c *Cluster) onHandshake(e HandshakeEvent) error {
+	logging.LogAction("cluster", "handshake received from "+e.Node)
+	if _, exists := c.peers.Get(peerKey(e.Node)); exists {
+		return errors.New("Already connected to peer " + e.Node)
+	}
 
+	return nil
+}
+
+// Occurs when a new peer connection is accepted.
+func (c *Cluster) onAccept(conn net.Conn) {
+
+	// Create a new peer with the appropriate delegates attached
+	peer := newPeer(conn)
+	peer.OnHandshake = c.onHandshake
+	peer.OnMessage = c.OnMessage
+
+	// Start the processing goroutine
+	go peer.Process()
 }
 
 // PeerConnect connects to the peer node.
 func (c *Cluster) peerConnect(node serf.Member) {
+
+	// Do not connect to ourselves
 	addr := node.Tags["route"]
+	if c.gossip.LocalMember().Tags["route"] == addr {
+		return
+	}
 
 	// Dial the peer who just joined
-	if conn, err := net.Dial("tcp", addr); err != nil {
-		key := utils.GetHash([]byte(node.Name))
-		peer := newPeer(conn)
-		c.peers.Set(key, peer)
+	logging.LogAction("cluster", "connecting to "+addr)
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		logging.LogError("cluster", "peer connect", err)
+		return
 	}
+
+	// Create a new peer with the appropriate delegates attached, note that
+	// we don't need the onHandshake delegate since we're the ones who dial
+	peer := newPeer(conn)
+	peer.OnMessage = c.OnMessage
+	c.peers.Set(peerKey(node.Name), peer)
+
+	// Send the handshake through
+	peer.Handshake(c.LocalName()) // TODO check error
+
 }
 
 // PeerDisconnect disconnects from the peer node.
 func (c *Cluster) peerDisconnect(node serf.Member) {
-	key := utils.GetHash([]byte(node.Name))
+	key := peerKey(node.Name)
 	if v, ok := c.peers.Get(key); ok {
 
 		// Delete the key from the concurrent map

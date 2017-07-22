@@ -15,6 +15,7 @@
 package broker
 
 import (
+	"bufio"
 	"net"
 	"sync/atomic"
 	"time"
@@ -64,11 +65,12 @@ func (s *Service) newConn(t net.Conn) *Conn {
 // Process processes the messages.
 func (c *Conn) Process() error {
 	defer c.Close()
+	reader := bufio.NewReaderSize(c.socket, 65536)
 	count := c.count
 
 	for {
 		// Decode an incoming MQTT packet
-		msg, err := mqtt.DecodePacket(c.socket)
+		msg, err := mqtt.DecodePacket(reader)
 		if err != nil {
 			return err
 		}
@@ -140,6 +142,7 @@ func (c *Conn) Process() error {
 			count.MessagesIn.Increment()
 			if err := c.onPublish(packet.Topic, packet.Payload); err != nil {
 				// TODO: Handle Error
+				println(err.Error())
 			}
 
 			// Acknowledge the publication

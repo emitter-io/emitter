@@ -5,3 +5,6 @@
 - Configuration for TCP/TLS now accepts golang address format, (eg.: ":8080" would listen to all addresses and port 8080)
 - Cluster configuration has now more options and 'port' was renamed to gossip.
 - Cluster messaging now requires 2 ports to be open, one for gossip (TCP & UDP) and one for the actual message routing (TCP)
+
+
+37A-CRSvPeGwCxG0lkK4QNZrapY_umzq/a/b/c/

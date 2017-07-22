@@ -83,6 +83,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		// Attach delegates
 		s.cluster.OnSubscribe = s.onSubscribe
 		s.cluster.OnUnsubscribe = s.onUnsubscribe
+		s.cluster.OnMessage = s.onPeerMessage
 	}
 
 	return s, nil
@@ -166,13 +167,18 @@ func (s *Service) onRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 // Occurs when a peer has a new subscription.
-func (s *Service) onSubscribe(event *cluster.SubscriptionEvent) {
+func (s *Service) onSubscribe(event cluster.SubscriptionEvent) {
 	fmt.Printf("%v subscribed to ssid: %v\n", event.Node, event.Ssid)
 }
 
 // Occurs when a peer has unsubscribed.
-func (s *Service) onUnsubscribe(event *cluster.SubscriptionEvent) {
+func (s *Service) onUnsubscribe(event cluster.SubscriptionEvent) {
 	fmt.Printf("%v unsubscribed from ssid: %v\n", event.Node, event.Ssid)
+}
+
+// Occurs when a message is received from a peer.
+func (s *Service) onPeerMessage(m cluster.Message) {
+	fmt.Printf("message from peer on '%v' \n", string(m.Channel))
 }
 
 // OnSignal will be called when a OS-level signal is received.

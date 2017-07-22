@@ -38,9 +38,26 @@ type HandshakeEvent struct {
 	Node string // Gets or sets the node identifier for this event.
 }
 
-// decodeHandshakeEvent decodes the event from the payload.
-func decodeHandshakeEvent(payload []byte) *HandshakeEvent {
-	var event HandshakeEvent
-	encoding.Decode(payload, &event)
-	return &event
+// decodeHandshakeEvent decodes the event from the decoder.
+func decodeHandshakeEvent(decoder encoding.Decoder) (out *HandshakeEvent, err error) {
+	out = new(HandshakeEvent)
+	err = decoder.Decode(out)
+	return
+}
+
+// MessageFrame represents a message frame which is sent through the wire to the
+// remote server and contains a set of messages
+type MessageFrame []Message
+
+// Message represents a message which has to be routed.
+type Message struct {
+	Channel []byte // The channel for the message
+	Payload []byte // The payload of the message
+}
+
+// decodeMessageFrame decodes the message frame from the decoder.
+func decodeMessageFrame(decoder encoding.Decoder) (out MessageFrame, err error) {
+	out = make(MessageFrame, 0, 64)
+	err = decoder.Decode(&out)
+	return
 }

@@ -15,34 +15,143 @@
 package cluster
 
 import (
+	"bufio"
 	"net"
+	"sync"
+	"time"
 
+	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/logging"
+	"github.com/emitter-io/emitter/utils"
+	"github.com/golang/snappy"
+)
+
+const (
+	readBufferSize = 1048576 // 1MB per peer
 )
 
 var logConnection = logging.AddLogger("[peer] connection %s (remote: %s)")
 
 // Peer represents a peer broker.
 type Peer struct {
-	socket net.Conn // The transport used to read and write messages.
+	sync.Mutex
+	writer *snappy.Writer // The writer to use for writing messages.
+	reader *snappy.Reader // The reader to use for reading messages.
+	socket net.Conn       // The underlying transport socket for reader and writers.
+	frame  MessageFrame   // The current message frame.
+
+	OnHandshake func(HandshakeEvent) error // Handler which is invoked when a handshake is received.
+	OnMessage   func(Message)              // Handler which is invoked when a new message is received.
 }
 
 // NewPeer creates a new peer for the connection.
 func newPeer(conn net.Conn) *Peer {
 	logging.Log(logConnection, "opened", conn.RemoteAddr().String())
-	return &Peer{socket: conn}
+	peer := &Peer{
+		socket: conn,
+		writer: snappy.NewBufferedWriter(conn),
+		reader: snappy.NewReader(bufio.NewReaderSize(conn, readBufferSize)),
+		frame:  make(MessageFrame, 0, 64),
+	}
+
+	// Spawn the send queue processor as well
+	go peer.processSendQueue()
+	return peer
 }
 
 // Send forwards the message to the remote server.
 func (c *Peer) Send(channel []byte, payload []byte) error {
+	c.Lock()
+	defer c.Unlock()
 
+	// Send simply appends the message to a frame
+	c.frame = append(c.frame, Message{Channel: channel, Payload: payload})
 	return nil
+}
+
+// processSendQueue flushes the current frame to the remote server
+func (c *Peer) processSendQueue() {
+	encoder := encoding.NewEncoder(c.writer)
+
+	for {
+
+		if len(c.frame) > 0 {
+			// Encode the current frame
+			c.Lock()
+			err := encoder.Encode(c.frame)
+			c.Unlock()
+
+			// Something went wrong during the encoding
+			if err != nil {
+				logging.LogError("peer", "encoding frame", err)
+			}
+		}
+
+		// Wait for a few milliseconds for the buffer to fill up and also let other goroutines
+		// to be scheduled and run meanwhile.
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// Handshake sends a handshake message to the peer.
+func (c *Peer) Handshake(node string) error {
+	if err := encoding.EncodeTo(c.writer, &HandshakeEvent{
+		Key:  "",
+		Node: node,
+	}); err != nil {
+		return err
+	}
+
+	// Flush the buffered writer so we'd actually write through the socket
+	return c.writer.Flush()
+}
+
+// Process processes the messages.
+func (c *Peer) Process() error {
+	defer c.Close()
+	decoder := encoding.NewDecoder(c.reader)
+
+	// First message we need to decode is the handshake
+	handshake, err := decodeHandshakeEvent(decoder)
+	if err != nil {
+		logging.LogError("peer", "process", err)
+		return err
+	}
+
+	// Validate the handshake
+	if err := c.OnHandshake(*handshake); err != nil {
+		logging.LogError("peer", "process", err)
+		return err
+	}
+
+	for {
+		// Decode an incoming message frame
+		frame, err := decodeMessageFrame(decoder)
+		if err != nil {
+			return err
+		}
+
+		// Go through each message in the decoded frame
+		for _, m := range frame {
+			c.OnMessage(m)
+		}
+	}
 }
 
 // Close terminates the connection.
 func (c *Peer) Close() error {
 	logging.Log(logConnection, "closed", c.socket.RemoteAddr().String())
+
+	// First we need to close the writer
+	c.writer.Close()
+
+	// Finally, close the underlying socket.
 	return c.socket.Close()
+}
+
+// peerKey returns a peer key from a node name.
+func peerKey(nodeName string) uint32 {
+	return utils.GetHash([]byte(nodeName))
 }
 
 /*
