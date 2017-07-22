@@ -117,18 +117,6 @@ func (s *Service) Listen() (err error) {
 		s.Join(s.Config.Cluster.Seed)
 	}
 
-	/*go func() {
-		for {
-			members := []string{}
-			for _, m := range s.cluster.Members() {
-				members = append(members, fmt.Sprintf("%s (%s)", m.Name, m.Status.String()))
-			}
-
-			println(strings.Join(members, ", "))
-			time.Sleep(1000 * time.Millisecond)
-		}
-	}()*/
-
 	// Setup the HTTP server
 	logging.LogAction("service", "starting the listener...")
 	l, err := listener.New(s.Config.TCPPort)
@@ -187,7 +175,8 @@ func (s *Service) onSubscribe(peer *cluster.Peer, event cluster.SubscriptionEven
 // Occurs when a peer has unsubscribed.
 func (s *Service) onUnsubscribe(peer *cluster.Peer, event cluster.SubscriptionEvent) {
 	fmt.Printf("%v unsubscribed from ssid: %v\n", event.Node, event.Ssid)
-	// TODO
+
+	s.subscriptions.Unsubscribe(event.Ssid, peer)
 }
 
 // Occurs when a message is received from a peer.

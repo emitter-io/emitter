@@ -76,13 +76,13 @@ func TestTrieIntegration(t *testing.T) {
 	assertEqual(assert, Subscribers{s0, s1, s2}, m.Lookup([]uint32{1, 5}))
 	assertEqual(assert, Subscribers{s1, s2}, m.Lookup([]uint32{4}))
 
-	m.Unsubscribe(sub0)
-	m.Unsubscribe(sub1)
-	m.Unsubscribe(sub2)
-	m.Unsubscribe(sub3)
-	m.Unsubscribe(sub4)
-	m.Unsubscribe(sub5)
-	m.Unsubscribe(sub6)
+	m.Unsubscribe(sub0.Ssid, sub0.Subscriber)
+	m.Unsubscribe(sub1.Ssid, sub1.Subscriber)
+	m.Unsubscribe(sub2.Ssid, sub2.Subscriber)
+	m.Unsubscribe(sub3.Ssid, sub3.Subscriber)
+	m.Unsubscribe(sub4.Ssid, sub4.Subscriber)
+	m.Unsubscribe(sub5.Ssid, sub5.Subscriber)
+	m.Unsubscribe(sub6.Ssid, sub6.Subscriber)
 
 	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1, 3}))
 	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1}))
@@ -131,13 +131,13 @@ func BenchmarkSubscriptionTrieUnsubscribe(b *testing.B) {
 		query = []uint32{1, wildcard, 2, 3, 4}
 	)
 
-	id, _ := m.Subscribe(query, "", s0)
+	m.Subscribe(query, "", s0)
 	populateMatcher(m, 1000, 5)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.Unsubscribe(id)
+		m.Unsubscribe(query, s0)
 	}
 }
 
@@ -178,12 +178,12 @@ func BenchmarkSubscriptionTrieUnsubscribeCold(b *testing.B) {
 		s0    = new(Conn)
 		query = []uint32{1, wildcard, 2, 3, 4}
 	)
-	id, _ := m.Subscribe(query, "", s0)
+	m.Subscribe(query, "", s0)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.Unsubscribe(id)
+		m.Unsubscribe(query, s0)
 	}
 }
 

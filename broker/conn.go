@@ -17,6 +17,7 @@ package broker
 import (
 	"bufio"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -40,6 +41,7 @@ var nextIdentifier = func() func() uint64 {
 
 // Conn represents an incoming connection.
 type Conn struct {
+	sync.Mutex
 	socket  net.Conn                 // The transport used to read and write messages.
 	id      uint64                   // The identifier of the connection.
 	service *Service                 // The service for this connection.
@@ -183,17 +185,13 @@ func (c *Conn) Send(ssid []uint32, channel []byte, payload []byte) error {
 
 // Subscribe subscribes to a particular channel.
 func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
-	ssid := NewSsid(contract, channel)
-	hkey := ssid.GetHashCode()
-
-	// Only subscribe if we don't yet have a subscription
-	if _, exists := c.subs[hkey]; exists {
-		return
-	}
+	c.Lock()
+	defer c.Unlock()
 
 	// Add the subscription
+	ssid := NewSsid(contract, channel)
 	if sub, err := c.service.subscriptions.Subscribe(ssid, string(channel.Channel), c); err == nil {
-		c.subs[hkey] = sub // TODO: this will race
+		c.subs[ssid.GetHashCode()] = sub
 
 		// Broadcast the subscription within our cluster
 		c.service.Broadcast("+", cluster.SubscriptionEvent{
@@ -206,12 +204,15 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 
 // Unsubscribe unsubscribes this client from a particular channel.
 func (c *Conn) Unsubscribe(ssid Ssid) {
-	hkey := ssid.GetHashCode()
+	c.Lock()
+	defer c.Unlock()
 
 	// Get the subscription from our internal map
-	if sub, ok := c.subs[hkey]; ok {
+	hkey := ssid.GetHashCode()
+	if _, ok := c.subs[hkey]; ok {
+
 		// Unsubscribe from the trie and remove from our internal map
-		c.service.subscriptions.Unsubscribe(sub)
+		c.service.subscriptions.Unsubscribe(ssid, c)
 		delete(c.subs, hkey)
 
 		// Broadcast the unsubscription within our cluster
@@ -224,6 +225,8 @@ func (c *Conn) Unsubscribe(ssid Ssid) {
 
 // Close terminates the connection.
 func (c *Conn) Close() error {
+	c.Lock()
+	defer c.Unlock()
 	logging.Log(logConnection, "closed", c.id)
 
 	// Unsubscribe from everything. TODO: Lock this?

@@ -241,12 +241,12 @@ func (c *SubscriptionTrie) iinsert(i, parent *iNode, words []uint32, sub Subscri
 }
 
 // Unsubscribe removes the Subscription.
-func (c *SubscriptionTrie) Unsubscribe(sub *Subscription) {
+func (c *SubscriptionTrie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 	rootPtr := (*unsafe.Pointer)(unsafe.Pointer(&c.root))
 	root := (*iNode)(atomic.LoadPointer(rootPtr))
 
-	if !c.iremove(root, nil, nil, sub.Ssid, 0, sub.Subscriber) {
-		c.Unsubscribe(sub)
+	if !c.iremove(root, nil, nil, ssid, 0, subscriber) {
+		c.Unsubscribe(ssid, subscriber)
 	}
 }
 
