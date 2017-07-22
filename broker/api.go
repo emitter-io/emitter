@@ -37,11 +37,12 @@ type keyGenMessage struct {
 	TTL     int32  `json:"ttl"`
 }
 
-func (m *keyGenMessage) expires() time.Time {
+func (m *keyGenMessage) expires() (time.Time, bool) {
 	if m.TTL == 0 {
-		return time.Time{}
+		return time.Time{}, false
 	}
-	return time.Now().Add(time.Second).UTC()
+
+	return time.Now().Add(time.Second).UTC(), true
 }
 
 func (m *keyGenMessage) access() uint32 {
@@ -132,7 +133,13 @@ func ProcessKeyGen(s *Service, channel *security.Channel, payload []byte) error 
 	key.SetSignature(masterKey.Signature())
 	key.SetPermissions(message.access())
 	key.SetTarget(utils.GetHash([]byte(message.Channel)))
-	key.SetExpires(message.expires())
+
+	if expire, ok := message.expires(); ok {
+		key.SetExpires(expire)
+	}
+
+	//v, _ := s.Cipher.EncryptKey(key)
+	//println(v)
 
 	return nil
 }
