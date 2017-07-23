@@ -90,6 +90,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		s.cluster.OnSubscribe = s.onSubscribe
 		s.cluster.OnUnsubscribe = s.onUnsubscribe
 		s.cluster.OnMessage = s.onPeerMessage
+		s.cluster.Subscriptions = s.subcounters.All
 	}
 
 	return s, nil

@@ -239,6 +239,7 @@ func (c *Cluster) onHandshake(peer *Peer, e HandshakeEvent) error {
 	c.peers.Set(peerKey(e.Node), peer)
 
 	for _, s := range e.Subs {
+		println("handshake subscription: " + string(s.Channel))
 		c.OnSubscribe(peer, SubscriptionEvent{
 			Ssid:    s.Ssid,
 			Channel: string(s.Channel),
