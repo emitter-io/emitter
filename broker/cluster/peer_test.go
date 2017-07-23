@@ -38,7 +38,7 @@ func TestPeerClose(t *testing.T) {
 	p := newPeer(conn.Client)
 
 	var closed bool
-	p.OnClosing = func() { closed = true }
+	p.OnClosing = func(*Peer) { closed = true }
 	p.Close()
 
 	assert.NotNil(t, p.OnClosing)

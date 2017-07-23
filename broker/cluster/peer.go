@@ -41,8 +41,9 @@ type Peer struct {
 	frame      MessageFrame   // The current message frame.
 	handshaken bool           // The flag for handshake.
 	closing    chan bool      // The closing channel.
+	name       string         // The name of the peer.
 
-	OnClosing   func()                            // Handler which is invoked when the peer is closing is received.
+	OnClosing   func(*Peer)                       // Handler which is invoked when the peer is closing is received.
 	OnHandshake func(*Peer, HandshakeEvent) error // Handler which is invoked when a handshake is received.
 	OnMessage   func(*Message)                    // Handler which is invoked when a new message is received.
 }
@@ -148,7 +149,7 @@ func (c *Peer) Process() error {
 		// Decode an incoming message frame
 		frame, err := decodeMessageFrame(decoder)
 		if err != nil {
-			//logging.LogError("peer", "decode frame", err)
+			logging.LogError("peer", "decode frame", err)
 			return err
 		}
 
@@ -166,7 +167,7 @@ func (c *Peer) Close() error {
 
 	// Close the peer.
 	if c.OnClosing != nil {
-		c.OnClosing()
+		c.OnClosing(c)
 	}
 
 	// First we need to close the writer

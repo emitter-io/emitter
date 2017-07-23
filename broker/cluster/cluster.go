@@ -236,6 +236,7 @@ func (c *Cluster) onHandshake(peer *Peer, e HandshakeEvent) error {
 
 	// Accepted the handshake, add to our registry
 	logging.LogAction("cluster", "handshake accepted from "+e.Node)
+	peer.name = e.Node
 	c.peers.Set(peerKey(e.Node), peer)
 
 	for _, s := range e.Subs {
@@ -257,6 +258,7 @@ func (c *Cluster) onAccept(conn net.Conn) {
 	peer := newPeer(conn)
 	peer.OnHandshake = c.onHandshake
 	peer.OnMessage = c.OnMessage
+	peer.OnClosing = c.onPeerClosing
 	go peer.Process()
 }
 
@@ -279,6 +281,7 @@ func (c *Cluster) peerConnect(node serf.Member) {
 	peer := newPeer(conn)
 	peer.OnHandshake = c.onHandshake
 	peer.OnMessage = c.OnMessage
+	peer.OnClosing = c.onPeerClosing
 	go peer.Process()
 
 	// Send the handshake through
@@ -294,6 +297,19 @@ func (c *Cluster) peerDisconnect(node serf.Member) {
 
 		// Disconnect the peer as well
 		peer.Close()
+	}
+}
+
+// Occurs when a peer is closing
+func (c *Cluster) onPeerClosing(p *Peer) {
+	println("peer closing: " + p.name)
+	if p.name == "" {
+		return
+	}
+
+	if peer, exists := c.getPeer(p.name); exists && p == peer {
+		println("peer " + p.name + " deleted")
+		c.peers.Delete(peerKey(p.name))
 	}
 }
 
