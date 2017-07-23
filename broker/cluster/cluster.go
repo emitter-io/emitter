@@ -267,16 +267,6 @@ func (c *Cluster) getPeer(name string) (*Peer, bool) {
 	return nil, false
 }
 
-// GetMember retrieves the member by its id.
-func (c *Cluster) getMember(node string) *serf.Member {
-	for _, m := range c.gossip.Members() {
-		if m.Name == node {
-			return &m
-		}
-	}
-	return nil
-}
-
 // Close terminates/leaves the cluster gracefully.
 func (c *Cluster) Close() (err error) {
 	if c.gossip != nil {
