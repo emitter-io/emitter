@@ -55,6 +55,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		Counters:      perf.NewCounters(),
 		Config:        cfg,
 		subscriptions: NewSubscriptionTrie(),
+		subcounters:   NewSubscriptionCounters(),
 		http:          new(http.Server),
 		tcp:           new(tcp.Server),
 	}

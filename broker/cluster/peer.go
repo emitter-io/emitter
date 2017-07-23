@@ -95,7 +95,7 @@ func (c *Peer) processSendQueue() {
 }
 
 // Handshake sends a handshake message to the peer.
-func (c *Peer) Handshake(node string) (err error) {
+func (c *Peer) Handshake(node string, subDelegate func() []Subscription) (err error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -104,11 +104,18 @@ func (c *Peer) Handshake(node string) (err error) {
 		return
 	}
 
+	// Retrieve all existing subscriptions for the handshake
+	var subs []Subscription
+	if subDelegate != nil {
+		subs = subDelegate()
+	}
+
 	// Send the handshake through
 	c.handshaken = true
 	err = encoding.EncodeTo(c.writer, &HandshakeEvent{
 		Key:  "", // TODO add key
 		Node: node,
+		Subs: subs,
 	})
 
 	// Flush the buffered writer so we'd actually write through the socket

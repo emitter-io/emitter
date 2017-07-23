@@ -52,8 +52,15 @@ func decodeSubscriptionEvent(payload []byte) *SubscriptionEvent {
 // HandshakeEvent represents a message used to confirm the identity of a remote server
 // which is trying to connect.
 type HandshakeEvent struct {
-	Key  string // Gets or sets the handshake key to verify.
-	Node string // Gets or sets the node identifier for this event.
+	Key  string         // Gets or sets the handshake key to verify.
+	Node string         // Gets or sets the node identifier for this event.
+	Subs []Subscription // Gets or sets the subscriptions.
+}
+
+// Subscription represents a subscription.
+type Subscription struct {
+	Ssid    []uint32 // The Ssid of the message
+	Channel []byte   // The channel of the message
 }
 
 // decodeHandshakeEvent decodes the event from the decoder.

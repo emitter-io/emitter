@@ -37,6 +37,7 @@ type Cluster struct {
 	config          *serf.Config                   // The configuration for gossip.
 	peers           *collection.ConcurrentMap      // The internal map of the peers.
 	events          chan serf.Event                // The channel for receiving gossip events.
+	Subscriptions   func() []Subscription          // Delegate to retrieve all existing subscriptions.
 	OnQuery         func(Query)                    // Delegate to invoke when a query is received.
 	OnQueryResponse func(QueryResponse)            // Delegate to invoke when a query is received.
 	OnSubscribe     func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
@@ -237,8 +238,16 @@ func (c *Cluster) onHandshake(peer *Peer, e HandshakeEvent) error {
 	logging.LogAction("cluster", "handshake accepted from "+e.Node)
 	c.peers.Set(peerKey(e.Node), peer)
 
+	for _, s := range e.Subs {
+		c.OnSubscribe(peer, SubscriptionEvent{
+			Ssid:    s.Ssid,
+			Channel: string(s.Channel),
+			Node:    e.Node,
+		})
+	}
+
 	// Handshake with the peer (will only be sent once)
-	peer.Handshake(c.LocalName())
+	peer.Handshake(c.LocalName(), c.Subscriptions)
 	return nil
 }
 
@@ -272,7 +281,7 @@ func (c *Cluster) peerConnect(node serf.Member) {
 	go peer.Process()
 
 	// Send the handshake through
-	peer.Handshake(c.LocalName()) // TODO check error
+	peer.Handshake(c.LocalName(), c.Subscriptions) // TODO check error
 }
 
 // PeerDisconnect disconnects from the peer node.

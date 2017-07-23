@@ -17,6 +17,7 @@ package broker
 import (
 	"sync"
 
+	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/security"
 )
 
@@ -96,6 +97,13 @@ type subCounter struct {
 	Counter int
 }
 
+// NewSubscriptionCounters creates a new container.
+func NewSubscriptionCounters() *SubscriptionCounters {
+	return &SubscriptionCounters{
+		m: make(map[uint32]*subCounter),
+	}
+}
+
 // Increment increments the subscription counter.
 func (s *SubscriptionCounters) Increment(ssid Ssid, channel string) {
 	s.Lock()
@@ -122,15 +130,15 @@ func (s *SubscriptionCounters) Decrement(ssid Ssid) {
 }
 
 // All returns all subscriptions by copying the underlying map into a slice
-func (s *SubscriptionCounters) All() []Subscription {
+func (s *SubscriptionCounters) All() []cluster.Subscription {
 	s.Lock()
 	defer s.Unlock()
 
-	clone := make([]Subscription, 0, len(s.m))
+	clone := make([]cluster.Subscription, 0, len(s.m))
 	for _, m := range s.m {
-		clone = append(clone, Subscription{
+		clone = append(clone, cluster.Subscription{
 			Ssid:    m.Ssid,
-			Channel: m.Channel,
+			Channel: []byte(m.Channel),
 		})
 	}
 

@@ -109,8 +109,8 @@ func TestPeerHandshake(t *testing.T) {
 		err      bool
 	}{
 		{name: "", expected: 0},
-		{name: "test", expected: 38},
-		{name: "longerpeername", expected: 49},
+		{name: "test", expected: 46},
+		{name: "longerpeername", expected: 57},
 	}
 
 	for _, tc := range tests {
@@ -119,7 +119,7 @@ func TestPeerHandshake(t *testing.T) {
 			writer: snappy.NewBufferedWriter(buffer),
 		}
 
-		err := peer.Handshake(tc.name)
+		err := peer.Handshake(tc.name, nil)
 		/*testPrintBytes(buffer.Bytes())
 
 		encoding.EncodeTo(peer.writer, MessageFrame{
