@@ -12,10 +12,10 @@ func (c *Counters) NewUsageTracker(prefix string) *UsageTracker {
 
 // UsageTracker represents a shortcut structure for monitoring usage of a contract.
 type UsageTracker struct {
-	MessagesIn  Counter // The counter for incoming messages.
-	MessagesOut Counter // The counter for outgoing messages.
-	TrafficIn   Counter // The counter for incoming traffic.
-	TrafficOut  Counter // The counter for outgoing traffic.
+	MessagesIn  *Counter // The counter for incoming messages.
+	MessagesOut *Counter // The counter for outgoing messages.
+	TrafficIn   *Counter // The counter for incoming traffic.
+	TrafficOut  *Counter // The counter for outgoing traffic.
 }
 
 // Reset resets all the counters in the usage tracker.

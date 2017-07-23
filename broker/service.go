@@ -42,6 +42,7 @@ type Service struct {
 	Config           *config.Config            // The configuration for the service.
 	ContractProvider security.ContractProvider // The contract provider for the service.
 	subscriptions    *SubscriptionTrie         // The subscription matching trie.
+	subcounters      *SubscriptionCounters     // The subscription counters.
 	http             *http.Server              // The underlying HTTP server.
 	tcp              *tcp.Server               // The underlying TCP server.
 	cluster          *cluster.Cluster          // The gossip-based cluster mechanism.
@@ -189,6 +190,16 @@ func (s *Service) onPeerMessage(m *cluster.Message) {
 			subscriber.Send(m.Ssid, m.Channel, m.Payload)
 		}
 	}
+}
+
+// Occurs when a query is received.
+func (s *Service) onQuery(query cluster.Query) {
+	fmt.Printf("query: %v\n", query)
+}
+
+// Occurs when a query response is received from a node.
+func (s *Service) onQueryResponse(resp cluster.QueryResponse) {
+	fmt.Printf("query response: %v\n", resp.Payload)
 }
 
 // OnSignal will be called when a OS-level signal is received.

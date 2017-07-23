@@ -193,6 +193,9 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 	if sub, err := c.service.subscriptions.Subscribe(ssid, string(channel.Channel), c); err == nil {
 		c.subs[ssid.GetHashCode()] = sub
 
+		// Increment the counters
+		c.service.subcounters.Increment(ssid, string(channel.Channel))
+
 		// Broadcast the subscription within our cluster
 		c.service.Broadcast("+", cluster.SubscriptionEvent{
 			Node:    c.service.LocalName(),
@@ -214,6 +217,9 @@ func (c *Conn) Unsubscribe(ssid Ssid) {
 		// Unsubscribe from the trie and remove from our internal map
 		c.service.subscriptions.Unsubscribe(ssid, c)
 		delete(c.subs, hkey)
+
+		// Decrement the counters
+		c.service.subcounters.Decrement(ssid)
 
 		// Broadcast the unsubscription within our cluster
 		c.service.Broadcast("-", cluster.SubscriptionEvent{

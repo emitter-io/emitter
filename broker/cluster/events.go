@@ -18,6 +18,23 @@ import (
 	"github.com/emitter-io/emitter/encoding"
 )
 
+// Query represents an incoming query.
+type Query struct {
+	Name    string
+	Respond func([]byte) error
+}
+
+// QueryResponse is used to represent a single response from a node
+type QueryResponse struct {
+	Node    string
+	Payload []byte
+}
+
+// QueryEvent represents a generic query event sent by a node.
+type QueryEvent struct {
+	Node string // Gets or sets the node identifier for this event.
+}
+
 // SubscriptionEvent represents a message sent when a subscription is added or removed.
 type SubscriptionEvent struct {
 	Ssid    []uint32 // Gets or sets the SSID (parsed channel) for this subscription.

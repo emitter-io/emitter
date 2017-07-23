@@ -15,6 +15,8 @@
 package broker
 
 import (
+	"sync"
+
 	"github.com/emitter-io/emitter/security"
 )
 
@@ -78,4 +80,75 @@ type Subscription struct {
 	Ssid       Ssid       // Gets or sets the SSID (parsed channel) for this subscription.
 	Channel    string     // Gets or sets the channel for this subscription.
 	Subscriber Subscriber // Gets or sets the subscriber for this subscription.
+}
+
+// ------------------------------------------------------------------------------------
+
+// SubscriptionCounters represents a subscription counting map.
+type SubscriptionCounters struct {
+	sync.Mutex
+	m map[uint32]*subCounter
+}
+
+type subCounter struct {
+	Ssid    Ssid
+	Channel string
+	Counter int
+}
+
+// Increment increments the subscription counter.
+func (s *SubscriptionCounters) Increment(ssid Ssid, channel string) {
+	s.Lock()
+	defer s.Unlock()
+
+	m := s.getOrCreate(ssid, channel)
+	m.Counter++
+}
+
+// Decrement decrements a subscription counter.
+func (s *SubscriptionCounters) Decrement(ssid Ssid) {
+	s.Lock()
+	defer s.Unlock()
+
+	key := ssid.GetHashCode()
+	if m, exists := s.m[key]; exists {
+		m.Counter--
+
+		// Remove if there's no subscribers left
+		if m.Counter <= 0 {
+			delete(s.m, ssid.GetHashCode())
+		}
+	}
+}
+
+// All returns all subscriptions by copying the underlying map into a slice
+func (s *SubscriptionCounters) All() []Subscription {
+	s.Lock()
+	defer s.Unlock()
+
+	clone := make([]Subscription, 0, len(s.m))
+	for _, m := range s.m {
+		clone = append(clone, Subscription{
+			Ssid:    m.Ssid,
+			Channel: m.Channel,
+		})
+	}
+
+	return clone
+}
+
+// getOrCreate retrieves a single subscription meter or creates a new one.
+func (s *SubscriptionCounters) getOrCreate(ssid Ssid, channel string) (meter *subCounter) {
+	key := ssid.GetHashCode()
+	if m, exists := s.m[key]; exists {
+		return m
+	}
+
+	meter = &subCounter{
+		Ssid:    ssid,
+		Channel: channel,
+		Counter: 0,
+	}
+	s.m[key] = meter
+	return
 }

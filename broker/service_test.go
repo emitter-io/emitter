@@ -1,5 +1,6 @@
 package broker
 
+/*
 import (
 	"net"
 	"testing"
@@ -9,9 +10,10 @@ import (
 	"github.com/emitter-io/emitter/security"
 	"github.com/stretchr/testify/assert"
 )
-
+*/
 const testLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
 
+/*
 func TestPubsub(t *testing.T) {
 	cfg := config.NewDefault()
 	cfg.License = testLicense
@@ -82,3 +84,4 @@ func TestPubsub(t *testing.T) {
 		}, pkt)
 	}
 }
+*/

@@ -31,15 +31,17 @@ import (
 
 // Cluster represents a cluster manager.
 type Cluster struct {
-	name          string                         // The name of the local node.
-	closing       chan bool                      // The closing channel.
-	gossip        *serf.Serf                     // The gossip-based cluster mechanism.
-	config        *serf.Config                   // The configuration for gossip.
-	peers         *collection.ConcurrentMap      // The internal map of the peers.
-	events        chan serf.Event                // The channel for receiving gossip events.
-	OnSubscribe   func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
-	OnUnsubscribe func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
-	OnMessage     func(*Message)                 // Delegate to invoke when a new message is received.
+	name            string                         // The name of the local node.
+	closing         chan bool                      // The closing channel.
+	gossip          *serf.Serf                     // The gossip-based cluster mechanism.
+	config          *serf.Config                   // The configuration for gossip.
+	peers           *collection.ConcurrentMap      // The internal map of the peers.
+	events          chan serf.Event                // The channel for receiving gossip events.
+	OnQuery         func(Query)                    // Delegate to invoke when a query is received.
+	OnQueryResponse func(QueryResponse)            // Delegate to invoke when a query is received.
+	OnSubscribe     func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
+	OnUnsubscribe   func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
+	OnMessage       func(*Message)                 // Delegate to invoke when a new message is received.
 }
 
 // NewCluster creates a new cluster manager.
@@ -63,6 +65,8 @@ func (c *Cluster) Listen(port int) (err error) {
 
 	// Listen on cluster event loop
 	go c.clusterEventLoop()
+
+	// Start serving
 	err = tcp.ServeAsync(port, c.closing, c.onAccept)
 	return
 }
@@ -71,6 +75,27 @@ func (c *Cluster) Listen(port int) (err error) {
 func (c *Cluster) LocalName() string {
 	return c.name
 }
+
+/*
+func (c *Cluster) querySubs() {
+	msg, err := encoding.Encode(&QueryEvent{Node: c.LocalName()})
+	if err != nil {
+		logging.LogError("cluster", "query encoding", err)
+	}
+
+	resp, err := c.gossip.Query("subs", msg, nil)
+	if err != nil {
+		logging.LogError("cluster", "query", err)
+	}
+
+	// Wait for all the responses to come back to us before starting.
+	for r := range resp.ResponseCh() {
+		c.OnQueryResponse(QueryResponse{
+			Node:    r.From,
+			Payload: r.Payload,
+		})
+	}
+}*/
 
 // Creates a configuration for the cluster
 func (c *Cluster) configure(cfg *config.ClusterConfig) error {
@@ -130,6 +155,11 @@ func (c *Cluster) clusterEventLoop() {
 					c.peerDisconnect(m)
 				}
 
+			case serf.EventQuery:
+				if event, ok := e.(*serf.Query); ok {
+					c.onQueryEvent(event)
+				}
+
 			// Handles user event which in this case is subscription or unsubscription.
 			case serf.EventUser:
 				event := e.(serf.UserEvent)
@@ -158,6 +188,14 @@ func (c *Cluster) Broadcast(name string, message interface{}) error {
 	}
 
 	return c.gossip.UserEvent(name, buffer, true)
+}
+
+// Occurs when a new cluster event is received.
+func (c *Cluster) onQueryEvent(e *serf.Query) {
+	c.OnQuery(Query{
+		Name:    e.Name,
+		Respond: e.Respond,
+	})
 }
 
 // Occurs when a new cluster event is received.
