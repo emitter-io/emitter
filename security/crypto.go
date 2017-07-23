@@ -117,6 +117,7 @@ func (c *Cipher) EncryptKey(k Key) (string, error) {
 	}
 
 	// Then encrypt the key using the master key
+	//fmt.Printf("%v", buffer)
 	err := c.encrypt(buffer)
 	return base64.RawURLEncoding.EncodeToString(buffer), err
 }

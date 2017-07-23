@@ -125,11 +125,10 @@ func (k Key) Expires() time.Time {
 
 // SetExpires sets the expiration date for the key.
 func (k Key) SetExpires(value time.Time) {
-	expire := value.Unix()
-	if expire > 0 {
-		expire = expire - timeOffset
+	expire := int64(0)
+	if !value.IsZero() {
+		expire = value.Unix() - timeOffset
 	}
-
 	k[20] = byte(uint32(expire) >> 24)
 	k[21] = byte(uint32(expire) >> 16)
 	k[22] = byte(uint32(expire) >> 8)

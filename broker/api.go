@@ -37,12 +37,12 @@ type keyGenMessage struct {
 	TTL     int32  `json:"ttl"`
 }
 
-func (m *keyGenMessage) expires() (time.Time, bool) {
+func (m *keyGenMessage) expires() time.Time {
 	if m.TTL == 0 {
-		return time.Time{}, false
+		return time.Time{}
 	}
 
-	return time.Now().Add(time.Second).UTC(), true
+	return time.Now().Add(time.Second).UTC()
 }
 
 func (m *keyGenMessage) access() uint32 {
@@ -85,7 +85,7 @@ func TryProcessAPIRequest(c *Conn, channel *security.Channel, payload []byte) bo
 
 	switch channel.Query[1] {
 	case RequestKeygen:
-		ProcessKeyGen(c.service, channel, payload)
+		KeyGen(c.service, channel, payload, false, 0)
 		return true
 	case RequestPresence:
 		return true
@@ -95,51 +95,57 @@ func TryProcessAPIRequest(c *Conn, channel *security.Channel, payload []byte) bo
 
 }
 
-// ProcessKeyGen processes a keygen request.
-func ProcessKeyGen(s *Service, channel *security.Channel, payload []byte) error {
+// KeyGen processes a keygen request.
+func KeyGen(s *Service, channel *security.Channel, payload []byte, fixedSalt bool, salt uint16) (string, error) {
 	// Deserialize the payload.
 	message := keyGenMessage{}
 	if err := json.Unmarshal(payload, &message); err != nil {
-		return err
+		return "", err
 	}
 
 	// Attempt to parse the key, this should be a master key
 	masterKey, err := s.Cipher.DecryptKey([]byte(message.Key))
 	if err != nil {
-		return err
+		return "", err
 	}
 	if !masterKey.IsMaster() || masterKey.IsExpired() {
-		return ErrUnauthorized
+		return "", ErrUnauthorized
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
 	contract := s.ContractProvider.Get(masterKey.Contract())
 	if contract == nil {
-		return ErrNotFound
+		return "", ErrNotFound
 	}
 
 	// Validate the contract
 	if !contract.Validate(masterKey) {
-		return ErrUnauthorized
+		return "", ErrUnauthorized
 	}
 
 	// Generate the key
 	key := security.Key(make([]byte, 24))
 
-	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt16))
-	key.SetSalt(uint16(n.Uint64()))
+	if !fixedSalt {
+		n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt16))
+		if err != nil {
+			return "", err
+		}
+		key.SetSalt(uint16(n.Uint64()))
+
+	} else {
+		key.SetSalt(salt)
+	}
+
 	key.SetMaster(masterKey.Master())
 	key.SetContract(masterKey.Contract())
 	key.SetSignature(masterKey.Signature())
 	key.SetPermissions(message.access())
 	key.SetTarget(utils.GetHash([]byte(message.Channel)))
+	key.SetExpires(message.expires())
 
-	if expire, ok := message.expires(); ok {
-		key.SetExpires(expire)
-	}
+	keyStr, _ := s.Cipher.EncryptKey(key)
+	println(keyStr)
 
-	//v, _ := s.Cipher.EncryptKey(key)
-	//println(v)
-
-	return nil
+	return keyStr, nil
 }

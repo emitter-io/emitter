@@ -50,7 +50,7 @@ func TestPubsub(t *testing.T) {
 		sub := mqtt.Subscribe{
 			Header: &mqtt.StaticHeader{QOS: 0},
 			Subscriptions: []mqtt.TopicQOSTuple{
-				{Topic: []byte("MmqZZ_HCRyZZpJKWBqm5YzVrtQmP8v1F/a/b/c/"), Qos: 0},
+				{Topic: []byte("0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/"), Qos: 0},
 			},
 		}
 		_, err := sub.EncodeTo(cli)
@@ -66,7 +66,7 @@ func TestPubsub(t *testing.T) {
 	{ // Publish a message
 		msg := mqtt.Publish{
 			Header:  &mqtt.StaticHeader{QOS: 0},
-			Topic:   []byte("MmqZZ_HCRyZZpJKWBqm5YzVrtQmP8v1F/a/b/c/"),
+			Topic:   []byte("0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/"),
 			Payload: []byte("hello world"),
 		}
 		_, err := msg.EncodeTo(cli)
