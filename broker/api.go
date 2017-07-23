@@ -39,7 +39,7 @@ type keyGenMessage struct {
 
 func (m *keyGenMessage) expires() time.Time {
 	if m.TTL == 0 {
-		return time.Time{}
+		return time.Unix(0, 0)
 	}
 
 	return time.Now().Add(time.Second).UTC()

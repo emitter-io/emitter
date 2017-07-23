@@ -25,7 +25,7 @@ func TestProcessKeygen(t *testing.T) {
 	}
 	payload, _ := json.Marshal(&message)
 
-	_, err := KeyGen(svc, channel, payload, true, 1)
+	s, err := KeyGen(svc, channel, payload, true, 1)
 	assert.Nil(t, err)
-	//assert.Equal(t, "bZbmNLlWGjMzK5V4cGdk_J7D9GldTiAj", s)
+	assert.Equal(t, "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO", s)
 }
