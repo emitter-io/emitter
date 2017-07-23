@@ -40,6 +40,7 @@ type Peer struct {
 	socket     net.Conn       // The underlying transport socket for reader and writers.
 	frame      MessageFrame   // The current message frame.
 	handshaken bool           // The flag for handshake.
+	closing    chan bool      // The closing channel.
 
 	OnClosing   func()                            // Handler which is invoked when the peer is closing is received.
 	OnHandshake func(*Peer, HandshakeEvent) error // Handler which is invoked when a handshake is received.
@@ -49,16 +50,17 @@ type Peer struct {
 // NewPeer creates a new peer for the connection.
 func newPeer(conn net.Conn) *Peer {
 	logging.Log(logConnection, "opened", conn.RemoteAddr().String())
-	peer := &Peer{
-		socket: conn,
-		writer: snappy.NewBufferedWriter(conn),
-		reader: snappy.NewReader(bufio.NewReaderSize(conn, readBufferSize)),
-		frame:  make(MessageFrame, 0, 64),
+	c := &Peer{
+		socket:  conn,
+		writer:  snappy.NewBufferedWriter(conn),
+		reader:  snappy.NewReader(bufio.NewReaderSize(conn, readBufferSize)),
+		frame:   make(MessageFrame, 0, 64),
+		closing: make(chan bool),
 	}
 
 	// Spawn the send queue processor as well
-	go peer.processSendQueue()
-	return peer
+	utils.Repeat(c.processSendQueue, 5*time.Millisecond, c.closing)
+	return c
 }
 
 // Send forwards the message to the remote server.
@@ -73,50 +75,48 @@ func (c *Peer) Send(ssid []uint32, channel []byte, payload []byte) error {
 
 // processSendQueue flushes the current frame to the remote server
 func (c *Peer) processSendQueue() {
-	encoder := encoding.NewEncoder(c.writer)
+	if len(c.frame) > 0 {
+		encoder := encoding.NewEncoder(c.writer)
 
-	for {
+		// Encode the current frame
+		c.Lock()
+		err := encoder.Encode(c.frame)
+		c.frame = c.frame[:0]
+		c.Unlock()
 
-		if len(c.frame) > 0 {
-			// Encode the current frame
-			c.Lock()
-			err := encoder.Encode(c.frame)
-			c.frame = c.frame[:0]
-			c.Unlock()
-
-			// Something went wrong during the encoding
-			if err != nil {
-				logging.LogError("peer", "encoding frame", err)
-			}
-
-			// Flush the writer
-			c.writer.Flush()
+		// Something went wrong during the encoding
+		if err != nil {
+			logging.LogError("peer", "encoding frame", err)
 		}
 
-		// Wait for a few milliseconds for the buffer to fill up and also let other goroutines
-		// to be scheduled and run meanwhile.
-		time.Sleep(5 * time.Millisecond)
+		// Flush the writer
+		c.writer.Flush()
 	}
 }
 
 // Handshake sends a handshake message to the peer.
-func (c *Peer) Handshake(node string) error {
+func (c *Peer) Handshake(node string) (err error) {
 	c.Lock()
 	defer c.Unlock()
-	if c.handshaken {
-		return nil // Avoid sending the handshake recursively.
+
+	// Avoid sending the handshake recursively.
+	if c.handshaken || node == "" {
+		return
 	}
 
+	// Send the handshake through
 	c.handshaken = true
-	if err := encoding.EncodeTo(c.writer, &HandshakeEvent{
-		Key:  "",
+	err = encoding.EncodeTo(c.writer, &HandshakeEvent{
+		Key:  "", // TODO add key
 		Node: node,
-	}); err != nil {
-		return err
-	}
+	})
 
 	// Flush the buffered writer so we'd actually write through the socket
-	return c.writer.Flush()
+	if err == nil {
+		err = c.writer.Flush()
+	}
+
+	return
 }
 
 // Process processes the messages.
@@ -141,7 +141,7 @@ func (c *Peer) Process() error {
 		// Decode an incoming message frame
 		frame, err := decodeMessageFrame(decoder)
 		if err != nil {
-			logging.LogError("peer", "decode frame", err)
+			//logging.LogError("peer", "decode frame", err)
 			return err
 		}
 
@@ -155,6 +155,7 @@ func (c *Peer) Process() error {
 // Close terminates the connection.
 func (c *Peer) Close() error {
 	logging.Log(logConnection, "closed", c.socket.RemoteAddr().String())
+	close(c.closing)
 
 	// Close the peer.
 	if c.OnClosing != nil {

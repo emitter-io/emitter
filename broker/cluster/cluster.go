@@ -206,20 +206,14 @@ func (c *Cluster) onHandshake(peer *Peer, e HandshakeEvent) error {
 
 // Occurs when a new peer connection is accepted.
 func (c *Cluster) onAccept(conn net.Conn) {
-
-	// Create a new peer with the appropriate delegates attached
 	peer := newPeer(conn)
 	peer.OnHandshake = c.onHandshake
 	peer.OnMessage = c.OnMessage
-
-	// Start the processing goroutine
 	go peer.Process()
 }
 
 // PeerConnect connects to the peer node.
 func (c *Cluster) peerConnect(node serf.Member) {
-
-	// Do not connect to ourselves
 	addr := node.Tags["route"]
 	if c.gossip.LocalMember().Tags["route"] == addr {
 		return
@@ -237,13 +231,10 @@ func (c *Cluster) peerConnect(node serf.Member) {
 	peer := newPeer(conn)
 	peer.OnHandshake = c.onHandshake
 	peer.OnMessage = c.OnMessage
+	go peer.Process()
 
 	// Send the handshake through
 	peer.Handshake(c.LocalName()) // TODO check error
-
-	// Start the processing goroutine
-	go peer.Process()
-
 }
 
 // PeerDisconnect disconnects from the peer node.
