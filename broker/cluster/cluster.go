@@ -146,16 +146,6 @@ func (c *Cluster) clusterEventLoop() {
 					c.peerConnect(m)
 				}
 
-			// Handles when a member failed or left the cluster, we need to make sure we
-			// are disconnected from our message forwarding.
-			case serf.EventMemberFailed:
-				fallthrough
-			case serf.EventMemberLeave:
-				event := e.(serf.MemberEvent)
-				for _, m := range event.Members {
-					c.peerDisconnect(m)
-				}
-
 			case serf.EventQuery:
 				if event, ok := e.(*serf.Query); ok {
 					c.onQueryEvent(event)
@@ -286,18 +276,6 @@ func (c *Cluster) peerConnect(node serf.Member) {
 
 	// Send the handshake through
 	peer.Handshake(c.LocalName(), c.Subscriptions) // TODO check error
-}
-
-// PeerDisconnect disconnects from the peer node.
-func (c *Cluster) peerDisconnect(node serf.Member) {
-	key := peerKey(node.Name)
-	if peer, ok := c.getPeer(node.Name); ok {
-		// Delete the key from the concurrent map
-		c.peers.Delete(key)
-
-		// Disconnect the peer as well
-		peer.Close()
-	}
 }
 
 // Occurs when a peer is closing
