@@ -103,7 +103,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	// Attempt to parse the key
 	key, err := c.service.Cipher.DecryptKey(channel.Key)
 	if err != nil {
-		// TODO
+		return ErrUnauthorized
 	}
 
 	// Has the key expired?
