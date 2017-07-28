@@ -4,9 +4,10 @@ import (
 	"testing"
 
 	//"github.com/emitter-io/emitter/encoding"
-	"github.com/emitter-io/emitter/network/mock"
+	netmock "github.com/emitter-io/emitter/network/mock"
 	"github.com/emitter-io/emitter/perf"
 	"github.com/emitter-io/emitter/security"
+	secmock "github.com/emitter-io/emitter/security/mock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,7 +21,7 @@ func TestHandlers_onSubscribe(t *testing.T) {
 		subcounters:      NewSubscriptionCounters(),
 	}
 
-	conn := mock.NewConn()
+	conn := netmock.NewConn()
 	nc := s.newConn(conn.Client)
 	s.Cipher, _ = s.License.Cipher()
 	err := nc.onSubscribe([]byte("0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/"))
@@ -33,8 +34,8 @@ func TestHandlers_onPublish(t *testing.T) {
 	license, _ := security.ParseLicense(testLicense)
 
 	singleContractProvider := security.NewSingleContractProvider(license)
-	invalidContractProvider := security.NewInvalidContractProvider(license)
-	notFoundContractProvider := security.NewNotFoundContractProvider(license)
+	invalidContractProvider := secmock.NewInvalidContractProvider(license)
+	notFoundContractProvider := secmock.NewNotFoundContractProvider(license)
 
 	s := &Service{
 		ContractProvider: singleContractProvider,
@@ -44,7 +45,7 @@ func TestHandlers_onPublish(t *testing.T) {
 		subcounters:      NewSubscriptionCounters(),
 	}
 
-	conn := mock.NewConn()
+	conn := netmock.NewConn()
 	nc := s.newConn(conn.Client)
 	s.Cipher, _ = s.License.Cipher()
 
@@ -103,7 +104,7 @@ func TestHandlers_onUnsubscribe(t *testing.T) {
 		subcounters:      NewSubscriptionCounters(),
 	}
 
-	conn := mock.NewConn()
+	conn := netmock.NewConn()
 	nc := s.newConn(conn.Client)
 	s.Cipher, _ = s.License.Cipher()
 	err := nc.onUnsubscribe([]byte("0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/"))
