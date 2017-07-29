@@ -10,6 +10,7 @@ import (
 	"github.com/emitter-io/emitter/security"
 	secmock "github.com/emitter-io/emitter/security/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestHandlers_onSubscribe(t *testing.T) {
@@ -34,9 +35,22 @@ func TestHandlers_onSubscribe(t *testing.T) {
 func TestHandlers_onPublish(t *testing.T) {
 	license, _ := security.ParseLicense(testLicense)
 
-	singleContractProvider := security.NewSingleContractProvider(license)
-	invalidContractProvider := secmock.NewInvalidContractProvider(license)
-	notFoundContractProvider := secmock.NewNotFoundContractProvider(license)
+	validContract := new(secmock.Contract)
+	invalidContract := new(secmock.Contract)
+	validContract.On("Validate", mock.Anything).Return(true)
+	invalidContract.On("Validate", mock.Anything).Return(false)
+
+	singleContractProvider := secmock.NewContractProvider()
+	singleContractProvider.On("Get", mock.Anything).Return(validContract)
+	singleContractProvider.On("Create").Return(validContract, nil)
+
+	invalidContractProvider := secmock.NewContractProvider()
+	invalidContractProvider.On("Get", mock.Anything).Return(invalidContract)
+	invalidContractProvider.On("Create").Return(invalidContract, nil)
+
+	notFoundContractProvider := secmock.NewContractProvider()
+	notFoundContractProvider.On("Get", mock.Anything).Return(nil)
+	notFoundContractProvider.On("Create").Return(nil, nil)
 
 	s := &Service{
 		ContractProvider: singleContractProvider,
@@ -71,7 +85,7 @@ func TestHandlers_onPublish(t *testing.T) {
 		{channel: "0Nq8SWbL8qoOKEDqh_ebBZRqJDby30mT/a/b/c/", payload: "test", err: ErrUnauthorized, contractProvider: singleContractProvider},
 
 		// Contract not found.
-		{channel: "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/", payload: "test", err: ErrUnauthorized, contractProvider: notFoundContractProvider},
+		{channel: "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/", payload: "test", err: ErrNotFound, contractProvider: notFoundContractProvider},
 
 		// Contract is invalid.
 		{channel: "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/", payload: "test", err: ErrUnauthorized, contractProvider: invalidContractProvider},

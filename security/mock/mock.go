@@ -39,6 +39,11 @@ func (mock *ContractProvider) Create() (security.Contract, error) {
 
 // Get returns a ContractData fetched by its id.
 func (mock *ContractProvider) Get(id uint32) security.Contract {
+
 	mockArgs := mock.Called(id)
-	return mockArgs.Get(0).(security.Contract)
+	contract := mockArgs.Get(0)
+	if contract != nil {
+		return contract.(security.Contract)
+	}
+	return nil
 }
