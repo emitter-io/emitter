@@ -151,6 +151,10 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 			Services.Storage.AppendAsync(contractId, ssid, ttl, message);
 		}
 	*/
+
+	// Write the ingress stats
+	contract.Stats().AddIngress(int64(len(payload)))
+
 	// Iterate through all subscribers and send them the message
 	ssid := NewSsid(key.Contract(), channel)
 	for _, subscriber := range c.service.subscriptions.Lookup(ssid) {

@@ -24,7 +24,6 @@ import (
 	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/mqtt"
-	"github.com/emitter-io/emitter/perf"
 	"github.com/emitter-io/emitter/security"
 )
 
@@ -46,7 +45,6 @@ type Conn struct {
 	id      uint64                   // The identifier of the connection.
 	service *Service                 // The service for this connection.
 	subs    map[uint32]*Subscription // The subscriptions for this connection.
-	count   *perf.NetworkCounters    // The cached network counters.
 }
 
 // NewConn creates a new connection.
@@ -55,11 +53,9 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		id:      nextIdentifier(),
 		service: s,
 		socket:  t,
-		count:   s.Counters.NewNetworkCounters(),
 		subs:    make(map[uint32]*Subscription),
 	}
 
-	s.Counters.GetCounter("net.conn").Increment()
 	logging.Log(logConnection, "created", c.id)
 	return c
 }
@@ -68,7 +64,6 @@ func (s *Service) newConn(t net.Conn) *Conn {
 func (c *Conn) Process() error {
 	defer c.Close()
 	reader := bufio.NewReaderSize(c.socket, 65536)
-	count := c.count
 
 	for {
 		// Decode an incoming MQTT packet
@@ -77,7 +72,6 @@ func (c *Conn) Process() error {
 			return err
 		}
 
-		count.PacketsIn.Increment()
 		switch msg.Type() {
 
 		// We got an attempt to connect to MQTT.
@@ -141,7 +135,6 @@ func (c *Conn) Process() error {
 		case mqtt.TypeOfPublish:
 			packet := msg.(*mqtt.Publish)
 
-			count.MessagesIn.Increment()
 			if err := c.onPublish(packet.Topic, packet.Payload); err != nil {
 				// TODO: Handle Error
 				println(err.Error())
@@ -177,9 +170,7 @@ func (c *Conn) Send(ssid []uint32, channel []byte, payload []byte) error {
 	}
 
 	// Track statistics about the outgoing message
-	c.count.MessagesOut.Increment()
-	c.count.PacketsOut.Increment()
-	c.count.TrafficOut.IncrementBy(int64(n))
+	c.service.ContractProvider.Get(ssid[0]).Stats().AddEgress(int64(n))
 	return nil
 }
 
@@ -241,6 +232,5 @@ func (c *Conn) Close() error {
 	}
 
 	// Decrement the connection counter and close the transport
-	c.service.Counters.GetCounter("net.conn").Decrement()
 	return c.socket.Close()
 }

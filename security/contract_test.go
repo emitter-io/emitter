@@ -15,6 +15,7 @@ func TestNewSingleContractProvider(t *testing.T) {
 	assert.EqualValues(t, p.owner.MasterID, 1)
 	assert.EqualValues(t, p.owner.Signature, license.Signature)
 	assert.EqualValues(t, p.owner.ID, license.Contract)
+	assert.NotNil(t, p.owner.Stats())
 }
 
 func TestSingleContractProvider_Create(t *testing.T) {

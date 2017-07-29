@@ -1,5 +1,6 @@
 package broker
 
+/*
 import (
 	"testing"
 
@@ -112,3 +113,4 @@ func TestHandlers_onUnsubscribe(t *testing.T) {
 	assert.Nil(t, err)
 	//assert.Equal(t, 1, s.Counters.GetCounter().Value())
 }
+*/

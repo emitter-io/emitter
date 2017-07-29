@@ -30,6 +30,7 @@ const (
 // Contract represents an interface for a contract.
 type Contract interface {
 	Validate(key Key) bool // Validate checks the security key with the contract.
+	Stats() UsageStats     // Gets the usage statistics.
 }
 
 // contract represents a contract (user account).
@@ -37,7 +38,8 @@ type contract struct {
 	ID        uint32 `json:"id"`     // Gets or sets the contract id.
 	MasterID  uint16 `json:"sign"`   // Gets or sets the master id.
 	Signature uint32 `json:"master"` // Gets or sets the signature of the contract.
-	State     uint8  `json:"state"`
+	State     uint8  `json:"state"`  // Gets or sets the state of the contract.
+	stats     *usage // Gets the usage stats.
 }
 
 // Validate validates the contract data against a key.
@@ -46,6 +48,11 @@ func (c *contract) Validate(key Key) bool {
 		c.Signature == key.Signature() &&
 		c.ID == key.Contract() &&
 		c.State == ContractStateAllowed
+}
+
+// Gets the usage statistics.
+func (c *contract) Stats() UsageStats {
+	return c.stats
 }
 
 // ContractProvider represents an interface for a contract provider.
@@ -67,6 +74,7 @@ func NewSingleContractProvider(license *License) *SingleContractProvider {
 	p.owner.MasterID = 1
 	p.owner.ID = license.Contract
 	p.owner.Signature = license.Signature
+	p.owner.stats = new(usage)
 	return p
 }
 
@@ -115,7 +123,10 @@ func (p *HTTPContractProvider) Get(id uint32) Contract {
 }
 
 func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
-	c := new(contract)
+	c := &contract{
+		stats: new(usage),
+	}
+
 	query := fmt.Sprintf("http://meta.emitter.io/v1/contract/%d", int32(id)) // meta currently requires a signed int
 	err := http.Get(query, c)
 
