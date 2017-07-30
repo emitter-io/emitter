@@ -15,7 +15,7 @@
 package address
 
 import (
-	"encoding/hex"
+	"encoding/base64"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -92,7 +92,7 @@ func initFingerprint() string {
 		for _, iface := range interfaces {
 			if len(iface.HardwareAddr) >= 6 {
 				copy(hardwareAddr[:], iface.HardwareAddr)
-				return hexEncode(hardwareAddr[:])
+				return encode(hardwareAddr[:])
 			}
 		}
 	}
@@ -103,11 +103,11 @@ func initFingerprint() string {
 	// Set multicast bit as recommended in RFC 4122
 	hardwareAddr[0] |= 0x01
 
-	return hexEncode(hardwareAddr[:])
+	return encode(hardwareAddr[:])
 }
 
-func hexEncode(data []byte) string {
-	return strings.ToUpper(hex.EncodeToString(data))
+func encode(data []byte) string {
+	return base64.RawURLEncoding.EncodeToString(data)
 }
 
 func safeRandom(dest []byte) {
