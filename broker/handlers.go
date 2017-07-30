@@ -106,7 +106,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := c.service.ContractProvider.Get(key.Contract())
+	contract := c.service.Contracts.Get(key.Contract())
 	if contract == nil {
 		return ErrNotFound
 	}
@@ -198,7 +198,7 @@ func (c *Conn) onKeyGen(channel *security.Channel, payload []byte) (interface{},
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := c.service.ContractProvider.Get(masterKey.Contract())
+	contract := c.service.Contracts.Get(masterKey.Contract())
 	if contract == nil {
 		return ErrNotFound, false
 	}

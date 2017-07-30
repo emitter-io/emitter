@@ -37,7 +37,7 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-	svc.ContractProvider = security.NewSingleContractProvider(svc.License)
+	svc.Contracts = security.NewSingleContractProvider(svc.License)
 
 	// Flush the log
 	utils.Repeat(func() {

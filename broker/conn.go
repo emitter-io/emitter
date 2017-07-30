@@ -16,12 +16,13 @@ package broker
 
 import (
 	"bufio"
+	"net"
+	"sync"
+
 	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/security"
-	"net"
-	"sync"
 )
 
 var logConnection = logging.AddLogger("[conn] connection %s id=%s")

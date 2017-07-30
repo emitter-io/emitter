@@ -13,10 +13,10 @@ import (
 func TestHandlers_onSubscribe(t *testing.T) {
 	license, _ := security.ParseLicense(testLicense)
 	s := &Service{
-		ContractProvider: security.NewSingleContractProvider(license),
-		subscriptions:    NewSubscriptionTrie(),
-		License:          license,
-		subcounters:      NewSubscriptionCounters(),
+		Contracts:     security.NewSingleContractProvider(license),
+		subscriptions: NewSubscriptionTrie(),
+		License:       license,
+		subcounters:   NewSubscriptionCounters(),
 	}
 
 	conn := netmock.NewConn()
@@ -126,10 +126,10 @@ func TestHandlers_onPublish(t *testing.T) {
 		}
 
 		s := &Service{
-			ContractProvider: provider,
-			subscriptions:    NewSubscriptionTrie(),
-			License:          license,
-			subcounters:      NewSubscriptionCounters(),
+			Contracts:     provider,
+			subscriptions: NewSubscriptionTrie(),
+			License:       license,
+			subcounters:   NewSubscriptionCounters(),
 		}
 
 		conn := netmock.NewConn()
@@ -145,10 +145,10 @@ func TestHandlers_onPublish(t *testing.T) {
 func TestHandlers_onUnsubscribe(t *testing.T) {
 	license, _ := security.ParseLicense(testLicense)
 	s := &Service{
-		ContractProvider: security.NewSingleContractProvider(license),
-		subscriptions:    NewSubscriptionTrie(),
-		License:          license,
-		subcounters:      NewSubscriptionCounters(),
+		Contracts:     security.NewSingleContractProvider(license),
+		subscriptions: NewSubscriptionTrie(),
+		License:       license,
+		subcounters:   NewSubscriptionCounters(),
 	}
 
 	conn := netmock.NewConn()

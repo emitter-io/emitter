@@ -107,7 +107,7 @@ func readMachineID() []byte {
 	} else {
 		// Fallback to rand number if machine id can't be gathered
 		if _, randErr := rand.Reader.Read(id); randErr != nil {
-			panic(fmt.Errorf("xid: cannot get hostname nor generate a random number: %v; %v", err, randErr))
+			panic(fmt.Errorf("security: cannot get hostname nor generate a random number: %v; %v", err, randErr))
 		}
 	}
 	return id
@@ -260,6 +260,6 @@ func (id *ID) Scan(value interface{}) (err error) {
 	case []byte:
 		return id.UnmarshalText(val)
 	default:
-		return fmt.Errorf("xid: scanning unsupported type: %T", value)
+		return fmt.Errorf("security: scanning unsupported type: %T", value)
 	}
 }
