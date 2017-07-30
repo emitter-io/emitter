@@ -11,7 +11,7 @@ import (
 func TestMock(t *testing.T) {
 	c := new(Contract)
 	c.On("Validate", mock.Anything).Return(true)
-	c.On("Stats").Return(nil)
+	c.On("Stats").Return(security.NewUsageStats())
 
 	m := NewContractProvider()
 	id := uint32(1)
@@ -19,7 +19,7 @@ func TestMock(t *testing.T) {
 	m.On("Get", id).Return(c)
 	assert.Equal(t, c, m.Get(id))
 	assert.True(t, m.Get(id).Validate(nil), true)
-	assert.Equal(t, security.UsageStats(nil), m.Get(id).Stats())
+	assert.Equal(t, security.NewUsageStats(), m.Get(id).Stats())
 
 	m.On("Create").Return(c, nil)
 	contract, err := m.Create()

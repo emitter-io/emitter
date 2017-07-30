@@ -125,22 +125,18 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 		return ErrUnauthorized
 	}
 
-	// Do we have a TTL with the message?
-	_, hasTTL := channel.TTL()
-
 	// In case of ttl, check the key provides the permission to store (soft permission)
-	if hasTTL && !key.HasPermission(security.AllowStore) {
-		//ttl = 0
-	}
+	if _, ok := channel.TTL(); ok && key.HasPermission(security.AllowStore) {
 
-	/*
-		// Only call into the storage service if necessary
-		if (ttl > 0 && Services.Storage != null)
-		{
-			// If we have a storage service, store the message
-			Services.Storage.AppendAsync(contractId, ssid, ttl, message);
-		}
-	*/
+		/*
+			// Only call into the storage service if necessary
+			if (Services.Storage != null)
+			{
+				// If we have a storage service, store the message
+				Services.Storage.AppendAsync(contractId, ssid, ttl, message);
+			}
+		*/
+	}
 
 	// Write the ingress stats
 	contract.Stats().AddIngress(int64(len(payload)))

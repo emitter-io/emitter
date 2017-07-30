@@ -18,7 +18,8 @@ func (mock *Contract) Validate(key security.Key) bool {
 
 // Stats returns the stats.
 func (mock *Contract) Stats() security.UsageStats {
-	return nil
+	mockArgs := mock.Called()
+	return mockArgs.Get(0).(security.UsageStats)
 }
 
 // ContractProvider is the mock provider for contracts

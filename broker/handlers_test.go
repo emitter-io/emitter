@@ -30,77 +30,112 @@ func TestHandlers_onSubscribe(t *testing.T) {
 
 func TestHandlers_onPublish(t *testing.T) {
 	license, _ := security.ParseLicense(testLicense)
-
-	validContract := new(secmock.Contract)
-	invalidContract := new(secmock.Contract)
-	validContract.On("Validate", mock.Anything).Return(true)
-	invalidContract.On("Validate", mock.Anything).Return(false)
-
-	singleContractProvider := secmock.NewContractProvider()
-	singleContractProvider.On("Get", mock.Anything).Return(validContract)
-	singleContractProvider.On("Create").Return(validContract, nil)
-
-	invalidContractProvider := secmock.NewContractProvider()
-	invalidContractProvider.On("Get", mock.Anything).Return(invalidContract)
-	invalidContractProvider.On("Create").Return(invalidContract, nil)
-
-	notFoundContractProvider := secmock.NewContractProvider()
-	notFoundContractProvider.On("Get", mock.Anything).Return(nil)
-	notFoundContractProvider.On("Create").Return(nil, nil)
-
-	s := &Service{
-		ContractProvider: singleContractProvider,
-		subscriptions:    NewSubscriptionTrie(),
-		License:          license,
-		subcounters:      NewSubscriptionCounters(),
-	}
-
-	conn := netmock.NewConn()
-	nc := s.newConn(conn.Client)
-	s.Cipher, _ = s.License.Cipher()
-
 	tests := []struct {
-		channel          string
-		payload          string
-		err              error
-		contractProvider security.ContractProvider
+		channel       string
+		payload       string
+		err           error
+		contractValid bool
+		contractFound bool
+		msg           string
 	}{
-		// Successful.
-		{channel: "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/", payload: "test", err: (*EventError)(nil), contractProvider: singleContractProvider},
-
-		// Channel is invalid.
-		{channel: "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a+q/b/c/", payload: "test", err: ErrBadRequest, contractProvider: singleContractProvider},
-
-		// Channel is not static.
-		{channel: "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/+/b/c/", payload: "test", err: ErrForbidden, contractProvider: singleContractProvider},
-
-		// The key could not be decrypted.
-
-		// Key is expired.
-		{channel: "0Nq8SWbL8qoOKEDqh_ebBZRqJDby30mT/a/b/c/", payload: "test", err: ErrUnauthorized, contractProvider: singleContractProvider},
-
-		// Contract not found.
-		{channel: "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/", payload: "test", err: ErrNotFound, contractProvider: notFoundContractProvider},
-
-		// Contract is invalid.
-		{channel: "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/", payload: "test", err: ErrUnauthorized, contractProvider: invalidContractProvider},
-
-		// Key does not provide the permission to write.
-		{channel: "0Nq8SWbL8qoJzie4_C4yvupug6cLLlWO/a/b/c/", payload: "test", err: ErrUnauthorized, contractProvider: singleContractProvider},
-
-		// Key does not provide the permission for that channel.
-		{channel: "0Nq8SWbL8qoOKEDqh_ebBZHmCtcvoHGQ/a/b/c/", payload: "test", err: ErrUnauthorized, contractProvider: singleContractProvider},
-
-		// A TTL is specified but the key does not provide the permission to store.
-		{channel: "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/", payload: "test", err: (*EventError)(nil), contractProvider: singleContractProvider},
+		{
+			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
+			payload:       "test",
+			err:           (*EventError)(nil),
+			contractValid: true,
+			contractFound: true,
+			msg:           "Successful case",
+		},
+		{
+			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a+q/b/c/",
+			payload:       "test",
+			err:           ErrBadRequest,
+			contractValid: true,
+			contractFound: true,
+			msg:           "Invalid channel case",
+		},
+		{
+			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/+/b/c/",
+			payload:       "test",
+			err:           ErrForbidden,
+			contractValid: true,
+			contractFound: true,
+			msg:           "Channel is not static case",
+		},
+		{
+			channel:       "0Nq8SWbL8qoOKEDqh_ebBZRqJDby30mT/a/b/c/",
+			payload:       "test",
+			err:           ErrUnauthorized,
+			contractValid: true,
+			contractFound: true,
+			msg:           "Expired key case",
+		},
+		{
+			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
+			payload:       "test",
+			err:           ErrNotFound,
+			contractValid: true,
+			contractFound: false,
+			msg:           "Contract not found case",
+		},
+		{
+			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
+			payload:       "test",
+			err:           ErrUnauthorized,
+			contractValid: false,
+			contractFound: true,
+			msg:           "Contract is invalid case",
+		},
+		{
+			channel:       "0Nq8SWbL8qoJzie4_C4yvupug6cLLlWO/a/b/c/",
+			payload:       "test",
+			err:           ErrUnauthorized,
+			contractValid: true,
+			contractFound: true,
+			msg:           "No write permission case",
+		},
+		{
+			channel:       "0Nq8SWbL8qoOKEDqh_ebBZHmCtcvoHGQ/a/b/c/",
+			payload:       "test",
+			err:           ErrUnauthorized,
+			contractValid: true,
+			contractFound: true,
+			msg:           "Wrong target case",
+		},
+		{
+			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
+			payload:       "test",
+			err:           (*EventError)(nil),
+			contractValid: true,
+			contractFound: true,
+			msg:           "No store permission case",
+		},
 	}
 
 	for _, tc := range tests {
-		s.ContractProvider = tc.contractProvider
+
+		contract := new(secmock.Contract)
+		contract.On("Validate", mock.Anything).Return(tc.contractValid)
+		contract.On("Stats").Return(security.NewUsageStats())
+
+		provider := secmock.NewContractProvider()
+		provider.On("Get", mock.Anything).Return(contract)
+		provider.On("Create").Return(contract, nil)
+
+		s := &Service{
+			ContractProvider: provider,
+			subscriptions:    NewSubscriptionTrie(),
+			License:          license,
+			subcounters:      NewSubscriptionCounters(),
+		}
+
+		conn := netmock.NewConn()
+		nc := s.newConn(conn.Client)
+		s.Cipher, _ = s.License.Cipher()
+
 		err := nc.onPublish([]byte(tc.channel), []byte(tc.payload))
 
-		assert.Equal(t, tc.err, err)
-
+		assert.Equal(t, tc.err, err, tc.msg)
 	}
 }
 

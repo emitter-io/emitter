@@ -13,6 +13,11 @@ type UsageStats interface {
 	Reset()                     // Resets the tracker.
 }
 
+// NewUsageStats constructs a new usage statistics instance.
+func NewUsageStats() UsageStats {
+	return new(usage)
+}
+
 type usage struct {
 	messageIn int64
 	trafficIn int64

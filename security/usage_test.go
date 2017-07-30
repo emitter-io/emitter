@@ -7,8 +7,7 @@ import (
 )
 
 func TestNewUsageTracker(t *testing.T) {
-	tracker := usage{}
-
+	tracker := NewUsageStats()
 	tracker.AddIngress(100)
 	tracker.AddEgress(200)
 
