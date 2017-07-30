@@ -163,15 +163,10 @@ func (c *Conn) Send(ssid []uint32, channel []byte, payload []byte) error {
 	}
 
 	// Acknowledge the publication
-	n, err := packet.EncodeTo(c.socket)
+	_, err := packet.EncodeTo(c.socket)
 	if err != nil {
 		logging.LogError("conn", "message send", err)
 		return err
-	}
-
-	// Track statistics about the outgoing message
-	if len(ssid) > 0 {
-		c.service.ContractProvider.Get(ssid[0]).Stats().AddEgress(int64(n))
 	}
 
 	return nil

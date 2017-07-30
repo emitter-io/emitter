@@ -144,8 +144,10 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 
 	// Iterate through all subscribers and send them the message
 	ssid := NewSsid(key.Contract(), channel)
+	size := int64(len(payload))
 	for _, subscriber := range c.service.subscriptions.Lookup(ssid) {
-		subscriber.Send(ssid, channel.Channel, payload)
+		subscriber.Send(ssid, channel.Channel, payload) // Send to the client
+		contract.Stats().AddEgress(size)                // Write the egress stats
 	}
 
 	return nil

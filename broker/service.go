@@ -195,10 +195,21 @@ func (s *Service) onUnsubscribe(peer *cluster.Peer, event cluster.SubscriptionEv
 func (s *Service) onPeerMessage(m *cluster.Message) {
 	fmt.Printf("message from peer on '%v' \n", string(m.Channel))
 
+	// Get the contract
+	ssid := Ssid(m.Ssid)
+	contract := s.ContractProvider.Get(ssid.Contract())
+
 	// Iterate through all subscribers and send them the message
-	for _, subscriber := range s.subscriptions.Lookup(Ssid(m.Ssid)) {
+	for _, subscriber := range s.subscriptions.Lookup(ssid) {
 		if _, local := subscriber.(*Conn); local {
+
+			// Send to the local subscriber
 			subscriber.Send(m.Ssid, m.Channel, m.Payload)
+
+			// Write the egress stats
+			if contract != nil {
+				contract.Stats().AddEgress(int64(len(m.Payload)))
+			}
 		}
 	}
 }

@@ -17,6 +17,7 @@ package security
 import (
 	"errors"
 	"fmt"
+
 	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/network/http"
 )

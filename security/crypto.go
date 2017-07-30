@@ -18,11 +18,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"github.com/emitter-io/emitter/utils"
 	"math"
 	"math/big"
 	"strconv"
 	"time"
+
+	"github.com/emitter-io/emitter/utils"
 )
 
 const (
