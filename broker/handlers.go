@@ -157,19 +157,24 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok bool) {
 	var resp interface{}
 	defer func() {
-		if b, err := json.Marshal(resp); err != nil {
+		if b, err := json.Marshal(resp); err == nil {
 			c.Send(nil, []byte("emitter/"+string(channel.Channel)), b)
 		}
 	}()
 
-	switch channel.Query[1] {
+	// Make sure we have a query
+	resp = ErrNotFound
+	if len(channel.Query) < 1 {
+		return
+	}
+
+	switch channel.Query[0] {
 	case requestKeygen:
 		resp, ok = c.onKeyGen(c.service, channel, payload)
 		return
 	case requestPresence:
 		return
 	default:
-		resp = ErrNotFound
 		return
 	}
 }
