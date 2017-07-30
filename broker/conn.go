@@ -170,7 +170,10 @@ func (c *Conn) Send(ssid []uint32, channel []byte, payload []byte) error {
 	}
 
 	// Track statistics about the outgoing message
-	c.service.ContractProvider.Get(ssid[0]).Stats().AddEgress(int64(n))
+	if len(ssid) > 0 {
+		c.service.ContractProvider.Get(ssid[0]).Stats().AddEgress(int64(n))
+	}
+
 	return nil
 }
 

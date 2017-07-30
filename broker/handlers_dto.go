@@ -8,34 +8,34 @@ import (
 
 // EventError represents an event code which provides a more de.
 type EventError struct {
-	code int
-	msg  string
+	Status  int    `json:"status"`
+	Message string `json:"message"`
 }
 
 // Error implements error interface.
-func (e *EventError) Error() string { return e.msg }
+func (e *EventError) Error() string { return e.Message }
 
 // Represents a set of errors used in the handlers.
 var (
-	ErrBadRequest      = &EventError{code: 400, msg: "The request was invalid or cannot be otherwise served."}
-	ErrUnauthorized    = &EventError{code: 401, msg: "The security key provided is not authorized to perform this operation."}
-	ErrPaymentRequired = &EventError{code: 402, msg: "The request can not be served, as the payment is required to proceed."}
-	ErrForbidden       = &EventError{code: 403, msg: "The request is understood, but it has been refused or access is not allowed."}
-	ErrNotFound        = &EventError{code: 404, msg: "The resource requested does not exist."}
-	ErrServerError     = &EventError{code: 500, msg: "An unexpected condition was encountered and no more specific message is suitable."}
-	ErrNotImplemented  = &EventError{code: 501, msg: "The server either does not recognize the request method, or it lacks the ability to fulfill the request."}
+	ErrBadRequest      = &EventError{Status: 400, Message: "The request was invalid or cannot be otherwise served."}
+	ErrUnauthorized    = &EventError{Status: 401, Message: "The security key provided is not authorized to perform this operation."}
+	ErrPaymentRequired = &EventError{Status: 402, Message: "The request can not be served, as the payment is required to proceed."}
+	ErrForbidden       = &EventError{Status: 403, Message: "The request is understood, but it has been refused or access is not allowed."}
+	ErrNotFound        = &EventError{Status: 404, Message: "The resource requested does not exist."}
+	ErrServerError     = &EventError{Status: 500, Message: "An unexpected condition was encountered and no more specific message is suitable."}
+	ErrNotImplemented  = &EventError{Status: 501, Message: "The server either does not recognize the request method, or it lacks the ability to fulfill the request."}
 )
 
 // ------------------------------------------------------------------------------------
 
-type keyGenMessage struct {
+type keyGenRequest struct {
 	Key     string `json:"key"`
 	Channel string `json:"channel"`
 	Type    string `json:"type"`
 	TTL     int32  `json:"ttl"`
 }
 
-func (m *keyGenMessage) expires() time.Time {
+func (m *keyGenRequest) expires() time.Time {
 	if m.TTL == 0 {
 		return time.Unix(0, 0)
 	}
@@ -43,7 +43,7 @@ func (m *keyGenMessage) expires() time.Time {
 	return time.Now().Add(time.Second).UTC()
 }
 
-func (m *keyGenMessage) access() uint32 {
+func (m *keyGenRequest) access() uint32 {
 	required := security.AllowNone
 
 	for i := 0; i < len(m.Type); i++ {
@@ -62,4 +62,12 @@ func (m *keyGenMessage) access() uint32 {
 	}
 
 	return required
+}
+
+// ------------------------------------------------------------------------------------
+
+type keyGenResponse struct {
+	Status  int    `json:"status"`
+	Key     string `json:"key"`
+	Channel string `json:"channel"`
 }

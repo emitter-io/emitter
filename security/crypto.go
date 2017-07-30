@@ -129,12 +129,12 @@ func (c *Cipher) EncryptKey(k Key) (string, error) {
 
 // GenerateKey generates a new key.
 func (c *Cipher) GenerateKey(masterKey Key, channel string, permissions uint32, expires time.Time) (string, error) {
-	key := Key(make([]byte, 24))
 	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt16))
 	if err != nil {
 		return "", err
 	}
 
+	key := Key(make([]byte, 24))
 	key.SetSalt(uint16(n.Uint64()))
 	key.SetMaster(masterKey.Master())
 	key.SetContract(masterKey.Contract())

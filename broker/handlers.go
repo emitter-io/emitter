@@ -90,7 +90,8 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 
 	// Check whether the key is 'emitter' which means it's an API request
 	if len(channel.Key) == 7 && string(channel.Key) == "emitter" {
-		return c.onEmitterRequest(channel, payload)
+		c.onEmitterRequest(channel, payload)
+		return nil
 	}
 
 	// Attempt to parse the key
@@ -153,49 +154,62 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 // ------------------------------------------------------------------------------------
 
 // onEmitterRequest processes an emitter request.
-func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (err *EventError) {
+func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok bool) {
+	var resp interface{}
+	defer func() {
+		if b, err := json.Marshal(resp); err != nil {
+			c.Send(nil, []byte("emitter/"+string(channel.Channel)), b)
+		}
+	}()
 
 	switch channel.Query[1] {
 	case requestKeygen:
-		c.onKeyGen(c.service, channel, payload)
-		return nil
+		resp, ok = c.onKeyGen(c.service, channel, payload)
+		return
 	case requestPresence:
-		return nil
+		return
 	default:
-		return nil
+		return
 	}
 }
 
 // ------------------------------------------------------------------------------------
 
 // onKeyGen processes a keygen request.
-func (c *Conn) onKeyGen(s *Service, channel *security.Channel, payload []byte) (string, error) {
+func (c *Conn) onKeyGen(s *Service, channel *security.Channel, payload []byte) (interface{}, bool) {
 	// Deserialize the payload.
-	message := keyGenMessage{}
+	message := keyGenRequest{}
 	if err := json.Unmarshal(payload, &message); err != nil {
-		return "", err
+		return ErrBadRequest, false
 	}
 
 	// Attempt to parse the key, this should be a master key
 	masterKey, err := s.Cipher.DecryptKey([]byte(message.Key))
-	if err != nil {
-		return "", err
-	}
-	if !masterKey.IsMaster() || masterKey.IsExpired() {
-		return "", ErrUnauthorized
+	if err != nil || !masterKey.IsMaster() || masterKey.IsExpired() {
+		return ErrUnauthorized, false
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
 	contract := s.ContractProvider.Get(masterKey.Contract())
 	if contract == nil {
-		return "", ErrNotFound
+		return ErrNotFound, false
 	}
 
 	// Validate the contract
 	if !contract.Validate(masterKey) {
-		return "", ErrUnauthorized
+		return ErrUnauthorized, false
 	}
 
 	// Use the cipher to generate the key
-	return s.Cipher.GenerateKey(masterKey, message.Channel, message.access(), message.expires())
+	key, err := s.Cipher.GenerateKey(masterKey, message.Channel, message.access(), message.expires())
+	if err != nil {
+		return ErrServerError, false
+	}
+
+	// Success, return the response
+	return &keyGenResponse{
+		Status:  200,
+		Key:     key,
+		Channel: string(channel.Channel),
+	}, true
 }
