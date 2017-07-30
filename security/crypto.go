@@ -15,9 +15,14 @@
 package security
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"github.com/emitter-io/emitter/utils"
+	"math"
+	"math/big"
 	"strconv"
+	"time"
 )
 
 const (
@@ -120,6 +125,24 @@ func (c *Cipher) EncryptKey(k Key) (string, error) {
 	//fmt.Printf("%v", buffer)
 	err := c.encrypt(buffer)
 	return base64.RawURLEncoding.EncodeToString(buffer), err
+}
+
+// GenerateKey generates a new key.
+func (c *Cipher) GenerateKey(masterKey Key, channel string, permissions uint32, expires time.Time) (string, error) {
+	key := Key(make([]byte, 24))
+	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt16))
+	if err != nil {
+		return "", err
+	}
+
+	key.SetSalt(uint16(n.Uint64()))
+	key.SetMaster(masterKey.Master())
+	key.SetContract(masterKey.Contract())
+	key.SetSignature(masterKey.Signature())
+	key.SetPermissions(permissions)
+	key.SetTarget(utils.GetHash([]byte(channel)))
+	key.SetExpires(expires)
+	return c.EncryptKey(key)
 }
 
 // encrypt encrypts the data. This is done in-place and it's actually

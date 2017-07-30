@@ -15,28 +15,17 @@
 package broker
 
 import (
+	"encoding/json"
+
 	"github.com/emitter-io/emitter/security"
 )
 
-// EventError represents an event code which provides a more de.
-type EventError struct {
-	code int
-	msg  string
-}
-
-// Error implements error interface.
-func (e *EventError) Error() string { return e.msg }
-
-// Represents a set of errors used in the handlers.
-var (
-	ErrBadRequest      = &EventError{code: 400, msg: "The request was invalid or cannot be otherwise served."}
-	ErrUnauthorized    = &EventError{code: 401, msg: "The security key provided is not authorized to perform this operation."}
-	ErrPaymentRequired = &EventError{code: 402, msg: "The request can not be served, as the payment is required to proceed."}
-	ErrForbidden       = &EventError{code: 403, msg: "The request is understood, but it has been refused or access is not allowed."}
-	ErrNotFound        = &EventError{code: 404, msg: "The resource requested does not exist."}
-	ErrServerError     = &EventError{code: 500, msg: "An unexpected condition was encountered and no more specific message is suitable."}
-	ErrNotImplemented  = &EventError{code: 501, msg: "The server either does not recognize the request method, or it lacks the ability to fulfill the request."}
+const (
+	requestKeygen   = 548658350
+	requestPresence = 3869262148
 )
+
+// ------------------------------------------------------------------------------------
 
 // OnSubscribe is a handler for MQTT Subscribe events.
 func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
@@ -58,6 +47,8 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 
 	return nil
 }
+
+// ------------------------------------------------------------------------------------
 
 // OnUnsubscribe is a handler for MQTT Unsubscribe events.
 func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
@@ -81,6 +72,8 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 	return nil
 }
 
+// ------------------------------------------------------------------------------------
+
 // OnPublish is a handler for MQTT Publish events.
 func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 
@@ -95,9 +88,9 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 		return ErrForbidden
 	}
 
-	// Is this a special api request?
-	if TryProcessAPIRequest(c, channel, payload) {
-		return nil
+	// Check whether the key is 'emitter' which means it's an API request
+	if len(channel.Key) != 7 && string(channel.Key) != "emitter" {
+		return c.onEmitterRequest(channel, payload)
 	}
 
 	// Attempt to parse the key
@@ -162,4 +155,54 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	}
 
 	return nil
+}
+
+// ------------------------------------------------------------------------------------
+
+// onEmitterRequest processes an emitter request.
+func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (err *EventError) {
+
+	switch channel.Query[1] {
+	case requestKeygen:
+		c.onKeyGen(c.service, channel, payload)
+		return nil
+	case requestPresence:
+		return nil
+	default:
+		return nil
+	}
+}
+
+// ------------------------------------------------------------------------------------
+
+// onKeyGen processes a keygen request.
+func (c *Conn) onKeyGen(s *Service, channel *security.Channel, payload []byte) (string, error) {
+	// Deserialize the payload.
+	message := keyGenMessage{}
+	if err := json.Unmarshal(payload, &message); err != nil {
+		return "", err
+	}
+
+	// Attempt to parse the key, this should be a master key
+	masterKey, err := s.Cipher.DecryptKey([]byte(message.Key))
+	if err != nil {
+		return "", err
+	}
+	if !masterKey.IsMaster() || masterKey.IsExpired() {
+		return "", ErrUnauthorized
+	}
+
+	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract := s.ContractProvider.Get(masterKey.Contract())
+	if contract == nil {
+		return "", ErrNotFound
+	}
+
+	// Validate the contract
+	if !contract.Validate(masterKey) {
+		return "", ErrUnauthorized
+	}
+
+	// Use the cipher to generate the key
+	return s.Cipher.GenerateKey(masterKey, message.Channel, message.access(), message.expires())
 }

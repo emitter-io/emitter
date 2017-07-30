@@ -1,12 +1,9 @@
 package broker
 
-/*
 import (
 	"testing"
 
-	//"github.com/emitter-io/emitter/encoding"
 	netmock "github.com/emitter-io/emitter/network/mock"
-	"github.com/emitter-io/emitter/perf"
 	"github.com/emitter-io/emitter/security"
 	secmock "github.com/emitter-io/emitter/security/mock"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +16,6 @@ func TestHandlers_onSubscribe(t *testing.T) {
 		ContractProvider: security.NewSingleContractProvider(license),
 		subscriptions:    NewSubscriptionTrie(),
 		License:          license,
-		Counters:         perf.NewCounters(),
 		subcounters:      NewSubscriptionCounters(),
 	}
 
@@ -56,7 +52,6 @@ func TestHandlers_onPublish(t *testing.T) {
 		ContractProvider: singleContractProvider,
 		subscriptions:    NewSubscriptionTrie(),
 		License:          license,
-		Counters:         perf.NewCounters(),
 		subcounters:      NewSubscriptionCounters(),
 	}
 
@@ -115,7 +110,6 @@ func TestHandlers_onUnsubscribe(t *testing.T) {
 		ContractProvider: security.NewSingleContractProvider(license),
 		subscriptions:    NewSubscriptionTrie(),
 		License:          license,
-		Counters:         perf.NewCounters(),
 		subcounters:      NewSubscriptionCounters(),
 	}
 
@@ -127,4 +121,3 @@ func TestHandlers_onUnsubscribe(t *testing.T) {
 	assert.Nil(t, err)
 	//assert.Equal(t, 1, s.Counters.GetCounter().Value())
 }
-*/
