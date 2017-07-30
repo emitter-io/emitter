@@ -172,7 +172,7 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 
 	switch channel.Query[0] {
 	case requestKeygen:
-		resp, ok = c.onKeyGen(c.service, channel, payload)
+		resp, ok = c.onKeyGen(channel, payload)
 		return
 	case requestPresence:
 		return
@@ -184,7 +184,7 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 // ------------------------------------------------------------------------------------
 
 // onKeyGen processes a keygen request.
-func (c *Conn) onKeyGen(s *Service, channel *security.Channel, payload []byte) (interface{}, bool) {
+func (c *Conn) onKeyGen(channel *security.Channel, payload []byte) (interface{}, bool) {
 	// Deserialize the payload.
 	message := keyGenRequest{}
 	if err := json.Unmarshal(payload, &message); err != nil {
@@ -192,13 +192,13 @@ func (c *Conn) onKeyGen(s *Service, channel *security.Channel, payload []byte) (
 	}
 
 	// Attempt to parse the key, this should be a master key
-	masterKey, err := s.Cipher.DecryptKey([]byte(message.Key))
+	masterKey, err := c.service.Cipher.DecryptKey([]byte(message.Key))
 	if err != nil || !masterKey.IsMaster() || masterKey.IsExpired() {
 		return ErrUnauthorized, false
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := s.ContractProvider.Get(masterKey.Contract())
+	contract := c.service.ContractProvider.Get(masterKey.Contract())
 	if contract == nil {
 		return ErrNotFound, false
 	}
@@ -209,7 +209,7 @@ func (c *Conn) onKeyGen(s *Service, channel *security.Channel, payload []byte) (
 	}
 
 	// Use the cipher to generate the key
-	key, err := s.Cipher.GenerateKey(masterKey, message.Channel, message.access(), message.expires())
+	key, err := c.service.Cipher.GenerateKey(masterKey, message.Channel, message.access(), message.expires())
 	if err != nil {
 		return ErrServerError, false
 	}

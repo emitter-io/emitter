@@ -16,33 +16,21 @@ package broker
 
 import (
 	"bufio"
-	"net"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/security"
+	"net"
+	"sync"
 )
 
-var logConnection = logging.AddLogger("[conn] connection %s id=%u64")
-
-// nextIdentifier generates next identifier and uses the clock to initialize
-// the counter for reboot tolerance.
-var nextIdentifier = func() func() uint64 {
-	id := uint64(time.Now().UTC().Unix())
-	return func() uint64 {
-		return atomic.AddUint64(&id, 1)
-	}
-}()
+var logConnection = logging.AddLogger("[conn] connection %s id=%s")
 
 // Conn represents an incoming connection.
 type Conn struct {
 	sync.Mutex
 	socket  net.Conn                 // The transport used to read and write messages.
-	id      uint64                   // The identifier of the connection.
+	id      security.ID              // The identifier of the connection.
 	service *Service                 // The service for this connection.
 	subs    map[uint32]*Subscription // The subscriptions for this connection.
 }
@@ -50,13 +38,13 @@ type Conn struct {
 // NewConn creates a new connection.
 func (s *Service) newConn(t net.Conn) *Conn {
 	c := &Conn{
-		id:      nextIdentifier(),
+		id:      security.NewID(),
 		service: s,
 		socket:  t,
 		subs:    make(map[uint32]*Subscription),
 	}
 
-	logging.Log(logConnection, "created", c.id)
+	logging.Log(logConnection, "created", c.id.String())
 	return c
 }
 
@@ -222,7 +210,7 @@ func (c *Conn) Unsubscribe(ssid Ssid) {
 func (c *Conn) Close() error {
 	c.Lock()
 	defer c.Unlock()
-	logging.Log(logConnection, "closed", c.id)
+	logging.Log(logConnection, "closed", c.id.String())
 
 	// Unsubscribe from everything. TODO: Lock this?
 	for _, s := range c.subs {
