@@ -169,6 +169,7 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 	case requestPresence:
 		return
 	default:
+		resp = ErrNotFound
 		return
 	}
 }
