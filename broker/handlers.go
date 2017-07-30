@@ -89,7 +89,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	}
 
 	// Check whether the key is 'emitter' which means it's an API request
-	if len(channel.Key) != 7 && string(channel.Key) != "emitter" {
+	if len(channel.Key) == 7 && string(channel.Key) == "emitter" {
 		return c.onEmitterRequest(channel, payload)
 	}
 
@@ -121,10 +121,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	}
 
 	// Check if the key has the permission for the required channel
-
-	kt := key.Target()
-	ct := channel.Target()
-	if kt != 0 && kt != ct {
+	if key.Target() != 0 && key.Target() != channel.Target() {
 		return ErrUnauthorized
 	}
 
