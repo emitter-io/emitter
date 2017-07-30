@@ -119,8 +119,11 @@ func TestHandlers_onPublish(t *testing.T) {
 		contract.On("Stats").Return(security.NewUsageStats())
 
 		provider := secmock.NewContractProvider()
-		provider.On("Get", mock.Anything).Return(contract)
-		provider.On("Create").Return(contract, nil)
+		if tc.contractFound {
+			provider.On("Get", mock.Anything).Return(contract).Once()
+		} else {
+			provider.On("Get", mock.Anything).Return(nil).Once()
+		}
 
 		s := &Service{
 			ContractProvider: provider,
