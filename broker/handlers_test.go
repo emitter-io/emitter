@@ -101,10 +101,10 @@ func TestHandlers_onSubscribe(t *testing.T) {
 		}
 
 		s := &Service{
-		Contracts:     security.NewSingleContractProvider(license),
-		subscriptions: NewSubscriptionTrie(),
-		License:       license,
-		subcounters:   NewSubscriptionCounters(),
+			Contracts:     provider,
+			subscriptions: NewSubscriptionTrie(),
+			License:       license,
+			subcounters:   NewSubscriptionCounters(),
 		}
 
 		conn := netmock.NewConn()

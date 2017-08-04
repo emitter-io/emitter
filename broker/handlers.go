@@ -48,7 +48,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := c.service.ContractProvider.Get(key.Contract())
+	contract := c.service.Contracts.Get(key.Contract())
 	if contract == nil {
 		return ErrNotFound
 	}
@@ -97,7 +97,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := c.service.ContractProvider.Get(key.Contract())
+	contract := c.service.Contracts.Get(key.Contract())
 	if contract == nil {
 		return ErrNotFound
 	}
