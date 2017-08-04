@@ -42,6 +42,32 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 		return ErrBadRequest
 	}
 
+	// Has the key expired?
+	if key.IsExpired() {
+		return ErrUnauthorized
+	}
+
+	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract := c.service.ContractProvider.Get(key.Contract())
+	if contract == nil {
+		return ErrNotFound
+	}
+
+	// Validate the contract
+	if !contract.Validate(key) {
+		return ErrUnauthorized
+	}
+
+	// Check if the key has the permission to read from here
+	if !key.HasPermission(security.AllowRead) {
+		return ErrUnauthorized
+	}
+
+	// Check if the key has the permission for the required channel
+	if key.Target() != 0 && key.Target() != channel.Target() {
+		return ErrUnauthorized
+	}
+
 	// Subscribe the client to the channel
 	c.Subscribe(key.Contract(), channel)
 
@@ -63,6 +89,32 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 	key, err := c.service.Cipher.DecryptKey(channel.Key)
 	if err != nil {
 		return ErrBadRequest
+	}
+
+	// Has the key expired?
+	if key.IsExpired() {
+		return ErrUnauthorized
+	}
+
+	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract := c.service.ContractProvider.Get(key.Contract())
+	if contract == nil {
+		return ErrNotFound
+	}
+
+	// Validate the contract
+	if !contract.Validate(key) {
+		return ErrUnauthorized
+	}
+
+	// Check if the key has the permission to read from here
+	if !key.HasPermission(security.AllowRead) {
+		return ErrUnauthorized
+	}
+
+	// Check if the key has the permission for the required channel
+	if key.Target() != 0 && key.Target() != channel.Target() {
+		return ErrUnauthorized
 	}
 
 	// Unsubscribe the client from the channel
