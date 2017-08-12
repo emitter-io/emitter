@@ -8,4 +8,5 @@ import (
 
 func TestEncode(t *testing.T) {
 	assert.Equal(t, "MTIzNDU2", encode([]byte("123456")))
+
 }

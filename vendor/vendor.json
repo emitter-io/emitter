@@ -109,6 +109,12 @@
 			"revisionTime": "2017-06-14T22:59:51Z"
 		},
 		{
+			"checksumSHA1": "aUJlnUep1PBCNkSvNF2RYxKvkbE=",
+			"path": "github.com/kelindar/process",
+			"revision": "69a29e249ec39e635cd4e42f96c227b6ef2f28d7",
+			"revisionTime": "2017-07-30T15:03:28Z"
+		},
+		{
 			"checksumSHA1": "7iz1+LULw1SthFEuPGTDoR9I7EA=",
 			"path": "github.com/miekg/dns",
 			"revision": "e78414ef75607394ad7d917824f07f381df2eafa",
