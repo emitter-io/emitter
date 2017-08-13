@@ -16,12 +16,14 @@ package broker
 
 import (
 	"fmt"
+	"github.com/emitter-io/emitter/utils"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/config"
@@ -45,6 +47,7 @@ type Service struct {
 	http          *http.Server              // The underlying HTTP server.
 	tcp           *tcp.Server               // The underlying TCP server.
 	cluster       *cluster.Cluster          // The gossip-based cluster mechanism.
+	startTime     time.Time                 // The start time of the service.
 }
 
 // NewService creates a new service.
@@ -129,11 +132,15 @@ func (s *Service) Listen() (err error) {
 	l.ServeAsync(listener.MatchHTTP(), s.http.Serve)
 	l.ServeAsync(listener.MatchAny(), s.tcp.Serve)
 
+	// Set the start time and report status
+	s.startTime = time.Now().UTC()
+	utils.Repeat(s.reportStatus, 250*time.Millisecond, s.Closing)
+	logging.LogAction("service", "service started")
+
 	// Serve the listener
 	if l.Serve(); err != nil {
 		logging.LogError("service", "starting the listener", err)
 	}
-
 	return nil
 }
 
@@ -210,6 +217,21 @@ func (s *Service) onPeerMessage(m *cluster.Message) {
 			if contract != nil {
 				contract.Stats().AddEgress(int64(len(m.Payload)))
 			}
+		}
+	}
+}
+
+// SelfPublish publishes a message to itself.
+func (s *Service) selfPublish(channelName string, payload []byte) {
+
+	// Parse the channel and make an SSID we can use
+	channel := security.ParseChannel([]byte("emitter/" + channelName))
+	if channel.ChannelType == security.ChannelStatic {
+		ssid := NewSsid(s.License.Contract, channel)
+
+		// Iterate through all subscribers and send them the message
+		for _, subscriber := range s.subscriptions.Lookup(ssid) {
+			subscriber.Send(ssid, channel.Channel, payload)
 		}
 	}
 }

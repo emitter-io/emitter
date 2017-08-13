@@ -69,3 +69,18 @@ func TestLicenseEncode(t *testing.T) {
 		assert.EqualValues(t, tc.expected, output)
 	}
 }
+
+func TestNewMasterKey(t *testing.T) {
+	license := License{
+		EncryptionKey: "zT83oDV0DWY5_JysbSTPTA",
+		Contract:      989603869,
+		Signature:     12354,
+		Expires:       time.Unix(1600000000, 0),
+		Type:          2,
+	}
+
+	k, err := license.NewMasterKey(1)
+	assert.NoError(t, err)
+	assert.Equal(t, license.Contract, k.Contract())
+	assert.Equal(t, license.Signature, k.Signature())
+}

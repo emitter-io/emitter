@@ -29,6 +29,14 @@ func TestHandlers_onSubscribe(t *testing.T) {
 			msg:           "Successful case",
 		},
 		{
+			channel:       "1RszYitFOWDlzKhhqaxDG8--vw4RbCTt/cluster/",
+			count:         1,
+			err:           (*EventError)(nil),
+			contractValid: true,
+			contractFound: true,
+			msg:           "Successful case",
+		},
+		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a+q/b/c/",
 			count:         0,
 			err:           ErrBadRequest,

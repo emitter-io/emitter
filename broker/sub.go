@@ -88,7 +88,8 @@ type Subscription struct {
 // SubscriptionCounters represents a subscription counting map.
 type SubscriptionCounters struct {
 	sync.Mutex
-	m map[uint32]*subCounter
+	m     map[uint32]*subCounter
+	count int
 }
 
 type subCounter struct {
@@ -111,6 +112,14 @@ func (s *SubscriptionCounters) Increment(ssid Ssid, channel string) {
 
 	m := s.getOrCreate(ssid, channel)
 	m.Counter++
+	s.count++
+}
+
+// Count returns the total number of subscriptions.
+func (s *SubscriptionCounters) Count() int {
+	s.Lock()
+	defer s.Unlock()
+	return s.count
 }
 
 // Decrement decrements a subscription counter.
@@ -121,6 +130,7 @@ func (s *SubscriptionCounters) Decrement(ssid Ssid) {
 	key := ssid.GetHashCode()
 	if m, exists := s.m[key]; exists {
 		m.Counter--
+		s.count--
 
 		// Remove if there's no subscribers left
 		if m.Counter <= 0 {

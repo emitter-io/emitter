@@ -15,9 +15,12 @@
 package security
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"math"
+	"math/big"
 	"time"
 )
 
@@ -71,6 +74,22 @@ func ParseLicense(data string) (*License, error) {
 	}
 
 	return &license, nil
+}
+
+// NewMasterKey generates a new master key.
+func (l *License) NewMasterKey(id uint16) (Key, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt16))
+	if err != nil {
+		return nil, err
+	}
+
+	key := Key(make([]byte, 24))
+	key.SetSalt(uint16(n.Uint64()))
+	key.SetMaster(id)
+	key.SetContract(l.Contract)
+	key.SetSignature(l.Signature)
+	key.SetPermissions(AllowMaster)
+	return key, nil
 }
 
 // Cipher creates a new cipher for the licence
