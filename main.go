@@ -39,9 +39,9 @@ func main() {
 	}
 	svc.Contracts = security.NewSingleContractProvider(svc.License)
 
-	secret, _ := svc.License.NewMasterKey(1)
-	c, _ := svc.Cipher.GenerateKey(secret, "cluster", security.AllowRead, time.Unix(0, 0))
-	println(c) // BuVqXBaM42rioFbd7-d3_ZDW7J_L70iD
+	//secret, _ := svc.License.NewMasterKey(1)
+	//c, _ := svc.Cipher.GenerateKey(secret, "cluster", security.AllowRead, time.Unix(0, 0))
+	//println(c)
 
 	// Flush the log
 	utils.Repeat(func() {

@@ -16,12 +16,12 @@ package broker
 
 import (
 	"fmt"
-	"github.com/emitter-io/emitter/utils"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -33,6 +33,7 @@ import (
 	"github.com/emitter-io/emitter/network/tcp"
 	"github.com/emitter-io/emitter/network/websocket"
 	"github.com/emitter-io/emitter/security"
+	"github.com/emitter-io/emitter/utils"
 )
 
 // Service represents the main structure.
@@ -134,7 +135,7 @@ func (s *Service) Listen() (err error) {
 
 	// Set the start time and report status
 	s.startTime = time.Now().UTC()
-	utils.Repeat(s.reportStatus, 250*time.Millisecond, s.Closing)
+	utils.Repeat(s.reportStatus, 100*time.Millisecond, s.Closing)
 	logging.LogAction("service", "service started")
 
 	// Serve the listener
@@ -230,7 +231,10 @@ func (s *Service) selfPublish(channelName string, payload []byte) {
 		ssid := NewSsid(s.License.Contract, channel)
 
 		// Iterate through all subscribers and send them the message
-		for _, subscriber := range s.subscriptions.Lookup(ssid) {
+		subs := s.subscriptions.Lookup(ssid)
+		println("subscriber found: " + strconv.Itoa(len(subs)))
+		for _, subscriber := range subs {
+
 			subscriber.Send(ssid, channel.Channel, payload)
 		}
 	}

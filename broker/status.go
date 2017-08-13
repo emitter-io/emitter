@@ -11,13 +11,14 @@ import (
 
 // StatusInfo represents the status payload.
 type StatusInfo struct {
-	Node          string  `json:"node"`
-	Addr          string  `json:"addr"`
-	Subscriptions int     `json:"subs"`
-	CPU           float64 `json:"cpu"`
-	MemoryPrivate int64   `json:"priv"`
-	MemoryVirtual int64   `json:"virt"`
-	Uptime        float64 `json:"uptime"`
+	Node          string    `json:"node"`
+	Addr          string    `json:"addr"`
+	Subscriptions int       `json:"subs"`
+	CPU           float64   `json:"cpu"`
+	MemoryPrivate int64     `json:"priv"`
+	MemoryVirtual int64     `json:"virt"`
+	Time          time.Time `json:"time"`
+	Uptime        float64   `json:"uptime"`
 }
 
 // getStatus retrieves the status of the service.
@@ -25,10 +26,12 @@ func (s *Service) getStatus() *StatusInfo {
 	stats := new(StatusInfo)
 
 	// Fill the identity
+	t := time.Now().UTC()
 	stats.Node = s.LocalName()
 	stats.Addr = address.External().String()
-	stats.Uptime = time.Now().UTC().Sub(s.startTime).Seconds()
 	stats.Subscriptions = s.subcounters.Count()
+	stats.Time = t
+	stats.Uptime = t.Sub(s.startTime).Seconds()
 
 	// Collect CPU and Memory stats
 	process.ProcUsage(&stats.CPU, &stats.MemoryPrivate, &stats.MemoryVirtual)
