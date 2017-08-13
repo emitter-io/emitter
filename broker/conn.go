@@ -195,6 +195,7 @@ func (c *Conn) Unsubscribe(ssid Ssid) {
 		// Unsubscribe from the trie and remove from our internal map
 		c.service.subscriptions.Unsubscribe(ssid, c)
 		delete(c.subs, hkey)
+		println("unsubscribed connection " + c.id.String())
 
 		// Decrement the counters
 		c.service.subcounters.Decrement(ssid)
@@ -209,15 +210,14 @@ func (c *Conn) Unsubscribe(ssid Ssid) {
 
 // Close terminates the connection.
 func (c *Conn) Close() error {
-	c.Lock()
-	defer c.Unlock()
 	logging.Log(logConnection, "closed", c.id.String())
 
-	// Unsubscribe from everything. TODO: Lock this?
+	// Unsubscribe from everything, no need to lock since each Unsubscribe is
+	// already locked. Locking the 'Close()' would result in a deadlock.
 	for _, s := range c.subs {
 		c.Unsubscribe(s.Ssid)
 	}
 
-	// Decrement the connection counter and close the transport
+	// Close the transport
 	return c.socket.Close()
 }
