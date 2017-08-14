@@ -22,7 +22,7 @@ type StatusInfo struct {
 }
 
 // getStatus retrieves the status of the service.
-func (s *Service) getStatus() *StatusInfo {
+func (s *Service) getStatus() (*StatusInfo, error) {
 	stats := new(StatusInfo)
 
 	// Fill the identity
@@ -34,16 +34,20 @@ func (s *Service) getStatus() *StatusInfo {
 	stats.Uptime = t.Sub(s.startTime).Seconds()
 
 	// Collect CPU and Memory stats
-	process.ProcUsage(&stats.CPU, &stats.MemoryPrivate, &stats.MemoryVirtual)
-	return stats
+	return stats, process.ProcUsage(&stats.CPU, &stats.MemoryPrivate, &stats.MemoryVirtual)
 }
 
 // Reports the status periodically.
 func (s *Service) reportStatus() {
-	status := s.getStatus()
+	status, err := s.getStatus()
+	if err != nil {
+		return
+	}
+
 	b, err := json.Marshal(status)
 	if err != nil {
 		logging.LogError("service", "reporting status", err)
+		return
 	}
 
 	s.selfPublish("cluster/"+status.Addr+"/", b)

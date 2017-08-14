@@ -11,6 +11,7 @@ func Test_getStatus(t *testing.T) {
 		subcounters: NewSubscriptionCounters(),
 	}
 
-	status := s.getStatus()
+	status, err := s.getStatus()
+	assert.NoError(t, err)
 	assert.NotEqual(t, 0, status.MemoryPrivate)
 }

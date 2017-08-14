@@ -25,6 +25,8 @@ import (
 	"syscall"
 	"time"
 
+	"net/http/pprof"
+
 	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/logging"
@@ -65,6 +67,11 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	// Create a new HTTP request multiplexer
 	mux := http.NewServeMux()
 	mux.HandleFunc("/keygen", s.onHTTPKeyGen)
+	mux.HandleFunc("/debug/pprof/", pprof.Index)          // TODO: use config flag to enable/disable this
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline) // TODO: use config flag to enable/disable this
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile) // TODO: use config flag to enable/disable this
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)   // TODO: use config flag to enable/disable this
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)     // TODO: use config flag to enable/disable this
 	mux.HandleFunc("/", s.onRequest)
 
 	// Attach handlers
