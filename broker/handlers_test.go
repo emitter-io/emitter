@@ -10,36 +10,34 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestHandlers_onSubscribe(t *testing.T) {
+func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 	license, _ := security.ParseLicense(testLicense)
 	tests := []struct {
 		channel       string
-		count         int
-		err           error
+		subCount      int
+		subErr        error
+		unsubCount    int
+		unsubErr      error
 		contractValid bool
 		contractFound bool
 		msg           string
 	}{
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
-			count:         1,
-			err:           (*EventError)(nil),
-			contractValid: true,
-			contractFound: true,
-			msg:           "Successful case",
-		},
-		{
-			channel:       "1RszYitFOWDlzKhhqaxDG8--vw4RbCTt/cluster/",
-			count:         1,
-			err:           (*EventError)(nil),
+			subCount:      1,
+			subErr:        (*EventError)(nil),
+			unsubCount:    0,
+			unsubErr:      (*EventError)(nil),
 			contractValid: true,
 			contractFound: true,
 			msg:           "Successful case",
 		},
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a+q/b/c/",
-			count:         0,
-			err:           ErrBadRequest,
+			subCount:      0,
+			subErr:        ErrBadRequest,
+			unsubCount:    0,
+			unsubErr:      ErrBadRequest,
 			contractValid: true,
 			contractFound: true,
 			msg:           "Invalid channel case",
@@ -55,24 +53,30 @@ func TestHandlers_onSubscribe(t *testing.T) {
 
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBZRqJDby30mT/a/b/c/",
-			count:         0,
-			err:           ErrUnauthorized,
+			subCount:      0,
+			subErr:        ErrUnauthorized,
+			unsubCount:    0,
+			unsubErr:      ErrUnauthorized,
 			contractValid: true,
 			contractFound: true,
 			msg:           "Expired key case",
 		},
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
-			count:         0,
-			err:           ErrNotFound,
+			subCount:      0,
+			subErr:        ErrNotFound,
+			unsubCount:    0,
+			unsubErr:      ErrNotFound,
 			contractValid: true,
 			contractFound: false,
 			msg:           "Contract not found case",
 		},
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
-			count:         0,
-			err:           ErrUnauthorized,
+			subCount:      0,
+			subErr:        ErrUnauthorized,
+			unsubCount:    0,
+			unsubErr:      ErrUnauthorized,
 			contractValid: false,
 			contractFound: true,
 			msg:           "Contract is invalid case",
@@ -87,8 +91,10 @@ func TestHandlers_onSubscribe(t *testing.T) {
 			},*/
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBZHmCtcvoHGQ/a/b/c/",
-			count:         0,
-			err:           ErrUnauthorized,
+			subCount:      0,
+			subErr:        ErrUnauthorized,
+			unsubCount:    0,
+			unsubErr:      ErrUnauthorized,
 			contractValid: true,
 			contractFound: true,
 			msg:           "Wrong target case",
@@ -103,9 +109,9 @@ func TestHandlers_onSubscribe(t *testing.T) {
 
 		provider := secmock.NewContractProvider()
 		if tc.contractFound {
-			provider.On("Get", mock.Anything).Return(contract).Once()
+			provider.On("Get", mock.Anything).Return(contract)
 		} else {
-			provider.On("Get", mock.Anything).Return(nil).Once()
+			provider.On("Get", mock.Anything).Return(nil)
 		}
 
 		s := &Service{
@@ -119,11 +125,29 @@ func TestHandlers_onSubscribe(t *testing.T) {
 		nc := s.newConn(conn.Client)
 		s.Cipher, _ = s.License.Cipher()
 
-		err := nc.onSubscribe([]byte(tc.channel))
-
-		assert.Equal(t, tc.err, err, tc.msg)
+		// Subscribe and check for error.
+		subErr := nc.onSubscribe([]byte(tc.channel))
+		assert.Equal(t, tc.subErr, subErr, tc.msg)
+		// Check the subscribers counter.
 		c := s.subcounters.All()
-		assert.Equal(t, tc.count, len(c))
+		assert.Equal(t, tc.subCount, len(c))
+		// Search for the ssid.
+		channel := security.ParseChannel([]byte(tc.channel))
+		key, _ := s.Cipher.DecryptKey(channel.Key)
+		ssid := NewSsid(key.Contract(), channel)
+		subscribers := s.subscriptions.Lookup(ssid)
+		assert.Equal(t, tc.subCount, len(subscribers))
+
+		// Unsubscribe and check for error.
+		unsubErr := nc.onUnsubscribe([]byte(tc.channel))
+		assert.Equal(t, tc.unsubErr, unsubErr, tc.msg)
+		// Check the subscribers counter.
+		c = s.subcounters.All()
+		assert.Equal(t, tc.unsubCount, len(c))
+		// Search for the ssid.
+		subscribers = s.subscriptions.Lookup(ssid)
+		assert.Equal(t, tc.unsubCount, len(subscribers))
+
 	}
 }
 
@@ -239,114 +263,4 @@ func TestHandlers_onPublish(t *testing.T) {
 
 		assert.Equal(t, tc.err, err, tc.msg)
 	}
-}
-
-func TestHandlers_onUnsubscribe(t *testing.T) {
-	license, _ := security.ParseLicense(testLicense)
-	tests := []struct {
-		channel       string
-		count         int
-		err           error
-		contractValid bool
-		contractFound bool
-		msg           string
-	}{
-		{
-			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
-			count:         0,
-			err:           (*EventError)(nil),
-			contractValid: true,
-			contractFound: true,
-			msg:           "Successful case",
-		},
-		{
-			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a+q/b/c/",
-			count:         0,
-			err:           ErrBadRequest,
-			contractValid: true,
-			contractFound: true,
-			msg:           "Invalid channel case",
-		}, /*
-			{
-				channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/+/b/c/",
-				count:         0,
-				err:           ErrForbidden,
-				contractValid: true,
-				contractFound: true,
-				msg:           "Channel is not static case",
-			},*/
-
-		{
-			channel:       "0Nq8SWbL8qoOKEDqh_ebBZRqJDby30mT/a/b/c/",
-			count:         0,
-			err:           ErrUnauthorized,
-			contractValid: true,
-			contractFound: true,
-			msg:           "Expired key case",
-		},
-		{
-			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
-			count:         0,
-			err:           ErrNotFound,
-			contractValid: true,
-			contractFound: false,
-			msg:           "Contract not found case",
-		},
-		{
-			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
-			count:         0,
-			err:           ErrUnauthorized,
-			contractValid: false,
-			contractFound: true,
-			msg:           "Contract is invalid case",
-		}, /*
-			{
-				channel:       "0Nq8SWbL8qoJzie4_C4yvupug6cLLlWO/a/b/c/",
-				count:         0,
-				err:           ErrUnauthorized,
-				contractValid: true,
-				contractFound: true,
-				msg:           "No write permission case",
-			},*/
-		{
-			channel:       "0Nq8SWbL8qoOKEDqh_ebBZHmCtcvoHGQ/a/b/c/",
-			count:         0,
-			err:           ErrUnauthorized,
-			contractValid: true,
-			contractFound: true,
-			msg:           "Wrong target case",
-		},
-	}
-
-	for _, tc := range tests {
-
-		contract := new(secmock.Contract)
-		contract.On("Validate", mock.Anything).Return(tc.contractValid)
-		contract.On("Stats").Return(security.NewUsageStats())
-
-		provider := secmock.NewContractProvider()
-		if tc.contractFound {
-			provider.On("Get", mock.Anything).Return(contract).Once()
-		} else {
-			provider.On("Get", mock.Anything).Return(nil).Once()
-		}
-
-		s := &Service{
-			Contracts:     provider,
-			subscriptions: NewSubscriptionTrie(),
-			License:       license,
-			subcounters:   NewSubscriptionCounters(),
-		}
-
-		conn := netmock.NewConn()
-		nc := s.newConn(conn.Client)
-		s.Cipher, _ = s.License.Cipher()
-
-		err := nc.onUnsubscribe([]byte(tc.channel))
-
-		assert.Equal(t, tc.err, err, tc.msg)
-		c := s.subcounters.All()
-		assert.Equal(t, tc.count, len(c))
-	}
-
 }
