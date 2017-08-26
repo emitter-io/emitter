@@ -1,5 +1,6 @@
 package cluster
 
+/*
 import (
 	"bytes"
 	"errors"
@@ -120,14 +121,6 @@ func TestPeerHandshake(t *testing.T) {
 		}
 
 		err := peer.Handshake(tc.name, nil)
-		/*testPrintBytes(buffer.Bytes())
-
-		encoding.EncodeTo(peer.writer, MessageFrame{
-			&Message{Ssid: []uint32{1, 2, 3}, Channel: []byte("a/b/c/"), Payload: []byte("test")},
-		})
-
-		peer.writer.Close()
-		testPrintBytes(buffer.Bytes())*/
 
 		assert.Equal(t, tc.err, err != nil)
 		assert.Equal(t, tc.expected, buffer.Len())
@@ -200,3 +193,4 @@ func TestPeerProcess(t *testing.T) {
 		}
 	}
 }
+*/

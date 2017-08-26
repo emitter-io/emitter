@@ -14,6 +14,7 @@
 
 package cluster
 
+/*
 import (
 	"errors"
 	"fmt"
@@ -76,27 +77,6 @@ func (c *Cluster) Listen(port int) (err error) {
 func (c *Cluster) LocalName() string {
 	return c.name
 }
-
-/*
-func (c *Cluster) querySubs() {
-	msg, err := encoding.Encode(&QueryEvent{Node: c.LocalName()})
-	if err != nil {
-		logging.LogError("cluster", "query encoding", err)
-	}
-
-	resp, err := c.gossip.Query("subs", msg, nil)
-	if err != nil {
-		logging.LogError("cluster", "query", err)
-	}
-
-	// Wait for all the responses to come back to us before starting.
-	for r := range resp.ResponseCh() {
-		c.OnQueryResponse(QueryResponse{
-			Node:    r.From,
-			Payload: r.Payload,
-		})
-	}
-}*/
 
 // Creates a configuration for the cluster
 func (c *Cluster) configure(cfg *config.ClusterConfig) error {
@@ -308,3 +288,4 @@ func (c *Cluster) Close() (err error) {
 	}
 	return
 }
+*/

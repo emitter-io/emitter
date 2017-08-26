@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -49,7 +48,7 @@ type Service struct {
 	subcounters   *SubscriptionCounters     // The subscription counters.
 	http          *http.Server              // The underlying HTTP server.
 	tcp           *tcp.Server               // The underlying TCP server.
-	cluster       *cluster.Cluster          // The gossip-based cluster mechanism.
+	cluster       *cluster.Swarm            // The gossip-based cluster mechanism.
 	startTime     time.Time                 // The start time of the service.
 }
 
@@ -92,11 +91,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 
 	// Create a new cluster if we have this configured
 	if cfg.Cluster != nil {
-		if s.cluster, err = cluster.NewCluster(cfg.Cluster, s.Closing); err != nil {
-			return nil, err
-		}
-
-		// Attach delegates
+		s.cluster = cluster.NewSwarm(cfg.Cluster, s.Closing)
 		s.cluster.OnSubscribe = s.onSubscribe
 		s.cluster.OnUnsubscribe = s.onUnsubscribe
 		s.cluster.OnMessage = s.onPeerMessage
@@ -109,7 +104,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 // LocalName returns the local node name.
 func (s *Service) LocalName() string {
 	if s.cluster == nil {
-		return address.Fingerprint()
+		return address.Hardware().String()
 	}
 
 	return s.cluster.LocalName()
@@ -122,7 +117,7 @@ func (s *Service) Listen() (err error) {
 
 	// Create the cluster if required
 	if s.cluster != nil {
-		if s.cluster.Listen(s.Config.Cluster.Route); err != nil {
+		if s.cluster.Listen(); err != nil {
 			panic(err)
 		}
 
@@ -153,20 +148,22 @@ func (s *Service) Listen() (err error) {
 }
 
 // Join attempts to join a set of existing peers.
-func (s *Service) Join(peers ...string) error {
+func (s *Service) Join(peers ...string) []error {
 	return s.cluster.Join(peers...)
 }
 
-// Broadcast is used to broadcast a custom user event with a given name and
-// payload. The events must be fairly small, and if the  size limit is exceeded
-// and error will be returned. If coalesce is enabled, nodes are allowed to
-// coalesce this event.
-func (s *Service) Broadcast(name string, message interface{}) error {
-	if s.cluster == nil {
-		return nil
+// NotifySubscribe notifies the swarm when a subscription occurs.
+func (s *Service) notifySubscribe(conn *Conn, ssid []uint32, channel []byte) {
+	if s.cluster != nil {
+		s.cluster.NotifySubscribe(conn.id, ssid, channel)
 	}
+}
 
-	return s.cluster.Broadcast(name, message)
+// NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
+func (s *Service) notifyUnsubscribe(conn *Conn, ssid []uint32) {
+	if s.cluster != nil {
+		s.cluster.NotifyUnsubscribe(conn.id, ssid)
+	}
 }
 
 // Occurs when a new client connection is accepted.
@@ -195,13 +192,14 @@ func (s *Service) onHTTPKeyGen(w http.ResponseWriter, r *http.Request) {
 
 // Occurs when a peer has a new subscription.
 func (s *Service) onSubscribe(peer *cluster.Peer, event cluster.SubscriptionEvent) {
-	fmt.Printf("%v subscribed to ssid: %v\n", event.Node, event.Ssid)
-	s.subscriptions.Subscribe(event.Ssid, event.Channel, peer)
+	fmt.Printf("%v subscribed to ssid: %v\n", event.Peer, event.Ssid)
+	//s.subscriptions.Subscribe(event.Ssid, event.Channel, peer) TODO ! Figure out if we can get rid of channel string here
+	s.subscriptions.Subscribe(event.Ssid, "TODO", peer)
 }
 
 // Occurs when a peer has unsubscribed.
 func (s *Service) onUnsubscribe(peer *cluster.Peer, event cluster.SubscriptionEvent) {
-	fmt.Printf("%v unsubscribed from ssid: %v\n", event.Node, event.Ssid)
+	fmt.Printf("%v unsubscribed from ssid: %v\n", event.Peer, event.Ssid)
 
 	s.subscriptions.Unsubscribe(event.Ssid, peer)
 }
@@ -239,22 +237,11 @@ func (s *Service) selfPublish(channelName string, payload []byte) {
 
 		// Iterate through all subscribers and send them the message
 		subs := s.subscriptions.Lookup(ssid)
-		println("subscriber found: " + strconv.Itoa(len(subs)))
+		//println("subscriber found: " + strconv.Itoa(len(subs)))
 		for _, subscriber := range subs {
-
 			subscriber.Send(ssid, channel.Channel, payload)
 		}
 	}
-}
-
-// Occurs when a query is received.
-func (s *Service) onQuery(query cluster.Query) {
-	fmt.Printf("query: %v\n", query)
-}
-
-// Occurs when a query response is received from a node.
-func (s *Service) onQueryResponse(resp cluster.QueryResponse) {
-	fmt.Printf("query response: %v\n", resp.Payload)
 }
 
 // OnSignal will be called when a OS-level signal is received.

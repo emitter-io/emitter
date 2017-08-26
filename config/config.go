@@ -46,12 +46,9 @@ func NewDefault() *Config {
 		TCPPort: ":8080",
 		TLSPort: ":8443",
 		Cluster: &ClusterConfig{
-			AdvertiseAddr: "public",
-			Route:         4000,
-			Gossip:        4001,
+			AdvertiseAddr: "public:4000",
 			Seed:          "127.0.0.1:4001",
 			ClusterKey:    "emitter-io",
-			SnapshotPath:  "cluster.log",
 		},
 	}
 }
@@ -78,17 +75,9 @@ type ClusterConfig struct {
 	// will set it to the external IP address of the running machine.
 	NodeName string `json:"node,omitempty"`
 
-	// The address to advertise for both gossip and message routing. This is used for nat
+	// The address and port to advertise inter-node communication network. This is used for nat
 	// traversal.
 	AdvertiseAddr string `json:"advertise"`
-
-	// Forwarding message bus configuration is used for routing the TCP publish/subcribe messages
-	// between peers in the cluster.
-	Route int `json:"route"`
-
-	// Gossip configuration of the endpoint for managing the cluster. Both TCP and UDP ports
-	// will need to be accessible. This is used for both binding and advertised port.
-	Gossip int `json:"gossip"`
 
 	// The seed address (or a domain name) for cluster join.
 	Seed string `json:"seed"`
@@ -96,12 +85,6 @@ type ClusterConfig struct {
 	// ClusterKey is used to initialize the primary encryption key in a keyring. This key
 	// is used for encrypting all the gossip messages (message-level encryption).
 	ClusterKey string `json:"key"`
-
-	// SnapshotPath if provided is used to snapshot live nodes as well
-	// as lamport clock values. When Emitter is started with a snapshot,
-	// it will attempt to join all the previously known nodes until one
-	// succeeds and will also avoid replaying old user events.
-	SnapshotPath string `json:"snapshot,omitempty"`
 }
 
 // Key returns the key based on the passphrase

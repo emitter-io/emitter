@@ -19,7 +19,6 @@ import (
 	"net"
 	"sync"
 
-	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/security"
@@ -175,11 +174,7 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 		c.service.subcounters.Increment(ssid, string(channel.Channel))
 
 		// Broadcast the subscription within our cluster
-		c.service.Broadcast("+", cluster.SubscriptionEvent{
-			Node:    c.service.LocalName(),
-			Ssid:    ssid,
-			Channel: string(channel.Channel),
-		})
+		c.service.notifySubscribe(c, ssid, channel.Channel)
 	}
 }
 
@@ -201,10 +196,7 @@ func (c *Conn) Unsubscribe(ssid Ssid) {
 		c.service.subcounters.Decrement(ssid)
 
 		// Broadcast the unsubscription within our cluster
-		c.service.Broadcast("-", cluster.SubscriptionEvent{
-			Node: c.service.LocalName(),
-			Ssid: ssid,
-		})
+		c.service.notifyUnsubscribe(c, ssid)
 	}
 }
 

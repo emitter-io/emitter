@@ -7,6 +7,6 @@ import (
 )
 
 func TestEncode(t *testing.T) {
-	assert.Equal(t, "MTIzNDU2", encode([]byte("123456")))
+	assert.Equal(t, uint64(0x313233343536), encode([]byte("123456")))
 
 }

@@ -15,7 +15,6 @@
 package address
 
 import (
-	"encoding/base64"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -24,22 +23,22 @@ import (
 	"time"
 )
 
-var fingerprint string
+var hardware uint64
 var external net.IP
 
 func init() {
 	external = initExternal()
-	fingerprint = initFingerprint()
+	hardware = initHardware()
 }
 
-// External gets the external IP address
+// External gets the external IP address.
 func External() net.IP {
 	return external
 }
 
-// Fingerprint gets the fingerprint
-func Fingerprint() string {
-	return fingerprint
+// Hardware gets the hardware address.
+func Hardware() Fingerprint {
+	return Fingerprint(hardware)
 }
 
 // getExternal retrieves an external IP address
@@ -85,7 +84,7 @@ func initExternal() net.IP {
 }
 
 // Initializes the fingerprint
-func initFingerprint() string {
+func initHardware() uint64 {
 	var hardwareAddr [6]byte
 	interfaces, err := net.Interfaces()
 	if err == nil {
@@ -97,21 +96,39 @@ func initFingerprint() string {
 		}
 	}
 
-	// Initialize hardwareAddr randomly in case of real network interfaces absence
 	safeRandom(hardwareAddr[:])
-
-	// Set multicast bit as recommended in RFC 4122
 	hardwareAddr[0] |= 0x01
-
 	return encode(hardwareAddr[:])
 }
 
-func encode(data []byte) string {
-	return base64.RawURLEncoding.EncodeToString(data)
+func encode(mac net.HardwareAddr) (r uint64) {
+	for _, b := range mac {
+		r <<= 8
+		r |= uint64(b)
+	}
+	return
 }
 
 func safeRandom(dest []byte) {
 	if _, err := rand.Read(dest); err != nil {
 		panic(err)
 	}
+}
+
+// Fingerprint represents hardware fingerprint
+type Fingerprint uint64
+
+// String encodes PeerName as a string.
+func (f Fingerprint) String() string {
+	return intmac(uint64(f)).String()
+}
+
+// Converts int to hardware address
+func intmac(key uint64) (r net.HardwareAddr) {
+	r = make([]byte, 6)
+	for i := 5; i >= 0; i-- {
+		r[i] = byte(key)
+		key >>= 8
+	}
+	return
 }

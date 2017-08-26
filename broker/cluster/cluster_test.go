@@ -1,5 +1,6 @@
 package cluster
 
+/*
 import (
 	"testing"
 	"time"
@@ -49,3 +50,4 @@ func TestCluster_Name(t *testing.T) {
 
 	assert.Equal(t, "hello", s.LocalName())
 }
+*/

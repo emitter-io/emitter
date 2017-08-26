@@ -9,10 +9,10 @@
 			"revisionTime": "2017-07-02T08:40:17Z"
 		},
 		{
-			"checksumSHA1": "oSB8fzG8nU3DLxATXURWvLceMhE=",
-			"path": "github.com/armon/go-metrics",
-			"revision": "f036747b9d0e8590f175a5d654a2194a7d9df4b5",
-			"revisionTime": "2017-06-01T21:44:32Z"
+			"checksumSHA1": "GevZ1uqeFce5qyp3OH1cpqlUSpc=",
+			"path": "github.com/benbjohnson/clock",
+			"revision": "7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19",
+			"revisionTime": "2016-12-15T17:48:38Z"
 		},
 		{
 			"checksumSHA1": "6topzsMi3s3LYN61Tn0GPR0D8uw=",
@@ -63,62 +63,20 @@
 			"revisionTime": "2017-03-19T17:27:27Z"
 		},
 		{
-			"checksumSHA1": "pP0b9eRHl4ZFD4zTcWxTZH4CPq0=",
-			"path": "github.com/hashicorp/errwrap",
-			"revision": "7554cd9344cec97297fa6649b055a8c98c2a1e55",
-			"revisionTime": "2014-10-28T05:47:10Z"
-		},
-		{
 			"checksumSHA1": "Ur9RwaNKnOkCClhztzHPhOR5uAM=",
 			"path": "github.com/hashicorp/go-msgpack/codec",
 			"revision": "fa3f63826f7c23912c15263591e65d54d080b458",
 			"revisionTime": "2015-05-18T23:42:57Z"
 		},
 		{
-			"checksumSHA1": "C/DCmWfotL5hMeQMd4FYGSlHPQE=",
-			"path": "github.com/hashicorp/go-multierror",
-			"revision": "ed905158d87462226a13fe39ddf685ea65f1c11f",
-			"revisionTime": "2016-12-16T18:43:04Z"
-		},
-		{
-			"checksumSHA1": "6p+Bsu49KBpWHtGJhLRyF4BSX9A=",
-			"path": "github.com/hashicorp/go-sockaddr",
-			"revision": "2d10d7c10258d11196c0ebf2943509e4afd06cd4",
-			"revisionTime": "2017-05-23T22:50:28Z"
-		},
-		{
 			"path": "github.com/hashicorp/hcl/printer",
 			"revision": ""
-		},
-		{
-			"checksumSHA1": "z4nbnHHELl7LfX9M2r71voYP9yQ=",
-			"path": "github.com/hashicorp/memberlist",
-			"revision": "16fe34d996eba2b68f6f46f26c51c617c6bc1bf0",
-			"revisionTime": "2017-05-26T19:17:51Z"
-		},
-		{
-			"checksumSHA1": "9rrwVoDy2FxWf+Eesh8jn2PR1do=",
-			"path": "github.com/hashicorp/serf/coordinate",
-			"revision": "91fd53b1d3e624389ed9a295a3fa380e5c7b9dfc",
-			"revisionTime": "2017-06-14T22:59:51Z"
-		},
-		{
-			"checksumSHA1": "g3Lny10anQMwk1P47qW46HltAhs=",
-			"path": "github.com/hashicorp/serf/serf",
-			"revision": "91fd53b1d3e624389ed9a295a3fa380e5c7b9dfc",
-			"revisionTime": "2017-06-14T22:59:51Z"
 		},
 		{
 			"checksumSHA1": "aUJlnUep1PBCNkSvNF2RYxKvkbE=",
 			"path": "github.com/kelindar/process",
 			"revision": "69a29e249ec39e635cd4e42f96c227b6ef2f28d7",
 			"revisionTime": "2017-07-30T15:03:28Z"
-		},
-		{
-			"checksumSHA1": "7iz1+LULw1SthFEuPGTDoR9I7EA=",
-			"path": "github.com/miekg/dns",
-			"revision": "e78414ef75607394ad7d917824f07f381df2eafa",
-			"revisionTime": "2017-06-04T12:30:08Z"
 		},
 		{
 			"checksumSHA1": "mR79ABWFyrDTTdhFPxwUN19T45Q=",
@@ -131,12 +89,6 @@
 			"path": "github.com/pmezard/go-difflib/difflib",
 			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
 			"revisionTime": "2016-01-10T10:55:54Z"
-		},
-		{
-			"checksumSHA1": "C4fwCp1QQoScZHpCFsSZTUOU3Vc=",
-			"path": "github.com/sean-/seed",
-			"revision": "e2103e2c35297fb7e17febb81e49b312087a2372",
-			"revisionTime": "2017-03-13T16:33:22Z"
 		},
 		{
 			"checksumSHA1": "ofNmmhhJAxYL1Mh09iq+utdfHIM=",
@@ -157,10 +109,46 @@
 			"revisionTime": "2017-06-01T20:57:54Z"
 		},
 		{
+			"checksumSHA1": "nQQ6uCndTVdV1B2xSmCEaZ7ukoE=",
+			"path": "github.com/weaveworks/mesh",
+			"revision": "38e8100dfbc7b28ae8ffde5a2bbeceec57ffa52a",
+			"revisionTime": "2017-07-31T09:06:22Z"
+		},
+		{
+			"checksumSHA1": "MlEHIE/60sB86Lmf0MPTIXHzKzE=",
+			"path": "golang.org/x/crypto/curve25519",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
+		},
+		{
+			"checksumSHA1": "LIOlUuwAjG4+meTovizhtsB+fTE=",
+			"path": "golang.org/x/crypto/nacl/box",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
+		},
+		{
+			"checksumSHA1": "Y/FcWB2/xSfX1rRp7HYhktHNw8s=",
+			"path": "golang.org/x/crypto/nacl/secretbox",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
+		},
+		{
 			"checksumSHA1": "1MGpGDQqnUoRpv7VEcQrXOBydXE=",
 			"path": "golang.org/x/crypto/pbkdf2",
 			"revision": "adbae1b6b6fb4b02448a0fc0dbbc9ba2b95b294d",
 			"revisionTime": "2017-06-19T06:03:41Z"
+		},
+		{
+			"checksumSHA1": "kVKE0OX1Xdw5mG7XKT86DLLKE2I=",
+			"path": "golang.org/x/crypto/poly1305",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
+		},
+		{
+			"checksumSHA1": "YJKRGua3sv61rGQRHhZphoBeF7w=",
+			"path": "golang.org/x/crypto/salsa20/salsa",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
 		},
 		{
 			"checksumSHA1": "Y+HGqEkYM15ir+J93MEaHdyFy0c=",

@@ -27,7 +27,7 @@ func main() {
 
 	// Parse the configuration
 	// TODO: emitter.conf should come from command line args
-	cfg, err := config.ReadOrCreate(*argConfig, security.NewEnvironmentProvider(), security.NewVaultProvider(address.Fingerprint()))
+	cfg, err := config.ReadOrCreate(*argConfig, security.NewEnvironmentProvider(), security.NewVaultProvider(address.Hardware().String()))
 	if err != nil {
 		panic("Unable to parse configuration, due to " + err.Error())
 	}

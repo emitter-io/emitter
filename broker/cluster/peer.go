@@ -15,15 +15,45 @@
 package cluster
 
 import (
+	"github.com/weaveworks/mesh"
+)
+
+// NewPeer creates a new peer for the connection.
+func newPeer(name mesh.PeerName) *Peer {
+	return &Peer{
+		name: name,
+	}
+}
+
+// Peer represents a peer broker.
+type Peer struct {
+	name  mesh.PeerName // The peer name for communicating.
+	swarm *Swarm        // The swarm controlling the peer.
+}
+
+// Send forwards the message to the remote server.
+func (p *Peer) Send(ssid []uint32, channel []byte, payload []byte) error {
+	//c.Lock()
+	//defer c.Unlock()
+
+	// Send simply appends the message to a frame
+	//c.frame = append(c.frame, &Message{Ssid: ssid, Channel: channel, Payload: payload})
+
+	return nil
+}
+
+/*
+import (
 	"bufio"
+	"bytes"
 	"net"
 	"sync"
-	"time"
 
 	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/utils"
 	"github.com/golang/snappy"
+	"github.com/weaveworks/mesh"
 )
 
 const (
@@ -35,33 +65,59 @@ var logConnection = logging.AddLogger("[peer] connection %s (remote: %s)")
 // Peer represents a peer broker.
 type Peer struct {
 	sync.Mutex
-	writer     *snappy.Writer // The writer to use for writing messages.
-	reader     *snappy.Reader // The reader to use for reading messages.
-	socket     net.Conn       // The underlying transport socket for reader and writers.
-	frame      MessageFrame   // The current message frame.
-	handshaken bool           // The flag for handshake.
-	closing    chan bool      // The closing channel.
-	name       string         // The name of the peer.
+	send       mesh.Gossip   // The gossip protocol.
+	actions    chan<- func() // The action queue for the peer.
+	closing    chan bool     // The closing channel.
+	frame      MessageFrame  // The current message frame.
+	handshaken bool          // The flag for handshake.
+	name       string        // The name of the peer.
 
 	OnClosing   func(*Peer)                       // Handler which is invoked when the peer is closing is received.
 	OnHandshake func(*Peer, HandshakeEvent) error // Handler which is invoked when a handshake is received.
 	OnMessage   func(*Message)                    // Handler which is invoked when a new message is received.
 }
 
+// Peer implements mesh.Gossiper.
+var _ mesh.Gossiper = &Peer{}
+
 // NewPeer creates a new peer for the connection.
-func newPeer(conn net.Conn) *Peer {
+func newPeer() *Peer {
 	logging.Log(logConnection, "opened", conn.RemoteAddr().String())
+	actions := make(chan func())
+
 	c := &Peer{
+		send:    nil, // must .register() later
+		actions: actions,
+		closing: make(chan bool),
 		socket:  conn,
 		writer:  snappy.NewBufferedWriter(conn),
 		reader:  snappy.NewReader(bufio.NewReaderSize(conn, readBufferSize)),
 		frame:   make(MessageFrame, 0, 64),
-		closing: make(chan bool),
 	}
 
+	// Start processing action queue
+	go c.loop(actions)
+
 	// Spawn the send queue processor as well
-	utils.Repeat(c.processSendQueue, 5*time.Millisecond, c.closing)
+	//utils.Repeat(c.processSendQueue, 5*time.Millisecond, c.closing)
 	return c
+}
+
+// loop processes action queue
+func (c *Peer) loop(actions <-chan func()) {
+	for {
+		select {
+		case f := <-actions:
+			f()
+		case <-c.closing:
+			return
+		}
+	}
+}
+
+// Register the result of a mesh.Router.NewGossip.
+func (c *Peer) Register(send mesh.Gossip) {
+	c.send = send
 }
 
 // Send forwards the message to the remote server.
@@ -91,6 +147,7 @@ func (c *Peer) processSendQueue() {
 		}
 
 		// Flush the writer
+		c.send.GossipUnicast(c.)
 		c.writer.Flush()
 	}
 }
@@ -132,19 +189,6 @@ func (c *Peer) Process() error {
 	defer c.Close()
 	decoder := encoding.NewDecoder(c.reader)
 
-	// First message we need to decode is the handshake
-	handshake, err := decodeHandshakeEvent(decoder)
-	if err != nil {
-		logging.LogError("peer", "decode handshake", err)
-		return err
-	}
-
-	// Validate the handshake
-	if err := c.OnHandshake(c, *handshake); err != nil {
-		logging.LogError("peer", "handshake", err)
-		return err
-	}
-
 	for {
 		// Decode an incoming message frame
 		frame, err := decodeMessageFrame(decoder)
@@ -158,6 +202,47 @@ func (c *Peer) Process() error {
 			c.OnMessage(m)
 		}
 	}
+}
+
+// Gossip returns a copy of our complete state.
+func (c *Peer) Gossip() (complete mesh.GossipData) {
+	logging.LogAction("peer", "Gossip()")
+	return nil
+}
+
+// OnGossip occurs when the peer receives the gossip message.
+func (c *Peer) OnGossip(buf []byte) (delta mesh.GossipData, err error) {
+	logging.LogAction("peer", "OnGossip()")
+	return nil, nil
+}
+
+// OnGossipBroadcast occurs when the gossip broadcast is received.
+func (c *Peer) OnGossipBroadcast(src mesh.PeerName, buf []byte) (received mesh.GossipData, err error) {
+	logging.LogAction("peer", "OnGossipBroadcast()")
+	return received, nil
+}
+
+// OnGossipUnicast occurs when the gossip unicast is received.
+func (c *Peer) OnGossipUnicast(src mesh.PeerName, buf []byte) error {
+	logging.LogAction("peer", "OnGossipUnicast()")
+
+	// Make a reader and a decoder for the frame
+	reader := snappy.NewReader(bytes.NewReader(buf))
+	decoder := encoding.NewDecoder(reader)
+
+	// Decode an incoming message frame
+	frame, err := decodeMessageFrame(decoder)
+	if err != nil {
+		logging.LogError("peer", "decode frame", err)
+		return err
+	}
+
+	// Go through each message in the decoded frame
+	for _, m := range frame {
+		c.OnMessage(m)
+	}
+
+	return nil
 }
 
 // Close terminates the connection.
@@ -181,3 +266,4 @@ func (c *Peer) Close() error {
 func peerKey(nodeName string) uint32 {
 	return utils.GetHash([]byte(nodeName))
 }
+*/

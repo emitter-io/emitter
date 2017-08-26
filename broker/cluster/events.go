@@ -15,59 +15,16 @@
 package cluster
 
 import (
+	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/encoding"
+	"github.com/emitter-io/emitter/security"
+	"github.com/weaveworks/mesh"
 )
-
-// Query represents an incoming query.
-type Query struct {
-	Name    string
-	Respond func([]byte) error
-}
-
-// QueryResponse is used to represent a single response from a node
-type QueryResponse struct {
-	Node    string
-	Payload []byte
-}
-
-// QueryEvent represents a generic query event sent by a node.
-type QueryEvent struct {
-	Node string // Gets or sets the node identifier for this event.
-}
-
-// SubscriptionEvent represents a message sent when a subscription is added or removed.
-type SubscriptionEvent struct {
-	Ssid    []uint32 // Gets or sets the SSID (parsed channel) for this subscription.
-	Channel string   // Gets or sets the channel name.
-	Node    string   // Gets or sets the node identifier for this event.
-}
-
-// decodeSubscriptionEvent decodes the event from the payload.
-func decodeSubscriptionEvent(payload []byte) *SubscriptionEvent {
-	var event SubscriptionEvent
-	encoding.Decode(payload, &event)
-	return &event
-}
-
-// HandshakeEvent represents a message used to confirm the identity of a remote server
-// which is trying to connect.
-type HandshakeEvent struct {
-	Key  string         // Gets or sets the handshake key to verify.
-	Node string         // Gets or sets the node identifier for this event.
-	Subs []Subscription // Gets or sets the subscriptions.
-}
 
 // Subscription represents a subscription.
 type Subscription struct {
 	Ssid    []uint32 // The Ssid of the message
 	Channel []byte   // The channel of the message
-}
-
-// decodeHandshakeEvent decodes the event from the decoder.
-func decodeHandshakeEvent(decoder encoding.Decoder) (out *HandshakeEvent, err error) {
-	out = new(HandshakeEvent)
-	err = decoder.Decode(out)
-	return
 }
 
 // MessageFrame represents a message frame which is sent through the wire to the
@@ -86,4 +43,84 @@ func decodeMessageFrame(decoder encoding.Decoder) (out MessageFrame, err error) 
 	out = make(MessageFrame, 0, 64)
 	err = decoder.Decode(&out)
 	return
+}
+
+// SubscriptionEvent represents a subscription event.
+type SubscriptionEvent struct {
+	Peer mesh.PeerName // The name of the peer.
+	Conn security.ID   // The connection identifier.
+	Ssid []uint32      // The SSID for the subscription.
+}
+
+// Encode encodes the event to byte representation.
+func (e *SubscriptionEvent) Encode() []byte {
+	buf, err := encoding.Encode(e)
+	if err != nil {
+		panic(err)
+	}
+
+	return buf
+}
+
+// decodeSubscriptionEvent decodes the event
+func decodeSubscriptionEvent(buf []byte) (out *SubscriptionEvent, err error) {
+	out = &SubscriptionEvent{}
+	err = encoding.Decode(buf, out)
+	return
+}
+
+// SubscriptionState represents globally synchronised state.
+type subscriptionState collection.LWWSet
+
+// newSubscriptionState creates a new last-write-wins set with bias for 'add'.
+func newSubscriptionState() *subscriptionState {
+	return (*subscriptionState)(collection.NewLWWSet())
+}
+
+// decodeSubscriptionState decodes the state
+func decodeSubscriptionState(buf []byte) (*subscriptionState, error) {
+	out := map[interface{}]collection.LWWTime{}
+	err := encoding.Decode(buf, &out)
+	return &subscriptionState{Set: out}, err
+}
+
+// Encode serializes our complete state to a slice of byte-slices.
+func (st *subscriptionState) Encode() [][]byte {
+	lww := (*collection.LWWSet)(st)
+	lww.Lock()
+	defer lww.Unlock()
+
+	buf, err := encoding.Encode(lww.Set)
+	if err != nil {
+		panic(err)
+	}
+
+	return [][]byte{buf}
+}
+
+// Merge merges the other GossipData into this one,
+// and returns our resulting, complete state.
+func (st *subscriptionState) Merge(other mesh.GossipData) (complete mesh.GossipData) {
+	lww := (*collection.LWWSet)(st)
+
+	otherState := other.(*subscriptionState)
+	otherLww := (*collection.LWWSet)(otherState)
+
+	lww.Merge(otherLww) // Merges and changes otherState to be a delta
+	return otherState   // Return the delta after merging
+}
+
+// Add adds the subscription event to the state.
+func (st *subscriptionState) Add(ev string) {
+	(*collection.LWWSet)(st).Add(ev)
+}
+
+// Remove removes the subscription event from the state.
+func (st *subscriptionState) Remove(ev string) {
+	(*collection.LWWSet)(st).Remove(ev)
+}
+
+// All ...
+func (st *subscriptionState) All() []interface{} {
+	return (*collection.LWWSet)(st).All()
 }

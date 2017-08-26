@@ -50,7 +50,6 @@ func Test_declassify(t *testing.T) {
 	c.Vault = new(VaultConfig)
 	m := new(secretStoreMock)
 	m.On("GetSecret", "emitter/tcp").Return(":999")
-	m.On("GetSecret", "emitter/cluster/gossip").Return("123")
 	m.On("GetSecret", "emitter/vault/address").Return("hello")
 	m.On("GetSecret", mock.Anything).Return("")
 
@@ -58,7 +57,6 @@ func Test_declassify(t *testing.T) {
 	expected.TCPPort = ":999"
 	expected.Vault = new(VaultConfig)
 	expected.Vault.Address = "hello"
-	expected.Cluster.Gossip = 123
 
 	c.declassify("emitter", m)
 
