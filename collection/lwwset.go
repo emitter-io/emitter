@@ -30,6 +30,16 @@ func (t LWWTime) IsZero() bool {
 	return t.AddTime == 0 && t.DelTime == 0
 }
 
+// IsAdded checks if add time is larger than remove time.
+func (t LWWTime) IsAdded() bool {
+	return t.AddTime != 0 && t.AddTime >= t.DelTime
+}
+
+// IsRemoved checks if remove time is larger than add time.
+func (t LWWTime) IsRemoved() bool {
+	return t.AddTime < t.DelTime
+}
+
 // LWWSet represents a last-write-wins CRDT set.
 type LWWSet struct {
 	sync.Mutex
@@ -66,12 +76,8 @@ func (s *LWWSet) Contains(value interface{}) bool {
 	s.Lock()
 	defer s.Unlock()
 
-	v, ok := s.Set[value]
-	if !ok || v.AddTime == 0 {
-		return false
-	}
-
-	return v.AddTime >= v.DelTime
+	v, _ := s.Set[value]
+	return v.IsAdded()
 }
 
 // Merge merges two LWW sets. This also modifies the set being merged in
@@ -105,15 +111,13 @@ func (s *LWWSet) Merge(r *LWWSet) {
 }
 
 // All gets all items in the set.
-func (s *LWWSet) All() []interface{} {
+func (s *LWWSet) All() map[interface{}]LWWTime {
 	s.Lock()
 	defer s.Unlock()
 
-	items := make([]interface{}, 0, len(s.Set))
+	items := make(map[interface{}]LWWTime, len(s.Set))
 	for key, val := range s.Set {
-		if val.AddTime >= val.DelTime {
-			items = append(items, key)
-		}
+		items[key] = val
 	}
 	return items
 }

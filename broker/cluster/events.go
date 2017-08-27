@@ -16,7 +16,7 @@ package cluster
 
 import (
 	"bytes"
-	"encoding/base64"
+	//"encoding/base64"
 	"encoding/binary"
 
 	"github.com/emitter-io/emitter/collection"
@@ -70,31 +70,33 @@ func (e *SubscriptionEvent) Encode() string {
 		offset += binary.PutUvarint(buf[offset:], uint64(ssidPart))
 	}
 
-	return base64.StdEncoding.EncodeToString(buf[:offset])
+	//return base64.StdEncoding.EncodeToString(buf[:offset])
+	return string(buf[:offset])
 }
 
 // decodeSubscriptionEvent decodes the event
-func decodeSubscriptionEvent(encoded string) (*SubscriptionEvent, error) {
-	buf, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return nil, err
-	}
-
+func decodeSubscriptionEvent(encoded string) (SubscriptionEvent, error) {
 	out := SubscriptionEvent{}
+	/*buf, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return out, err
+	}*/
+	buf := []byte(encoded)
+
 	reader := bytes.NewReader(buf)
 
 	// Read the peer name
 	peer, err := binary.ReadUvarint(reader)
 	out.Peer = mesh.PeerName(peer)
 	if err != nil {
-		return nil, err
+		return out, err
 	}
 
 	// Read the connection identifier
 	conn, err := binary.ReadUvarint(reader)
 	out.Conn = security.ID(conn)
 	if err != nil {
-		return nil, err
+		return out, err
 	}
 
 	// Read the SSID until we're finished
@@ -103,11 +105,11 @@ func decodeSubscriptionEvent(encoded string) (*SubscriptionEvent, error) {
 		ssidPart, err := binary.ReadUvarint(reader)
 		out.Ssid = append(out.Ssid, uint32(ssidPart))
 		if err != nil {
-			return nil, err
+			return out, err
 		}
 	}
 
-	return &out, nil
+	return out, nil
 }
 
 // SubscriptionState represents globally synchronised state.
@@ -162,6 +164,6 @@ func (st *subscriptionState) Remove(ev string) {
 }
 
 // All ...
-func (st *subscriptionState) All() []interface{} {
+func (st *subscriptionState) All() map[interface{}]collection.LWWTime {
 	return (*collection.LWWSet)(st).All()
 }

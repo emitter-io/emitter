@@ -132,6 +132,40 @@ func (s *Swarm) loop() {
 	}
 }
 
+// Merge merges the incoming state and returns a delta
+func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
+
+	// Decode the state we just received
+	other, err := decodeSubscriptionState(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	// Merge and get the delta
+	delta := s.state.Merge(other)
+	for k, v := range other.All() {
+
+		// Decode the event
+		ev, err := decodeSubscriptionEvent(k.(string))
+		if err != nil {
+			return nil, err
+		}
+
+		if v.IsAdded() {
+			fmt.Printf("subscribe: %v\n", ev)
+			s.OnSubscribe(newPeer(s, ev.Peer), ev)
+		}
+
+		if v.IsRemoved() {
+			fmt.Printf("unsubscribe: %v\n", ev)
+			s.OnUnsubscribe(newPeer(s, ev.Peer), ev)
+		}
+
+	}
+
+	return delta, nil
+}
+
 // Gossip returns the state of everything we know; gets called periodically.
 func (s *Swarm) Gossip() (complete mesh.GossipData) {
 	logging.LogAction("peer", "Gossip()")
@@ -141,44 +175,24 @@ func (s *Swarm) Gossip() (complete mesh.GossipData) {
 
 // OnGossip merges received data into state and returns "everything new I've just
 // learnt", or nil if nothing in the received data was new.
-func (s *Swarm) OnGossip(buf []byte) (mesh.GossipData, error) {
+func (s *Swarm) OnGossip(buf []byte) (delta mesh.GossipData, err error) {
 	logging.LogAction("peer", "OnGossip(): "+fmt.Sprintf("%v bytes received", len(buf)))
 
-	// Decode the state we just received
-	other, err := decodeSubscriptionState(buf)
-	if err != nil {
-		return nil, err
+	if delta, err = s.merge(buf); err != nil {
+		logging.LogError("merge", "merging", err)
 	}
-
-	// Merge and get the delta
-	delta := s.state.Merge(other)
-	for _, v := range other.All() {
-		ev := v.(string)
-		fmt.Printf("active: %v\n", ev)
-	}
-
-	return delta, nil
+	return
 }
 
 // OnGossipBroadcast merges received data into state and returns a representation
 // of the received data (typically a delta) for further propagation.
-func (s *Swarm) OnGossipBroadcast(src mesh.PeerName, buf []byte) (mesh.GossipData, error) {
+func (s *Swarm) OnGossipBroadcast(src mesh.PeerName, buf []byte) (delta mesh.GossipData, err error) {
 	logging.LogAction("peer", "OnGossipBroadcast(): "+fmt.Sprintf("%v bytes received", len(buf)))
 
-	// Decode the state we just received
-	other, err := decodeSubscriptionState(buf)
-	if err != nil {
-		return nil, err
+	if delta, err = s.merge(buf); err != nil {
+		logging.LogError("merge", "merging", err)
 	}
-
-	// Merge and get the delta
-	delta := s.state.Merge(other)
-	for _, v := range other.All() {
-		ev := v.(string)
-		fmt.Printf("active: %v\n", ev)
-	}
-
-	return delta, nil
+	return
 }
 
 // OnGossipUnicast occurs when the gossip unicast is received. In emitter this is

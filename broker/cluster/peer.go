@@ -19,16 +19,17 @@ import (
 )
 
 // NewPeer creates a new peer for the connection.
-func newPeer(name mesh.PeerName) *Peer {
+func newPeer(swarm *Swarm, name mesh.PeerName) *Peer {
 	return &Peer{
-		name: name,
+		swarm: swarm,
+		name:  name,
 	}
 }
 
 // Peer represents a peer broker.
 type Peer struct {
-	name  mesh.PeerName // The peer name for communicating.
 	swarm *Swarm        // The swarm controlling the peer.
+	name  mesh.PeerName // The peer name for communicating.
 }
 
 // Send forwards the message to the remote server.
