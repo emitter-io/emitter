@@ -3,6 +3,7 @@ package broker
 import (
 	"testing"
 
+	"github.com/emitter-io/emitter/broker/subscription"
 	netmock "github.com/emitter-io/emitter/network/mock"
 	"github.com/emitter-io/emitter/security"
 	secmock "github.com/emitter-io/emitter/security/mock"
@@ -116,9 +117,9 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 
 		s := &Service{
 			Contracts:     provider,
-			subscriptions: NewSubscriptionTrie(),
+			subscriptions: subscription.NewSubscriptionTrie(),
 			License:       license,
-			subcounters:   NewSubscriptionCounters(),
+			subcounters:   subscription.NewSubscriptionCounters(),
 		}
 
 		conn := netmock.NewConn()
@@ -134,7 +135,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 		// Search for the ssid.
 		channel := security.ParseChannel([]byte(tc.channel))
 		key, _ := s.Cipher.DecryptKey(channel.Key)
-		ssid := NewSsid(key.Contract(), channel)
+		ssid := subscription.NewSsid(key.Contract(), channel)
 		subscribers := s.subscriptions.Lookup(ssid)
 		assert.Equal(t, tc.subCount, len(subscribers))
 
@@ -250,9 +251,9 @@ func TestHandlers_onPublish(t *testing.T) {
 
 		s := &Service{
 			Contracts:     provider,
-			subscriptions: NewSubscriptionTrie(),
+			subscriptions: subscription.NewSubscriptionTrie(),
 			License:       license,
-			subcounters:   NewSubscriptionCounters(),
+			subcounters:   subscription.NewSubscriptionCounters(),
 		}
 
 		conn := netmock.NewConn()

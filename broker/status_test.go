@@ -3,12 +3,13 @@ package broker
 import (
 	"testing"
 
+	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_getStatus(t *testing.T) {
 	s := &Service{
-		subcounters: NewSubscriptionCounters(),
+		subcounters: subscription.NewSubscriptionCounters(),
 	}
 
 	status, err := s.getStatus()

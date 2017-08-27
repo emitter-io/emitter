@@ -27,6 +27,7 @@ import (
 	"net/http/pprof"
 
 	"github.com/emitter-io/emitter/broker/cluster"
+	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
@@ -39,17 +40,17 @@ import (
 
 // Service represents the main structure.
 type Service struct {
-	Closing       chan bool                 // The channel for closing signal.
-	Cipher        *security.Cipher          // The cipher to use for decoding and encoding keys.
-	License       *security.License         // The licence for this emitter server.
-	Config        *config.Config            // The configuration for the service.
-	Contracts     security.ContractProvider // The contract provider for the service.
-	subscriptions *SubscriptionTrie         // The subscription matching trie.
-	subcounters   *SubscriptionCounters     // The subscription counters.
-	http          *http.Server              // The underlying HTTP server.
-	tcp           *tcp.Server               // The underlying TCP server.
-	cluster       *cluster.Swarm            // The gossip-based cluster mechanism.
-	startTime     time.Time                 // The start time of the service.
+	Closing       chan bool                          // The channel for closing signal.
+	Cipher        *security.Cipher                   // The cipher to use for decoding and encoding keys.
+	License       *security.License                  // The licence for this emitter server.
+	Config        *config.Config                     // The configuration for the service.
+	Contracts     security.ContractProvider          // The contract provider for the service.
+	subscriptions *subscription.SubscriptionTrie     // The subscription matching trie.
+	subcounters   *subscription.SubscriptionCounters // The subscription counters.
+	http          *http.Server                       // The underlying HTTP server.
+	tcp           *tcp.Server                        // The underlying TCP server.
+	cluster       *cluster.Swarm                     // The gossip-based cluster mechanism.
+	startTime     time.Time                          // The start time of the service.
 }
 
 // NewService creates a new service.
@@ -57,8 +58,8 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	s = &Service{
 		Closing:       make(chan bool),
 		Config:        cfg,
-		subscriptions: NewSubscriptionTrie(),
-		subcounters:   NewSubscriptionCounters(),
+		subscriptions: subscription.NewSubscriptionTrie(),
+		subcounters:   subscription.NewSubscriptionCounters(),
 		http:          new(http.Server),
 		tcp:           new(tcp.Server),
 	}
@@ -90,9 +91,9 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	// Create a new cluster if we have this configured
 	if cfg.Cluster != nil {
 		s.cluster = cluster.NewSwarm(cfg.Cluster, s.Closing)
+		s.cluster.OnMessage = s.onPeerMessage
 		s.cluster.OnSubscribe = s.onSubscribe
 		s.cluster.OnUnsubscribe = s.onUnsubscribe
-		s.cluster.OnMessage = s.onPeerMessage
 	}
 
 	logging.LogTarget("service", "using external address", address.External())
@@ -190,21 +191,27 @@ func (s *Service) onHTTPKeyGen(w http.ResponseWriter, r *http.Request) {
 }
 
 // Occurs when a peer has a new subscription.
-func (s *Service) onSubscribe(ssid []uint32, peer *cluster.Peer) {
-	logging.LogTarget("swarm", "subscribe", ssid)
-	s.subscriptions.Subscribe(ssid, peer)
+func (s *Service) onSubscribe(ssid subscription.Ssid, sub subscription.Subscriber) bool {
+	logging.LogTarget("service", "subscribe", ssid)
+	if _, err := s.subscriptions.Subscribe(ssid, sub); err != nil {
+		return false // Unable to subscribe
+	}
+
+	return true
 }
 
 // Occurs when a peer has unsubscribed.
-func (s *Service) onUnsubscribe(ssid []uint32, peer *cluster.Peer) {
-	logging.LogTarget("swarm", "unsubscribe", ssid)
-	s.subscriptions.Unsubscribe(ssid, peer)
+func (s *Service) onUnsubscribe(ssid subscription.Ssid, sub subscription.Subscriber) bool {
+	logging.LogTarget("service", "unsubscribe", ssid)
+	s.subscriptions.Unsubscribe(ssid, sub)
+
+	return true
 }
 
 // Occurs when a message is received from a peer.
 func (s *Service) onPeerMessage(m *cluster.Message) {
 	// Get the contract
-	ssid := Ssid(m.Ssid)
+	ssid := subscription.Ssid(m.Ssid)
 	contract := s.Contracts.Get(ssid.Contract())
 
 	// Iterate through all subscribers and send them the message
@@ -228,7 +235,7 @@ func (s *Service) selfPublish(channelName string, payload []byte) {
 	// Parse the channel and make an SSID we can use
 	channel := security.ParseChannel([]byte("emitter/" + channelName))
 	if channel.ChannelType == security.ChannelStatic {
-		ssid := NewSsid(s.License.Contract, channel)
+		ssid := subscription.NewSsid(s.License.Contract, channel)
 
 		// Iterate through all subscribers and send them the message
 		subs := s.subscriptions.Lookup(ssid)

@@ -17,6 +17,7 @@ package broker
 import (
 	"encoding/json"
 
+	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/security"
 )
 
@@ -118,7 +119,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Unsubscribe the client from the channel
-	ssid := NewSsid(key.Contract(), channel)
+	ssid := subscription.NewSsid(key.Contract(), channel)
 	c.Unsubscribe(ssid)
 
 	return nil
@@ -195,7 +196,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	contract.Stats().AddIngress(int64(len(payload)))
 
 	// Iterate through all subscribers and send them the message
-	ssid := NewSsid(key.Contract(), channel)
+	ssid := subscription.NewSsid(key.Contract(), channel)
 	size := int64(len(payload))
 	for _, subscriber := range c.service.subscriptions.Lookup(ssid) {
 		subscriber.Send(ssid, channel.Channel, payload) // Send to the client

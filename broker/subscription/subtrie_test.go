@@ -1,4 +1,4 @@
-package broker
+package subscription
 
 import (
 	"math/rand"
@@ -8,6 +8,14 @@ import (
 	"github.com/emitter-io/emitter/utils"
 	"github.com/stretchr/testify/assert"
 )
+
+type testSubscriber struct {
+	id int
+}
+
+func (s *testSubscriber) Send(ssid []uint32, channel []byte, payload []byte) error {
+	return nil
+}
 
 func TestTrieMatch(t *testing.T) {
 	m := NewSubscriptionTrie()
@@ -50,9 +58,9 @@ func TestTrieIntegration(t *testing.T) {
 	assert := assert.New(t)
 	var (
 		m  = NewSubscriptionTrie()
-		s0 = new(Conn)
-		s1 = new(Conn)
-		s2 = new(Conn)
+		s0 = new(testSubscriber)
+		s1 = new(testSubscriber)
+		s2 = new(testSubscriber)
 	)
 
 	sub0, err := m.Subscribe([]uint32{1, wildcard}, s0)
@@ -94,7 +102,7 @@ func TestTrieIntegration(t *testing.T) {
 // Populates the trie with a set of strings
 func testPopulateWithStrings(m *SubscriptionTrie, values []string) {
 	for _, s := range values {
-		m.Subscribe(testSub(s), new(Conn))
+		m.Subscribe(testSub(s), new(testSubscriber))
 	}
 }
 
@@ -112,7 +120,7 @@ func testSub(topic string) []uint32 {
 func BenchmarkSubscriptionTrieSubscribe(b *testing.B) {
 	var (
 		m     = NewSubscriptionTrie()
-		s0    = new(Conn)
+		s0    = new(testSubscriber)
 		query = []uint32{1, wildcard, 2, 3, 4}
 	)
 	populateMatcher(m, 1000, 5)
@@ -127,7 +135,7 @@ func BenchmarkSubscriptionTrieSubscribe(b *testing.B) {
 func BenchmarkSubscriptionTrieUnsubscribe(b *testing.B) {
 	var (
 		m     = NewSubscriptionTrie()
-		s0    = new(Conn)
+		s0    = new(testSubscriber)
 		query = []uint32{1, wildcard, 2, 3, 4}
 	)
 
@@ -144,7 +152,7 @@ func BenchmarkSubscriptionTrieUnsubscribe(b *testing.B) {
 func BenchmarkSubscriptionTrieLookup(b *testing.B) {
 	var (
 		m  = NewSubscriptionTrie()
-		s0 = new(Conn)
+		s0 = new(testSubscriber)
 		q1 = []uint32{1, wildcard, 2, 3, 4}
 		q2 = []uint32{1, 5, 2, 3, 4}
 	)
@@ -162,7 +170,7 @@ func BenchmarkSubscriptionTrieLookup(b *testing.B) {
 func BenchmarkSubscriptionTrieSubscribeCold(b *testing.B) {
 	var (
 		m     = NewSubscriptionTrie()
-		s0    = new(Conn)
+		s0    = new(testSubscriber)
 		query = []uint32{1, wildcard, 2, 3, 4}
 	)
 
@@ -175,7 +183,7 @@ func BenchmarkSubscriptionTrieSubscribeCold(b *testing.B) {
 func BenchmarkSubscriptionTrieUnsubscribeCold(b *testing.B) {
 	var (
 		m     = NewSubscriptionTrie()
-		s0    = new(Conn)
+		s0    = new(testSubscriber)
 		query = []uint32{1, wildcard, 2, 3, 4}
 	)
 	m.Subscribe(query, s0)
@@ -190,7 +198,7 @@ func BenchmarkSubscriptionTrieUnsubscribeCold(b *testing.B) {
 func BenchmarkSubscriptionTrieLookupCold(b *testing.B) {
 	var (
 		m  = NewSubscriptionTrie()
-		s0 = new(Conn)
+		s0 = new(testSubscriber)
 		q1 = []uint32{1, wildcard, 2, 3, 4}
 		q2 = []uint32{1, 5, 2, 3, 4}
 	)
@@ -217,6 +225,6 @@ func populateMatcher(m *SubscriptionTrie, num, topicSize int) {
 			topic = append(topic, uint32(rand.Int()))
 		}
 
-		m.Subscribe(topic, new(Conn))
+		m.Subscribe(topic, new(testSubscriber))
 	}
 }

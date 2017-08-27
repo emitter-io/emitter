@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/logging"
@@ -45,9 +46,9 @@ type Swarm struct {
 	gossip  mesh.Gossip           // The gossip protocol.
 	members *sync.Map             // The map of members in the peer set.
 
-	OnSubscribe   func([]uint32, *Peer) // Delegate to invoke when the subscription event is received.
-	OnUnsubscribe func([]uint32, *Peer) // Delegate to invoke when the subscription event is received.
-	OnMessage     func(*Message)        // Delegate to invoke when a new message is received.
+	OnSubscribe   func(subscription.Ssid, subscription.Subscriber) bool // Delegate to invoke when the subscription event is received.
+	OnUnsubscribe func(subscription.Ssid, subscription.Subscriber) bool // Delegate to invoke when the subscription event is received.
+	OnMessage     func(*Message)                                        // Delegate to invoke when a new message is received.
 }
 
 // Swarm implements mesh.Gossiper.

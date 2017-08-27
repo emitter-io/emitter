@@ -19,6 +19,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/security"
@@ -27,10 +28,10 @@ import (
 // Conn represents an incoming connection.
 type Conn struct {
 	sync.Mutex
-	socket  net.Conn                 // The transport used to read and write messages.
-	id      security.ID              // The identifier of the connection.
-	service *Service                 // The service for this connection.
-	subs    map[uint32]*Subscription // The subscriptions for this connection.
+	socket  net.Conn                     // The transport used to read and write messages.
+	id      security.ID                  // The identifier of the connection.
+	service *Service                     // The service for this connection.
+	subs    map[uint32]subscription.Ssid // The subscriptions for this connection.
 }
 
 // NewConn creates a new connection.
@@ -39,7 +40,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		id:      security.NewID(),
 		service: s,
 		socket:  t,
-		subs:    make(map[uint32]*Subscription),
+		subs:    make(map[uint32]subscription.Ssid),
 	}
 
 	logging.LogTarget("conn", "created", c.id)
@@ -164,9 +165,9 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 	defer c.Unlock()
 
 	// Add the subscription
-	ssid := NewSsid(contract, channel)
-	if sub, err := c.service.subscriptions.Subscribe(ssid, c); err == nil {
-		c.subs[ssid.GetHashCode()] = sub
+	ssid := subscription.NewSsid(contract, channel)
+	if ok := c.service.onSubscribe(ssid, c); ok {
+		c.subs[ssid.GetHashCode()] = ssid
 
 		// Increment the counters
 		c.service.subcounters.Increment(ssid, string(channel.Channel))
@@ -177,7 +178,7 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 }
 
 // Unsubscribe unsubscribes this client from a particular channel.
-func (c *Conn) Unsubscribe(ssid Ssid) {
+func (c *Conn) Unsubscribe(ssid subscription.Ssid) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -186,7 +187,7 @@ func (c *Conn) Unsubscribe(ssid Ssid) {
 	if _, ok := c.subs[hkey]; ok {
 
 		// Unsubscribe from the trie and remove from our internal map
-		c.service.subscriptions.Unsubscribe(ssid, c)
+		c.service.onUnsubscribe(ssid, c)
 		delete(c.subs, hkey)
 
 		// Decrement the counters
@@ -203,8 +204,8 @@ func (c *Conn) Close() error {
 
 	// Unsubscribe from everything, no need to lock since each Unsubscribe is
 	// already locked. Locking the 'Close()' would result in a deadlock.
-	for _, s := range c.subs {
-		c.Unsubscribe(s.Ssid)
+	for _, ssid := range c.subs {
+		c.Unsubscribe(ssid)
 	}
 
 	// Close the transport

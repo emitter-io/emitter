@@ -12,7 +12,7 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package broker
+package subscription
 
 import (
 	"sync"
