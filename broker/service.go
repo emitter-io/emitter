@@ -93,6 +93,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		s.cluster.OnSubscribe = s.onSubscribe
 		s.cluster.OnUnsubscribe = s.onUnsubscribe
 		s.cluster.OnMessage = s.onPeerMessage
+		s.cluster.OnPeerOffline = s.onPeerOffline
 	}
 
 	logging.LogTarget("service", "using external address", address.External())
@@ -217,6 +218,13 @@ func (s *Service) onPeerMessage(m *cluster.Message) {
 				contract.Stats().AddEgress(int64(len(m.Payload)))
 			}
 		}
+	}
+}
+
+// Occurs when a peer goes offline.
+func (s *Service) onPeerOffline(peer *cluster.Peer, active [][]uint32) {
+	for _, ssid := range active {
+		s.subscriptions.Unsubscribe(ssid, peer)
 	}
 }
 

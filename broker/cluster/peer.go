@@ -26,78 +26,45 @@ import (
 	"github.com/weaveworks/mesh"
 )
 
-// PeerSet maintains a map of peers
-type peerset struct {
-	sender  mesh.Gossip //  The gossip interface to use for sending.
-	peers   *mesh.Peers // The memberlist discovery mechanism.
-	members *sync.Map   // The map of members in the peer set.
-}
-
-// newPeerSet creates a new peer set for the connection.
-func newPeerSet(sender mesh.Gossip, peers *mesh.Peers) *peerset {
-	p := &peerset{
-		sender:  sender,
-		peers:   peers,
-		members: new(sync.Map),
-	}
-
-	// Attach the GC callback so we know when a peer is dead.
-	peers.OnGC(p.onPeerGC)
-	return p
-}
-
-// Occurs when a peer is garbage collected.
-func (s *peerset) onPeerGC(p *mesh.Peer) {
-	if v, ok := s.members.Load(p.Name); ok {
-		peer := v.(*Peer)
-		logging.LogTarget("swarm", "peer removed", peer.name)
-		peer.Close() // Close the peer on our end
-
-		// TODO: Make sure we remove all subscriptions as well
-
-		// We also need to remove the peer from our set, so next time a new peer can be created.
-		s.members.Delete(peer.name)
-	}
-}
-
-// Get retrieves a peer.
-func (s *peerset) Get(name mesh.PeerName) *Peer {
-	if p, ok := s.members.Load(name); ok {
-		return p.(*Peer)
-	}
-
-	// Create new peer and store it
-	peer := s.newPeer(name)
-	v, ok := s.members.LoadOrStore(name, peer)
-	if !ok {
-		logging.LogTarget("swarm", "peer created", v)
-	}
-	return v.(*Peer)
-}
-
 // ------------------------------------------------------------------------------------
 
 // Peer represents a remote peer.
 type Peer struct {
 	sync.Mutex
-	sender  mesh.Gossip   // The gossip interface to use for sending.
-	name    mesh.PeerName // The peer name for communicating.
-	frame   MessageFrame  // The current message frame.
-	closing chan bool     // The closing channel for the peer.
+	sender  mesh.Gossip         // The gossip interface to use for sending.
+	name    mesh.PeerName       // The peer name for communicating.
+	frame   MessageFrame        // The current message frame.
+	subs    map[string][]uint32 // The SSIDs of active subscriptions for this peer.
+	closing chan bool           // The closing channel for the peer.
 }
 
 // NewPeer creates a new peer for the connection.
-func (s *peerset) newPeer(name mesh.PeerName) *Peer {
+func (s *Swarm) newPeer(name mesh.PeerName) *Peer {
 	peer := &Peer{
-		sender:  s.sender,
+		sender:  s.gossip,
 		name:    name,
 		frame:   make(MessageFrame, 0, 64),
+		subs:    make(map[string][]uint32),
 		closing: make(chan bool),
 	}
 
 	// Spawn the send queue processor
 	utils.Repeat(peer.processSendQueue, 5*time.Millisecond, peer.closing)
 	return peer
+}
+
+// Occurs when the peer is subscribed
+func (p *Peer) onSubscribe(encodedEvent string, ssid []uint32) {
+	p.Lock()
+	defer p.Unlock()
+	p.subs[encodedEvent] = ssid
+}
+
+// Occurs when the peer is unsubscribed
+func (p *Peer) onUnsubscribe(encodedEvent string, ssid []uint32) {
+	p.Lock()
+	defer p.Unlock()
+	delete(p.subs, encodedEvent)
 }
 
 // Close termintes the peer and stops everything associated with this peer.

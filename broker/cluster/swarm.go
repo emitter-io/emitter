@@ -41,10 +41,11 @@ type Swarm struct {
 	closing chan bool             // The closing channel.
 	config  *config.ClusterConfig // The configuration for the cluster.
 	state   *subscriptionState    // The state to synchronise.
-	peers   *peerset              // The managed set of peers for message forwarding.
 	router  *mesh.Router          // The mesh router.
 	gossip  mesh.Gossip           // The gossip protocol.
+	members *sync.Map             // The map of members in the peer set.
 
+	OnPeerOffline func(*Peer, [][]uint32)        // Delegate to invoke whan a peer is removed (offline).
 	OnSubscribe   func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
 	OnUnsubscribe func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
 	OnMessage     func(*Message)                 // Delegate to invoke when a new message is received.
@@ -61,6 +62,7 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 		closing: closing,
 		config:  cfg,
 		state:   newSubscriptionState(),
+		members: new(sync.Map),
 	}
 
 	// Get the cluster binding address
@@ -95,11 +97,50 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 		panic(err)
 	}
 
+	// Attach the GC callback so we know when a peer is dead.
+	router.Peers.OnGC(swarm.onPeerGC)
+
 	//Store the gossip and the router
 	swarm.gossip = gossip
 	swarm.router = router
-	swarm.peers = newPeerSet(gossip, router.Peers)
 	return swarm
+}
+
+// Occurs when a peer is garbage collected.
+func (s *Swarm) onPeerGC(p *mesh.Peer) {
+	if v, ok := s.members.Load(p.Name); ok {
+		peer := v.(*Peer)
+		logging.LogTarget("swarm", "peer removed", peer.name)
+		peer.Close() // Close the peer on our end
+
+		// We also need to remove the peer from our set, so next time a new peer can be created.
+		s.members.Delete(peer.name)
+
+		// Retrieve all the pending subscriptions
+		subs := make([][]uint32, 0, len(peer.subs))
+		for _, ssid := range peer.subs {
+			subs = append(subs, ssid)
+		}
+
+		// Tell the service that the peer is online and we need to remove the subscriptions.
+		logging.LogTarget("swarm", "unsubscribe offline peer", peer.name)
+		s.OnPeerOffline(peer, subs)
+	}
+}
+
+// Get retrieves a peer.
+func (s *Swarm) findPeer(name mesh.PeerName) *Peer {
+	if p, ok := s.members.Load(name); ok {
+		return p.(*Peer)
+	}
+
+	// Create new peer and store it
+	peer := s.newPeer(name)
+	v, ok := s.members.LoadOrStore(name, peer)
+	if !ok {
+		logging.LogTarget("swarm", "peer created", v)
+	}
+	return v.(*Peer)
 }
 
 // LocalName returns the local node name.
@@ -152,14 +193,21 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 			return nil, err
 		}
 
+		// Get the peer to use
+		peer := s.findPeer(ev.Peer)
+
+		// If the subscription is added, notify (TODO: use channels)
 		if v.IsAdded() {
 			logging.LogTarget("swarm", "subscribe", ev)
-			s.OnSubscribe(s.peers.Get(ev.Peer), ev)
+			peer.onSubscribe(k.(string), ev.Ssid)
+			s.OnSubscribe(peer, ev)
 		}
 
+		// If the subscription is removed, notify (TODO: use channels)
 		if v.IsRemoved() {
 			logging.LogTarget("swarm", "unsubscribe", ev)
-			s.OnUnsubscribe(s.peers.Get(ev.Peer), ev)
+			peer.onUnsubscribe(k.(string), ev.Ssid)
+			s.OnUnsubscribe(peer, ev)
 		}
 
 	}
