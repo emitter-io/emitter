@@ -24,8 +24,6 @@ import (
 	"github.com/emitter-io/emitter/security"
 )
 
-var logConnection = logging.AddLogger("[conn] connection %s id=%s")
-
 // Conn represents an incoming connection.
 type Conn struct {
 	sync.Mutex
@@ -44,7 +42,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		subs:    make(map[uint32]*Subscription),
 	}
 
-	logging.Log(logConnection, "created", c.id.String())
+	logging.LogTarget("conn", "created", c.id)
 	return c
 }
 
@@ -202,7 +200,7 @@ func (c *Conn) Unsubscribe(ssid Ssid) {
 
 // Close terminates the connection.
 func (c *Conn) Close() error {
-	logging.Log(logConnection, "closed", c.id.String())
+	logging.LogTarget("conn", "closed", c.id)
 
 	// Unsubscribe from everything, no need to lock since each Unsubscribe is
 	// already locked. Locking the 'Close()' would result in a deadlock.

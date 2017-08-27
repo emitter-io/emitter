@@ -268,7 +268,6 @@ func (s *Service) hookSignals() {
 
 // Close closes gracefully the service.,
 func (s *Service) Close() {
-	_ = logging.Flush()
 
 	// Gracefully leave the cluster and shutdown the listener.
 	if s.cluster != nil {
