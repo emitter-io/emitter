@@ -28,10 +28,9 @@ import (
 
 // PeerSet maintains a map of peers
 type peerset struct {
-	sync.Mutex
-	sender  mesh.Gossip             //  The gossip interface to use for sending.
-	peers   *mesh.Peers             // The memberlist discovery mechanism.
-	members map[mesh.PeerName]*Peer // The map of members in the peer set.
+	sender  mesh.Gossip //  The gossip interface to use for sending.
+	peers   *mesh.Peers // The memberlist discovery mechanism.
+	members *sync.Map   // The map of members in the peer set.
 }
 
 // newPeerSet creates a new peer set for the connection.
@@ -39,7 +38,7 @@ func newPeerSet(sender mesh.Gossip, peers *mesh.Peers) *peerset {
 	p := &peerset{
 		sender:  sender,
 		peers:   peers,
-		members: make(map[mesh.PeerName]*Peer),
+		members: new(sync.Map),
 	}
 
 	// Attach the GC callback so we know when a peer is dead.
@@ -48,34 +47,32 @@ func newPeerSet(sender mesh.Gossip, peers *mesh.Peers) *peerset {
 }
 
 // Occurs when a peer is garbage collected.
-func (s *peerset) onPeerGC(peer *mesh.Peer) {
-	if p := s.Get(peer.Name); p != nil {
-		logging.LogTarget("swarm", "peer garbage collected", peer)
-		p.Close() // Close the peer on our end
+func (s *peerset) onPeerGC(p *mesh.Peer) {
+	if v, ok := s.members.Load(p.Name); ok {
+		peer := v.(*Peer)
+		logging.LogTarget("swarm", "peer removed", peer.name)
+		peer.Close() // Close the peer on our end
 
 		// TODO: Make sure we remove all subscriptions as well
 
 		// We also need to remove the peer from our set, so next time a new peer can be created.
-		s.Lock()
-		delete(s.members, p.name)
-		s.Unlock()
+		s.members.Delete(peer.name)
 	}
 }
 
 // Get retrieves a peer.
-func (s *peerset) Get(name mesh.PeerName) (p *Peer) {
-	s.Lock() // TODO: This lock will be contended eventually, need to replace this map by sync.Map
-	defer s.Unlock()
-
-	// Get the peer
-	if p, ok := s.members[name]; ok {
-		return p
+func (s *peerset) Get(name mesh.PeerName) *Peer {
+	if p, ok := s.members.Load(name); ok {
+		return p.(*Peer)
 	}
 
-	// Create new peer
-	p = s.newPeer(name)
-	s.members[name] = p
-	return p
+	// Create new peer and store it
+	peer := s.newPeer(name)
+	v, ok := s.members.LoadOrStore(name, peer)
+	if !ok {
+		logging.LogTarget("swarm", "peer created", v)
+	}
+	return v.(*Peer)
 }
 
 // ------------------------------------------------------------------------------------
