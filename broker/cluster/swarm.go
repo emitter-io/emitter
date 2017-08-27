@@ -16,8 +16,8 @@ package cluster
 
 import (
 	"bytes"
-	"io/ioutil"
-	"log"
+	//"io/ioutil"
+	//"log"
 	"net"
 	"strings"
 	"sync"
@@ -86,7 +86,7 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 		ConnLimit:          128,
 		PeerDiscovery:      true,
 		TrustedSubnets:     []*net.IPNet{},
-	}, swarm.name, advertiseAddr.String(), mesh.NullOverlay{}, log.New(ioutil.Discard, "", 0))
+	}, swarm.name, advertiseAddr.String(), mesh.NullOverlay{} /* log.New(ioutil.Discard, "", 0)*/, logging.Logger)
 	if err != nil {
 		panic(err)
 	}

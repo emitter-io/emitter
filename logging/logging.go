@@ -19,20 +19,20 @@ import (
 	"os"
 )
 
-// Default logger we use
-var logger = log.New(os.Stderr, "", log.LstdFlags)
+// Logger is the logger we use
+var Logger = log.New(os.Stderr, "", log.LstdFlags)
 
 // LogError logs the error as a string.
 func LogError(context string, action string, err error) {
-	logger.Printf("[%s] error during %s (%s)\n", context, action, err.Error())
+	Logger.Printf("[%s] error during %s (%s)\n", context, action, err.Error())
 }
 
 // LogAction logs The action with a tag.
 func LogAction(context string, action string) {
-	logger.Printf("[%s] %s\n", context, action)
+	Logger.Printf("[%s] %s\n", context, action)
 }
 
 // LogTarget logs The action with a tag.
 func LogTarget(context, action string, target interface{}) {
-	logger.Printf("[%s] %s (%v)\n", context, action, target)
+	Logger.Printf("[%s] %s (%v)\n", context, action, target)
 }
