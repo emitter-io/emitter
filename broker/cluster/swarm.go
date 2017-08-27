@@ -21,7 +21,7 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"time"
+	//"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/config"
@@ -29,7 +29,7 @@ import (
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/security"
-	"github.com/emitter-io/emitter/utils"
+	//"github.com/emitter-io/emitter/utils"
 	"github.com/golang/snappy"
 	"github.com/weaveworks/mesh"
 )
@@ -148,7 +148,7 @@ func (s *Swarm) Listen() {
 
 	// Every few seconds, attempt to reinforce our cluster structure by
 	// initiating connections with all of our peers.
-	utils.Repeat(s.reinforce, 5*time.Second, s.closing)
+	//utils.Repeat(s.reinforce, 5*time.Second, s.closing)
 
 	// Start the router
 	s.router.Start()
