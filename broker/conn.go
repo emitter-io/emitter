@@ -49,7 +49,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 
 // Type returns the type of the subscriber
 func (c *Conn) Type() subscription.SubscriberType {
-	return subscription.SubscriberConn
+	return subscription.SubscriberDirect
 }
 
 // Process processes the messages.
@@ -144,7 +144,7 @@ func (c *Conn) Process() error {
 }
 
 // Send forwards the message to the underlying client.
-func (c *Conn) Send(ssid []uint32, channel []byte, payload []byte) error {
+func (c *Conn) Send(ssid subscription.Ssid, channel []byte, payload []byte) error {
 	packet := mqtt.Publish{
 		Header: &mqtt.StaticHeader{
 			QOS: 0, // TODO when we'll support more QoS

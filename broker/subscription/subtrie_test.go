@@ -14,10 +14,10 @@ type testSubscriber struct {
 }
 
 func (s *testSubscriber) Type() SubscriberType {
-	return SubscriberMock
+	return SubscriberDirect
 }
 
-func (s *testSubscriber) Send(ssid []uint32, channel []byte, payload []byte) error {
+func (s *testSubscriber) Send(ssid Ssid, channel []byte, payload []byte) error {
 	return nil
 }
 

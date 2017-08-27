@@ -192,17 +192,12 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 		*/
 	}
 
-	// Write the ingress stats
-	contract.Stats().AddIngress(int64(len(payload)))
-
 	// Iterate through all subscribers and send them the message
-	ssid := subscription.NewSsid(key.Contract(), channel)
-	size := int64(len(payload))
-	for _, subscriber := range c.service.subscriptions.Lookup(ssid) {
-		subscriber.Send(ssid, channel.Channel, payload) // Send to the client
-		contract.Stats().AddEgress(size)                // Write the egress stats
-	}
+	size := c.service.publish(subscription.NewSsid(key.Contract(), channel), channel.Channel, payload)
 
+	// Write the stats
+	contract.Stats().AddIngress(int64(len(payload)))
+	contract.Stats().AddEgress(size)
 	return nil
 }
 

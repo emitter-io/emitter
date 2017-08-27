@@ -216,7 +216,7 @@ func (s *Service) onPeerMessage(m *cluster.Message) {
 
 	// Iterate through all subscribers and send them the message
 	for _, subscriber := range s.subscriptions.Lookup(ssid) {
-		if _, local := subscriber.(*Conn); local {
+		if subscriber.Type() == subscription.SubscriberDirect {
 
 			// Send to the local subscriber
 			subscriber.Send(m.Ssid, m.Channel, m.Payload)
@@ -229,20 +229,22 @@ func (s *Service) onPeerMessage(m *cluster.Message) {
 	}
 }
 
+// Publish publishes a message to everyone and returns the number of outgoing bytes written.
+func (s *Service) publish(ssid subscription.Ssid, channel, payload []byte) (n int64) {
+	size := int64(len(payload))
+	for _, subscriber := range s.subscriptions.Lookup(ssid) {
+		subscriber.Send(ssid, channel, payload) // Send to the client
+		n += size
+	}
+
+	return
+}
+
 // SelfPublish publishes a message to itself.
 func (s *Service) selfPublish(channelName string, payload []byte) {
-
-	// Parse the channel and make an SSID we can use
 	channel := security.ParseChannel([]byte("emitter/" + channelName))
 	if channel.ChannelType == security.ChannelStatic {
-		ssid := subscription.NewSsid(s.License.Contract, channel)
-
-		// Iterate through all subscribers and send them the message
-		subs := s.subscriptions.Lookup(ssid)
-		//println("subscriber found: " + strconv.Itoa(len(subs)))
-		for _, subscriber := range subs {
-			subscriber.Send(ssid, channel.Channel, payload)
-		}
+		s.publish(subscription.NewSsid(s.License.Contract, channel), channel.Channel, payload)
 	}
 }
 

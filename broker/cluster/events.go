@@ -19,6 +19,7 @@ import (
 	//"encoding/base64"
 	"encoding/binary"
 
+	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/security"
@@ -31,9 +32,9 @@ type MessageFrame []*Message
 
 // Message represents a message which has to be routed.
 type Message struct {
-	Ssid    []uint32 // The Ssid of the message
-	Channel []byte   // The channel of the message
-	Payload []byte   // The payload of the message
+	Ssid    subscription.Ssid // The Ssid of the message
+	Channel []byte            // The channel of the message
+	Payload []byte            // The payload of the message
 }
 
 // decodeMessageFrame decodes the message frame from the decoder.
