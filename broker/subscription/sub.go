@@ -53,13 +53,13 @@ type SubscriberType uint8
 
 // Subscriber types
 const (
-	SubscriberMock = SubscriberType(iota)
-	SubscriberDirect
+	SubscriberDirect = SubscriberType(iota)
 	SubscriberRemote
 )
 
 // Subscriber is a value associated with a subscription.
 type Subscriber interface {
+	ID() string
 	Type() SubscriberType
 	Send(ssid Ssid, channel []byte, payload []byte) error
 }

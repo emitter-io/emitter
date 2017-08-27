@@ -21,6 +21,7 @@ import (
 
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/logging"
+	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/security"
 )
@@ -29,7 +30,8 @@ import (
 type Conn struct {
 	sync.Mutex
 	socket  net.Conn                     // The transport used to read and write messages.
-	id      security.ID                  // The identifier of the connection.
+	id      security.ID                  // The locally unique id of the connection.
+	guid    string                       // The globally unique id of the connection.
 	service *Service                     // The service for this connection.
 	subs    map[uint32]subscription.Ssid // The subscriptions for this connection.
 }
@@ -43,8 +45,15 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		subs:    make(map[uint32]subscription.Ssid),
 	}
 
+	// Generate a globally unique id as well
+	c.guid = c.id.Unique(uint64(address.Hardware()), "emitter")
 	logging.LogTarget("conn", "created", c.id)
 	return c
+}
+
+// ID returns the unique identifier of the subsriber.
+func (c *Conn) ID() string {
+	return c.guid
 }
 
 // Type returns the type of the subscriber

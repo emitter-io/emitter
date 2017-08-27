@@ -196,6 +196,11 @@ func (s *Service) onSubscribe(ssid subscription.Ssid, sub subscription.Subscribe
 		return false // Unable to subscribe
 	}
 
+	// If we have a new direct subscriber, issue presence message
+	if sub.Type() == subscription.SubscriberDirect {
+		
+	}
+
 	logging.LogTarget("service", "subscribe", ssid)
 	return true
 }

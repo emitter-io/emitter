@@ -10,7 +10,11 @@ import (
 )
 
 type testSubscriber struct {
-	id int
+	id string
+}
+
+func (s *testSubscriber) ID() string {
+	return s.id
 }
 
 func (s *testSubscriber) Type() SubscriberType {

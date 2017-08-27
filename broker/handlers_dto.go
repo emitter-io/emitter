@@ -71,3 +71,21 @@ type keyGenResponse struct {
 	Key     string `json:"key"`
 	Channel string `json:"channel"`
 }
+
+// ------------------------------------------------------------------------------------
+
+type presenceEvent string
+
+const (
+	presenceStatusEvent      = presenceEvent("status")
+	presenceSubscribeEvent   = presenceEvent("subscribe")
+	presenceUnsubscribeEvent = presenceEvent("unsubscribe")
+)
+
+// presenceNotification represents a state notification.
+type presenceNotification struct {
+	Time    int64         `json:"time"`    // The UNIX timestamp.
+	Event   presenceEvent `json:"event"`   // The event, must be "status", "subscribe" or "unsubscribe".
+	Channel string        `json:"channel"` // The target channel for the notification.
+	Who     string        `json:"who"`     // The subscriber id.
+}

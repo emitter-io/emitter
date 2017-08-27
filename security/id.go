@@ -15,11 +15,15 @@
 package security
 
 import (
+	"crypto/sha1"
+	"encoding/base32"
 	"encoding/binary"
 	"encoding/hex"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/crypto/pbkdf2"
 )
 
 // ID represents a process-wide unique ID.
@@ -34,6 +38,16 @@ var next = uint64(
 // NewID generates a new, process-wide unique ID.
 func NewID() ID {
 	return ID(atomic.AddUint64(&next, 1))
+}
+
+// Unique generates unique id based on the current id with a prefix and salt.
+func (id ID) Unique(prefix uint64, salt string) string {
+	buffer := [16]byte{}
+	binary.BigEndian.PutUint64(buffer[:8], prefix)
+	binary.BigEndian.PutUint64(buffer[8:], uint64(id))
+
+	enc := pbkdf2.Key(buffer[:], []byte(salt), 4096, 16, sha1.New)
+	return strings.Trim(base32.StdEncoding.EncodeToString(enc), "=")
 }
 
 // String converts the ID to a string representation.

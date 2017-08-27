@@ -16,7 +16,6 @@ package config
 
 import (
 	"bytes"
-	"crypto/sha1"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -24,8 +23,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-
-	"golang.org/x/crypto/pbkdf2"
 )
 
 // Constants used throughout the service.
@@ -89,15 +86,6 @@ type ClusterConfig struct {
 	// ClusterKey is used to initialize the primary encryption key in a keyring. This key
 	// is used for encrypting all the gossip messages (message-level encryption).
 	ClusterKey string `json:"key"`
-}
-
-// Key returns the key based on the passphrase
-func (c *ClusterConfig) Key() []byte {
-	if c.ClusterKey == "" {
-		return nil
-	}
-
-	return pbkdf2.Key([]byte(c.ClusterKey), []byte("emitter"), 4096, 16, sha1.New)
 }
 
 // HasVault checks whether hashicorp vault endpoint is configured.

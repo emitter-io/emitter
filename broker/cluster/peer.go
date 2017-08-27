@@ -74,6 +74,11 @@ func (p *Peer) Close() {
 	close(p.closing)
 }
 
+// ID returns the unique identifier of the subsriber.
+func (p *Peer) ID() string {
+	return p.name.String()
+}
+
 // Type returns the type of the subscriber
 func (p *Peer) Type() subscription.SubscriberType {
 	return subscription.SubscriberRemote
