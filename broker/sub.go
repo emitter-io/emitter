@@ -78,7 +78,6 @@ func (s *Subscribers) Contains(value Subscriber) bool {
 // Subscription represents a topic subscription.
 type Subscription struct {
 	Ssid       Ssid       // Gets or sets the SSID (parsed channel) for this subscription.
-	Channel    string     // Gets or sets the channel for this subscription.
 	Subscriber Subscriber // Gets or sets the subscriber for this subscription.
 }
 
@@ -146,8 +145,7 @@ func (s *SubscriptionCounters) All() []Subscription {
 	clone := make([]Subscription, 0, len(s.m))
 	for _, m := range s.m {
 		clone = append(clone, Subscription{
-			Ssid:    m.Ssid,
-			Channel: m.Channel,
+			Ssid: m.Ssid,
 		})
 	}
 

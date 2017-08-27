@@ -152,9 +152,9 @@ func (s *Service) Join(peers ...string) []error {
 }
 
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Service) notifySubscribe(conn *Conn, ssid []uint32, channel []byte) {
+func (s *Service) notifySubscribe(conn *Conn, ssid []uint32) {
 	if s.cluster != nil {
-		s.cluster.NotifySubscribe(conn.id, ssid, channel)
+		s.cluster.NotifySubscribe(conn.id, ssid)
 	}
 }
 

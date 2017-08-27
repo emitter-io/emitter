@@ -183,7 +183,6 @@ func (c *SubscriptionTrie) Subscribe(ssid Ssid, channel string, sub Subscriber) 
 
 	return &Subscription{
 		Ssid:       ssid,
-		Channel:    channel,
 		Subscriber: sub,
 	}, nil
 }

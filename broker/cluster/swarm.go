@@ -219,7 +219,7 @@ func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) error {
 }
 
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Swarm) NotifySubscribe(conn security.ID, ssid []uint32, channel []byte) {
+func (s *Swarm) NotifySubscribe(conn security.ID, ssid []uint32) {
 	event := SubscriptionEvent{
 		Peer: s.name,
 		Conn: conn,

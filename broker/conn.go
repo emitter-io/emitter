@@ -174,7 +174,7 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 		c.service.subcounters.Increment(ssid, string(channel.Channel))
 
 		// Broadcast the subscription within our cluster
-		c.service.notifySubscribe(c, ssid, channel.Channel)
+		c.service.notifySubscribe(c, ssid)
 	}
 }
 
