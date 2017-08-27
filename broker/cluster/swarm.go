@@ -61,16 +61,22 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 		state:   newSubscriptionState(),
 	}
 
+	// Get the cluster binding address
+	clusterAddr, err := parseAddr(cfg.ClusterAddr)
+	if err != nil {
+		panic(err)
+	}
+
 	// Get the advertised address
-	advertiseAddr, err := getAdvertiseAddr(cfg)
+	advertiseAddr, err := parseAddr(cfg.AdvertiseAddr)
 	if err != nil {
 		panic(err)
 	}
 
 	// Create a new router
 	router, err := mesh.NewRouter(mesh.Config{
-		Host:               advertiseAddr.IP.String(),
-		Port:               advertiseAddr.Port,
+		Host:               clusterAddr.IP.String(),
+		Port:               clusterAddr.Port,
 		ProtocolMinVersion: mesh.ProtocolMinVersion,
 		Password:           []byte(cfg.ClusterKey),
 		ConnLimit:          128,
@@ -257,9 +263,13 @@ func (s *Swarm) Close() error {
 	return s.router.Stop()
 }
 
-// getAdvertiseAddr retrieves the advertised address from string.
-func getAdvertiseAddr(cfg *config.ClusterConfig) (*net.TCPAddr, error) {
-	addr := strings.Replace(cfg.AdvertiseAddr, "public", address.External().String(), 1)
+// parseAddr parses a TCP address.
+func parseAddr(text string) (*net.TCPAddr, error) {
+	if text[0] == ':' {
+		text = "0.0.0.0" + text
+	}
+
+	addr := strings.Replace(text, "public", address.External().String(), 1)
 	return net.ResolveTCPAddr("tcp", addr)
 }
 

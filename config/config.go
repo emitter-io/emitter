@@ -46,8 +46,8 @@ func NewDefault() *Config {
 		TCPPort: ":8080",
 		TLSPort: ":8443",
 		Cluster: &ClusterConfig{
+			ClusterAddr:   ":4000",
 			AdvertiseAddr: "public:4000",
-			Seed:          "127.0.0.1:4001",
 			ClusterKey:    "emitter-io",
 		},
 	}
@@ -74,6 +74,10 @@ type ClusterConfig struct {
 	// The name of this node. This must be unique in the cluster. If this is not set, Emitter
 	// will set it to the external IP address of the running machine.
 	NodeName string `json:"node,omitempty"`
+
+	// The IP address and port that is used to bind the inter-node communication network. This
+	// is used for the actual binding of the port.
+	ClusterAddr string `json:"cluster"`
 
 	// The address and port to advertise inter-node communication network. This is used for nat
 	// traversal.
