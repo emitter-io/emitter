@@ -123,28 +123,28 @@ func (p *Peer) Send(ssid []uint32, channel []byte, payload []byte) error {
 
 // processSendQueue flushes the current frame to the remote server
 func (p *Peer) processSendQueue() {
-	if len(p.frame) > 0 {
+	if len(p.frame) == 0 {
+		return // Nothing to send.
+	}
 
-		// Compress in-memory. TODO: Optimize the shit out of that, we don't really need to use binc
-		buffer := bytes.NewBuffer(nil)
-		snappy := snappy.NewBufferedWriter(buffer)
-		writer := encoding.NewEncoder(snappy)
+	// Compress in-memory. TODO: Optimize the shit out of that, we don't really need to use binc
+	buffer := bytes.NewBuffer(nil)
+	snappy := snappy.NewBufferedWriter(buffer)
+	writer := encoding.NewEncoder(snappy)
 
-		// Encode the current frame
-		p.Lock()
-		err := writer.Encode(p.frame)
-		p.frame = p.frame[:0]
-		p.Unlock()
+	// Encode the current frame
+	p.Lock()
+	err := writer.Encode(p.frame)
+	p.frame = p.frame[:0]
+	p.Unlock()
 
-		// Something went wrong during the encoding
-		if err != nil {
-			logging.LogError("peer", "encoding frame", err)
-		}
+	// Something went wrong during the encoding
+	if err != nil {
+		logging.LogError("peer", "encoding frame", err)
+	}
 
-		// Send the frame directly to the peer.
-		if err := snappy.Close(); err != nil {
-			logging.LogError("peer", "encoding frame", err)
-		}
+	// Send the frame directly to the peer.
+	if err := snappy.Close(); err == nil {
 		p.sender.GossipUnicast(p.name, buffer.Bytes())
 	}
 }

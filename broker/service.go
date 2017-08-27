@@ -78,8 +78,6 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	s.tcp.Handler = s.onAcceptConn
 
 	// Parse the license
-	logging.LogAction("service", "external address is "+address.External().String())
-	logging.LogAction("service", "reading the license...")
 	if s.License, err = security.ParseLicense(cfg.License); err != nil {
 		return nil, err
 	}
@@ -97,6 +95,8 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		s.cluster.OnMessage = s.onPeerMessage
 	}
 
+	logging.LogTarget("service", "using external address", address.External())
+	logging.LogTarget("service", "using node name", s.LocalName())
 	return s, nil
 }
 
