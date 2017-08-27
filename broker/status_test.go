@@ -9,7 +9,7 @@ import (
 
 func Test_getStatus(t *testing.T) {
 	s := &Service{
-		subcounters: subscription.NewSubscriptionCounters(),
+		subcounters: subscription.NewCounters(),
 	}
 
 	status, err := s.getStatus()

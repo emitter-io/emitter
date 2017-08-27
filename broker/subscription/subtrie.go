@@ -162,19 +162,19 @@ func (b *branch) subscribers() Subscribers {
 
 type tNode struct{}
 
-// SubscriptionTrie represents an efficient collection of subscriptions with lookup capability.
-type SubscriptionTrie struct {
+// Trie represents an efficient collection of subscriptions with lookup capability.
+type Trie struct {
 	root *iNode
 }
 
-// NewSubscriptionTrie creates a new matcher for the subscriptions.
-func NewSubscriptionTrie() *SubscriptionTrie {
+// NewTrie creates a new matcher for the subscriptions.
+func NewTrie() *Trie {
 	root := &iNode{main: &mainNode{cNode: &cNode{}}}
-	return &SubscriptionTrie{root: root}
+	return &Trie{root: root}
 }
 
 // Subscribe adds the Subscriber to the topic and returns a Subscription.
-func (c *SubscriptionTrie) Subscribe(ssid Ssid, sub Subscriber) (*Subscription, error) {
+func (c *Trie) Subscribe(ssid Ssid, sub Subscriber) (*Subscription, error) {
 	rootPtr := (*unsafe.Pointer)(unsafe.Pointer(&c.root))
 	root := (*iNode)(atomic.LoadPointer(rootPtr))
 	if !c.iinsert(root, nil, ssid, sub) {
@@ -187,7 +187,7 @@ func (c *SubscriptionTrie) Subscribe(ssid Ssid, sub Subscriber) (*Subscription, 
 	}, nil
 }
 
-func (c *SubscriptionTrie) iinsert(i, parent *iNode, words []uint32, sub Subscriber) bool {
+func (c *Trie) iinsert(i, parent *iNode, words []uint32, sub Subscriber) bool {
 	// Linearization point.
 	mainPtr := (*unsafe.Pointer)(unsafe.Pointer(&i.main))
 	main := (*mainNode)(atomic.LoadPointer(mainPtr))
@@ -240,7 +240,7 @@ func (c *SubscriptionTrie) iinsert(i, parent *iNode, words []uint32, sub Subscri
 }
 
 // Unsubscribe removes the Subscription.
-func (c *SubscriptionTrie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
+func (c *Trie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 	rootPtr := (*unsafe.Pointer)(unsafe.Pointer(&c.root))
 	root := (*iNode)(atomic.LoadPointer(rootPtr))
 
@@ -249,7 +249,7 @@ func (c *SubscriptionTrie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 	}
 }
 
-func (c *SubscriptionTrie) iremove(i, parent, parentsParent *iNode, words []uint32,
+func (c *Trie) iremove(i, parent, parentsParent *iNode, words []uint32,
 	wordIdx int, sub Subscriber) bool {
 
 	// Linearization point.
@@ -312,7 +312,7 @@ func (c *SubscriptionTrie) iremove(i, parent, parentsParent *iNode, words []uint
 }
 
 // Lookup returns the Subscribers for the given topic.
-func (c *SubscriptionTrie) Lookup(query Ssid) Subscribers {
+func (c *Trie) Lookup(query Ssid) Subscribers {
 	rootPtr := (*unsafe.Pointer)(unsafe.Pointer(&c.root))
 	root := (*iNode)(atomic.LoadPointer(rootPtr))
 	subs := make(Subscribers, 0, 6)
@@ -327,7 +327,7 @@ func (c *SubscriptionTrie) Lookup(query Ssid) Subscribers {
 // ilookup attempts to retrieve the Subscribers for the word path. True is
 // returned if the Subscribers were retrieved, false if the operation needs to
 // be retried.
-func (c *SubscriptionTrie) ilookup(i, parent *iNode, words []uint32, subs *Subscribers) bool {
+func (c *Trie) ilookup(i, parent *iNode, words []uint32, subs *Subscribers) bool {
 	// Linearization point.
 	mainPtr := (*unsafe.Pointer)(unsafe.Pointer(&i.main))
 	main := (*mainNode)(atomic.LoadPointer(mainPtr))
@@ -360,7 +360,7 @@ func (c *SubscriptionTrie) ilookup(i, parent *iNode, words []uint32, subs *Subsc
 // bLookup attempts to retrieve the Subscribers from the word path along the
 // given branch. True is returned if the Subscribers were retrieved, false if
 // the operation needs to be retried.
-func (c *SubscriptionTrie) bLookup(i, parent *iNode, main *mainNode, b *branch, words []uint32, subs *Subscribers) bool {
+func (c *Trie) bLookup(i, parent *iNode, main *mainNode, b *branch, words []uint32, subs *Subscribers) bool {
 	// Retrieve the subscribers from the branch we are currently traversing.
 	if len(b.subs) > 0 {
 		for _, s := range b.subscribers() {
@@ -385,7 +385,7 @@ func (c *SubscriptionTrie) bLookup(i, parent *iNode, main *mainNode, b *branch, 
 // toContracted ensures that every I-node except the root points to a C-node
 // with at least one branch or a T-node. If a given C-node has no branches and
 // is not at the root level, a T-node is returned.
-func (c *SubscriptionTrie) toContracted(cn *cNode, parent *iNode) *mainNode {
+func (c *Trie) toContracted(cn *cNode, parent *iNode) *mainNode {
 	if c.root != parent && len(cn.branches) == 0 {
 		return &mainNode{tNode: &tNode{}}
 	}
@@ -407,7 +407,7 @@ func clean(i *iNode) {
 // I-node i and checks if the T-node below i is reachable from p. If i is no
 // longer reachable, some other thread has already completed the contraction.
 // If it is reachable, the C-node below p is replaced with its contraction.
-func cleanParent(i, parent, parentsParent *iNode, c *SubscriptionTrie, word uint32) {
+func cleanParent(i, parent, parentsParent *iNode, c *Trie, word uint32) {
 	var (
 		mainPtr  = (*unsafe.Pointer)(unsafe.Pointer(&i.main))
 		main     = (*mainNode)(atomic.LoadPointer(mainPtr))
@@ -430,7 +430,7 @@ func cleanParent(i, parent, parentsParent *iNode, c *SubscriptionTrie, word uint
 
 // contract performs a contraction of the parent's C-node if possible. Returns
 // true if the contraction succeeded, false if it needs to be retried.
-func contract(parentsParent, parent, i *iNode, c *SubscriptionTrie, pMain *mainNode) bool {
+func contract(parentsParent, parent, i *iNode, c *Trie, pMain *mainNode) bool {
 	ncn := toCompressed(pMain.cNode)
 	if len(ncn.cNode.branches) == 0 && parentsParent != nil {
 		// If the compressed C-node has no branches, it and the I-node above it

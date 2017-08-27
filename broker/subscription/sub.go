@@ -83,8 +83,8 @@ type Subscription struct {
 
 // ------------------------------------------------------------------------------------
 
-// SubscriptionCounters represents a subscription counting map.
-type SubscriptionCounters struct {
+// Counters represents a subscription counting map.
+type Counters struct {
 	sync.Mutex
 	m     map[uint32]*subCounter
 	count int
@@ -96,15 +96,15 @@ type subCounter struct {
 	Counter int
 }
 
-// NewSubscriptionCounters creates a new container.
-func NewSubscriptionCounters() *SubscriptionCounters {
-	return &SubscriptionCounters{
+// NewCounters creates a new container.
+func NewCounters() *Counters {
+	return &Counters{
 		m: make(map[uint32]*subCounter),
 	}
 }
 
 // Increment increments the subscription counter.
-func (s *SubscriptionCounters) Increment(ssid Ssid, channel string) {
+func (s *Counters) Increment(ssid Ssid, channel string) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -114,14 +114,14 @@ func (s *SubscriptionCounters) Increment(ssid Ssid, channel string) {
 }
 
 // Count returns the total number of subscriptions.
-func (s *SubscriptionCounters) Count() int {
+func (s *Counters) Count() int {
 	s.Lock()
 	defer s.Unlock()
 	return s.count
 }
 
 // Decrement decrements a subscription counter.
-func (s *SubscriptionCounters) Decrement(ssid Ssid) {
+func (s *Counters) Decrement(ssid Ssid) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -138,7 +138,7 @@ func (s *SubscriptionCounters) Decrement(ssid Ssid) {
 }
 
 // All returns all subscriptions by copying the underlying map into a slice
-func (s *SubscriptionCounters) All() []Subscription {
+func (s *Counters) All() []Subscription {
 	s.Lock()
 	defer s.Unlock()
 
@@ -153,7 +153,7 @@ func (s *SubscriptionCounters) All() []Subscription {
 }
 
 // getOrCreate retrieves a single subscription meter or creates a new one.
-func (s *SubscriptionCounters) getOrCreate(ssid Ssid, channel string) (meter *subCounter) {
+func (s *Counters) getOrCreate(ssid Ssid, channel string) (meter *subCounter) {
 	key := ssid.GetHashCode()
 	if m, exists := s.m[key]; exists {
 		return m

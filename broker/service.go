@@ -40,17 +40,17 @@ import (
 
 // Service represents the main structure.
 type Service struct {
-	Closing       chan bool                          // The channel for closing signal.
-	Cipher        *security.Cipher                   // The cipher to use for decoding and encoding keys.
-	License       *security.License                  // The licence for this emitter server.
-	Config        *config.Config                     // The configuration for the service.
-	Contracts     security.ContractProvider          // The contract provider for the service.
-	subscriptions *subscription.SubscriptionTrie     // The subscription matching trie.
-	subcounters   *subscription.SubscriptionCounters // The subscription counters.
-	http          *http.Server                       // The underlying HTTP server.
-	tcp           *tcp.Server                        // The underlying TCP server.
-	cluster       *cluster.Swarm                     // The gossip-based cluster mechanism.
-	startTime     time.Time                          // The start time of the service.
+	Closing       chan bool                 // The channel for closing signal.
+	Cipher        *security.Cipher          // The cipher to use for decoding and encoding keys.
+	License       *security.License         // The licence for this emitter server.
+	Config        *config.Config            // The configuration for the service.
+	Contracts     security.ContractProvider // The contract provider for the service.
+	subscriptions *subscription.Trie        // The subscription matching trie.
+	subcounters   *subscription.Counters    // The subscription counters.
+	http          *http.Server              // The underlying HTTP server.
+	tcp           *tcp.Server               // The underlying TCP server.
+	cluster       *cluster.Swarm            // The gossip-based cluster mechanism.
+	startTime     time.Time                 // The start time of the service.
 }
 
 // NewService creates a new service.
@@ -58,8 +58,8 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	s = &Service{
 		Closing:       make(chan bool),
 		Config:        cfg,
-		subscriptions: subscription.NewSubscriptionTrie(),
-		subcounters:   subscription.NewSubscriptionCounters(),
+		subscriptions: subscription.NewTrie(),
+		subcounters:   subscription.NewCounters(),
 		http:          new(http.Server),
 		tcp:           new(tcp.Server),
 	}
