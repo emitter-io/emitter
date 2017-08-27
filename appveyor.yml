@@ -11,6 +11,9 @@ environment:
 
 install:  
   - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
+  - rmdir c:\go /s /q
+  - appveyor DownloadFile https://storage.googleapis.com/golang/go%1.9.windows-amd64.zip
+  - 7z x go1.9.windows-amd64.zip -y -oC:\ > NUL
   - go version
 
 build_script:
