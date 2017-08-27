@@ -17,8 +17,8 @@ package security
 import (
 	"errors"
 	"fmt"
+	"sync"
 
-	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/network/http"
 )
 
@@ -95,18 +95,20 @@ func (p *SingleContractProvider) Get(id uint32) Contract {
 // HTTPContractProvider provides contracts over http.
 type HTTPContractProvider struct {
 	owner *contract
-	cache *collection.ConcurrentMap
+	cache *sync.Map
+	//cache *collection.ConcurrentMap
 }
 
 // NewHTTPContractProvider creates a new single contract provider.
 func NewHTTPContractProvider(license *License) *HTTPContractProvider {
-	p := new(HTTPContractProvider)
+	p := HTTPContractProvider{}
 	p.owner = new(contract)
 	p.owner.MasterID = 1
 	p.owner.ID = license.Contract
 	p.owner.Signature = license.Signature
-	p.cache = collection.NewConcurrentMap()
-	return p
+	p.cache = new(sync.Map)
+
+	return &p
 }
 
 // Create creates a contract, the HTTPContractProvider way.
@@ -116,11 +118,14 @@ func (p *HTTPContractProvider) Create() (Contract, error) {
 
 // Get returns a ContractData fetched by its id.
 func (p *HTTPContractProvider) Get(id uint32) Contract {
-	contract, ok := p.cache.Get(id)
-	if !ok {
-		return p.fetchContract(id)
+	if c, ok := p.cache.Load(id); ok {
+		return c.(Contract)
 	}
-	return contract.(Contract)
+
+	// Load or store again, since we might have concurrently update it meanwhile
+	contract := p.fetchContract(id)
+	c, _ := p.cache.LoadOrStore(id, contract)
+	return c.(Contract)
 }
 
 func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
@@ -135,6 +140,5 @@ func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
 		return nil
 	}
 
-	p.cache.Set(c.ID, c)
 	return c
 }

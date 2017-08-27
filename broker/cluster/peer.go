@@ -55,8 +55,7 @@ func (s *peerset) onPeerGC(peer *mesh.Peer) {
 
 		// TODO: Make sure we remove all subscriptions as well
 
-		// We also need to remove the peer from our set, so
-		// the next time a new peer can be created.
+		// We also need to remove the peer from our set, so next time a new peer can be created.
 		s.Lock()
 		delete(s.members, p.name)
 		s.Unlock()
