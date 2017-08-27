@@ -37,6 +37,7 @@ type Peer struct {
 	name    mesh.PeerName                // The peer name for communicating.
 	frame   MessageFrame                 // The current message frame.
 	subs    map[string]subscription.Ssid // The SSIDs of active subscriptions for this peer.
+	active  bool                         // Whether the peer is active or not.
 	closing chan bool                    // The closing channel for the peer.
 }
 
@@ -47,6 +48,7 @@ func (s *Swarm) newPeer(name mesh.PeerName) *Peer {
 		name:    name,
 		frame:   make(MessageFrame, 0, 64),
 		subs:    make(map[string]subscription.Ssid),
+		active:  true,
 		closing: make(chan bool),
 	}
 
@@ -71,6 +73,10 @@ func (p *Peer) onUnsubscribe(encodedEvent string, ssid subscription.Ssid) {
 
 // Close termintes the peer and stops everything associated with this peer.
 func (p *Peer) Close() {
+	p.Lock()
+	defer p.Unlock()
+
+	p.active = false
 	close(p.closing)
 }
 
@@ -90,9 +96,12 @@ func (p *Peer) Send(ssid subscription.Ssid, channel []byte, payload []byte) erro
 	defer p.Unlock()
 
 	// TODO: Make sure we don't send to a dead peer
+	if p.active {
 
-	// Send simply appends the message to a frame
-	p.frame = append(p.frame, &Message{Ssid: ssid, Channel: channel, Payload: payload})
+		// Send simply appends the message to a frame
+		p.frame = append(p.frame, &Message{Ssid: ssid, Channel: channel, Payload: payload})
+
+	}
 	return nil
 }
 
