@@ -45,10 +45,9 @@ type Swarm struct {
 	gossip  mesh.Gossip           // The gossip protocol.
 	members *sync.Map             // The map of members in the peer set.
 
-	OnPeerOffline func(*Peer, [][]uint32)        // Delegate to invoke whan a peer is removed (offline).
-	OnSubscribe   func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
-	OnUnsubscribe func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
-	OnMessage     func(*Message)                 // Delegate to invoke when a new message is received.
+	OnSubscribe   func([]uint32, *Peer) // Delegate to invoke when the subscription event is received.
+	OnUnsubscribe func([]uint32, *Peer) // Delegate to invoke when the subscription event is received.
+	OnMessage     func(*Message)        // Delegate to invoke when a new message is received.
 }
 
 // Swarm implements mesh.Gossiper.
@@ -116,15 +115,10 @@ func (s *Swarm) onPeerGC(p *mesh.Peer) {
 		// We also need to remove the peer from our set, so next time a new peer can be created.
 		s.members.Delete(peer.name)
 
-		// Retrieve all the pending subscriptions
-		subs := make([][]uint32, 0, len(peer.subs))
+		// Unsubscribe from all active subscriptions
 		for _, ssid := range peer.subs {
-			subs = append(subs, ssid)
+			s.OnUnsubscribe(ssid, peer)
 		}
-
-		// Tell the service that the peer is online and we need to remove the subscriptions.
-		logging.LogTarget("swarm", "unsubscribe offline peer", peer.name)
-		s.OnPeerOffline(peer, subs)
 	}
 }
 
@@ -198,18 +192,15 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 
 		// If the subscription is added, notify (TODO: use channels)
 		if v.IsAdded() {
-			logging.LogTarget("swarm", "subscribe", ev)
 			peer.onSubscribe(k.(string), ev.Ssid)
-			s.OnSubscribe(peer, ev)
+			s.OnSubscribe(ev.Ssid, peer)
 		}
 
 		// If the subscription is removed, notify (TODO: use channels)
 		if v.IsRemoved() {
-			logging.LogTarget("swarm", "unsubscribe", ev)
 			peer.onUnsubscribe(k.(string), ev.Ssid)
-			s.OnUnsubscribe(peer, ev)
+			s.OnUnsubscribe(ev.Ssid, peer)
 		}
-
 	}
 
 	return delta, nil
