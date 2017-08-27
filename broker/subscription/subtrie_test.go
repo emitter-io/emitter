@@ -13,6 +13,10 @@ type testSubscriber struct {
 	id int
 }
 
+func (s *testSubscriber) Type() SubscriberType {
+	return SubscriberMock
+}
+
 func (s *testSubscriber) Send(ssid []uint32, channel []byte, payload []byte) error {
 	return nil
 }

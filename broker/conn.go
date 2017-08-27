@@ -47,6 +47,11 @@ func (s *Service) newConn(t net.Conn) *Conn {
 	return c
 }
 
+// Type returns the type of the subscriber
+func (c *Conn) Type() subscription.SubscriberType {
+	return subscription.SubscriberConn
+}
+
 // Process processes the messages.
 func (c *Conn) Process() error {
 	defer c.Close()

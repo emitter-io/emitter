@@ -48,8 +48,19 @@ func (s Ssid) GetHashCode() uint32 {
 
 // ------------------------------------------------------------------------------------
 
+// SubscriberType represents a type of subscriber
+type SubscriberType uint8
+
+// Subscriber types
+const (
+	SubscriberMock = SubscriberType(iota)
+	SubscriberConn
+	SubscriberPeer
+)
+
 // Subscriber is a value associated with a subscription.
 type Subscriber interface {
+	Type() SubscriberType
 	Send(ssid []uint32, channel []byte, payload []byte) error
 }
 

@@ -192,19 +192,19 @@ func (s *Service) onHTTPKeyGen(w http.ResponseWriter, r *http.Request) {
 
 // Occurs when a peer has a new subscription.
 func (s *Service) onSubscribe(ssid subscription.Ssid, sub subscription.Subscriber) bool {
-	logging.LogTarget("service", "subscribe", ssid)
 	if _, err := s.subscriptions.Subscribe(ssid, sub); err != nil {
 		return false // Unable to subscribe
 	}
 
+	logging.LogTarget("service", "subscribe", ssid)
 	return true
 }
 
 // Occurs when a peer has unsubscribed.
 func (s *Service) onUnsubscribe(ssid subscription.Ssid, sub subscription.Subscriber) bool {
-	logging.LogTarget("service", "unsubscribe", ssid)
 	s.subscriptions.Unsubscribe(ssid, sub)
 
+	logging.LogTarget("service", "unsubscribe", ssid)
 	return true
 }
 

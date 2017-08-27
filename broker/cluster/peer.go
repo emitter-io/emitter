@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/utils"
@@ -26,7 +27,8 @@ import (
 	"github.com/weaveworks/mesh"
 )
 
-// ------------------------------------------------------------------------------------
+// Peer implements subscription.Subscriber
+var _ subscription.Subscriber = &Peer{}
 
 // Peer represents a remote peer.
 type Peer struct {
@@ -70,6 +72,11 @@ func (p *Peer) onUnsubscribe(encodedEvent string, ssid []uint32) {
 // Close termintes the peer and stops everything associated with this peer.
 func (p *Peer) Close() {
 	close(p.closing)
+}
+
+// Type returns the type of the subscriber
+func (p *Peer) Type() subscription.SubscriberType {
+	return subscription.SubscriberPeer
 }
 
 // Send forwards the message to the remote server.
