@@ -19,12 +19,12 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 	"time"
-
-	"net/http/pprof"
 
 	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/broker/subscription"
@@ -198,7 +198,7 @@ func (s *Service) onSubscribe(ssid subscription.Ssid, sub subscription.Subscribe
 
 	// If we have a new direct subscriber, issue presence message
 	if sub.Type() == subscription.SubscriberDirect {
-		
+
 	}
 
 	logging.LogTarget("service", "subscribe", ssid)
@@ -210,6 +210,7 @@ func (s *Service) onUnsubscribe(ssid subscription.Ssid, sub subscription.Subscri
 	s.subscriptions.Unsubscribe(ssid, sub)
 
 	logging.LogTarget("service", "unsubscribe", ssid)
+	debug.PrintStack()
 	return true
 }
 

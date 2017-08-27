@@ -18,6 +18,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -25,6 +26,7 @@ import (
 
 // websocketConn represents a websocket connection.
 type websocketTransport struct {
+	sync.Mutex
 	socket  *websocket.Conn
 	reader  io.Reader
 	closing chan bool
@@ -118,6 +120,10 @@ func (c *websocketTransport) Read(b []byte) (n int, err error) {
 // out and return a Error with Timeout() == true after a fixed time limit by
 // using SetDeadline and SetWriteDeadline on the websocket.
 func (c *websocketTransport) Write(b []byte) (n int, err error) {
+	// Serialize write to avoid concurrent write
+	c.Lock()
+	defer c.Unlock()
+
 	var w io.WriteCloser
 	if w, err = c.socket.NextWriter(websocket.BinaryMessage); err != nil {
 		return
