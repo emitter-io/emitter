@@ -43,7 +43,6 @@ type Swarm struct {
 	gossip  mesh.Gossip           // The gossip protocol.
 	state   *subscriptionState    // The state to synchronise.
 
-	Subscriptions func() []Subscription          // Delegate to retrieve all existing subscriptions.
 	OnSubscribe   func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
 	OnUnsubscribe func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
 	OnMessage     func(*Message)                 // Delegate to invoke when a new message is received.

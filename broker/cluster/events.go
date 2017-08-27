@@ -25,12 +25,6 @@ import (
 	"github.com/weaveworks/mesh"
 )
 
-// Subscription represents a subscription.
-type Subscription struct {
-	Ssid    []uint32 // The Ssid of the message
-	Channel []byte   // The channel of the message
-}
-
 // MessageFrame represents a message frame which is sent through the wire to the
 // remote server and contains a set of messages
 type MessageFrame []*Message
