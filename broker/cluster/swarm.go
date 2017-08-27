@@ -22,12 +22,14 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/security"
+	"github.com/emitter-io/emitter/utils"
 	"github.com/golang/snappy"
 	"github.com/weaveworks/mesh"
 )
@@ -39,9 +41,9 @@ type Swarm struct {
 	actions chan func()           // The action queue for the peer.
 	closing chan bool             // The closing channel.
 	config  *config.ClusterConfig // The configuration for the cluster.
+	state   *subscriptionState    // The state to synchronise.
 	router  *mesh.Router          // The mesh router.
 	gossip  mesh.Gossip           // The gossip protocol.
-	state   *subscriptionState    // The state to synchronise.
 
 	OnSubscribe   func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
 	OnUnsubscribe func(*Peer, SubscriptionEvent) // Delegate to invoke when the subscription event is received.
@@ -107,6 +109,10 @@ func (s *Swarm) LocalName() string {
 // Listen creates the listener and serves the cluster.
 func (s *Swarm) Listen() (err error) {
 
+	// Every few seconds, attempt to reinforce our cluster structure by
+	// initiating connections with all of our peers.
+	utils.Repeat(s.reinforce, 5*time.Second, s.closing)
+
 	// Start processing action queue
 	go s.loop()
 
@@ -116,6 +122,15 @@ func (s *Swarm) Listen() (err error) {
 
 	//swarm.router.ConnectionMaker.InitiateConnections(peers.slice(), true)
 	return nil
+}
+
+// reinforce attempt to reinforce our cluster structure by initiating connections
+// with all of our peers. This is is called periodically.
+func (s *Swarm) reinforce() {
+	for _, peer := range s.router.Peers.Descriptions() {
+		logging.LogAction("swarm", "reinforcing connection with "+peer.NickName)
+		s.router.ConnectionMaker.InitiateConnections([]string{peer.NickName}, false)
+	}
 }
 
 // Join attempts to join a set of existing peers.
