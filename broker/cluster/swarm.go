@@ -98,7 +98,7 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 	//Store the gossip and the router
 	swarm.gossip = gossip
 	swarm.router = router
-	swarm.peers = newPeerSet(gossip)
+	swarm.peers = newPeerSet(gossip, router.Peers)
 	return swarm
 }
 
@@ -108,18 +108,14 @@ func (s *Swarm) LocalName() string {
 }
 
 // Listen creates the listener and serves the cluster.
-func (s *Swarm) Listen() (err error) {
+func (s *Swarm) Listen() {
 
 	// Every few seconds, attempt to reinforce our cluster structure by
 	// initiating connections with all of our peers.
 	utils.Repeat(s.reinforce, 5*time.Second, s.closing)
 
-	// Start processing action queue
-	go s.loop()
-
 	// Start the router
 	s.router.Start()
-	return nil
 }
 
 // reinforce attempt to reinforce our cluster structure by initiating connections
@@ -138,20 +134,6 @@ func (s *Swarm) reinforce() {
 // Join attempts to join a set of existing peers.
 func (s *Swarm) Join(peers ...string) []error {
 	return s.router.ConnectionMaker.InitiateConnections(peers, true)
-}
-
-// loop processes action queue
-func (s *Swarm) loop() {
-	for {
-		select {
-		case f := <-s.actions:
-			f()
-
-		case <-s.closing:
-			_ = s.Close()
-			return
-		}
-	}
 }
 
 // Merge merges the incoming state and returns a delta

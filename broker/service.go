@@ -201,8 +201,6 @@ func (s *Service) onUnsubscribe(peer *cluster.Peer, event cluster.SubscriptionEv
 
 // Occurs when a message is received from a peer.
 func (s *Service) onPeerMessage(m *cluster.Message) {
-	fmt.Printf("message from peer on '%v' \n", string(m.Channel))
-
 	// Get the contract
 	ssid := Ssid(m.Ssid)
 	contract := s.Contracts.Get(ssid.Contract())
