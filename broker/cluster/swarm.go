@@ -16,7 +16,6 @@ package cluster
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -42,6 +41,7 @@ type Swarm struct {
 	closing chan bool             // The closing channel.
 	config  *config.ClusterConfig // The configuration for the cluster.
 	state   *subscriptionState    // The state to synchronise.
+	peers   *peerset              // The managed set of peers for message forwarding.
 	router  *mesh.Router          // The mesh router.
 	gossip  mesh.Gossip           // The gossip protocol.
 
@@ -98,6 +98,7 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 	//Store the gossip and the router
 	swarm.gossip = gossip
 	swarm.router = router
+	swarm.peers = newPeerSet(gossip)
 	return swarm
 }
 
@@ -174,12 +175,12 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 
 		if v.IsAdded() {
 			logging.LogTarget("swarm", "subscribe", ev)
-			s.OnSubscribe(newPeer(s, ev.Peer), ev)
+			s.OnSubscribe(s.peers.Get(ev.Peer), ev)
 		}
 
 		if v.IsRemoved() {
 			logging.LogTarget("swarm", "unsubscribe", ev)
-			s.OnUnsubscribe(newPeer(s, ev.Peer), ev)
+			s.OnUnsubscribe(s.peers.Get(ev.Peer), ev)
 		}
 
 	}
@@ -209,8 +210,6 @@ func (s *Swarm) OnGossip(buf []byte) (delta mesh.GossipData, err error) {
 		return nil, nil
 	}
 
-	logging.LogAction("peer", "OnGossip(): "+fmt.Sprintf("%v bytes received", len(buf)))
-
 	if delta, err = s.merge(buf); err != nil {
 		logging.LogError("merge", "merging", err)
 	}
@@ -220,8 +219,6 @@ func (s *Swarm) OnGossip(buf []byte) (delta mesh.GossipData, err error) {
 // OnGossipBroadcast merges received data into state and returns a representation
 // of the received data (typically a delta) for further propagation.
 func (s *Swarm) OnGossipBroadcast(src mesh.PeerName, buf []byte) (delta mesh.GossipData, err error) {
-	logging.LogAction("peer", "OnGossipBroadcast(): "+fmt.Sprintf("%v bytes received", len(buf)))
-
 	if delta, err = s.merge(buf); err != nil {
 		logging.LogError("merge", "merging", err)
 	}
@@ -231,14 +228,13 @@ func (s *Swarm) OnGossipBroadcast(src mesh.PeerName, buf []byte) (delta mesh.Gos
 // OnGossipUnicast occurs when the gossip unicast is received. In emitter this is
 // used only to forward message frames around.
 func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) error {
-	logging.LogAction("peer", "OnGossipUnicast()")
 
 	// Make a reader and a decoder for the frame
-	reader := snappy.NewReader(bytes.NewReader(buf))
-	decoder := encoding.NewDecoder(reader)
+	snappy := snappy.NewReader(bytes.NewReader(buf))
+	reader := encoding.NewDecoder(snappy)
 
 	// Decode an incoming message frame
-	frame, err := decodeMessageFrame(decoder)
+	frame, err := decodeMessageFrame(reader)
 	if err != nil {
 		logging.LogError("peer", "decode frame", err)
 		return err

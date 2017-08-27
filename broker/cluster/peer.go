@@ -15,32 +15,114 @@
 package cluster
 
 import (
+	"bytes"
+	"sync"
+	"time"
+
+	"github.com/emitter-io/emitter/encoding"
+	"github.com/emitter-io/emitter/logging"
+	"github.com/emitter-io/emitter/utils"
+	"github.com/golang/snappy"
 	"github.com/weaveworks/mesh"
 )
 
-// NewPeer creates a new peer for the connection.
-func newPeer(swarm *Swarm, name mesh.PeerName) *Peer {
-	return &Peer{
-		swarm: swarm,
-		name:  name,
+// PeerSet maintains a map of peers
+type peerset struct {
+	sync.RWMutex
+	sender  mesh.Gossip             //  The gossip interface to use for sending.
+	members map[mesh.PeerName]*Peer // The map of members in the peer set.
+}
+
+// newPeerSet creates a new peer set for the connection.
+func newPeerSet(sender mesh.Gossip) *peerset {
+	return &peerset{
+		sender:  sender,
+		members: make(map[mesh.PeerName]*Peer),
 	}
 }
 
-// Peer represents a peer broker.
+// Get retrieves a peer.
+func (s *peerset) Get(name mesh.PeerName) (p *Peer) {
+	s.RLock() // TODO: This lock will be contended eventually, need to replace this map by sync.Map
+	defer s.RUnlock()
+
+	// Get the peer
+	if p, ok := s.members[name]; ok {
+		return p
+	}
+
+	// Create new peer
+	p = s.newPeer(name)
+	s.members[name] = p
+	return p
+}
+
+// ------------------------------------------------------------------------------------
+
+// Peer represents a remote peer.
 type Peer struct {
-	swarm *Swarm        // The swarm controlling the peer.
-	name  mesh.PeerName // The peer name for communicating.
+	sync.Mutex
+	sender  mesh.Gossip   // The gossip interface to use for sending.
+	name    mesh.PeerName // The peer name for communicating.
+	frame   MessageFrame  // The current message frame.
+	closing chan bool     // The closing channel for the peer.
+}
+
+// NewPeer creates a new peer for the connection.
+func (s *peerset) newPeer(name mesh.PeerName) *Peer {
+	peer := &Peer{
+		sender:  s.sender,
+		name:    name,
+		frame:   make(MessageFrame, 0, 64),
+		closing: make(chan bool),
+	}
+
+	// Spawn the send queue processor
+	utils.Repeat(peer.processSendQueue, 5*time.Millisecond, peer.closing)
+	return peer
+}
+
+// Close termintes the peer and stops everything associated with this peer.
+func (p *Peer) Close() {
+	close(p.closing)
 }
 
 // Send forwards the message to the remote server.
 func (p *Peer) Send(ssid []uint32, channel []byte, payload []byte) error {
-	//c.Lock()
-	//defer c.Unlock()
+	p.Lock()
+	defer p.Unlock()
 
 	// Send simply appends the message to a frame
-	//c.frame = append(c.frame, &Message{Ssid: ssid, Channel: channel, Payload: payload})
-
+	p.frame = append(p.frame, &Message{Ssid: ssid, Channel: channel, Payload: payload})
 	return nil
+}
+
+// processSendQueue flushes the current frame to the remote server
+func (p *Peer) processSendQueue() {
+	if len(p.frame) > 0 {
+
+		// Compress in-memory. TODO: Optimize the shit out of that, we don't really need to use binc
+		buffer := bytes.NewBuffer(nil)
+		snappy := snappy.NewBufferedWriter(buffer)
+		writer := encoding.NewEncoder(snappy)
+
+		// Encode the current frame
+		p.Lock()
+		err := writer.Encode(p.frame)
+		p.frame = p.frame[:0]
+		p.Unlock()
+
+		// Something went wrong during the encoding
+		if err != nil {
+			logging.LogError("peer", "encoding frame", err)
+		}
+
+		// Send the frame directly to the peer.
+		if err := snappy.Close(); err != nil {
+			logging.LogError("peer", "encoding frame", err)
+		}
+		p.sender.GossipUnicast(p.name, buffer.Bytes())
+	}
 }
 
 /*
