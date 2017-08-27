@@ -110,20 +110,10 @@ func (s *LWWSet) All() []interface{} {
 	defer s.Unlock()
 
 	items := make([]interface{}, 0, len(s.Set))
-	for key := range s.Set {
-		if s.has(key) {
+	for key, val := range s.Set {
+		if val.AddTime >= val.DelTime {
 			items = append(items, key)
 		}
 	}
 	return items
-}
-
-// Contains checks if a value is present in the set.
-func (s *LWWSet) has(value interface{}) bool {
-	v, ok := s.Set[value]
-	if !ok || v.AddTime == 0 {
-		return false
-	}
-
-	return v.AddTime >= v.DelTime
 }

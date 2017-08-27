@@ -141,22 +141,23 @@ func (s *Swarm) Gossip() (complete mesh.GossipData) {
 
 // OnGossip merges received data into state and returns "everything new I've just
 // learnt", or nil if nothing in the received data was new.
-func (s *Swarm) OnGossip(buf []byte) (delta mesh.GossipData, err error) {
+func (s *Swarm) OnGossip(buf []byte) (mesh.GossipData, error) {
 	logging.LogAction("peer", "OnGossip(): "+fmt.Sprintf("%v bytes received", len(buf)))
 
 	// Decode the state we just received
 	other, err := decodeSubscriptionState(buf)
 	if err != nil {
-		println(err.Error())
 		return nil, err
 	}
 
+	// Merge and get the delta
+	delta := s.state.Merge(other)
 	for _, v := range other.All() {
 		ev := v.(string)
 		fmt.Printf("active: %v\n", ev)
 	}
 
-	return s.state.Merge(other), nil
+	return delta, nil
 }
 
 // OnGossipBroadcast merges received data into state and returns a representation
@@ -170,7 +171,14 @@ func (s *Swarm) OnGossipBroadcast(src mesh.PeerName, buf []byte) (mesh.GossipDat
 		return nil, err
 	}
 
-	return s.state.Merge(other), nil
+	// Merge and get the delta
+	delta := s.state.Merge(other)
+	for _, v := range other.All() {
+		ev := v.(string)
+		fmt.Printf("active: %v\n", ev)
+	}
+
+	return delta, nil
 }
 
 // OnGossipUnicast occurs when the gossip unicast is received. In emitter this is
@@ -206,11 +214,11 @@ func (s *Swarm) NotifySubscribe(conn security.ID, ssid []uint32, channel []byte)
 	}
 
 	// Add to our global state
-	s.state.Add(string(event.Encode()))
+	s.state.Add(event.Encode())
 
 	// Create a delta for broadcasting just this operation
 	op := newSubscriptionState()
-	op.Add(string(event.Encode()))
+	op.Add(event.Encode())
 	s.gossip.GossipBroadcast(op)
 }
 
@@ -223,11 +231,11 @@ func (s *Swarm) NotifyUnsubscribe(conn security.ID, ssid []uint32) {
 	}
 
 	// Remove from our global state
-	s.state.Remove(string(event.Encode()))
+	s.state.Remove(event.Encode())
 
 	// Create a delta for broadcasting just this operation
 	op := newSubscriptionState()
-	op.Remove(string(event.Encode()))
+	op.Remove(event.Encode())
 	s.gossip.GossipBroadcast(op)
 }
 

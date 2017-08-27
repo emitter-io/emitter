@@ -15,6 +15,10 @@
 package cluster
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/binary"
+
 	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/security"
@@ -52,21 +56,58 @@ type SubscriptionEvent struct {
 	Ssid []uint32      // The SSID for the subscription.
 }
 
-// Encode encodes the event to byte representation.
-func (e *SubscriptionEvent) Encode() []byte {
-	buf, err := encoding.Encode(e)
-	if err != nil {
-		panic(err)
+// Encode encodes the event to string representation.
+func (e *SubscriptionEvent) Encode() string {
+
+	// Prepare a buffer and leave some space, since we're encoding in varint
+	buf := make([]byte, 20+(6*len(e.Ssid)))
+	offset := 0
+
+	// Encode everything as variable-size unsigned integers to save space
+	offset += binary.PutUvarint(buf[offset:], uint64(e.Peer))
+	offset += binary.PutUvarint(buf[offset:], uint64(e.Conn))
+	for _, ssidPart := range e.Ssid {
+		offset += binary.PutUvarint(buf[offset:], uint64(ssidPart))
 	}
 
-	return buf
+	return base64.StdEncoding.EncodeToString(buf[:offset])
 }
 
 // decodeSubscriptionEvent decodes the event
-func decodeSubscriptionEvent(buf []byte) (out *SubscriptionEvent, err error) {
-	out = &SubscriptionEvent{}
-	err = encoding.Decode(buf, out)
-	return
+func decodeSubscriptionEvent(encoded string) (*SubscriptionEvent, error) {
+	buf, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, err
+	}
+
+	out := SubscriptionEvent{}
+	reader := bytes.NewReader(buf)
+
+	// Read the peer name
+	peer, err := binary.ReadUvarint(reader)
+	out.Peer = mesh.PeerName(peer)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read the connection identifier
+	conn, err := binary.ReadUvarint(reader)
+	out.Conn = security.ID(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read the SSID until we're finished
+	out.Ssid = make([]uint32, 0, 2)
+	for reader.Len() > 0 {
+		ssidPart, err := binary.ReadUvarint(reader)
+		out.Ssid = append(out.Ssid, uint32(ssidPart))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &out, nil
 }
 
 // SubscriptionState represents globally synchronised state.
