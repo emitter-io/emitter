@@ -121,19 +121,16 @@ func (s *Swarm) Listen() {
 // reinforce attempt to reinforce our cluster structure by initiating connections
 // with all of our peers. This is is called periodically.
 func (s *Swarm) reinforce() {
-	peers := []string{}
 	for _, peer := range s.router.Peers.Descriptions() {
 		if !peer.Self {
-			peers = append(peers, peer.NickName)
+			s.Join(peer.NickName)
 		}
 	}
-
-	s.router.ConnectionMaker.InitiateConnections(peers, false)
 }
 
 // Join attempts to join a set of existing peers.
 func (s *Swarm) Join(peers ...string) []error {
-	return s.router.ConnectionMaker.InitiateConnections(peers, true)
+	return s.router.ConnectionMaker.InitiateConnections(peers, false)
 }
 
 // Merge merges the incoming state and returns a delta

@@ -53,6 +53,8 @@ func (s *peerset) onPeerGC(peer *mesh.Peer) {
 		logging.LogTarget("swarm", "peer garbage collected", peer)
 		p.Close() // Close the peer on our end
 
+		// TODO: Make sure we remove all subscriptions as well
+
 		// We also need to remove the peer from our set, so
 		// the next time a new peer can be created.
 		s.Lock()
@@ -111,6 +113,8 @@ func (p *Peer) Close() {
 func (p *Peer) Send(ssid []uint32, channel []byte, payload []byte) error {
 	p.Lock()
 	defer p.Unlock()
+
+	// TODO: Make sure we don't send to a dead peer
 
 	// Send simply appends the message to a frame
 	p.frame = append(p.frame, &Message{Ssid: ssid, Channel: channel, Payload: payload})
