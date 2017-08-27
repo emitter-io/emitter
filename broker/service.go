@@ -191,15 +191,11 @@ func (s *Service) onHTTPKeyGen(w http.ResponseWriter, r *http.Request) {
 
 // Occurs when a peer has a new subscription.
 func (s *Service) onSubscribe(peer *cluster.Peer, event cluster.SubscriptionEvent) {
-	fmt.Printf("%v subscribed to ssid: %v\n", event.Peer, event.Ssid)
-	//s.subscriptions.Subscribe(event.Ssid, event.Channel, peer) TODO ! Figure out if we can get rid of channel string here
-	s.subscriptions.Subscribe(event.Ssid, "TODO", peer)
+	s.subscriptions.Subscribe(event.Ssid, peer)
 }
 
 // Occurs when a peer has unsubscribed.
 func (s *Service) onUnsubscribe(peer *cluster.Peer, event cluster.SubscriptionEvent) {
-	fmt.Printf("%v unsubscribed from ssid: %v\n", event.Peer, event.Ssid)
-
 	s.subscriptions.Unsubscribe(event.Ssid, peer)
 }
 

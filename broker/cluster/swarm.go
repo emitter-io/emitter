@@ -116,21 +116,22 @@ func (s *Swarm) Listen() (err error) {
 	// Start processing action queue
 	go s.loop()
 
+	// Start the router
 	s.router.Start()
-
-	//swarm.config.Seed
-
-	//swarm.router.ConnectionMaker.InitiateConnections(peers.slice(), true)
 	return nil
 }
 
 // reinforce attempt to reinforce our cluster structure by initiating connections
 // with all of our peers. This is is called periodically.
 func (s *Swarm) reinforce() {
+	peers := []string{}
 	for _, peer := range s.router.Peers.Descriptions() {
-		logging.LogAction("swarm", "reinforcing connection with "+peer.NickName)
-		s.router.ConnectionMaker.InitiateConnections([]string{peer.NickName}, false)
+		if !peer.Self {
+			peers = append(peers, peer.NickName)
+		}
 	}
+
+	s.router.ConnectionMaker.InitiateConnections(peers, false)
 }
 
 // Join attempts to join a set of existing peers.
@@ -172,12 +173,12 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 		}
 
 		if v.IsAdded() {
-			fmt.Printf("subscribe: %v\n", ev)
+			logging.LogTarget("swarm", "subscribe", ev)
 			s.OnSubscribe(newPeer(s, ev.Peer), ev)
 		}
 
 		if v.IsRemoved() {
-			fmt.Printf("unsubscribe: %v\n", ev)
+			logging.LogTarget("swarm", "unsubscribe", ev)
 			s.OnUnsubscribe(newPeer(s, ev.Peer), ev)
 		}
 
@@ -186,16 +187,28 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 	return delta, nil
 }
 
+// NumPeers returns the number of connected peers.
+func (s *Swarm) NumPeers() int {
+	for _, peer := range s.router.Peers.Descriptions() {
+		if peer.Self {
+			return peer.NumConnections
+		}
+	}
+	return 0
+}
+
 // Gossip returns the state of everything we know; gets called periodically.
 func (s *Swarm) Gossip() (complete mesh.GossipData) {
-	logging.LogAction("peer", "Gossip()")
-
 	return s.state
 }
 
 // OnGossip merges received data into state and returns "everything new I've just
 // learnt", or nil if nothing in the received data was new.
 func (s *Swarm) OnGossip(buf []byte) (delta mesh.GossipData, err error) {
+	if len(buf) <= 1 {
+		return nil, nil
+	}
+
 	logging.LogAction("peer", "OnGossip(): "+fmt.Sprintf("%v bytes received", len(buf)))
 
 	if delta, err = s.merge(buf); err != nil {

@@ -20,3 +20,4 @@ build/*
 *.log
 *.bat
 *.conf
+*.lnk

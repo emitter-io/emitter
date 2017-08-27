@@ -18,6 +18,7 @@ type StatusInfo struct {
 	MemoryPrivate int64     `json:"priv"`
 	MemoryVirtual int64     `json:"virt"`
 	Time          time.Time `json:"time"`
+	NumPeers      int       `json:"peers"`
 	Uptime        float64   `json:"uptime"`
 }
 
@@ -32,6 +33,11 @@ func (s *Service) getStatus() (*StatusInfo, error) {
 	stats.Subscriptions = s.subcounters.Count()
 	stats.Time = t
 	stats.Uptime = t.Sub(s.startTime).Seconds()
+
+	// Cluster stats
+	if s.cluster != nil {
+		stats.NumPeers = s.cluster.NumPeers()
+	}
 
 	// Collect CPU and Memory stats
 	return stats, process.ProcUsage(&stats.CPU, &stats.MemoryPrivate, &stats.MemoryVirtual)

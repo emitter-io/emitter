@@ -165,7 +165,7 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 
 	// Add the subscription
 	ssid := NewSsid(contract, channel)
-	if sub, err := c.service.subscriptions.Subscribe(ssid, string(channel.Channel), c); err == nil {
+	if sub, err := c.service.subscriptions.Subscribe(ssid, c); err == nil {
 		c.subs[ssid.GetHashCode()] = sub
 
 		// Increment the counters
@@ -188,7 +188,6 @@ func (c *Conn) Unsubscribe(ssid Ssid) {
 		// Unsubscribe from the trie and remove from our internal map
 		c.service.subscriptions.Unsubscribe(ssid, c)
 		delete(c.subs, hkey)
-		println("unsubscribed connection " + c.id.String())
 
 		// Decrement the counters
 		c.service.subcounters.Decrement(ssid)

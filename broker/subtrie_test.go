@@ -55,19 +55,19 @@ func TestTrieIntegration(t *testing.T) {
 		s2 = new(Conn)
 	)
 
-	sub0, err := m.Subscribe([]uint32{1, wildcard}, "", s0)
+	sub0, err := m.Subscribe([]uint32{1, wildcard}, s0)
 	assert.NoError(err)
-	sub1, err := m.Subscribe([]uint32{wildcard, 2}, "", s0)
+	sub1, err := m.Subscribe([]uint32{wildcard, 2}, s0)
 	assert.NoError(err)
-	sub2, err := m.Subscribe([]uint32{1, 3}, "", s0)
+	sub2, err := m.Subscribe([]uint32{1, 3}, s0)
 	assert.NoError(err)
-	sub3, err := m.Subscribe([]uint32{wildcard, 3}, "", s1)
+	sub3, err := m.Subscribe([]uint32{wildcard, 3}, s1)
 	assert.NoError(err)
-	sub4, err := m.Subscribe([]uint32{1, wildcard}, "", s1)
+	sub4, err := m.Subscribe([]uint32{1, wildcard}, s1)
 	assert.NoError(err)
-	sub5, err := m.Subscribe([]uint32{4}, "", s1)
+	sub5, err := m.Subscribe([]uint32{4}, s1)
 	assert.NoError(err)
-	sub6, err := m.Subscribe([]uint32{wildcard}, "", s2)
+	sub6, err := m.Subscribe([]uint32{wildcard}, s2)
 	assert.NoError(err)
 
 	assertEqual(assert, Subscribers{s0, s1, s2}, m.Lookup([]uint32{1, 3}))
@@ -94,7 +94,7 @@ func TestTrieIntegration(t *testing.T) {
 // Populates the trie with a set of strings
 func testPopulateWithStrings(m *SubscriptionTrie, values []string) {
 	for _, s := range values {
-		m.Subscribe(testSub(s), s, new(Conn))
+		m.Subscribe(testSub(s), new(Conn))
 	}
 }
 
@@ -120,7 +120,7 @@ func BenchmarkSubscriptionTrieSubscribe(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.Subscribe(query, "", s0)
+		m.Subscribe(query, s0)
 	}
 }
 
@@ -131,7 +131,7 @@ func BenchmarkSubscriptionTrieUnsubscribe(b *testing.B) {
 		query = []uint32{1, wildcard, 2, 3, 4}
 	)
 
-	m.Subscribe(query, "", s0)
+	m.Subscribe(query, s0)
 	populateMatcher(m, 1000, 5)
 
 	b.ReportAllocs()
@@ -149,7 +149,7 @@ func BenchmarkSubscriptionTrieLookup(b *testing.B) {
 		q2 = []uint32{1, 5, 2, 3, 4}
 	)
 
-	m.Subscribe(q1, "", s0)
+	m.Subscribe(q1, s0)
 	populateMatcher(m, 1000, 5)
 
 	b.ReportAllocs()
@@ -168,7 +168,7 @@ func BenchmarkSubscriptionTrieSubscribeCold(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.Subscribe(query, "", s0)
+		m.Subscribe(query, s0)
 	}
 }
 
@@ -178,7 +178,7 @@ func BenchmarkSubscriptionTrieUnsubscribeCold(b *testing.B) {
 		s0    = new(Conn)
 		query = []uint32{1, wildcard, 2, 3, 4}
 	)
-	m.Subscribe(query, "", s0)
+	m.Subscribe(query, s0)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -194,7 +194,7 @@ func BenchmarkSubscriptionTrieLookupCold(b *testing.B) {
 		q1 = []uint32{1, wildcard, 2, 3, 4}
 		q2 = []uint32{1, 5, 2, 3, 4}
 	)
-	m.Subscribe(q1, "", s0)
+	m.Subscribe(q1, s0)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -217,6 +217,6 @@ func populateMatcher(m *SubscriptionTrie, num, topicSize int) {
 			topic = append(topic, uint32(rand.Int()))
 		}
 
-		m.Subscribe(topic, "", new(Conn))
+		m.Subscribe(topic, new(Conn))
 	}
 }

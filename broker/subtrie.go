@@ -174,11 +174,11 @@ func NewSubscriptionTrie() *SubscriptionTrie {
 }
 
 // Subscribe adds the Subscriber to the topic and returns a Subscription.
-func (c *SubscriptionTrie) Subscribe(ssid Ssid, channel string, sub Subscriber) (*Subscription, error) {
+func (c *SubscriptionTrie) Subscribe(ssid Ssid, sub Subscriber) (*Subscription, error) {
 	rootPtr := (*unsafe.Pointer)(unsafe.Pointer(&c.root))
 	root := (*iNode)(atomic.LoadPointer(rootPtr))
 	if !c.iinsert(root, nil, ssid, sub) {
-		c.Subscribe(ssid, channel, sub)
+		c.Subscribe(ssid, sub)
 	}
 
 	return &Subscription{
