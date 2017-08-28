@@ -17,6 +17,7 @@ package cluster
 import (
 	"bytes"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
@@ -33,23 +34,23 @@ var _ subscription.Subscriber = &Peer{}
 // Peer represents a remote peer.
 type Peer struct {
 	sync.Mutex
-	sender  mesh.Gossip                  // The gossip interface to use for sending.
-	name    mesh.PeerName                // The peer name for communicating.
-	frame   MessageFrame                 // The current message frame.
-	subs    map[string]subscription.Ssid // The SSIDs of active subscriptions for this peer.
-	active  bool                         // Whether the peer is active or not.
-	closing chan bool                    // The closing channel for the peer.
+	sender   mesh.Gossip                  // The gossip interface to use for sending.
+	name     mesh.PeerName                // The peer name for communicating.
+	frame    MessageFrame                 // The current message frame.
+	subs     map[string]subscription.Ssid // The SSIDs of active subscriptions for this peer.
+	activity int64                        // The time of last activity of the peer.
+	closing  chan bool                    // The closing channel for the peer.
 }
 
 // NewPeer creates a new peer for the connection.
 func (s *Swarm) newPeer(name mesh.PeerName) *Peer {
 	peer := &Peer{
-		sender:  s.gossip,
-		name:    name,
-		frame:   make(MessageFrame, 0, 64),
-		subs:    make(map[string]subscription.Ssid),
-		active:  true,
-		closing: make(chan bool),
+		sender:   s.gossip,
+		name:     name,
+		frame:    make(MessageFrame, 0, 64),
+		subs:     make(map[string]subscription.Ssid),
+		activity: time.Now().Unix(),
+		closing:  make(chan bool),
 	}
 
 	// Spawn the send queue processor
@@ -61,6 +62,7 @@ func (s *Swarm) newPeer(name mesh.PeerName) *Peer {
 func (p *Peer) onSubscribe(encodedEvent string, ssid subscription.Ssid) {
 	p.Lock()
 	defer p.Unlock()
+
 	p.subs[encodedEvent] = ssid
 }
 
@@ -68,6 +70,7 @@ func (p *Peer) onSubscribe(encodedEvent string, ssid subscription.Ssid) {
 func (p *Peer) onUnsubscribe(encodedEvent string, ssid subscription.Ssid) {
 	p.Lock()
 	defer p.Unlock()
+
 	delete(p.subs, encodedEvent)
 }
 
@@ -76,7 +79,6 @@ func (p *Peer) Close() {
 	p.Lock()
 	defer p.Unlock()
 
-	p.active = false
 	close(p.closing)
 }
 
@@ -85,9 +87,14 @@ func (p *Peer) ID() string {
 	return p.name.String()
 }
 
-// Type returns the type of the subscriber
+// Type returns the type of the subscriber.
 func (p *Peer) Type() subscription.SubscriberType {
 	return subscription.SubscriberRemote
+}
+
+// IsActive checks whether a peer is still active or not.
+func (p *Peer) IsActive() bool {
+	return (atomic.LoadInt64(&p.activity) + 120) > time.Now().Unix()
 }
 
 // Send forwards the message to the remote server.
@@ -96,13 +103,19 @@ func (p *Peer) Send(ssid subscription.Ssid, channel []byte, payload []byte) erro
 	defer p.Unlock()
 
 	// TODO: Make sure we don't send to a dead peer
-	if p.active {
+	if p.IsActive() {
 
 		// Send simply appends the message to a frame
 		p.frame = append(p.frame, &Message{Ssid: ssid, Channel: channel, Payload: payload})
 
 	}
+
 	return nil
+}
+
+// Touch updates the activity time of the peer.
+func (p *Peer) touch() {
+	atomic.StoreInt64(&p.activity, time.Now().Unix())
 }
 
 // processSendQueue flushes the current frame to the remote server
@@ -129,6 +142,8 @@ func (p *Peer) processSendQueue() {
 
 	// Send the frame directly to the peer.
 	if err := snappy.Close(); err == nil {
-		p.sender.GossipUnicast(p.name, buffer.Bytes())
+		if err := p.sender.GossipUnicast(p.name, buffer.Bytes()); err != nil {
+			logging.LogError("peer", "gossip unicast", err)
+		}
 	}
 }

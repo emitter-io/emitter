@@ -22,7 +22,6 @@ import (
 	"net/http/pprof"
 	"os"
 	"os/signal"
-	"runtime/debug"
 	"syscall"
 	"time"
 
@@ -210,7 +209,6 @@ func (s *Service) onUnsubscribe(ssid subscription.Ssid, sub subscription.Subscri
 	s.subscriptions.Unsubscribe(ssid, sub)
 
 	logging.LogTarget("service", "unsubscribe", ssid)
-	debug.PrintStack()
 	return true
 }
 

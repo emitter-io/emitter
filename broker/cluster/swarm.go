@@ -21,7 +21,7 @@ import (
 	"net"
 	"strings"
 	"sync"
-	//"time"
+	"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/config"
@@ -29,7 +29,7 @@ import (
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/security"
-	//"github.com/emitter-io/emitter/utils"
+	"github.com/emitter-io/emitter/utils"
 	"github.com/golang/snappy"
 	"github.com/weaveworks/mesh"
 )
@@ -108,7 +108,12 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 
 // Occurs when a peer is garbage collected.
 func (s *Swarm) onPeerGC(p *mesh.Peer) {
-	if v, ok := s.members.Load(p.Name); ok {
+	//s.onPeerOffline(p.Name)
+}
+
+// Occurs when a peer is garbage collected.
+func (s *Swarm) onPeerOffline(name *mesh.PeerName) {
+	if v, ok := s.members.Load(name); ok {
 		peer := v.(*Peer)
 		logging.LogTarget("swarm", "peer removed", peer.name)
 		peer.Close() // Close the peer on our end
@@ -148,7 +153,7 @@ func (s *Swarm) Listen() {
 
 	// Every few seconds, attempt to reinforce our cluster structure by
 	// initiating connections with all of our peers.
-	//utils.Repeat(s.reinforce, 5*time.Second, s.closing)
+	utils.Repeat(s.reinforce, 5*time.Second, s.closing)
 
 	// Start the router
 	s.router.Start()
@@ -159,7 +164,12 @@ func (s *Swarm) Listen() {
 func (s *Swarm) reinforce() {
 	for _, peer := range s.router.Peers.Descriptions() {
 		if !peer.Self {
-			s.Join(peer.NickName)
+			// Mark the peer as active, so even if there's no messages being exchanged
+			// we still keep the peer, since we know that the peer is live.
+			s.findPeer(peer.Name).touch()
+
+			// TODO: reinforce structure
+			//s.Join(peer.NickName)
 		}
 	}
 }
