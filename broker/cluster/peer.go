@@ -94,7 +94,7 @@ func (p *Peer) Type() subscription.SubscriberType {
 
 // IsActive checks whether a peer is still active or not.
 func (p *Peer) IsActive() bool {
-	return (atomic.LoadInt64(&p.activity) + 120) > time.Now().Unix()
+	return (atomic.LoadInt64(&p.activity) + 10) > time.Now().Unix()
 }
 
 // Send forwards the message to the remote server.
@@ -143,7 +143,7 @@ func (p *Peer) processSendQueue() {
 	// Send the frame directly to the peer.
 	if err := snappy.Close(); err == nil {
 		if err := p.sender.GossipUnicast(p.name, buffer.Bytes()); err != nil {
-			logging.LogError("peer", "gossip unicast", err)
+			//logging.LogError("peer", "gossip unicast", err)
 		}
 	}
 }

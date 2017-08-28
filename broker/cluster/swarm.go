@@ -112,7 +112,7 @@ func (s *Swarm) onPeerGC(p *mesh.Peer) {
 }
 
 // Occurs when a peer is garbage collected.
-func (s *Swarm) onPeerOffline(name *mesh.PeerName) {
+func (s *Swarm) onPeerOffline(name mesh.PeerName) {
 	if v, ok := s.members.Load(name); ok {
 		peer := v.(*Peer)
 		logging.LogTarget("swarm", "peer removed", peer.name)
@@ -153,15 +153,15 @@ func (s *Swarm) Listen() {
 
 	// Every few seconds, attempt to reinforce our cluster structure by
 	// initiating connections with all of our peers.
-	utils.Repeat(s.reinforce, 5*time.Second, s.closing)
+	utils.Repeat(s.update, 5*time.Second, s.closing)
 
 	// Start the router
 	s.router.Start()
 }
 
-// reinforce attempt to reinforce our cluster structure by initiating connections
+// update attempt to update our cluster structure by initiating connections
 // with all of our peers. This is is called periodically.
-func (s *Swarm) reinforce() {
+func (s *Swarm) update() {
 	for _, peer := range s.router.Peers.Descriptions() {
 		if !peer.Self {
 			// Mark the peer as active, so even if there's no messages being exchanged
@@ -172,6 +172,14 @@ func (s *Swarm) reinforce() {
 			//s.Join(peer.NickName)
 		}
 	}
+
+	// Mark a peer as offline
+	s.members.Range(func(k, v interface{}) bool {
+		if p, ok := v.(*Peer); ok && !p.IsActive() {
+			s.onPeerOffline(p.name)
+		}
+		return true
+	})
 }
 
 // Join attempts to join a set of existing peers.
