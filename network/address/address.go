@@ -123,6 +123,11 @@ func (f Fingerprint) String() string {
 	return intmac(uint64(f)).String()
 }
 
+// Hex returns the string in hex format.
+func (f Fingerprint) Hex() string {
+	return strings.Replace(f.String(), ":", "", -1)
+}
+
 // Converts int to hardware address
 func intmac(key uint64) (r net.HardwareAddr) {
 	r = make([]byte, 6)
