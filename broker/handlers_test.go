@@ -119,6 +119,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 			Contracts:     provider,
 			subscriptions: subscription.NewTrie(),
 			License:       license,
+			presence:      make(chan *presenceNotify, 100),
 		}
 
 		conn := netmock.NewConn()
@@ -128,6 +129,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 		// Subscribe and check for error.
 		subErr := nc.onSubscribe([]byte(tc.channel))
 		assert.Equal(t, tc.subErr, subErr, tc.msg)
+
 		// Search for the ssid.
 		channel := security.ParseChannel([]byte(tc.channel))
 		key, _ := s.Cipher.DecryptKey(channel.Key)
@@ -138,6 +140,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 		// Unsubscribe and check for error.
 		unsubErr := nc.onUnsubscribe([]byte(tc.channel))
 		assert.Equal(t, tc.unsubErr, unsubErr, tc.msg)
+
 		// Search for the ssid.
 		subscribers = s.subscriptions.Lookup(ssid)
 		assert.Equal(t, tc.unsubCount, len(subscribers))

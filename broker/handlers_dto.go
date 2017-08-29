@@ -2,6 +2,8 @@ package broker
 
 import (
 	"encoding/json"
+	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/logging"
 	"time"
 
 	"github.com/emitter-io/emitter/security"
@@ -85,19 +87,34 @@ const (
 
 // presenceNotify represents a state notification.
 type presenceNotify struct {
-	Time    int64         `json:"time"`    // The UNIX timestamp.
-	Event   presenceEvent `json:"event"`   // The event, must be "status", "subscribe" or "unsubscribe".
-	Channel string        `json:"channel"` // The target channel for the notification.
-	Who     string        `json:"who"`     // The subscriber id.
+	Time    int64             `json:"time"`    // The UNIX timestamp.
+	Event   presenceEvent     `json:"event"`   // The event, must be "status", "subscribe" or "unsubscribe".
+	Channel string            `json:"channel"` // The target channel for the notification.
+	Who     string            `json:"who"`     // The subscriber id.
+	Ssid    subscription.Ssid `json:"-"`       // The ssid to dispatch the notification on.
 }
 
 // newPresenceNotify creates a new notification payload.
-func newPresenceNotify(event presenceEvent, channel string, who string) (msg []byte) {
-	msg, _ = json.Marshal(presenceNotify{
+func newPresenceNotify(ssid subscription.Ssid, event presenceEvent, channel string, who string) *presenceNotify {
+	id := []uint32{0, ssid[0]}
+	id = append(id, ssid[1:]...)
+
+	return &presenceNotify{
 		Time:    time.Now().UTC().Unix(),
 		Event:   event,
 		Channel: channel,
 		Who:     who,
-	})
-	return
+		Ssid:    id,
+	}
+}
+
+// Encode encodes the presence notifications and returns a payload to send.
+func (e *presenceNotify) Encode() ([]byte, bool) {
+	encoded, err := json.Marshal(e)
+	if err != nil {
+		logging.LogError("presence", "encoding presence notification", err)
+		return nil, false
+	}
+
+	return encoded, true
 }

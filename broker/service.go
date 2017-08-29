@@ -49,6 +49,7 @@ type Service struct {
 	tcp           *tcp.Server               // The underlying TCP server.
 	cluster       *cluster.Swarm            // The gossip-based cluster mechanism.
 	startTime     time.Time                 // The start time of the service.
+	presence      chan *presenceNotify      // The channel for presence notifications.
 }
 
 // NewService creates a new service.
@@ -59,6 +60,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		subscriptions: subscription.NewTrie(),
 		http:          new(http.Server),
 		tcp:           new(tcp.Server),
+		presence:      make(chan *presenceNotify, 100),
 	}
 
 	// Create a new HTTP request multiplexer
@@ -111,6 +113,7 @@ func (s *Service) LocalName() string {
 func (s *Service) Listen() (err error) {
 	defer s.Close()
 	s.hookSignals()
+	s.notifyPresenceChange()
 
 	// Create the cluster if required
 	if s.cluster != nil {
@@ -144,6 +147,22 @@ func (s *Service) Listen() (err error) {
 	return nil
 }
 
+// notifyPresenceChange sends out an event to notify when a client is subscribed/unsubscribed.
+func (s *Service) notifyPresenceChange() {
+	go func() {
+		for {
+			select {
+			case <-s.Closing:
+				return
+			case notif := <-s.presence:
+				if encoded, ok := notif.Encode(); ok {
+					s.publish(notif.Ssid, []byte(notif.Channel), encoded)
+				}
+			}
+		}
+	}()
+}
+
 // Join attempts to join a set of existing peers.
 func (s *Service) Join(peers ...string) []error {
 	return s.cluster.Join(peers...)
@@ -153,7 +172,7 @@ func (s *Service) Join(peers ...string) []error {
 func (s *Service) notifySubscribe(conn *Conn, ssid subscription.Ssid, channel []byte) {
 
 	// If we have a new direct subscriber, issue presence message and publish it
-	s.publish(ssid, channel, newPresenceNotify(presenceSubscribeEvent, string(channel), conn.ID()))
+	s.presence <- newPresenceNotify(ssid, presenceSubscribeEvent, string(channel), conn.ID())
 
 	// Notify our cluster if we have something.
 	if s.cluster != nil {
