@@ -16,8 +16,6 @@ package cluster
 
 import (
 	"bytes"
-	//"io/ioutil"
-	//"log"
 	"net"
 	"strings"
 	"sync"
@@ -86,7 +84,7 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 		ConnLimit:          128,
 		PeerDiscovery:      true,
 		TrustedSubnets:     []*net.IPNet{},
-	}, swarm.name, advertiseAddr.String(), mesh.NullOverlay{} /* log.New(ioutil.Discard, "", 0)*/, logging.Logger)
+	}, swarm.name, advertiseAddr.String(), mesh.NullOverlay{}, logging.Discard)
 	if err != nil {
 		panic(err)
 	}
@@ -138,7 +136,7 @@ func (s *Swarm) findPeer(name mesh.PeerName) *Peer {
 	peer := s.newPeer(name)
 	v, ok := s.members.LoadOrStore(name, peer)
 	if !ok {
-		logging.LogTarget("swarm", "peer created", v)
+		logging.LogTarget("swarm", "peer created", peer.name)
 	}
 	return v.(*Peer)
 }
@@ -162,14 +160,17 @@ func (s *Swarm) Listen() {
 // update attempt to update our cluster structure by initiating connections
 // with all of our peers. This is is called periodically.
 func (s *Swarm) update() {
-	for _, peer := range s.router.Peers.Descriptions() {
+	desc := s.router.Peers.Descriptions()
+	for _, peer := range desc {
 		if !peer.Self {
 			// Mark the peer as active, so even if there's no messages being exchanged
 			// we still keep the peer, since we know that the peer is live.
 			s.findPeer(peer.Name).touch()
 
-			// TODO: reinforce structure
-			//s.Join(peer.NickName)
+			// reinforce structure
+			if peer.NumConnections < (len(desc) - 1) {
+				s.Join(peer.NickName)
+			}
 		}
 	}
 

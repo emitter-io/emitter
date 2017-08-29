@@ -15,11 +15,15 @@
 package logging
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 )
 
-// Logger is the logger we use
+// Discard is the discard logger.
+var Discard = log.New(ioutil.Discard, "", 0)
+
+// Logger is the logger we use.
 var Logger = log.New(os.Stderr, "", log.LstdFlags)
 
 // LogError logs the error as a string.
