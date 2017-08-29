@@ -119,7 +119,6 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 			Contracts:     provider,
 			subscriptions: subscription.NewTrie(),
 			License:       license,
-			subcounters:   subscription.NewCounters(),
 		}
 
 		conn := netmock.NewConn()
@@ -247,7 +246,6 @@ func TestHandlers_onPublish(t *testing.T) {
 			Contracts:     provider,
 			subscriptions: subscription.NewTrie(),
 			License:       license,
-			subcounters:   subscription.NewCounters(),
 		}
 
 		conn := netmock.NewConn()

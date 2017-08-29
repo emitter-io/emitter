@@ -45,7 +45,6 @@ type Service struct {
 	Config        *config.Config            // The configuration for the service.
 	Contracts     security.ContractProvider // The contract provider for the service.
 	subscriptions *subscription.Trie        // The subscription matching trie.
-	subcounters   *subscription.Counters    // The subscription counters.
 	http          *http.Server              // The underlying HTTP server.
 	tcp           *tcp.Server               // The underlying TCP server.
 	cluster       *cluster.Swarm            // The gossip-based cluster mechanism.
@@ -58,7 +57,6 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		Closing:       make(chan bool),
 		Config:        cfg,
 		subscriptions: subscription.NewTrie(),
-		subcounters:   subscription.NewCounters(),
 		http:          new(http.Server),
 		tcp:           new(tcp.Server),
 	}

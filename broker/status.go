@@ -30,7 +30,7 @@ func (s *Service) getStatus() (*StatusInfo, error) {
 	t := time.Now().UTC()
 	stats.Node = s.LocalName()
 	stats.Addr = address.External().String()
-	stats.Subscriptions = s.subcounters.Count()
+	stats.Subscriptions = 0 // TODO: Set subscriptions
 	stats.Time = t
 	stats.Uptime = t.Sub(s.startTime).Seconds()
 
