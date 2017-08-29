@@ -15,6 +15,8 @@
 package subscription
 
 import (
+	"sync"
+
 	"github.com/emitter-io/emitter/security"
 )
 
@@ -88,4 +90,27 @@ func (s *Subscribers) Contains(value Subscriber) bool {
 type Subscription struct {
 	Ssid       Ssid       // Gets or sets the SSID (parsed channel) for this subscription.
 	Subscriber Subscriber // Gets or sets the subscriber for this subscription.
+}
+
+// ------------------------------------------------------------------------------------
+
+// Set represents a set of subscriptions with the channel names. This
+// is really only useful for automatic unsubscription when a Conn/Peer disconnects.
+type Set sync.Map
+
+// Add adds a subscription to the set.
+func (s *Set) Add(channel string, ssid Ssid) {
+	(*sync.Map)(s).Store(channel, ssid)
+}
+
+// Remove removes a subscription from the set.
+func (s *Set) Remove(channel string) {
+	(*sync.Map)(s).Delete(channel)
+}
+
+// Range iterates through all of the
+func (s *Set) Range(f func(string, Ssid) bool) {
+	(*sync.Map)(s).Range(func(k, v interface{}) bool {
+		return f(k.(string), v.(Ssid))
+	})
 }

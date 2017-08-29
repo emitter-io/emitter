@@ -120,7 +120,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 
 	// Unsubscribe the client from the channel
 	ssid := subscription.NewSsid(key.Contract(), channel)
-	c.Unsubscribe(ssid)
+	c.Unsubscribe(ssid, channel.Channel)
 
 	return nil
 }

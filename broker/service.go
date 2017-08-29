@@ -174,7 +174,7 @@ func (s *Service) notifySubscribe(conn *Conn, ssid subscription.Ssid, channel []
 	// If we have a new direct subscriber, issue presence message and publish it
 	s.presence <- newPresenceNotify(ssid, presenceSubscribeEvent, string(channel), conn.ID())
 
-	// Notify our cluster if we have something.
+	// Notify our cluster that the client just subscribed.
 	if s.cluster != nil {
 		s.cluster.NotifySubscribe(conn.id, ssid)
 	}
@@ -182,6 +182,11 @@ func (s *Service) notifySubscribe(conn *Conn, ssid subscription.Ssid, channel []
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
 func (s *Service) notifyUnsubscribe(conn *Conn, ssid subscription.Ssid, channel []byte) {
+
+	// If we have a new direct subscriber, issue presence message and publish it
+	s.presence <- newPresenceNotify(ssid, presenceUnsubscribeEvent, string(channel), conn.ID())
+
+	// Notify our cluster that the client just unsubscribed.
 	if s.cluster != nil {
 		s.cluster.NotifyUnsubscribe(conn.id, ssid)
 	}
@@ -222,11 +227,14 @@ func (s *Service) onSubscribe(ssid subscription.Ssid, sub subscription.Subscribe
 }
 
 // Occurs when a peer has unsubscribed.
-func (s *Service) onUnsubscribe(ssid subscription.Ssid, sub subscription.Subscriber) bool {
-	s.subscriptions.Unsubscribe(ssid, sub)
+func (s *Service) onUnsubscribe(ssid subscription.Ssid, sub subscription.Subscriber) (ok bool) {
+	subscribers := s.subscriptions.Lookup(ssid)
+	if ok = subscribers.Contains(sub); ok {
+		s.subscriptions.Unsubscribe(ssid, sub)
 
-	logging.LogTarget("service", "unsubscribe", ssid)
-	return true
+		logging.LogTarget("service", "unsubscribe", ssid)
+	}
+	return
 }
 
 // Occurs when a message is received from a peer.
