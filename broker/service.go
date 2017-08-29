@@ -152,14 +152,19 @@ func (s *Service) Join(peers ...string) []error {
 }
 
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Service) notifySubscribe(conn *Conn, ssid []uint32) {
+func (s *Service) notifySubscribe(conn *Conn, ssid subscription.Ssid, channel []byte) {
+
+	// If we have a new direct subscriber, issue presence message and publish it
+	s.publish(ssid, channel, newPresenceNotify(presenceSubscribeEvent, string(channel), conn.ID()))
+
+	// Notify our cluster if we have something.
 	if s.cluster != nil {
 		s.cluster.NotifySubscribe(conn.id, ssid)
 	}
 }
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
-func (s *Service) notifyUnsubscribe(conn *Conn, ssid []uint32) {
+func (s *Service) notifyUnsubscribe(conn *Conn, ssid subscription.Ssid, channel []byte) {
 	if s.cluster != nil {
 		s.cluster.NotifyUnsubscribe(conn.id, ssid)
 	}
@@ -193,11 +198,6 @@ func (s *Service) onHTTPKeyGen(w http.ResponseWriter, r *http.Request) {
 func (s *Service) onSubscribe(ssid subscription.Ssid, sub subscription.Subscriber) bool {
 	if _, err := s.subscriptions.Subscribe(ssid, sub); err != nil {
 		return false // Unable to subscribe
-	}
-
-	// If we have a new direct subscriber, issue presence message
-	if sub.Type() == subscription.SubscriberDirect {
-
 	}
 
 	logging.LogTarget("service", "subscribe", ssid)

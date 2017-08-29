@@ -24,30 +24,30 @@ import (
 )
 
 func TestLogAction(t *testing.T) {
-	defer func(l *log.Logger) { logger = l }(logger)
+	defer func(l *log.Logger) { Logger = l }(Logger)
 
 	buffer := bytes.NewBuffer(nil)
-	logger = log.New(buffer, "", 0)
+	Logger = log.New(buffer, "", 0)
 
 	LogAction("a", "b")
 	assert.Equal(t, "[a] b\n", string(buffer.Bytes()))
 }
 
 func TestLogError(t *testing.T) {
-	defer func(l *log.Logger) { logger = l }(logger)
+	defer func(l *log.Logger) { Logger = l }(Logger)
 
 	buffer := bytes.NewBuffer(nil)
-	logger = log.New(buffer, "", 0)
+	Logger = log.New(buffer, "", 0)
 
 	LogError("a", "b", errors.New("err"))
 	assert.Equal(t, "[a] error during b (err)\n", string(buffer.Bytes()))
 }
 
 func TestLogTarget(t *testing.T) {
-	defer func(l *log.Logger) { logger = l }(logger)
+	defer func(l *log.Logger) { Logger = l }(Logger)
 
 	buffer := bytes.NewBuffer(nil)
-	logger = log.New(buffer, "", 0)
+	Logger = log.New(buffer, "", 0)
 
 	LogTarget("a", "b", 123)
 	assert.Equal(t, "[a] b (123)\n", string(buffer.Bytes()))

@@ -16,7 +16,6 @@ package cluster
 
 import (
 	"bytes"
-	//"encoding/base64"
 	"encoding/binary"
 
 	"github.com/emitter-io/emitter/broker/subscription"
@@ -65,17 +64,12 @@ func (e *SubscriptionEvent) Encode() string {
 		offset += binary.PutUvarint(buf[offset:], uint64(ssidPart))
 	}
 
-	//return base64.StdEncoding.EncodeToString(buf[:offset])
 	return string(buf[:offset])
 }
 
 // decodeSubscriptionEvent decodes the event
 func decodeSubscriptionEvent(encoded string) (SubscriptionEvent, error) {
 	out := SubscriptionEvent{}
-	/*buf, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return out, err
-	}*/
 	buf := []byte(encoded)
 
 	reader := bytes.NewReader(buf)

@@ -95,18 +95,10 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 		panic(err)
 	}
 
-	// Attach the GC callback so we know when a peer is dead.
-	router.Peers.OnGC(swarm.onPeerGC)
-
 	//Store the gossip and the router
 	swarm.gossip = gossip
 	swarm.router = router
 	return swarm
-}
-
-// Occurs when a peer is garbage collected.
-func (s *Swarm) onPeerGC(p *mesh.Peer) {
-	//s.onPeerOffline(p.Name)
 }
 
 // Occurs when a peer is garbage collected.

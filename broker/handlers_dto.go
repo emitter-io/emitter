@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/emitter-io/emitter/security"
@@ -82,10 +83,21 @@ const (
 	presenceUnsubscribeEvent = presenceEvent("unsubscribe")
 )
 
-// presenceNotification represents a state notification.
-type presenceNotification struct {
+// presenceNotify represents a state notification.
+type presenceNotify struct {
 	Time    int64         `json:"time"`    // The UNIX timestamp.
 	Event   presenceEvent `json:"event"`   // The event, must be "status", "subscribe" or "unsubscribe".
 	Channel string        `json:"channel"` // The target channel for the notification.
 	Who     string        `json:"who"`     // The subscriber id.
+}
+
+// newPresenceNotify creates a new notification payload.
+func newPresenceNotify(event presenceEvent, channel string, who string) (msg []byte) {
+	msg, _ = json.Marshal(presenceNotify{
+		Time:    time.Now().UTC().Unix(),
+		Event:   event,
+		Channel: channel,
+		Who:     who,
+	})
+	return
 }

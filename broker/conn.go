@@ -16,8 +16,10 @@ package broker
 
 import (
 	"bufio"
+	"encoding/json"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/logging"
@@ -187,7 +189,7 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 		c.service.subcounters.Increment(ssid, string(channel.Channel))
 
 		// Broadcast the subscription within our cluster
-		c.service.notifySubscribe(c, ssid)
+		c.service.notifySubscribe(c, ssid, channel.Channel)
 	}
 }
 
@@ -208,7 +210,7 @@ func (c *Conn) Unsubscribe(ssid subscription.Ssid) {
 		c.service.subcounters.Decrement(ssid)
 
 		// Broadcast the unsubscription within our cluster
-		c.service.notifyUnsubscribe(c, ssid)
+		c.service.notifyUnsubscribe(c, ssid, channel.Channel)
 	}
 }
 
