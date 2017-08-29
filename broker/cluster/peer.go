@@ -34,12 +34,12 @@ var _ subscription.Subscriber = &Peer{}
 // Peer represents a remote peer.
 type Peer struct {
 	sync.Mutex
-	sender   mesh.Gossip                  // The gossip interface to use for sending.
-	name     mesh.PeerName                // The peer name for communicating.
-	frame    MessageFrame                 // The current message frame.
-	subs     map[string]subscription.Ssid // The SSIDs of active subscriptions for this peer.
-	activity int64                        // The time of last activity of the peer.
-	closing  chan bool                    // The closing channel for the peer.
+	sender   mesh.Gossip            // The gossip interface to use for sending.
+	name     mesh.PeerName          // The peer name for communicating.
+	frame    MessageFrame           // The current message frame.
+	subs     *subscription.Counters // The SSIDs of active subscriptions for this peer.
+	activity int64                  // The time of last activity of the peer.
+	closing  chan bool              // The closing channel for the peer.
 }
 
 // NewPeer creates a new peer for the connection.
@@ -48,7 +48,7 @@ func (s *Swarm) newPeer(name mesh.PeerName) *Peer {
 		sender:   s.gossip,
 		name:     name,
 		frame:    make(MessageFrame, 0, 64),
-		subs:     make(map[string]subscription.Ssid),
+		subs:     subscription.NewCounters(),
 		activity: time.Now().Unix(),
 		closing:  make(chan bool),
 	}
@@ -59,19 +59,13 @@ func (s *Swarm) newPeer(name mesh.PeerName) *Peer {
 }
 
 // Occurs when the peer is subscribed
-func (p *Peer) onSubscribe(encodedEvent string, ssid subscription.Ssid) {
-	p.Lock()
-	defer p.Unlock()
-
-	p.subs[encodedEvent] = ssid
+func (p *Peer) onSubscribe(encodedEvent string, ssid subscription.Ssid) bool {
+	return p.subs.Increment(ssid, []byte(encodedEvent))
 }
 
 // Occurs when the peer is unsubscribed
-func (p *Peer) onUnsubscribe(encodedEvent string, ssid subscription.Ssid) {
-	p.Lock()
-	defer p.Unlock()
-
-	delete(p.subs, encodedEvent)
+func (p *Peer) onUnsubscribe(encodedEvent string, ssid subscription.Ssid) bool {
+	return p.subs.Decrement(ssid)
 }
 
 // Close termintes the peer and stops everything associated with this peer.

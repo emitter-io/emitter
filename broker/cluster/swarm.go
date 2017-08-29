@@ -112,8 +112,8 @@ func (s *Swarm) onPeerOffline(name mesh.PeerName) {
 		s.members.Delete(peer.name)
 
 		// Unsubscribe from all active subscriptions
-		for _, ssid := range peer.subs {
-			s.OnUnsubscribe(ssid, peer)
+		for _, c := range peer.subs.All() {
+			s.OnUnsubscribe(c.Ssid, peer)
 		}
 	}
 }
@@ -203,14 +203,12 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 		peer := s.findPeer(ev.Peer)
 
 		// If the subscription is added, notify (TODO: use channels)
-		if v.IsAdded() {
-			peer.onSubscribe(k.(string), ev.Ssid)
+		if v.IsAdded() && peer.onSubscribe(k.(string), ev.Ssid) {
 			s.OnSubscribe(ev.Ssid, peer)
 		}
 
 		// If the subscription is removed, notify (TODO: use channels)
-		if v.IsRemoved() {
-			peer.onUnsubscribe(k.(string), ev.Ssid)
+		if v.IsRemoved() && peer.onUnsubscribe(k.(string), ev.Ssid) {
 			s.OnUnsubscribe(ev.Ssid, peer)
 		}
 	}

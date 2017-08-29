@@ -29,11 +29,11 @@ import (
 // Conn represents an incoming connection.
 type Conn struct {
 	sync.Mutex
-	socket  net.Conn          // The transport used to read and write messages.
-	id      security.ID       // The locally unique id of the connection.
-	guid    string            // The globally unique id of the connection.
-	service *Service          // The service for this connection.
-	subs    *subscription.Set // The subscriptions for this connection.
+	socket  net.Conn               // The transport used to read and write messages.
+	id      security.ID            // The locally unique id of the connection.
+	guid    string                 // The globally unique id of the connection.
+	service *Service               // The service for this connection.
+	subs    *subscription.Counters // The subscriptions for this connection.
 }
 
 // NewConn creates a new connection.
@@ -42,7 +42,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		id:      security.NewID(),
 		service: s,
 		socket:  t,
-		subs:    new(subscription.Set),
+		subs:    subscription.NewCounters(),
 	}
 
 	// Generate a globally unique id as well
@@ -180,8 +180,10 @@ func (c *Conn) Subscribe(contract uint32, channel *security.Channel) {
 
 	// Add the subscription
 	ssid := subscription.NewSsid(contract, channel)
-	if ok := c.service.onSubscribe(ssid, c); ok {
-		c.subs.Add(string(channel.Channel), ssid)
+	if first := c.subs.Increment(ssid, channel.Channel); first {
+
+		// Subscribe the subscriber
+		c.service.onSubscribe(ssid, c)
 
 		// Broadcast the subscription within our cluster
 		c.service.notifySubscribe(c, ssid, channel.Channel)
@@ -193,9 +195,11 @@ func (c *Conn) Unsubscribe(ssid subscription.Ssid, channel []byte) {
 	c.Lock()
 	defer c.Unlock()
 
-	// Unsubscribe from the trie and remove from our internal map
-	if ok := c.service.onUnsubscribe(ssid, c); ok {
-		c.subs.Remove(string(channel))
+	// Decrement the counter and if there's no more subscriptions, notify everyone.
+	if last := c.subs.Decrement(ssid); last {
+
+		// Unsubscribe the subscriber
+		c.service.onUnsubscribe(ssid, c)
 
 		// Broadcast the unsubscription within our cluster
 		c.service.notifyUnsubscribe(c, ssid, channel)
@@ -208,10 +212,10 @@ func (c *Conn) Close() error {
 
 	// Unsubscribe from everything, no need to lock since each Unsubscribe is
 	// already locked. Locking the 'Close()' would result in a deadlock.
-	c.subs.Range(func(channel string, ssid subscription.Ssid) bool {
-		c.Unsubscribe(ssid, []byte(channel))
-		return true
-	})
+	for _, counter := range c.subs.All() {
+		c.service.onUnsubscribe(counter.Ssid, c)
+		c.service.notifyUnsubscribe(c, counter.Ssid, counter.Channel)
+	}
 
 	// Close the transport
 	return c.socket.Close()
