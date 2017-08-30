@@ -147,36 +147,39 @@ func (s *Service) Listen() (err error) {
 	return nil
 }
 
+// Join attempts to join a set of existing peers.
+func (s *Service) Join(peers ...string) []error {
+	return s.cluster.Join(peers...)
+}
+
 // notifyPresenceChange sends out an event to notify when a client is subscribed/unsubscribed.
 func (s *Service) notifyPresenceChange() {
 	go func() {
+		channel := []byte("emitter/presence/")
 		for {
 			select {
 			case <-s.Closing:
 				return
 			case notif := <-s.presence:
 				if encoded, ok := notif.Encode(); ok {
-					s.publish(notif.Ssid, []byte(notif.Channel), encoded)
+					s.publish(notif.Ssid, channel, encoded)
 				}
 			}
 		}
 	}()
 }
 
-// Join attempts to join a set of existing peers.
-func (s *Service) Join(peers ...string) []error {
-	return s.cluster.Join(peers...)
-}
-
 // NotifySubscribe notifies the swarm when a subscription occurs.
 func (s *Service) notifySubscribe(conn *Conn, ssid subscription.Ssid, channel []byte) {
 
 	// If we have a new direct subscriber, issue presence message and publish it
-	s.presence <- newPresenceNotify(ssid, presenceSubscribeEvent, string(channel), conn.ID())
+	if channel != nil {
+		s.presence <- newPresenceNotify(ssid, presenceSubscribeEvent, string(channel), conn.ID(), conn.username)
+	}
 
 	// Notify our cluster that the client just subscribed.
 	if s.cluster != nil {
-		s.cluster.NotifySubscribe(conn.id, ssid)
+		s.cluster.NotifySubscribe(conn.luid, ssid)
 	}
 }
 
@@ -184,11 +187,13 @@ func (s *Service) notifySubscribe(conn *Conn, ssid subscription.Ssid, channel []
 func (s *Service) notifyUnsubscribe(conn *Conn, ssid subscription.Ssid, channel []byte) {
 
 	// If we have a new direct subscriber, issue presence message and publish it
-	s.presence <- newPresenceNotify(ssid, presenceUnsubscribeEvent, string(channel), conn.ID())
+	if channel != nil {
+		s.presence <- newPresenceNotify(ssid, presenceUnsubscribeEvent, string(channel), conn.ID(), conn.username)
+	}
 
 	// Notify our cluster that the client just unsubscribed.
 	if s.cluster != nil {
-		s.cluster.NotifyUnsubscribe(conn.id, ssid)
+		s.cluster.NotifyUnsubscribe(conn.luid, ssid)
 	}
 }
 

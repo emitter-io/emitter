@@ -16,6 +16,8 @@ package broker
 
 import (
 	"encoding/json"
+	"strings"
+	"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/security"
@@ -70,7 +72,8 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Subscribe the client to the channel
-	c.Subscribe(key.Contract(), channel)
+	ssid := subscription.NewSsid(key.Contract(), channel)
+	c.Subscribe(ssid, channel.Channel)
 
 	return nil
 }
@@ -223,6 +226,7 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 		resp, ok = c.onKeyGen(channel, payload)
 		return
 	case requestPresence:
+		resp, ok = c.onPresence(payload)
 		return
 	default:
 		return
@@ -267,5 +271,68 @@ func (c *Conn) onKeyGen(channel *security.Channel, payload []byte) (interface{},
 		Status:  200,
 		Key:     key,
 		Channel: string(channel.Channel),
+	}, true
+}
+
+// ------------------------------------------------------------------------------------
+
+// onKeyGen processes a keygen request.
+func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
+	// Deserialize the payload.
+	message := presenceRequest{}
+	if err := json.Unmarshal(payload, &message); err != nil {
+		return ErrBadRequest, false
+	}
+
+	// Attempt to parse the key, this should be a master key
+	key, err := c.service.Cipher.DecryptKey([]byte(message.Key))
+	if err != nil || !key.HasPermission(security.AllowPresence) || key.IsExpired() {
+		return ErrUnauthorized, false
+	}
+
+	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract := c.service.Contracts.Get(key.Contract())
+	if contract == nil {
+		return ErrNotFound, false
+	}
+
+	// Validate the contract
+	if !contract.Validate(key) {
+		return ErrUnauthorized, false
+	}
+
+	// Ensure we have trailing slash
+	if !strings.HasSuffix(message.Channel, "/") {
+		message.Channel = message.Channel + "/"
+	}
+
+	// Parse the channel
+	channel := security.ParseChannel([]byte("emitter/" + message.Channel))
+	if channel.ChannelType == security.ChannelInvalid {
+		return ErrBadRequest, false
+	}
+
+	// Create the ssid for the presence
+	presenceSsid := subscription.NewSsidForPresence(
+		subscription.NewSsid(key.Contract(), channel),
+	)
+
+	// Check if the client is interested in subscribing/unsubscribing from changes.
+	if message.Changes {
+		c.Subscribe(presenceSsid, nil)
+	} else {
+		c.Unsubscribe(presenceSsid, nil)
+	}
+
+	// If we requested a status, populate the slice via scatter/gather.
+	now := time.Now().UTC().Unix()
+	if message.Status {
+		// TODO
+	}
+
+	return &presenceResponse{
+		Time:    now,
+		Event:   presenceStatusEvent,
+		Channel: message.Channel,
 	}, true
 }

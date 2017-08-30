@@ -20,6 +20,13 @@ import (
 	"github.com/emitter-io/emitter/security"
 )
 
+// Various constant parts of the SSID.
+const (
+	system   = uint32(0)
+	presence = uint32(3869262148)
+	wildcard = uint32(1815237614)
+)
+
 // Ssid represents a subscription ID which contains a contract and a list of hashes
 // for various parts of the channel.
 type Ssid []uint32
@@ -29,6 +36,15 @@ func NewSsid(contract uint32, c *security.Channel) Ssid {
 	ssid := make([]uint32, 0, len(c.Query)+1)
 	ssid = append(ssid, uint32(contract))
 	ssid = append(ssid, c.Query...)
+	return ssid
+}
+
+// NewSsidForPresence creates a new Ssid for presence.
+func NewSsidForPresence(original Ssid) Ssid {
+	ssid := make([]uint32, 0, len(original)+2)
+	ssid = append(ssid, system)
+	ssid = append(ssid, presence)
+	ssid = append(ssid, original...)
 	return ssid
 }
 

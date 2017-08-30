@@ -19,8 +19,6 @@ import (
 	"unsafe"
 )
 
-const wildcard = uint32(1815237614)
-
 type iNode struct {
 	main *mainNode
 }

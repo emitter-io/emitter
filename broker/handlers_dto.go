@@ -77,6 +77,13 @@ type keyGenResponse struct {
 
 // ------------------------------------------------------------------------------------
 
+type presenceRequest struct {
+	Key     string `json:"key"`     // The channel key for this request.
+	Channel string `json:"channel"` // The target channel for this request.
+	Status  bool   `json:"status"`  // Specifies that a status response should be sent.
+	Changes bool   `json:"changes"` // Specifies that the changes should be notified.
+}
+
 type presenceEvent string
 
 const (
@@ -85,26 +92,44 @@ const (
 	presenceUnsubscribeEvent = presenceEvent("unsubscribe")
 )
 
+// ------------------------------------------------------------------------------------
+
+// presenceNotify represents a state notification.
+type presenceResponse struct {
+	Time    int64          `json:"time"`          // The UNIX timestamp.
+	Event   presenceEvent  `json:"event"`         // The event, must be "status", "subscribe" or "unsubscribe".
+	Channel string         `json:"channel"`       // The target channel for the notification.
+	Who     []presenceInfo `json:"who,omitempty"` // The subscriber ids.
+}
+
+// presenceInfo represents a presence info for a single connection.
+type presenceInfo struct {
+	ID       string `json:"id"`                 // The subscriber ID.
+	Username string `json:"username,omitempty"` // The subscriber username set by client ID.
+}
+
+// ------------------------------------------------------------------------------------
+
 // presenceNotify represents a state notification.
 type presenceNotify struct {
 	Time    int64             `json:"time"`    // The UNIX timestamp.
 	Event   presenceEvent     `json:"event"`   // The event, must be "status", "subscribe" or "unsubscribe".
 	Channel string            `json:"channel"` // The target channel for the notification.
-	Who     string            `json:"who"`     // The subscriber id.
+	Who     presenceInfo      `json:"who"`     // The subscriber id.
 	Ssid    subscription.Ssid `json:"-"`       // The ssid to dispatch the notification on.
 }
 
 // newPresenceNotify creates a new notification payload.
-func newPresenceNotify(ssid subscription.Ssid, event presenceEvent, channel string, who string) *presenceNotify {
-	id := []uint32{0, ssid[0]}
-	id = append(id, ssid[1:]...)
-
+func newPresenceNotify(ssid subscription.Ssid, event presenceEvent, channel string, id string, username string) *presenceNotify {
 	return &presenceNotify{
+		Ssid:    subscription.NewSsidForPresence(ssid),
 		Time:    time.Now().UTC().Unix(),
 		Event:   event,
 		Channel: channel,
-		Who:     who,
-		Ssid:    id,
+		Who: presenceInfo{
+			ID:       id,
+			Username: username,
+		},
 	}
 }
 
