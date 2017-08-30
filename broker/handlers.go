@@ -223,7 +223,7 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 
 	switch channel.Query[0] {
 	case requestKeygen:
-		resp, ok = c.onKeyGen(channel, payload)
+		resp, ok = c.onKeyGen(payload)
 		return
 	case requestPresence:
 		resp, ok = c.onPresence(payload)
@@ -236,7 +236,7 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 // ------------------------------------------------------------------------------------
 
 // onKeyGen processes a keygen request.
-func (c *Conn) onKeyGen(channel *security.Channel, payload []byte) (interface{}, bool) {
+func (c *Conn) onKeyGen(payload []byte) (interface{}, bool) {
 	// Deserialize the payload.
 	message := keyGenRequest{}
 	if err := json.Unmarshal(payload, &message); err != nil {
@@ -270,7 +270,7 @@ func (c *Conn) onKeyGen(channel *security.Channel, payload []byte) (interface{},
 	return &keyGenResponse{
 		Status:  200,
 		Key:     key,
-		Channel: string(channel.Channel),
+		Channel: message.Channel,
 	}, true
 }
 
