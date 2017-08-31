@@ -261,7 +261,7 @@ func (c *Conn) onKeyGen(payload []byte) (interface{}, bool) {
 	}
 
 	// Use the cipher to generate the key
-	key, err := c.service.Cipher.GenerateKey(masterKey, message.Channel, message.access(), message.expires())
+	key, err := c.service.Cipher.GenerateKey(masterKey, message.Channel, message.access(), message.expires(), -1)
 	if err != nil {
 		return ErrServerError, false
 	}

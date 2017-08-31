@@ -260,3 +260,132 @@ func TestHandlers_onPublish(t *testing.T) {
 		assert.Equal(t, tc.err, err, tc.msg)
 	}
 }
+
+/*
+func TestHandlers_onKeygen(t *testing.T) {
+	license, _ := security.ParseLicense("pLcaYvemMQOZR9o9sa5COWztxfAAAAAAAAAAAAAAAAI")
+	tests := []struct {
+		payload string
+		//err           error
+		contractValid bool
+		contractFound bool
+		generated     bool
+		resp          keyGenResponse
+		msg           string
+	}{
+		{
+			payload: "{\"key\":\"xEbaDPaICEwVhgdnl2rg_1DWi_MAg_3B\",\"channel\":\"article1\"}",
+			//err:           (*EventError)(nil),
+			contractValid: true,
+			contractFound: true,
+			generated:     true,
+			resp:          keyGenResponse{Status: 200, Key: "76w5HdpyIOQh70HnB4d33gbqD5fFztGY", Channel: "article1"},
+			msg:           "Successful case",
+		}, /*
+			{
+				channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a+q/b/c/",
+				payload:       "test",
+				err:           ErrBadRequest,
+				contractValid: true,
+				contractFound: true,
+				msg:           "Invalid channel case",
+			},
+			{
+				channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/+/b/c/",
+				payload:       "test",
+				err:           ErrForbidden,
+				contractValid: true,
+				contractFound: true,
+				msg:           "Channel is not static case",
+			},
+			{
+				channel:       "0Nq8SWbL8qoOKEDqh_ebBZRqJDby30mT/a/b/c/",
+				payload:       "test",
+				err:           ErrUnauthorized,
+				contractValid: true,
+				contractFound: true,
+				msg:           "Expired key case",
+			},
+			{
+				channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
+				payload:       "test",
+				err:           ErrNotFound,
+				contractValid: true,
+				contractFound: false,
+				msg:           "Contract not found case",
+			},
+			{
+				channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
+				payload:       "test",
+				err:           ErrUnauthorized,
+				contractValid: false,
+				contractFound: true,
+				msg:           "Contract is invalid case",
+			},
+			{
+				channel:       "0Nq8SWbL8qoJzie4_C4yvupug6cLLlWO/a/b/c/",
+				payload:       "test",
+				err:           ErrUnauthorized,
+				contractValid: true,
+				contractFound: true,
+				msg:           "No write permission case",
+			},
+			{
+				channel:       "0Nq8SWbL8qoOKEDqh_ebBZHmCtcvoHGQ/a/b/c/",
+				payload:       "test",
+				err:           ErrUnauthorized,
+				contractValid: true,
+				contractFound: true,
+				msg:           "Wrong target case",
+			},
+			{
+				channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
+				payload:       "test",
+				err:           (*EventError)(nil),
+				contractValid: true,
+				contractFound: true,
+				msg:           "No store permission case",
+			},*/ /*
+	}
+
+	for _, tc := range tests {
+		//HOW COULD I MOCK KEY SET SALT??????????????????????????????????????????
+
+		security.Key.SetSalt = (k Key) func (value uint16) {
+			k[0] = byte(value >> 8)
+			k[1] = byte(value)
+		}
+
+
+		contract := new(secmock.Contract)
+		contract.On("Validate", mock.Anything).Return(tc.contractValid)
+		contract.On("Stats").Return(security.NewUsageStats())
+
+		provider := secmock.NewContractProvider()
+		if tc.contractFound {
+			provider.On("Get", mock.Anything).Return(contract).Once()
+		} else {
+			provider.On("Get", mock.Anything).Return(nil).Once()
+		}
+
+		s := &Service{
+			Contracts:     provider,
+			subscriptions: subscription.NewTrie(),
+			License:       license,
+		}
+
+		conn := netmock.NewConn()
+		nc := s.newConn(conn.Client)
+		s.Cipher, _ = s.License.Cipher()
+
+		//resp
+		resp, generated := nc.onKeyGen([]byte(tc.payload))
+		assert.Equal(t, tc.generated, generated, tc.msg)
+
+		if generated {
+			keyGenResp := resp.(*keyGenResponse)
+			assert.Equal(t, tc.resp, keyGenResp)
+
+		}
+	}
+}*/
