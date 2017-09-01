@@ -3,46 +3,10 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "d0WIMkYWCMIutvCJTpOWUNS4pX8=",
-			"path": "github.com/AndreasBriese/bbloom",
-			"revision": "28f7e881ca57bc00e028f9ede9f0d9104cfeef5e",
-			"revisionTime": "2017-07-02T08:40:17Z"
-		},
-		{
-			"checksumSHA1": "6topzsMi3s3LYN61Tn0GPR0D8uw=",
-			"path": "github.com/bkaradzic/go-lz4",
-			"revision": "7224d8d8f27ef618c0a95f1ae69dbb0488abc33a",
-			"revisionTime": "2016-09-24T22:28:19Z"
-		},
-		{
 			"checksumSHA1": "Lps/+JqMRVlrXgO/+cazYcfsglg=",
 			"path": "github.com/davecgh/go-spew/spew",
 			"revision": "346938d642f2ec3594ed81d874461961cd0faa76",
 			"revisionTime": "2016-10-29T20:57:26Z"
-		},
-		{
-			"checksumSHA1": "Rkf/5D72AeSwZ28gQ2JADq+Ku1U=",
-			"path": "github.com/dgraph-io/badger",
-			"revision": "9b33794b777a337c2f7c9ab1761218e8a23d9818",
-			"revisionTime": "2017-07-14T04:53:00Z"
-		},
-		{
-			"checksumSHA1": "rp14zq58Ovjw3cE18kRcqC9w62o=",
-			"path": "github.com/dgraph-io/badger/skl",
-			"revision": "9b33794b777a337c2f7c9ab1761218e8a23d9818",
-			"revisionTime": "2017-07-14T04:53:00Z"
-		},
-		{
-			"checksumSHA1": "JWJMD8UcpVEse/4yeYhoZEXuVPE=",
-			"path": "github.com/dgraph-io/badger/table",
-			"revision": "9b33794b777a337c2f7c9ab1761218e8a23d9818",
-			"revisionTime": "2017-07-14T04:53:00Z"
-		},
-		{
-			"checksumSHA1": "JQl3PD1p6tNmlfGWrdI9SNlt+Tg=",
-			"path": "github.com/dgraph-io/badger/y",
-			"revision": "9b33794b777a337c2f7c9ab1761218e8a23d9818",
-			"revisionTime": "2017-07-14T04:53:00Z"
 		},
 		{
 			"checksumSHA1": "OV+/R43DDDJ/Gxrx9oQob/K7sL0=",
@@ -77,12 +41,6 @@
 			"path": "github.com/kelindar/tcp",
 			"revision": "951ea01d26dd62609c78e16166f0fbbc0babd753",
 			"revisionTime": "2017-09-01T06:00:04Z"
-		},
-		{
-			"checksumSHA1": "mR79ABWFyrDTTdhFPxwUN19T45Q=",
-			"path": "github.com/pkg/errors",
-			"revision": "c605e284fe17294bda444b34710735b29d1a9d90",
-			"revisionTime": "2017-05-05T04:36:39Z"
 		},
 		{
 			"checksumSHA1": "R3yk3OJzuq4MVfVGX5AhkkYv1ko=",
@@ -149,30 +107,6 @@
 			"path": "golang.org/x/crypto/salsa20/salsa",
 			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
 			"revisionTime": "2017-08-25T20:24:07Z"
-		},
-		{
-			"checksumSHA1": "Y+HGqEkYM15ir+J93MEaHdyFy0c=",
-			"path": "golang.org/x/net/context",
-			"revision": "f01ecb60fe3835d80d9a0b7b2bf24b228c89260e",
-			"revisionTime": "2017-07-11T11:58:19Z"
-		},
-		{
-			"checksumSHA1": "UxahDzW2v4mf/+aFxruuupaoIwo=",
-			"path": "golang.org/x/net/internal/timeseries",
-			"revision": "f01ecb60fe3835d80d9a0b7b2bf24b228c89260e",
-			"revisionTime": "2017-07-11T11:58:19Z"
-		},
-		{
-			"checksumSHA1": "u/r66lwYfgg682u5hZG7/E7+VCY=",
-			"path": "golang.org/x/net/trace",
-			"revision": "f01ecb60fe3835d80d9a0b7b2bf24b228c89260e",
-			"revisionTime": "2017-07-11T11:58:19Z"
-		},
-		{
-			"checksumSHA1": "+lIUrdF5DkSZaOaNSgyiwQ9PfmE=",
-			"path": "golang.org/x/sys/unix",
-			"revision": "abf9c25f54453410d0c6668e519582a9e1115027",
-			"revisionTime": "2017-07-10T15:57:01Z"
 		}
 	],
 	"rootPath": "github.com/emitter-io/emitter"

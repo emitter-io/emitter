@@ -34,7 +34,7 @@ const (
 )
 
 // QueryHandler represents a query handler.
-type QueryHandler func(queryType string, payload []byte) ([]byte, bool)
+type QueryHandler func(queryType string, request []byte) (response []byte, ok bool)
 
 // QueryManager represents a request-response manager.
 type QueryManager struct {
