@@ -2,10 +2,10 @@ package broker
 
 import (
 	"encoding/json"
-	"github.com/emitter-io/emitter/broker/subscription"
-	"github.com/emitter-io/emitter/logging"
 	"time"
 
+	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/security"
 )
 
@@ -101,6 +101,8 @@ type presenceResponse struct {
 	Channel string         `json:"channel"`       // The target channel for the notification.
 	Who     []presenceInfo `json:"who,omitempty"` // The subscriber ids.
 }
+
+// ------------------------------------------------------------------------------------
 
 // presenceInfo represents a presence info for a single connection.
 type presenceInfo struct {

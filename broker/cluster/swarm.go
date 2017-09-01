@@ -118,8 +118,8 @@ func (s *Swarm) onPeerOffline(name mesh.PeerName) {
 	}
 }
 
-// Get retrieves a peer.
-func (s *Swarm) findPeer(name mesh.PeerName) *Peer {
+// FindPeer retrieves a peer.
+func (s *Swarm) FindPeer(name mesh.PeerName) *Peer {
 	if p, ok := s.members.Load(name); ok {
 		return p.(*Peer)
 	}
@@ -133,9 +133,9 @@ func (s *Swarm) findPeer(name mesh.PeerName) *Peer {
 	return v.(*Peer)
 }
 
-// LocalName returns the local node name.
-func (s *Swarm) LocalName() string {
-	return s.name.String()
+// ID returns the local node ID.
+func (s *Swarm) ID() uint64 {
+	return uint64(s.name)
 }
 
 // Listen creates the listener and serves the cluster.
@@ -157,7 +157,7 @@ func (s *Swarm) update() {
 		if !peer.Self {
 			// Mark the peer as active, so even if there's no messages being exchanged
 			// we still keep the peer, since we know that the peer is live.
-			s.findPeer(peer.Name).touch()
+			s.FindPeer(peer.Name).touch()
 
 			// reinforce structure
 			if peer.NumConnections < (len(desc) - 1) {
@@ -200,7 +200,7 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 		}
 
 		// Get the peer to use
-		peer := s.findPeer(ev.Peer)
+		peer := s.FindPeer(ev.Peer)
 
 		// If the subscription is added, notify (TODO: use channels)
 		if v.IsAdded() && peer.onSubscribe(k.(string), ev.Ssid) {
@@ -264,7 +264,7 @@ func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) error {
 	// Decode an incoming message frame
 	frame, err := decodeMessageFrame(reader)
 	if err != nil {
-		logging.LogError("peer", "decode frame", err)
+		logging.LogError("swarm", "decode frame", err)
 		return err
 	}
 
@@ -277,7 +277,7 @@ func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) error {
 }
 
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Swarm) NotifySubscribe(conn security.ID, ssid []uint32) {
+func (s *Swarm) NotifySubscribe(conn security.ID, ssid subscription.Ssid) {
 	event := SubscriptionEvent{
 		Peer: s.name,
 		Conn: conn,
@@ -294,7 +294,7 @@ func (s *Swarm) NotifySubscribe(conn security.ID, ssid []uint32) {
 }
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
-func (s *Swarm) NotifyUnsubscribe(conn security.ID, ssid []uint32) {
+func (s *Swarm) NotifyUnsubscribe(conn security.ID, ssid subscription.Ssid) {
 	event := SubscriptionEvent{
 		Peer: s.name,
 		Conn: conn,

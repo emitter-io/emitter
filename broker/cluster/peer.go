@@ -101,7 +101,6 @@ func (p *Peer) Send(ssid subscription.Ssid, channel []byte, payload []byte) erro
 
 		// Send simply appends the message to a frame
 		p.frame = append(p.frame, &Message{Ssid: ssid, Channel: channel, Payload: payload})
-
 	}
 
 	return nil

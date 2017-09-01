@@ -16,10 +16,12 @@ package broker
 
 import (
 	"encoding/json"
+	"github.com/emitter-io/emitter/logging"
 	"strings"
 	"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/security"
 )
 
@@ -272,6 +274,44 @@ func (c *Conn) onKeyGen(payload []byte) (interface{}, bool) {
 		Key:     key,
 		Channel: message.Channel,
 	}, true
+
+}
+
+// ------------------------------------------------------------------------------------
+
+// onPresenceQuery handles an incoming presence query.
+func (s *Service) onPresenceQuery(queryType string, payload []byte) ([]byte, bool) {
+	if queryType != "presence" {
+		return nil, false
+	}
+
+	// Decode the request
+	var target subscription.Ssid
+	if err := encoding.Decode(payload, &target); err != nil {
+		return nil, false
+	}
+
+	logging.LogTarget("query", queryType+" query received", target)
+
+	// Send back the response
+	if b, err := encoding.Encode(s.lookupPresence(target)); err == nil {
+		return b, true
+	}
+	return nil, false
+}
+
+// lookupPresence performs a subscriptions lookup and returns a presence information.
+func (s *Service) lookupPresence(ssid subscription.Ssid) []presenceInfo {
+	resp := make([]presenceInfo, 0, 4)
+	for _, subscriber := range s.subscriptions.Lookup(ssid) {
+		if conn, ok := subscriber.(*Conn); ok {
+			resp = append(resp, presenceInfo{
+				ID:       conn.ID(),
+				Username: conn.username,
+			})
+		}
+	}
+	return resp
 }
 
 // ------------------------------------------------------------------------------------
@@ -313,26 +353,43 @@ func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 	}
 
 	// Create the ssid for the presence
-	presenceSsid := subscription.NewSsidForPresence(
-		subscription.NewSsid(key.Contract(), channel),
-	)
+	ssid := subscription.NewSsid(key.Contract(), channel)
 
 	// Check if the client is interested in subscribing/unsubscribing from changes.
 	if message.Changes {
-		c.Subscribe(presenceSsid, nil)
+		c.Subscribe(subscription.NewSsidForPresence(ssid), nil)
 	} else {
-		c.Unsubscribe(presenceSsid, nil)
+		c.Unsubscribe(subscription.NewSsidForPresence(ssid), nil)
 	}
 
 	// If we requested a status, populate the slice via scatter/gather.
 	now := time.Now().UTC().Unix()
+	who := make([]presenceInfo, 0, 4)
 	if message.Status {
-		// TODO
+
+		// Gather local presence first
+		who = append(who, c.service.lookupPresence(ssid)...)
+
+		// Issue the presence query to the cluster
+		if req, err := encoding.Encode(ssid); err == nil {
+			if awaiter, err := c.service.QueryRequest("presence", req); err == nil {
+
+				// Wait for all presence updates to come back (or a deadline)
+				for _, resp := range awaiter.Gather(500 * time.Millisecond) {
+					info := []presenceInfo{}
+					if err := encoding.Decode(resp, &info); err == nil {
+						//logging.LogTarget("query", "response gathered", info)
+						who = append(who, info...)
+					}
+				}
+			}
+		}
 	}
 
 	return &presenceResponse{
 		Time:    now,
 		Event:   presenceStatusEvent,
 		Channel: message.Channel,
+		Who:     who,
 	}, true
 }

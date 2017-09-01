@@ -2,9 +2,9 @@ package broker
 
 import (
 	"encoding/json"
-	"github.com/emitter-io/emitter/logging"
 	"time"
 
+	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/kelindar/process"
 )
@@ -28,16 +28,12 @@ func (s *Service) getStatus() (*StatusInfo, error) {
 
 	// Fill the identity
 	t := time.Now().UTC()
-	stats.Node = s.LocalName()
+	stats.Node = address.Fingerprint(s.LocalName()).String()
 	stats.Addr = address.External().String()
 	stats.Subscriptions = 0 // TODO: Set subscriptions
 	stats.Time = t
 	stats.Uptime = t.Sub(s.startTime).Seconds()
-
-	// Cluster stats
-	if s.cluster != nil {
-		stats.NumPeers = s.cluster.NumPeers()
-	}
+	stats.NumPeers = s.NumPeers()
 
 	// Collect CPU and Memory stats
 	return stats, process.ProcUsage(&stats.CPU, &stats.MemoryPrivate, &stats.MemoryVirtual)

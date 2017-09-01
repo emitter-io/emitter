@@ -24,8 +24,12 @@ import (
 const (
 	system   = uint32(0)
 	presence = uint32(3869262148)
+	query    = uint32(3939663052)
 	wildcard = uint32(1815237614)
 )
+
+// Query represents a constant SSID for a query.
+var Query = Ssid{system, query}
 
 // Ssid represents a subscription ID which contains a contract and a list of hashes
 // for various parts of the channel.

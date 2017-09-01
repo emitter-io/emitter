@@ -15,6 +15,7 @@
 package broker
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -50,6 +51,7 @@ type Service struct {
 	cluster       *cluster.Swarm            // The gossip-based cluster mechanism.
 	startTime     time.Time                 // The start time of the service.
 	presence      chan *presenceNotify      // The channel for presence notifications.
+	querier       *QueryManager             // The generic query manager.
 }
 
 // NewService creates a new service.
@@ -76,6 +78,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	// Attach handlers
 	s.http.Handler = mux
 	s.tcp.Handler = s.onAcceptConn
+	s.querier = newQueryManager(s)
 
 	// Parse the license
 	if s.License, err = security.ParseLicense(cfg.License); err != nil {
@@ -93,20 +96,32 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		s.cluster.OnMessage = s.onPeerMessage
 		s.cluster.OnSubscribe = s.onSubscribe
 		s.cluster.OnUnsubscribe = s.onUnsubscribe
+
+		// Attach query handlers
+		s.querier.HandleFunc(s.onPresenceQuery)
 	}
 
 	logging.LogTarget("service", "using external address", address.External())
-	logging.LogTarget("service", "using node name", s.LocalName())
+	logging.LogTarget("service", "using node name", address.Fingerprint(s.LocalName()).String())
 	return s, nil
 }
 
 // LocalName returns the local node name.
-func (s *Service) LocalName() string {
-	if s.cluster == nil {
-		return address.Hardware().String()
+func (s *Service) LocalName() uint64 {
+	if s.cluster != nil {
+		return s.cluster.ID()
 	}
 
-	return s.cluster.LocalName()
+	return uint64(address.Hardware())
+}
+
+// NumPeers returns the number of peers of this service.
+func (s *Service) NumPeers() int {
+	if s.cluster != nil {
+		return s.cluster.NumPeers()
+	}
+
+	return 0
 }
 
 // Listen starts the service.
@@ -123,6 +138,9 @@ func (s *Service) Listen() (err error) {
 
 		// Join our seed
 		s.Join(s.Config.Cluster.Seed)
+
+		// Subscribe to the query channel
+		s.querier.Start()
 	}
 
 	// Setup the HTTP server
@@ -245,11 +263,10 @@ func (s *Service) onUnsubscribe(ssid subscription.Ssid, sub subscription.Subscri
 // Occurs when a message is received from a peer.
 func (s *Service) onPeerMessage(m *cluster.Message) {
 	// Get the contract
-	ssid := subscription.Ssid(m.Ssid)
-	contract := s.Contracts.Get(ssid.Contract())
+	contract := s.Contracts.Get(m.Ssid.Contract())
 
 	// Iterate through all subscribers and send them the message
-	for _, subscriber := range s.subscriptions.Lookup(ssid) {
+	for _, subscriber := range s.subscriptions.Lookup(m.Ssid) {
 		if subscriber.Type() == subscription.SubscriberDirect {
 
 			// Send to the local subscriber
@@ -261,6 +278,15 @@ func (s *Service) onPeerMessage(m *cluster.Message) {
 			}
 		}
 	}
+}
+
+// QueryRequest sends out a query to all the peers.
+func (s *Service) QueryRequest(query string, payload []byte) (*QueryAwaiter, error) {
+	if s.querier != nil {
+		return s.querier.Request(query, payload)
+	}
+
+	return nil, errors.New("Query manager was not setup")
 }
 
 // Publish publishes a message to everyone and returns the number of outgoing bytes written.

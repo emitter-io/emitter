@@ -45,9 +45,9 @@ func decodeMessageFrame(decoder encoding.Decoder) (out MessageFrame, err error) 
 
 // SubscriptionEvent represents a subscription event.
 type SubscriptionEvent struct {
-	Peer mesh.PeerName // The name of the peer.
-	Conn security.ID   // The connection identifier.
-	Ssid []uint32      // The SSID for the subscription.
+	Ssid subscription.Ssid // The SSID for the subscription.
+	Peer mesh.PeerName     // The name of the peer.
+	Conn security.ID       // The connection identifier.
 }
 
 // Encode encodes the event to string representation.
@@ -112,6 +112,7 @@ func newSubscriptionState() *subscriptionState {
 // decodeSubscriptionState decodes the state
 func decodeSubscriptionState(buf []byte) (*subscriptionState, error) {
 	out := map[interface{}]collection.LWWTime{}
+
 	err := encoding.Decode(buf, &out)
 	return &subscriptionState{Set: out}, err
 }
