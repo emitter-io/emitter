@@ -58,6 +58,7 @@ type Config struct {
 	TLS        *TLSConfig     `json:"tls,omitempty"`     // The API port used for Secure TCP & Websocket communication.'
 	Vault      *VaultConfig   `json:"vault,omitempty"`   // The configuration for the Hashicorp Vault.
 	Cluster    *ClusterConfig `json:"cluster,omitempty"` // The configuration for the clustering.
+	Storage    *StorageConfig `json:"storage,omitempty"` // The configuration for the storage.
 }
 
 // TLSConfig represents TLS listener configuration.
@@ -99,6 +100,23 @@ func (c *TLSConfig) Load() tls.Certificate {
 type VaultConfig struct {
 	Address     string `json:"address"` // The vault address to use.
 	Application string `json:"app"`     // The vault application ID to use.
+}
+
+// StorageConfig represents storage provider configuration.
+type StorageConfig struct {
+
+	// The storage provider, this can either be 'noop', 'memory' or a location of a plugin. If
+	// the plugin is specified, the plugin should contain a Storage structure which implements
+	// the Storage interface.
+	Provider string `json:"provider"`
+
+	// The configuration for the storage. This specifies various parameters to provide to the
+	// storage provider during the Configure() call.
+	// * 'noop': does not use the configuration.
+	// * 'memory':
+	//    - 'maxsize': configures the max memory size, in bytes
+	//    - 'prune': configures the number of items to prune when the memory hits the max size
+	Config map[string]interface{} `json:"config,omitempty"`
 }
 
 // ClusterConfig represents the configuration for the cluster.

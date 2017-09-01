@@ -31,6 +31,12 @@
 			"revision": ""
 		},
 		{
+			"checksumSHA1": "nNba6mCG97AbTI9xNrzOIz5NnmY=",
+			"path": "github.com/karlseguin/ccache",
+			"revision": "3ba9789cfd2cb7b4fb4657efc994cc1c599a648c",
+			"revisionTime": "2017-02-17T06:08:20Z"
+		},
+		{
 			"checksumSHA1": "aUJlnUep1PBCNkSvNF2RYxKvkbE=",
 			"path": "github.com/kelindar/process",
 			"revision": "69a29e249ec39e635cd4e42f96c227b6ef2f28d7",

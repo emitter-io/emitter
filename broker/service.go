@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/cluster"
+	"github.com/emitter-io/emitter/broker/storage"
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/logging"
@@ -53,6 +54,7 @@ type Service struct {
 	startTime     time.Time                 // The start time of the service.
 	presence      chan *presenceNotify      // The channel for presence notifications.
 	querier       *QueryManager             // The generic query manager.
+	storage       storage.Storage           // The storage provider for the service.
 }
 
 // NewService creates a new service.
@@ -64,6 +66,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		http:          new(http.Server),
 		tcp:           new(tcp.Server),
 		presence:      make(chan *presenceNotify, 100),
+		storage:       new(storage.Noop),
 	}
 
 	// Create a new HTTP request multiplexer
@@ -100,6 +103,23 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 
 		// Attach query handlers
 		s.querier.HandleFunc(s.onPresenceQuery)
+	}
+
+	// Load the storage
+	if cfg.Storage != nil {
+		switch cfg.Storage.Provider {
+		case "noop": // Already configured
+		case "memory":
+			// In-Memory
+
+		default:
+			// TODO: load plugin
+		}
+
+		// Configure the storage
+		if err := s.storage.Configure(cfg.Storage.Config); err != nil {
+			panic(err)
+		}
 	}
 
 	logging.LogTarget("service", "using external address", address.External())
