@@ -147,7 +147,7 @@ func (s *Service) Listen() (err error) {
 	// Setup the listeners on both default and a secure addresses
 	s.listen(s.Config.ListenAddr)
 	if s.Config.TLS != nil {
-		s.listen(s.Config.ListenAddr, s.Config.TLS.Load())
+		s.listen(s.Config.TLS.ListenAddr, s.Config.TLS.Load())
 	}
 
 	// Set the start time and report status

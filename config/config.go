@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -81,6 +82,10 @@ func (c *TLSConfig) Load() tls.Certificate {
 			c.PrivateKey = "broker.key"
 		}
 	}
+
+	// Make sure the paths are absolute, otherwise we won't be able to read the files.
+	c.Certificate, _ = filepath.Abs(c.Certificate)
+	c.PrivateKey, _ = filepath.Abs(c.PrivateKey)
 
 	// Load the certificate from the cert/key files.
 	cert, err := tls.LoadX509KeyPair(c.Certificate, c.PrivateKey)
