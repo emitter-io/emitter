@@ -9,12 +9,6 @@
 			"revisionTime": "2017-07-02T08:40:17Z"
 		},
 		{
-			"checksumSHA1": "GevZ1uqeFce5qyp3OH1cpqlUSpc=",
-			"path": "github.com/benbjohnson/clock",
-			"revision": "7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19",
-			"revisionTime": "2016-12-15T17:48:38Z"
-		},
-		{
 			"checksumSHA1": "6topzsMi3s3LYN61Tn0GPR0D8uw=",
 			"path": "github.com/bkaradzic/go-lz4",
 			"revision": "7224d8d8f27ef618c0a95f1ae69dbb0488abc33a",
@@ -77,6 +71,12 @@
 			"path": "github.com/kelindar/process",
 			"revision": "69a29e249ec39e635cd4e42f96c227b6ef2f28d7",
 			"revisionTime": "2017-07-30T15:03:28Z"
+		},
+		{
+			"checksumSHA1": "DHuwjN9CXp/0qK0El1ENolq5RUc=",
+			"path": "github.com/kelindar/tcp",
+			"revision": "951ea01d26dd62609c78e16166f0fbbc0babd753",
+			"revisionTime": "2017-09-01T06:00:04Z"
 		},
 		{
 			"checksumSHA1": "mR79ABWFyrDTTdhFPxwUN19T45Q=",

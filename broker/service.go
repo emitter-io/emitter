@@ -32,10 +32,10 @@ import (
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/listener"
-	"github.com/emitter-io/emitter/network/tcp"
 	"github.com/emitter-io/emitter/network/websocket"
 	"github.com/emitter-io/emitter/security"
 	"github.com/emitter-io/emitter/utils"
+	"github.com/kelindar/tcp"
 )
 
 // Service represents the main structure.
@@ -77,7 +77,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 
 	// Attach handlers
 	s.http.Handler = mux
-	s.tcp.Handler = s.onAcceptConn
+	s.tcp.OnAccept = s.onAcceptConn
 	s.querier = newQueryManager(s)
 
 	// Parse the license

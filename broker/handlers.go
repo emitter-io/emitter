@@ -375,7 +375,7 @@ func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 			if awaiter, err := c.service.QueryRequest("presence", req); err == nil {
 
 				// Wait for all presence updates to come back (or a deadline)
-				for _, resp := range awaiter.Gather(500 * time.Millisecond) {
+				for _, resp := range awaiter.Gather(1000 * time.Millisecond) {
 					info := []presenceInfo{}
 					if err := encoding.Decode(resp, &info); err == nil {
 						//logging.LogTarget("query", "response gathered", info)

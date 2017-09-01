@@ -1,31 +1,15 @@
-/**********************************************************************************
-* Copyright (c) 2009-2017 Misakai Ltd.
-* This program is free software: you can redistribute it and/or modify it under the
-* terms of the GNU Affero General Public License as published by the  Free Software
-* Foundation, either version 3 of the License, or(at your option) any later version.
-*
-* This program is distributed  in the hope that it  will be useful, but WITHOUT ANY
-* WARRANTY;  without even  the implied warranty of MERCHANTABILITY or FITNESS FOR A
-* PARTICULAR PURPOSE.  See the GNU Affero General Public License  for  more details.
-*
-* You should have  received a copy  of the  GNU Affero General Public License along
-* with this program. If not, see<http://www.gnu.org/licenses/>.
-************************************************************************************/
-
 package tcp
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
-
-	"fmt"
-	"github.com/emitter-io/emitter/logging"
 )
 
-// Handler is a callback which gets called when a new connection is accepted.
-type Handler func(c net.Conn)
+// OnAccept is a callback which gets called when a new connection is accepted.
+type OnAccept func(c net.Conn)
 
 // ErrServerClosed occurs wehen a tcp server is closed.
 var ErrServerClosed = errors.New("tcp: Server closed")
@@ -33,13 +17,12 @@ var ErrServerClosed = errors.New("tcp: Server closed")
 // Server represents a TCP server.
 type Server struct {
 	sync.Mutex
-
-	Handler Handler
-	Closing chan bool
+	OnAccept OnAccept  // The handler to invoke when a connection is accepted.
+	Closing  chan bool // The closing channel.
 }
 
 // ServeAsync creates a TCP listener and starts the server.
-func ServeAsync(port int, closing chan bool, handler Handler) error {
+func ServeAsync(port int, closing chan bool, acceptHandler OnAccept) error {
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return err
@@ -47,7 +30,7 @@ func ServeAsync(port int, closing chan bool, handler Handler) error {
 
 	server := new(Server)
 	server.Closing = closing
-	server.Handler = handler
+	server.OnAccept = acceptHandler
 	go server.Serve(l)
 	return nil
 }
@@ -76,7 +59,6 @@ func (s *Server) Serve(l net.Listener) error {
 					tempDelay = max
 				}
 
-				logging.LogError("tcp", "accept error", err)
 				time.Sleep(tempDelay)
 				continue
 			}
@@ -84,7 +66,7 @@ func (s *Server) Serve(l net.Listener) error {
 		}
 
 		tempDelay = 0
-		go s.Handler(conn)
+		go s.OnAccept(conn)
 	}
 }
 
@@ -111,6 +93,7 @@ func (s *Server) getClosing() chan bool {
 	return s.Closing
 }
 
+// Close the channel
 func (s *Server) close() {
 	ch := s.getClosing()
 	select {
