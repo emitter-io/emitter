@@ -64,7 +64,7 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 	}
 
 	// Get the cluster binding address
-	clusterAddr, err := parseAddr(cfg.ClusterAddr)
+	listenAddr, err := parseAddr(cfg.ListenAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -77,10 +77,10 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 
 	// Create a new router
 	router, err := mesh.NewRouter(mesh.Config{
-		Host:               clusterAddr.IP.String(),
-		Port:               clusterAddr.Port,
+		Host:               listenAddr.IP.String(),
+		Port:               listenAddr.Port,
 		ProtocolMinVersion: mesh.ProtocolMinVersion,
-		Password:           []byte(cfg.ClusterKey),
+		Password:           []byte(cfg.Passphrase),
 		ConnLimit:          128,
 		PeerDiscovery:      true,
 		TrustedSubnets:     []*net.IPNet{},

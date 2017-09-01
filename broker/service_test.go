@@ -15,8 +15,7 @@ const testLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
 func TestPubsub(t *testing.T) {
 	cfg := config.NewDefault()
 	cfg.License = testLicense
-	cfg.TCPPort = ":9998"
-	cfg.TLSPort = ":9999"
+	cfg.ListenAddr = ":9998"
 	cfg.Cluster = nil
 
 	// Start the broker asynchronously

@@ -16,6 +16,7 @@ package config
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -40,23 +41,53 @@ type SecretStore interface {
 // NewDefault creates a default configuration.
 func NewDefault() *Config {
 	return &Config{
-		TCPPort: ":8080",
-		TLSPort: ":8443",
+		ListenAddr: ":8080",
 		Cluster: &ClusterConfig{
-			ClusterAddr:   ":4000",
+			ListenAddr:    ":4000",
 			AdvertiseAddr: "public:4000",
-			ClusterKey:    "emitter-io",
+			Passphrase:    "emitter-io",
 		},
 	}
 }
 
 // Config represents main configuration.
 type Config struct {
-	TCPPort string         `json:"tcp"`               // The API port used for TCP & Websocket communication.'
-	TLSPort string         `json:"tls"`               // The API port used for Secure TCP & Websocket communication.'
-	License string         `json:"license"`           // The port used for gossip.'
-	Vault   *VaultConfig   `json:"vault,omitempty"`   // The configuration for the Hashicorp Vault.
-	Cluster *ClusterConfig `json:"cluster,omitempty"` // The configuration for the clustering.
+	ListenAddr string         `json:"listen"`            // The API port used for TCP & Websocket communication.'
+	License    string         `json:"license"`           // The port used for gossip.'
+	TLS        *TLSConfig     `json:"tls,omitempty"`     // The API port used for Secure TCP & Websocket communication.'
+	Vault      *VaultConfig   `json:"vault,omitempty"`   // The configuration for the Hashicorp Vault.
+	Cluster    *ClusterConfig `json:"cluster,omitempty"` // The configuration for the clustering.
+}
+
+// TLSConfig represents TLS listener configuration.
+type TLSConfig struct {
+	ListenAddr  string `json:"listen"`      // The address to listen on.
+	Certificate string `json:"certificate"` // The certificate request.
+	PrivateKey  string `json:"private"`     // The private key for the certificate.
+}
+
+// Load loads a certificate from the configuration.
+func (c *TLSConfig) Load() tls.Certificate {
+	// If the certificate provided is in plain text, write to file so we can read it.
+	if strings.HasPrefix(c.Certificate, "---") {
+		if err := ioutil.WriteFile("broker.crt", []byte(c.Certificate), os.ModePerm); err == nil {
+			c.Certificate = "broker.crt"
+		}
+	}
+
+	// If the private key provided is in plain text, write to file so we can read it.
+	if strings.HasPrefix(c.PrivateKey, "---") {
+		if err := ioutil.WriteFile("broker.key", []byte(c.PrivateKey), os.ModePerm); err == nil {
+			c.PrivateKey = "broker.key"
+		}
+	}
+
+	// Load the certificate from the cert/key files.
+	cert, err := tls.LoadX509KeyPair(c.Certificate, c.PrivateKey)
+	if err != nil {
+		panic(err)
+	}
+	return cert
 }
 
 // VaultConfig represents Vault configuration.
@@ -70,11 +101,11 @@ type ClusterConfig struct {
 
 	// The name of this node. This must be unique in the cluster. If this is not set, Emitter
 	// will set it to the external IP address of the running machine.
-	NodeName string `json:"node,omitempty"`
+	NodeName string `json:"name,omitempty"`
 
 	// The IP address and port that is used to bind the inter-node communication network. This
 	// is used for the actual binding of the port.
-	ClusterAddr string `json:"cluster"`
+	ListenAddr string `json:"listen"`
 
 	// The address and port to advertise inter-node communication network. This is used for nat
 	// traversal.
@@ -83,9 +114,9 @@ type ClusterConfig struct {
 	// The seed address (or a domain name) for cluster join.
 	Seed string `json:"seed"`
 
-	// ClusterKey is used to initialize the primary encryption key in a keyring. This key
+	// Passphrase is used to initialize the primary encryption key in a keyring. This key
 	// is used for encrypting all the gossip messages (message-level encryption).
-	ClusterKey string `json:"key"`
+	Passphrase string `json:"passphrase,omitempty"`
 }
 
 // HasVault checks whether hashicorp vault endpoint is configured.

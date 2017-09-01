@@ -15,6 +15,7 @@
 package broker
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -143,26 +144,33 @@ func (s *Service) Listen() (err error) {
 		s.querier.Start()
 	}
 
-	// Setup the HTTP server
-	logging.LogAction("service", "starting the listener...")
-	l, err := listener.New(s.Config.TCPPort)
-	if err != nil {
-		panic(err)
+	// Setup the listeners on both default and a secure addresses
+	s.listen(s.Config.ListenAddr)
+	if s.Config.TLS != nil {
+		s.listen(s.Config.ListenAddr, s.Config.TLS.Load())
 	}
-
-	l.ServeAsync(listener.MatchHTTP(), s.http.Serve)
-	l.ServeAsync(listener.MatchAny(), s.tcp.Serve)
 
 	// Set the start time and report status
 	s.startTime = time.Now().UTC()
 	utils.Repeat(s.reportStatus, 100*time.Millisecond, s.Closing)
 	logging.LogAction("service", "service started")
 
-	// Serve the listener
-	if l.Serve(); err != nil {
-		logging.LogError("service", "starting the listener", err)
+	// Block
+	select {}
+}
+
+// listen configures an main listener on a specified address.
+func (s *Service) listen(address string, certs ...tls.Certificate) {
+	logging.LogTarget("service", "starting the listener", address)
+	l, err := listener.New(address, certs...)
+	if err != nil {
+		panic(err)
 	}
-	return nil
+
+	// Configure the matchers
+	l.ServeAsync(listener.MatchHTTP(), s.http.Serve)
+	l.ServeAsync(listener.MatchAny(), s.tcp.Serve)
+	go l.Serve()
 }
 
 // Join attempts to join a set of existing peers.

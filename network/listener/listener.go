@@ -16,6 +16,8 @@ package listener
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -71,10 +73,21 @@ var noTimeout time.Duration
 // New listens on all available interfaces instead of just the interface
 // with the given host address. Listening on a hostname is not recommended
 // because this creates a socket for at most one of its IP addresses.
-func New(address string) (*Listener, error) {
+func New(address string, certificates ...tls.Certificate) (*Listener, error) {
 	l, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, err
+	}
+
+	// If we have a TLS certificate specified, wrap the listener in TLS
+	if len(certificates) > 0 {
+		config := &tls.Config{
+			Certificates: certificates,
+			Rand:         rand.Reader,
+		}
+
+		// Create a wrapped listener over our TCP listener
+		l = tls.NewListener(l, config)
 	}
 
 	return &Listener{

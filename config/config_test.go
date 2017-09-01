@@ -24,25 +24,24 @@ func (m *secretStoreMock) Configure(c *Config) error {
 
 func Test_write(t *testing.T) {
 	c := &Config{
-		TCPPort: ":80",
-		TLSPort: ":443",
+		ListenAddr: ":80",
 	}
 
 	o := bytes.NewBuffer([]byte{})
 	c.write(o)
-	assert.Equal(t, "{\n\t\"tcp\": \":80\",\n\t\"tls\": \":443\",\n\t\"license\": \"\"\n}", string(o.Bytes()))
+	assert.Equal(t, "{\n\t\"listen\": \":80\",\n\t\"license\": \"\"\n}", string(o.Bytes()))
 }
 
 func Test_declassify(t *testing.T) {
 	c := NewDefault()
 	c.Vault = new(VaultConfig)
 	m := new(secretStoreMock)
-	m.On("GetSecret", "emitter/tcp").Return(":999")
+	m.On("GetSecret", "emitter/listen").Return(":999")
 	m.On("GetSecret", "emitter/vault/address").Return("hello")
 	m.On("GetSecret", mock.Anything).Return("")
 
 	expected := NewDefault()
-	expected.TCPPort = ":999"
+	expected.ListenAddr = ":999"
 	expected.Vault = new(VaultConfig)
 	expected.Vault.Address = "hello"
 
