@@ -40,3 +40,41 @@ type Storage interface {
 	// ranged over to retrieve messages asynchronously.
 	QueryLast(ssid []uint32, limit int) (<-chan []byte, error)
 }
+
+// ------------------------------------------------------------------------------------
+
+// Noop implements Storage contract.
+var _ Storage = new(Noop)
+
+// Noop represents a storage which does nothing.
+type Noop struct{}
+
+// Configure configures the storage. The config parameter provided is
+// loosely typed, since various storage mechanisms will require different
+// configurations.
+func (s *Noop) Configure(config map[string]interface{}) error {
+	return nil
+}
+
+// Store is used to store a message, the SSID provided must be a full SSID
+// SSID, where first element should be a contract ID. The time resolution
+// for TTL will be in seconds. The function is executed synchronously and
+// it returns an error if some error was encountered during storage.
+func (s *Noop) Store(ssid []uint32, payload []byte, ttl time.Duration) error {
+	return nil
+}
+
+// QueryLast performs a query and attempts to fetch last n messages where
+// n is specified by limit argument. It returns a channel which will be
+// ranged over to retrieve messages asynchronously.
+func (s *Noop) QueryLast(ssid []uint32, limit int) (<-chan []byte, error) {
+	ch := make(chan []byte)
+	close(ch) // Close the channel so we can return a closed one.
+	return ch, nil
+}
+
+// Close gracefully terminates the storage and ensures that every related
+// resource is properly disposed.
+func (s *Noop) Close() error {
+	return nil
+}

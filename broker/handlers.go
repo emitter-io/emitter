@@ -16,12 +16,12 @@ package broker
 
 import (
 	"encoding/json"
-	"github.com/emitter-io/emitter/logging"
 	"strings"
 	"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/encoding"
+	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/security"
 )
 
