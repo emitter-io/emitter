@@ -25,29 +25,29 @@ import (
 )
 
 // VaultClient represents a lightweight vault client.
-type vaultClient struct {
+type VaultClient struct {
 	address string // The vault address.
 	token   string // The vault token provided by auth.
 }
 
 // NewVaultClient creates a new vault client.
-func newVaultClient(address string) *vaultClient {
+func NewVaultClient(address string) *VaultClient {
 	if ip := net.ParseIP(address); ip != nil {
 		address = fmt.Sprintf("http://%v:8200", ip.String())
 	}
 
-	return &vaultClient{
+	return &VaultClient{
 		address: address,
 	}
 }
 
 // IsAuthenticated checks whether we are authenticated or not.
-func (c *vaultClient) IsAuthenticated() bool {
+func (c *VaultClient) IsAuthenticated() bool {
 	return c.token != ""
 }
 
 // Authenticate performs vault authentication.
-func (c *vaultClient) Authenticate(app string, user string) error {
+func (c *VaultClient) Authenticate(app string, user string) error {
 	output, err := c.post("/auth/app-id/login", &vaultAuthRequest{
 		App:  app,
 		User: user,
@@ -63,7 +63,7 @@ func (c *vaultClient) Authenticate(app string, user string) error {
 }
 
 // ReadSecret reads a secret from the vault.
-func (c *vaultClient) ReadSecret(secretName string) (string, error) {
+func (c *VaultClient) ReadSecret(secretName string) (string, error) {
 	output, err := c.get("/secret/" + secretName)
 	if err != nil {
 		return "", err
@@ -80,7 +80,7 @@ func (c *vaultClient) ReadSecret(secretName string) (string, error) {
 }
 
 // ReadSecret reads a secret from the vault.
-func (c *vaultClient) ReadCredentials(credentialsName string) (*AwsCredentials, error) {
+func (c *VaultClient) ReadCredentials(credentialsName string) (*AwsCredentials, error) {
 	output, err := c.get("/aws/sts/" + credentialsName)
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (c *vaultClient) ReadCredentials(credentialsName string) (*AwsCredentials, 
 }
 
 // Get issues an HTTP GET to a vault server.
-func (c *vaultClient) get(url string) (output *vaultSecret, err error) {
+func (c *VaultClient) get(url string) (output *vaultSecret, err error) {
 	var headers []http.HeaderValue
 	if c.IsAuthenticated() {
 		headers = append(headers, http.NewHeader("X-Vault-Token", c.token))
@@ -112,7 +112,7 @@ func (c *vaultClient) get(url string) (output *vaultSecret, err error) {
 }
 
 // Post issues an HTTP POST to a vault server.
-func (c *vaultClient) post(url string, body interface{}) (output *vaultSecret, err error) {
+func (c *VaultClient) post(url string, body interface{}) (output *vaultSecret, err error) {
 
 	// Note: The HTTP post is used for authentication only right now, hence no need
 	// to add the X-Vault-Token.

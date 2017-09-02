@@ -45,7 +45,7 @@ func Test_newVaultClient(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		cli := newVaultClient(tc.addr)
+		cli := NewVaultClient(tc.addr)
 		assert.NotNil(t, cli)
 	}
 }
@@ -60,7 +60,7 @@ func TestVaultAuthenticate(t *testing.T) {
 		return errors.New("err")
 	}
 
-	cli := newVaultClient("127.0.0.1")
+	cli := NewVaultClient("127.0.0.1")
 	err := cli.Authenticate("x", "y")
 	assert.Error(t, err)
 }
@@ -70,7 +70,7 @@ func TestVaultClient(t *testing.T) {
 	defer s.Close()
 
 	// Test authentication first
-	cli := newVaultClient(s.URL)
+	cli := NewVaultClient(s.URL)
 	err := cli.Authenticate("xxxxxx", "yyyyyy")
 	assert.NoError(t, err)
 	assert.Equal(t, "123", cli.token)

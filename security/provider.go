@@ -56,7 +56,7 @@ func (p *EnvironmentProvider) GetSecret(secretName string) (string, bool) {
 
 // VaultProvider represents a security provider which uses hashicorp vault to store secrets.
 type VaultProvider struct {
-	client *vaultClient // The vault client.
+	client *VaultClient // The vault client.
 	app    string       // The application ID to use for authentication.
 	user   string       // The user ID to use for authentication.
 	auth   bool         // Whether the provider is authenticated or not.
@@ -73,7 +73,7 @@ func (p *VaultProvider) Configure(c *config.Config) error {
 		return errors.New("Unable to configure Vault provider")
 	}
 
-	p.client = newVaultClient(c.Vault.Address)
+	p.client = NewVaultClient(c.Vault.Address)
 	p.app = c.Vault.Application
 
 	// Authenticate the provider
