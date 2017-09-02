@@ -165,6 +165,11 @@ func (a *queryAwaiter) Gather(timeout time.Duration) (r [][]byte) {
 	t := time.After(timeout)
 	c := a.maximum
 
+	// If there's no peers, no need to receive anything
+	if c == 0 {
+		return
+	}
+
 	for {
 		select {
 		case msg := <-a.receive:
