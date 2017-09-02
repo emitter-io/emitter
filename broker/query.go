@@ -99,7 +99,7 @@ func (c *QueryManager) Send(ssid subscription.Ssid, channel []byte, payload []by
 // onRequest handles an incoming request
 func (c *QueryManager) onResponse(id uint32, payload []byte) error {
 	if awaiter, ok := c.awaiters.Load(id); ok {
-		awaiter.(*QueryAwaiter).receive <- payload
+		awaiter.(*queryAwaiter).receive <- payload
 	}
 	return nil
 }
@@ -127,12 +127,12 @@ func (c *QueryManager) onRequest(ssid subscription.Ssid, channel string, payload
 	return errors.New("No query handler found for " + channel)
 }
 
-// Request issues a cluster-wide request.
-func (c *QueryManager) Request(query string, payload []byte) (*QueryAwaiter, error) {
+// Query issues a cluster-wide request.
+func (c *QueryManager) Query(query string, payload []byte) (subscription.Awaiter, error) {
 
 	// Create an awaiter
 	// TODO: replace the max with the total number of cluster nodes
-	awaiter := &QueryAwaiter{
+	awaiter := &queryAwaiter{
 		id:      atomic.AddUint32(&c.next, 1),
 		receive: make(chan []byte),
 		maximum: c.service.NumPeers(),
@@ -150,8 +150,8 @@ func (c *QueryManager) Request(query string, payload []byte) (*QueryAwaiter, err
 	return awaiter, nil
 }
 
-// QueryAwaiter represents an asynchronously awaiting response channel.
-type QueryAwaiter struct {
+// queryAwaiter represents an asynchronously awaiting response channel.
+type queryAwaiter struct {
 	id      uint32        // The identifier of the query.
 	maximum int           // The maximum number of responses to wait for.
 	receive chan []byte   // The receive channel to use.
@@ -159,7 +159,7 @@ type QueryAwaiter struct {
 }
 
 // Gather awaits for the responses to be received, blocking until we're done.
-func (a *QueryAwaiter) Gather(timeout time.Duration) (r [][]byte) {
+func (a *queryAwaiter) Gather(timeout time.Duration) (r [][]byte) {
 	defer func() { a.manager.awaiters.Delete(a.id) }()
 	r = make([][]byte, 0, 4)
 	t := time.After(timeout)

@@ -108,9 +108,15 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	// Load the storage
 	if cfg.Storage != nil {
 		switch cfg.Storage.Provider {
-		case "noop": // Already configured
+		case "noop":
+			// Create a no-op storage
+			s.storage = new(storage.Noop)
+
 		case "memory":
-			// In-Memory
+			// Create an in-memory storage
+			memstore := &storage.InMemory{Query: s.Query}
+			s.storage = memstore
+			s.querier.HandleFunc(memstore.OnRequest)
 
 		default:
 			// TODO: load plugin
@@ -308,10 +314,10 @@ func (s *Service) onPeerMessage(m *cluster.Message) {
 	}
 }
 
-// QueryRequest sends out a query to all the peers.
-func (s *Service) QueryRequest(query string, payload []byte) (*QueryAwaiter, error) {
+// Query sends out a query to all the peers.
+func (s *Service) Query(query string, payload []byte) (subscription.Awaiter, error) {
 	if s.querier != nil {
-		return s.querier.Request(query, payload)
+		return s.querier.Query(query, payload)
 	}
 
 	return nil, errors.New("Query manager was not setup")

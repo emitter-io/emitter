@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"reflect"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/emitter-io/emitter/security"
@@ -92,6 +93,13 @@ func unsafeToString(b []byte) string {
 	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
 	sh := reflect.StringHeader{bh.Data, bh.Len}
 	return *(*string)(unsafe.Pointer(&sh))
+}
+
+// ------------------------------------------------------------------------------------
+
+// Awaiter represents an asynchronously awaiting response channel.
+type Awaiter interface {
+	Gather(time.Duration) [][]byte
 }
 
 // ------------------------------------------------------------------------------------

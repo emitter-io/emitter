@@ -372,7 +372,7 @@ func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 
 		// Issue the presence query to the cluster
 		if req, err := encoding.Encode(ssid); err == nil {
-			if awaiter, err := c.service.QueryRequest("presence", req); err == nil {
+			if awaiter, err := c.service.Query("presence", req); err == nil {
 
 				// Wait for all presence updates to come back (or a deadline)
 				for _, resp := range awaiter.Gather(1000 * time.Millisecond) {

@@ -18,11 +18,14 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/encoding"
+	"github.com/emitter-io/emitter/logging"
 	"github.com/karlseguin/ccache"
 )
 
@@ -30,15 +33,22 @@ var (
 	errNotFound = errors.New("No messages were found")
 )
 
+// The lookup query to send out to the cluster.
+type lookupQuery struct {
+	Ssid  []uint32 // The ssid to match.
+	Limit int      // The maximum number of elements to return.
+}
+
 // Message represents a stored message.
 type message struct {
-	ssid    string // The hex-encoded SSID
-	payload []byte // The payload
+	Time    int64  // The unix timestamp of the message.
+	Ssid    string // The hex-encoded SSID
+	Payload []byte // The payload
 }
 
 // Size returns the byte size of the message.
 func (m message) Size() int64 {
-	return int64(len(m.payload))
+	return int64(len(m.Payload))
 }
 
 // InMemory implements Storage contract.
@@ -46,8 +56,9 @@ var _ Storage = new(InMemory)
 
 // InMemory represents a storage which does nothing.
 type InMemory struct {
-	cur *sync.Map
-	mem *ccache.Cache
+	cur   *sync.Map                                          // The cursor map which stores the last written offset.
+	mem   *ccache.Cache                                      // The LRU cache with TTL.
+	Query func(string, []byte) (subscription.Awaiter, error) // The cluster request function.
 }
 
 // Configure configures the storage. The config parameter provided is
@@ -77,7 +88,7 @@ func (s *InMemory) Store(ssid []uint32, payload []byte, ttl time.Duration) error
 	idx := atomic.AddUint64(cur.(*uint64), 1)
 
 	// Set the key in form of (ssid:index) so we can retrieve
-	s.mem.Set(fmt.Sprintf("%v:%v", trunk, idx), message{ssid: key, payload: payload}, ttl)
+	s.mem.Set(fmt.Sprintf("%v:%v", trunk, idx), message{Ssid: key, Time: time.Now().Unix(), Payload: payload}, ttl)
 	return nil
 }
 
@@ -85,23 +96,75 @@ func (s *InMemory) Store(ssid []uint32, payload []byte, ttl time.Duration) error
 // n is specified by limit argument. It returns a channel which will be
 // ranged over to retrieve messages asynchronously.
 func (s *InMemory) QueryLast(ssid []uint32, limit int) (<-chan []byte, error) {
-	ch := make(chan []byte)
 
-	// 3. Query all other services and await their response
-	// 4. Merge everything
-	// 5. Send the entire thing through the channel
+	// Construct a query and lookup locally first
+	query := lookupQuery{Ssid: ssid, Limit: limit}
+	match := s.lookup(query)
 
-	close(ch) // Close the channel so we can return a closed one.
+	// Issue the presence query to the cluster
+	if req, err := encoding.Encode(query); err == nil && s.Query != nil {
+		if awaiter, err := s.Query("memstore", req); err == nil {
+
+			// Wait for all presence updates to come back (or a deadline)
+			for _, resp := range awaiter.Gather(2000 * time.Millisecond) {
+				info := []message{}
+				if err := encoding.Decode(resp, &info); err == nil {
+					match = append(match, info...)
+				}
+			}
+		}
+	}
+
+	// Sort the matches by time
+	sort.Slice(match, func(i, j int) bool { return match[i].Time < match[j].Time })
+
+	// Project to return only payloads
+	ch := make(chan []byte, limit)
+	for i, msg := range match {
+		if i >= limit {
+			break
+		}
+
+		// Push a message into our buffered channel
+		ch <- msg.Payload
+	}
+
+	// Close and return the channel
+	close(ch)
 	return ch, nil
 }
 
+// OnRequest handles an incoming cluster lookup request.
+func (s *InMemory) OnRequest(queryType string, payload []byte) ([]byte, bool) {
+	if queryType != "memstore" {
+		return nil, false
+	}
+
+	// Decode the request
+	var query lookupQuery
+	if err := encoding.Decode(payload, &query); err != nil {
+		return nil, false
+	}
+
+	// Check if the SSID is properly constructed
+	if len(query.Ssid) < 2 {
+		return nil, false
+	}
+
+	logging.LogTarget("memstore", queryType+" query received", query)
+
+	// Send back the response
+	b, err := encoding.Encode(s.lookup(query))
+	return b, err == nil
+}
+
 // Lookup performs a query agains the cache.
-func (s *InMemory) lookup(ssid []uint32, limit int) (matches []message) {
-	matches = make([]message, 0, limit)
+func (s *InMemory) lookup(q lookupQuery) (matches []message) {
+	matches = make([]message, 0, q.Limit)
 	matchCount := 0
 
 	// Get the string version of the SSID trunk
-	key := subscription.Ssid(ssid).Encode()
+	key := subscription.Ssid(q.Ssid).Encode()
 	trunk := key[:16]
 
 	// Get the value of the last message cursor
@@ -114,12 +177,12 @@ func (s *InMemory) lookup(ssid []uint32, limit int) (matches []message) {
 	if query, err := regexp.Compile(key + ".*"); err == nil {
 
 		// Iterate from last to 0 (limit to last n) and append locally
-		for i := atomic.LoadUint64(last.(*uint64)); i > 0 && matchCount < limit; i-- {
+		for i := atomic.LoadUint64(last.(*uint64)); i > 0 && matchCount < q.Limit; i-- {
 			if item := s.mem.Get(fmt.Sprintf("%v:%v", trunk, i)); item != nil && !item.Expired() {
 				msg := item.Value().(message)
 
 				// Match using regular expression
-				if query.MatchString(msg.ssid) {
+				if query.MatchString(msg.Ssid) {
 					matchCount++
 					matches = append(matches, msg)
 				}
