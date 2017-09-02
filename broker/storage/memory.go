@@ -118,6 +118,9 @@ func (s *InMemory) QueryLast(ssid []uint32, limit int) (<-chan []byte, error) {
 
 	// Sort the matches by time
 	sort.Slice(match, func(i, j int) bool { return match[i].Time < match[j].Time })
+	for _, msg := range match {
+		fmt.Printf("%v at %v\n", string(msg.Payload), msg.Time)
+	}
 
 	// Project to return only payloads
 	ch := make(chan []byte, limit)
