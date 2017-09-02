@@ -15,7 +15,11 @@
 package subscription
 
 import (
+	"encoding/binary"
+	"encoding/hex"
+	"reflect"
 	"sync"
+	"unsafe"
 
 	"github.com/emitter-io/emitter/security"
 )
@@ -35,7 +39,7 @@ var Query = Ssid{system, query}
 // for various parts of the channel.
 type Ssid []uint32
 
-// NewSsid creates a new Ssid.
+// NewSsid creates a new SSID.
 func NewSsid(contract uint32, c *security.Channel) Ssid {
 	ssid := make([]uint32, 0, len(c.Query)+1)
 	ssid = append(ssid, uint32(contract))
@@ -43,7 +47,7 @@ func NewSsid(contract uint32, c *security.Channel) Ssid {
 	return ssid
 }
 
-// NewSsidForPresence creates a new Ssid for presence.
+// NewSsidForPresence creates a new SSID for presence.
 func NewSsidForPresence(original Ssid) Ssid {
 	ssid := make([]uint32, 0, len(original)+2)
 	ssid = append(ssid, system)
@@ -52,18 +56,42 @@ func NewSsidForPresence(original Ssid) Ssid {
 	return ssid
 }
 
-// Contract gets the contract part from Ssid.
+// Contract gets the contract part from SSID.
 func (s Ssid) Contract() uint32 {
 	return uint32(s[0])
 }
 
-// GetHashCode combines the ssid into a single hash.
+// GetHashCode combines the SSID into a single hash.
 func (s Ssid) GetHashCode() uint32 {
 	h := s[0]
 	for _, i := range s[1:] {
 		h ^= i
 	}
 	return h
+}
+
+// Encode encodes the SSID to a binary format
+func (s Ssid) Encode() string {
+	bin := make([]byte, 4)
+	out := make([]byte, len(s)*8)
+
+	for i, v := range s {
+		if v != wildcard {
+			binary.BigEndian.PutUint32(bin, v)
+			hex.Encode(out[i*8:i*8+8], bin)
+		} else {
+			// If we have a wildcard specified, use dot '.' symbol so this becomes a valid
+			// regular expression and we could also use this for querying.
+			copy(out[i*8:i*8+8], []byte{0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E})
+		}
+	}
+	return unsafeToString(out)
+}
+
+func unsafeToString(b []byte) string {
+	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	sh := reflect.StringHeader{bh.Data, bh.Len}
+	return *(*string)(unsafe.Pointer(&sh))
 }
 
 // ------------------------------------------------------------------------------------
