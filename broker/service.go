@@ -112,7 +112,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 			// Create a no-op storage
 			s.storage = new(storage.Noop)
 
-		case "memory":
+		case "inmemory":
 			// Create an in-memory storage
 			memstore := &storage.InMemory{Query: s.Query}
 			s.storage = memstore

@@ -132,6 +132,27 @@ func TestGetChannelTTL(t *testing.T) {
 	}
 }
 
+func TestGetChannelLast(t *testing.T) {
+	tests := []struct {
+		channel string
+		last    uint32
+		ok      bool
+	}{
+		{channel: "emitter/a/?last=42&abc=9", last: 42, ok: true},
+		{channel: "emitter/a/?last=1200", last: 1200, ok: true},
+		{channel: "emitter/a/?last=1200a", ok: false},
+		{channel: "emitter/a/", ok: false},
+	}
+
+	for _, tc := range tests {
+		channel := ParseChannel([]byte(tc.channel))
+		last, hasValue := channel.Last()
+
+		assert.Equal(t, tc.last, last)
+		assert.Equal(t, hasValue, tc.ok)
+	}
+}
+
 func TestGetChannelTarget(t *testing.T) {
 	tests := []struct {
 		channel string

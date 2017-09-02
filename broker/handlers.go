@@ -77,6 +77,20 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 	ssid := subscription.NewSsid(key.Contract(), channel)
 	c.Subscribe(ssid, channel.Channel)
 
+	// In case of ttl, check the key provides the permission to store (soft permission)
+	if limit, ok := channel.Last(); ok && key.HasPermission(security.AllowLoad) {
+		msgs, err := c.service.storage.QueryLast(ssid, int(limit))
+		if err != nil {
+			logging.LogError("conn", "query last messages", err)
+			return ErrServerError
+		}
+
+		// Range over the messages in the channel and forward them
+		for msg := range msgs {
+			c.Send(ssid, channel.Channel, msg)
+		}
+	}
+
 	return nil
 }
 
@@ -184,21 +198,16 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 		return ErrUnauthorized
 	}
 
-	// In case of ttl, check the key provides the permission to store (soft permission)
-	if _, ok := channel.TTL(); ok && key.HasPermission(security.AllowStore) {
+	// Create an SSID
+	ssid := subscription.NewSsid(key.Contract(), channel)
 
-		/*
-			// Only call into the storage service if necessary
-			if (Services.Storage != null)
-			{
-				// If we have a storage service, store the message
-				Services.Storage.AppendAsync(contractId, ssid, ttl, message);
-			}
-		*/
+	// In case of ttl, check the key provides the permission to store (soft permission)
+	if ttl, ok := channel.TTL(); ok && key.HasPermission(security.AllowStore) {
+		c.service.storage.Store(ssid, payload, time.Duration(ttl)*time.Second)
 	}
 
 	// Iterate through all subscribers and send them the message
-	size := c.service.publish(subscription.NewSsid(key.Contract(), channel), channel.Channel, payload)
+	size := c.service.publish(ssid, channel.Channel, payload)
 
 	// Write the stats
 	contract.Stats().AddIngress(int64(len(payload)))

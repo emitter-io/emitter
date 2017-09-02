@@ -25,7 +25,6 @@ import (
 
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/encoding"
-	"github.com/emitter-io/emitter/logging"
 	"github.com/karlseguin/ccache"
 )
 
@@ -89,6 +88,8 @@ func (s *InMemory) Store(ssid []uint32, payload []byte, ttl time.Duration) error
 
 	// Set the key in form of (ssid:index) so we can retrieve
 	s.mem.Set(fmt.Sprintf("%v:%v", trunk, idx), message{Ssid: key, Time: time.Now().Unix(), Payload: payload}, ttl)
+
+	//logging.LogTarget("memstore", "message stored", idx)
 	return nil
 }
 
@@ -151,7 +152,7 @@ func (s *InMemory) OnRequest(queryType string, payload []byte) ([]byte, bool) {
 		return nil, false
 	}
 
-	logging.LogTarget("memstore", queryType+" query received", query)
+	//logging.LogTarget("memstore", queryType+" query received", query)
 
 	// Send back the response
 	b, err := encoding.Encode(s.lookup(query))

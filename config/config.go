@@ -113,7 +113,7 @@ type StorageConfig struct {
 	// The configuration for the storage. This specifies various parameters to provide to the
 	// storage provider during the Configure() call.
 	// * 'noop': does not use the configuration.
-	// * 'memory':
+	// * 'inmemory':
 	//    - 'maxsize': configures the max memory size, in bytes
 	//    - 'prune': configures the number of items to prune when the memory hits the max size
 	Config map[string]interface{} `json:"config,omitempty"`

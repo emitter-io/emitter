@@ -45,14 +45,25 @@ type Channel struct {
 	ChannelType uint8
 }
 
+// Target returns the channel target (first element of the query, second element of an SSID)
 func (c *Channel) Target() uint32 {
 	return c.Query[0]
 }
 
-// TODO why not a map of options?
+// TTL returns a Time-To-Live option
 func (c *Channel) TTL() (uint32, bool) {
+	return c.getOptUint("ttl")
+}
+
+// Last returns the 'last' option
+func (c *Channel) Last() (uint32, bool) {
+	return c.getOptUint("last")
+}
+
+// getOptUint retrieves a Uint option
+func (c *Channel) getOptUint(name string) (uint32, bool) {
 	for i := 0; i < len(c.Options); i++ {
-		if len(c.Options[i].Key) == 3 && c.Options[i].Key == "ttl" {
+		if c.Options[i].Key == name {
 			if val, err := strconv.ParseUint(c.Options[i].Value, 10, 32); err == nil {
 				return uint32(val), true
 			}
