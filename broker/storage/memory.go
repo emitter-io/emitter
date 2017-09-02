@@ -87,7 +87,7 @@ func (s *InMemory) Store(ssid []uint32, payload []byte, ttl time.Duration) error
 	idx := atomic.AddUint64(cur.(*uint64), 1)
 
 	// Set the key in form of (ssid:index) so we can retrieve
-	s.mem.Set(fmt.Sprintf("%v:%v", trunk, idx), message{Ssid: key, Time: time.Now().Unix(), Payload: payload}, ttl)
+	s.mem.Set(fmt.Sprintf("%v:%v", trunk, idx), message{Ssid: key, Time: time.Now().UnixNano(), Payload: payload}, ttl)
 
 	//logging.LogTarget("memstore", "message stored", idx)
 	return nil
