@@ -22,3 +22,5 @@ build/*
 *.conf
 *.lnk
 creds.json
+*.crt
+*.key
