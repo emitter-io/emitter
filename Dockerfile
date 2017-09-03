@@ -4,7 +4,7 @@ MAINTAINER Roman Atachiants "roman@misakai.com"
 # Copy the directory into the container.
 RUN mkdir -p /go/src/emitter
 WORKDIR /go/src/emitter
-ADD . /go/src/emitter
+ADD . /go/src/emitter/
 
 # Download and install any required third party dependencies into the container.
 RUN go-wrapper install
