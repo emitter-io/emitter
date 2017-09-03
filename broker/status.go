@@ -54,3 +54,10 @@ func (s *Service) reportStatus() {
 
 	s.selfPublish("cluster/"+status.Addr+"/", b)
 }
+
+// reportMeters persists the metering information
+func (s *Service) reportMeters() {
+	if err := s.metering.Store(); err != nil {
+		logging.LogError("service", "storing metering info", err)
+	}
+}

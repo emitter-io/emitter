@@ -53,7 +53,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := c.service.Contracts.Get(key.Contract())
+	contract := c.service.contracts.Get(key.Contract())
 	if contract == nil {
 		return ErrNotFound
 	}
@@ -117,7 +117,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := c.service.Contracts.Get(key.Contract())
+	contract := c.service.contracts.Get(key.Contract())
 	if contract == nil {
 		return ErrNotFound
 	}
@@ -178,7 +178,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := c.service.Contracts.Get(key.Contract())
+	contract := c.service.contracts.Get(key.Contract())
 	if contract == nil {
 		return ErrNotFound
 	}
@@ -261,7 +261,7 @@ func (c *Conn) onKeyGen(payload []byte) (interface{}, bool) {
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := c.service.Contracts.Get(masterKey.Contract())
+	contract := c.service.contracts.Get(masterKey.Contract())
 	if contract == nil {
 		return ErrNotFound, false
 	}
@@ -340,7 +340,7 @@ func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract := c.service.Contracts.Get(key.Contract())
+	contract := c.service.contracts.Get(key.Contract())
 	if contract == nil {
 		return ErrNotFound, false
 	}

@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/network/http"
+	"github.com/emitter-io/emitter/security/usage"
 )
 
 // The contract's state possible values.
@@ -31,16 +33,16 @@ const (
 // Contract represents an interface for a contract.
 type Contract interface {
 	Validate(key Key) bool // Validate checks the security key with the contract.
-	Stats() UsageStats     // Gets the usage statistics.
+	Stats() usage.Meter    // Gets the usage statistics.
 }
 
 // contract represents a contract (user account).
 type contract struct {
-	ID        uint32 `json:"id"`     // Gets or sets the contract id.
-	MasterID  uint16 `json:"sign"`   // Gets or sets the master id.
-	Signature uint32 `json:"master"` // Gets or sets the signature of the contract.
-	State     uint8  `json:"state"`  // Gets or sets the state of the contract.
-	stats     *usage // Gets the usage stats.
+	ID        uint32      `json:"id"`     // Gets or sets the contract id.
+	MasterID  uint16      `json:"sign"`   // Gets or sets the master id.
+	Signature uint32      `json:"master"` // Gets or sets the signature of the contract.
+	State     uint8       `json:"state"`  // Gets or sets the state of the contract.
+	stats     usage.Meter // Gets the usage stats.
 }
 
 // Validate validates the contract data against a key.
@@ -52,31 +54,44 @@ func (c *contract) Validate(key Key) bool {
 }
 
 // Gets the usage statistics.
-func (c *contract) Stats() UsageStats {
+func (c *contract) Stats() usage.Meter {
 	return c.stats
 }
 
 // ContractProvider represents an interface for a contract provider.
 type ContractProvider interface {
-	// Creates a new instance of a Contract in the underlying data storage.
+	config.Provider
+
 	Create() (Contract, error)
 	Get(id uint32) Contract
 }
 
 // SingleContractProvider provides contracts on premise.
 type SingleContractProvider struct {
-	owner *contract
+	owner *contract      // The owner contract.
+	usage usage.Metering // The usage stats container.
 }
 
 // NewSingleContractProvider creates a new single contract provider.
-func NewSingleContractProvider(license *License) *SingleContractProvider {
+func NewSingleContractProvider(license *License, metering usage.Metering) *SingleContractProvider {
 	p := new(SingleContractProvider)
 	p.owner = new(contract)
 	p.owner.MasterID = 1
 	p.owner.ID = license.Contract
 	p.owner.Signature = license.Signature
-	p.owner.stats = new(usage)
+	p.usage = metering
+	p.owner.stats = p.usage.Get(license.Contract)
 	return p
+}
+
+// Name returns the name of the provider.
+func (p *SingleContractProvider) Name() string {
+	return "single"
+}
+
+// Configure configures the provider.
+func (p *SingleContractProvider) Configure(config map[string]interface{}) error {
+	return nil
 }
 
 // Create creates a contract, the SingleContractProvider way.
@@ -94,21 +109,43 @@ func (p *SingleContractProvider) Get(id uint32) Contract {
 
 // HTTPContractProvider provides contracts over http.
 type HTTPContractProvider struct {
-	owner *contract
-	cache *sync.Map
-	//cache *collection.ConcurrentMap
+	url   string         // The url to hit for the provider.
+	owner *contract      // The owner contract.
+	cache *sync.Map      // The cache for the contracts.
+	usage usage.Metering // The usage stats container.
 }
 
 // NewHTTPContractProvider creates a new single contract provider.
-func NewHTTPContractProvider(license *License) *HTTPContractProvider {
+func NewHTTPContractProvider(license *License, metering usage.Metering) *HTTPContractProvider {
 	p := HTTPContractProvider{}
 	p.owner = new(contract)
 	p.owner.MasterID = 1
 	p.owner.ID = license.Contract
 	p.owner.Signature = license.Signature
 	p.cache = new(sync.Map)
+	p.usage = metering
 
 	return &p
+}
+
+// Name returns the name of the provider.
+func (p *HTTPContractProvider) Name() string {
+	return "http"
+}
+
+// Configure configures the provider.
+func (p *HTTPContractProvider) Configure(config map[string]interface{}) error {
+	if config == nil {
+		return errors.New("Configuration was not provided for HTTP contract provider")
+	}
+
+	// Get the url from the provider configuration
+	if url, ok := config["url"]; ok {
+		p.url = url.(string)
+		return nil
+	}
+
+	return errors.New("The 'url' parameter was not provider in the configuration for HTTP contract provider")
 }
 
 // Create creates a contract, the HTTPContractProvider way.
@@ -130,10 +167,10 @@ func (p *HTTPContractProvider) Get(id uint32) Contract {
 
 func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
 	c := &contract{
-		stats: new(usage),
+		stats: p.usage.Get(id),
 	}
 
-	query := fmt.Sprintf("http://meta.emitter.io/v1/contract/%d", int32(id)) // meta currently requires a signed int
+	query := fmt.Sprintf("%s%d", p.url, int32(id)) // meta currently requires a signed int
 	err := http.Get(query, c)
 
 	if err != nil || c.ID == 0 {

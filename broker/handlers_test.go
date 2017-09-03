@@ -7,6 +7,7 @@ import (
 	netmock "github.com/emitter-io/emitter/network/mock"
 	"github.com/emitter-io/emitter/security"
 	secmock "github.com/emitter-io/emitter/security/mock"
+	"github.com/emitter-io/emitter/security/usage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -106,7 +107,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 
 		contract := new(secmock.Contract)
 		contract.On("Validate", mock.Anything).Return(tc.contractValid)
-		contract.On("Stats").Return(security.NewUsageStats())
+		contract.On("Stats").Return(usage.NewMeter(0))
 
 		provider := secmock.NewContractProvider()
 		if tc.contractFound {
@@ -116,7 +117,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 		}
 
 		s := &Service{
-			Contracts:     provider,
+			contracts:     provider,
 			subscriptions: subscription.NewTrie(),
 			License:       license,
 			presence:      make(chan *presenceNotify, 100),
@@ -236,7 +237,7 @@ func TestHandlers_onPublish(t *testing.T) {
 
 		contract := new(secmock.Contract)
 		contract.On("Validate", mock.Anything).Return(tc.contractValid)
-		contract.On("Stats").Return(security.NewUsageStats())
+		contract.On("Stats").Return(usage.NewMeter(0))
 
 		provider := secmock.NewContractProvider()
 		if tc.contractFound {
@@ -246,7 +247,7 @@ func TestHandlers_onPublish(t *testing.T) {
 		}
 
 		s := &Service{
-			Contracts:     provider,
+			contracts:     provider,
 			subscriptions: subscription.NewTrie(),
 			License:       license,
 		}

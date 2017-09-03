@@ -17,17 +17,15 @@ package storage
 import (
 	"io"
 	"time"
+
+	"github.com/emitter-io/emitter/config"
 )
 
 // Storage represents a message storage contract that message storage provides
 // must fulfill.
 type Storage interface {
+	config.Provider
 	io.Closer
-
-	// Configure configures the storage. The config parameter provided is
-	// loosely typed, since various storage mechanisms will require different
-	// configurations.
-	Configure(config map[string]interface{}) error
 
 	// Store is used to store a message, the SSID provided must be a full SSID
 	// SSID, where first element should be a contract ID. The time resolution
@@ -48,6 +46,11 @@ var _ Storage = new(Noop)
 
 // Noop represents a storage which does nothing.
 type Noop struct{}
+
+// Name returns the name of the provider.
+func (s *Noop) Name() string {
+	return "noop"
+}
 
 // Configure configures the storage. The config parameter provided is
 // loosely typed, since various storage mechanisms will require different

@@ -60,6 +60,11 @@ type InMemory struct {
 	Query func(string, []byte) (subscription.Awaiter, error) // The cluster request function.
 }
 
+// Name returns the name of the provider.
+func (s *InMemory) Name() string {
+	return "inmemory"
+}
+
 // Configure configures the storage. The config parameter provided is
 // loosely typed, since various storage mechanisms will require different
 // configurations.

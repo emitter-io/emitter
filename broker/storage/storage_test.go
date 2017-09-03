@@ -28,6 +28,11 @@ func TestNoop_Configure(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestNoop_Name(t *testing.T) {
+	s := new(Noop)
+	assert.Equal(t, "noop", s.Name())
+}
+
 func TestNoop_Close(t *testing.T) {
 	s := new(Noop)
 	err := s.Close()

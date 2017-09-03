@@ -18,10 +18,12 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"plugin"
 	"reflect"
 	"strconv"
 	"strings"
@@ -39,6 +41,12 @@ type SecretStore interface {
 	GetSecret(secretName string) (string, bool)
 }
 
+// Provider represents a configurable provider.
+type Provider interface {
+	Name() string
+	Configure(config map[string]interface{}) error
+}
+
 // NewDefault creates a default configuration.
 func NewDefault() *Config {
 	return &Config{
@@ -53,12 +61,14 @@ func NewDefault() *Config {
 
 // Config represents main configuration.
 type Config struct {
-	ListenAddr string         `json:"listen"`            // The API port used for TCP & Websocket communication.'
-	License    string         `json:"license"`           // The port used for gossip.'
-	TLS        *TLSConfig     `json:"tls,omitempty"`     // The API port used for Secure TCP & Websocket communication.'
-	Vault      *VaultConfig   `json:"vault,omitempty"`   // The configuration for the Hashicorp Vault.
-	Cluster    *ClusterConfig `json:"cluster,omitempty"` // The configuration for the clustering.
-	Storage    *StorageConfig `json:"storage,omitempty"` // The configuration for the storage.
+	ListenAddr string          `json:"listen"`             // The API port used for TCP & Websocket communication.'
+	License    string          `json:"license"`            // The port used for gossip.'
+	TLS        *TLSConfig      `json:"tls,omitempty"`      // The API port used for Secure TCP & Websocket communication.'
+	Vault      *VaultConfig    `json:"vault,omitempty"`    // The configuration for the Hashicorp Vault.
+	Cluster    *ClusterConfig  `json:"cluster,omitempty"`  // The configuration for the clustering.
+	Storage    *ProviderConfig `json:"storage,omitempty"`  // The configuration for the storage provider.
+	Contract   *ProviderConfig `json:"contract,omitempty"` // The configuration for the contract provider.
+	Metering   *ProviderConfig `json:"metering,omitempty"` // The configuration for the usage storage for metering.
 }
 
 // TLSConfig represents TLS listener configuration.
@@ -102,21 +112,74 @@ type VaultConfig struct {
 	Application string `json:"app"`     // The vault application ID to use.
 }
 
-// StorageConfig represents storage provider configuration.
-type StorageConfig struct {
+// ProviderConfig represents provider configuration.
+type ProviderConfig struct {
 
-	// The storage provider, this can either be 'noop', 'memory' or a location of a plugin. If
-	// the plugin is specified, the plugin should contain a Storage structure which implements
-	// the Storage interface.
+	// The storage provider, this can either be specific builtin or a name of the symbol in
+	// the plugin specified by the plugin path.
 	Provider string `json:"provider"`
 
-	// The configuration for the storage. This specifies various parameters to provide to the
-	// storage provider during the Configure() call.
-	// * 'noop': does not use the configuration.
-	// * 'inmemory':
-	//    - 'maxsize': configures the max memory size, in bytes
-	//    - 'prune': configures the number of items to prune when the memory hits the max size
+	// The plugin path specifies the location of the plugin which contains the provider.
+	PluginPath string `json:"plugin,omitempty"`
+
+	// The configuration for a provider. This specifies various parameters to provide to the
+	// specific provider during the Configure() call.
 	Config map[string]interface{} `json:"config,omitempty"`
+}
+
+// LoadOrPanic loads a provider from the configuration and uses one or several builtins
+// provided. If the provider is not found, it panics.
+func (c *ProviderConfig) LoadOrPanic(builtins ...Provider) Provider {
+	provider, err := c.Load(builtins...)
+	if err != nil {
+		panic(err)
+	}
+
+	return provider
+}
+
+// Load loads a provider from the configuration and uses one or several builtins provided.
+func (c *ProviderConfig) Load(builtins ...Provider) (Provider, error) {
+	if c.PluginPath == "" {
+		// Check if a provider configured is a built-in provider
+		for _, builtin := range builtins {
+			if strings.ToLower(builtin.Name()) == strings.ToLower(c.Provider) {
+				if err := builtin.Configure(c.Config); err == nil {
+					return builtin, nil
+				}
+			}
+		}
+
+		// Not found a builtin provider
+		return nil, errors.New("The provider '" + c.Provider + "' could not be found or configured")
+	}
+
+	// Attempt to load a plugin provider
+	p, err := plugin.Open(c.PluginPath)
+	if err != nil {
+		return nil, errors.New("The provider plugin path '" + c.PluginPath + "' could not be opened")
+	}
+
+	// Get the symbol
+	sym, err := p.Lookup(c.Provider)
+	if err != nil {
+		return nil, errors.New("The provider '" + c.Provider + "' could not be found in '" + c.PluginPath + "' location")
+	}
+
+	// Assert the provider type
+	provider, valid := sym.(Provider)
+	if !valid {
+		return nil, errors.New("The provider '" + c.Provider + "' does not implement Provider interface")
+	}
+
+	// Configure the provider
+	err = provider.Configure(c.Config)
+	if err != nil {
+		return nil, errors.New("The provider '" + c.Provider + "' could not be configured")
+	}
+
+	// Succesfully opened and configured a provider
+	return provider, nil
 }
 
 // ClusterConfig represents the configuration for the cluster.
@@ -140,6 +203,18 @@ type ClusterConfig struct {
 	// Passphrase is used to initialize the primary encryption key in a keyring. This key
 	// is used for encrypting all the gossip messages (message-level encryption).
 	Passphrase string `json:"passphrase,omitempty"`
+}
+
+// LoadProvider loads a provider from the configuration or panics if the configuration is
+// specified, but the provider was not found or not able to configure. This uses the first
+// provider as a default value.
+func LoadProvider(config *ProviderConfig, providers ...Provider) Provider {
+	if config == nil {
+		return providers[0]
+	}
+
+	// Load the provider according to the configuration
+	return config.LoadOrPanic(providers...)
 }
 
 // HasVault checks whether hashicorp vault endpoint is configured.

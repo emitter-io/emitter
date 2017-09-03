@@ -32,7 +32,6 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-	svc.Contracts = security.NewSingleContractProvider(svc.License)
 
 	//secret, _ := svc.License.NewMasterKey(1)
 	//c, _ := svc.Cipher.GenerateKey(secret, "cluster", security.AllowRead, time.Unix(0, 0))

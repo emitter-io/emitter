@@ -1,4 +1,4 @@
-package security
+package usage
 
 import (
 	"testing"
@@ -6,10 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewUsageTracker(t *testing.T) {
-	tracker := NewUsageStats()
+func TestNewUsageMeter(t *testing.T) {
+	tracker := NewMeter(123)
 	tracker.AddIngress(100)
 	tracker.AddEgress(200)
+
+	assert.Equal(t, uint32(123), tracker.GetContract())
 
 	messageIn, trafficIn := tracker.GetIngress()
 	messageEg, trafficEg := tracker.GetEgress()

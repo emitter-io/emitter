@@ -36,6 +36,11 @@ func newTestMemStore() *InMemory {
 	return s
 }
 
+func TestInMemory_Name(t *testing.T) {
+	s := new(InMemory)
+	assert.Equal(t, "inmemory", s.Name())
+}
+
 func TestInMemory_Configure(t *testing.T) {
 	s := new(InMemory)
 	cfg := map[string]interface{}{

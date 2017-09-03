@@ -36,6 +36,7 @@ import (
 	"github.com/emitter-io/emitter/network/listener"
 	"github.com/emitter-io/emitter/network/websocket"
 	"github.com/emitter-io/emitter/security"
+	"github.com/emitter-io/emitter/security/usage"
 	"github.com/emitter-io/emitter/utils"
 	"github.com/kelindar/tcp"
 )
@@ -46,7 +47,6 @@ type Service struct {
 	Cipher        *security.Cipher          // The cipher to use for decoding and encoding keys.
 	License       *security.License         // The licence for this emitter server.
 	Config        *config.Config            // The configuration for the service.
-	Contracts     security.ContractProvider // The contract provider for the service.
 	subscriptions *subscription.Trie        // The subscription matching trie.
 	http          *http.Server              // The underlying HTTP server.
 	tcp           *tcp.Server               // The underlying TCP server.
@@ -54,7 +54,9 @@ type Service struct {
 	startTime     time.Time                 // The start time of the service.
 	presence      chan *presenceNotify      // The channel for presence notifications.
 	querier       *QueryManager             // The generic query manager.
+	contracts     security.ContractProvider // The contract provider for the service.
 	storage       storage.Storage           // The storage provider for the service.
+	metering      usage.Metering            // The usage storage for metering contracts.
 }
 
 // NewService creates a new service.
@@ -105,31 +107,26 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		s.querier.HandleFunc(s.onPresenceQuery)
 	}
 
-	// Load the storage
-	if cfg.Storage != nil {
-		switch cfg.Storage.Provider {
-		case "noop":
-			// Create a no-op storage
-			s.storage = new(storage.Noop)
+	// Load the storage provider
+	memstore := &storage.InMemory{Query: s.Query}
+	s.querier.HandleFunc(memstore.OnRequest)
+	s.storage = config.LoadProvider(cfg.Storage,
+		new(storage.Noop),
+		memstore).(storage.Storage)
+	logging.LogTarget("service", "configured storage provider", s.storage.Name())
 
-		case "inmemory":
-			// Create an in-memory storage
-			memstore := &storage.InMemory{Query: s.Query}
-			s.storage = memstore
-			s.querier.HandleFunc(memstore.OnRequest)
+	// Load the metering provider
+	s.metering = config.LoadProvider(cfg.Metering, new(usage.NoopStorage)).(usage.Metering)
 
-		default:
-			// TODO: load plugin
-		}
+	// Load the contract provider
+	s.contracts = config.LoadProvider(cfg.Contract,
+		security.NewSingleContractProvider(s.License, s.metering),
+		security.NewHTTPContractProvider(s.License, s.metering)).(security.ContractProvider)
+	logging.LogTarget("service", "configured contracts provider", s.contracts.Name())
 
-		// Configure the storage
-		if err := s.storage.Configure(cfg.Storage.Config); err != nil {
-			panic(err)
-		}
-	}
-
-	logging.LogTarget("service", "using external address", address.External())
-	logging.LogTarget("service", "using node name", address.Fingerprint(s.LocalName()).String())
+	// Addresses and things
+	logging.LogTarget("service", "configured external address", address.External())
+	logging.LogTarget("service", "configured node name", address.Fingerprint(s.LocalName()).String())
 	return s, nil
 }
 
@@ -179,6 +176,7 @@ func (s *Service) Listen() (err error) {
 	// Set the start time and report status
 	s.startTime = time.Now().UTC()
 	utils.Repeat(s.reportStatus, 100*time.Millisecond, s.Closing)
+	utils.Repeat(s.reportMeters, 10*time.Minute, s.Closing)
 	logging.LogAction("service", "service started")
 
 	// Block
@@ -297,7 +295,7 @@ func (s *Service) onUnsubscribe(ssid subscription.Ssid, sub subscription.Subscri
 // Occurs when a message is received from a peer.
 func (s *Service) onPeerMessage(m *cluster.Message) {
 	// Get the contract
-	contract := s.Contracts.Get(m.Ssid.Contract())
+	contract := s.contracts.Get(m.Ssid.Contract())
 
 	// Iterate through all subscribers and send them the message
 	for _, subscriber := range s.subscriptions.Lookup(m.Ssid) {
@@ -327,8 +325,12 @@ func (s *Service) Query(query string, payload []byte) (subscription.Awaiter, err
 func (s *Service) publish(ssid subscription.Ssid, channel, payload []byte) (n int64) {
 	size := int64(len(payload))
 	for _, subscriber := range s.subscriptions.Lookup(ssid) {
-		subscriber.Send(ssid, channel, payload) // Send to the client
-		n += size
+		subscriber.Send(ssid, channel, payload)
+
+		// Increment the egress size only for direct subscribers
+		if subscriber.Type() == subscription.SubscriberDirect {
+			n += size
+		}
 	}
 
 	return
