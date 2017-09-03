@@ -18,7 +18,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/emitter-io/emitter/config"
+	"github.com/emitter-io/config"
 )
 
 // Storage represents a message storage contract that message storage provides

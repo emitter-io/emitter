@@ -14,7 +14,7 @@ import (
 const testLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
 
 func TestPubsub(t *testing.T) {
-	cfg := config.NewDefault()
+	cfg := config.NewDefault().(*config.Config)
 	cfg.License = testLicense
 	cfg.ListenAddr = ":9998"
 	cfg.Cluster = nil

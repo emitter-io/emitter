@@ -1,31 +1,10 @@
-/**********************************************************************************
-* Copyright (c) 2009-2017 Misakai Ltd.
-* This program is free software: you can redistribute it and/or modify it under the
-* terms of the GNU Affero General Public License as published by the  Free Software
-* Foundation, either version 3 of the License, or(at your option) any later version.
-*
-* This program is distributed  in the hope that it  will be useful, but WITHOUT ANY
-* WARRANTY;  without even  the implied warranty of MERCHANTABILITY or FITNESS FOR A
-* PARTICULAR PURPOSE.  See the GNU Affero General Public License  for  more details.
-*
-* You should have  received a copy  of the  GNU Affero General Public License along
-* with this program. If not, see<http://www.gnu.org/licenses/>.
-************************************************************************************/
-
-package security
+package config
 
 import (
 	"errors"
 	"os"
 	"strings"
-
-	"github.com/emitter-io/emitter/config"
 )
-
-// Provider represents a contract for a security provider.
-type Provider interface {
-	config.SecretStore
-}
 
 // ------------------------------------------------------------------------------------
 
@@ -42,7 +21,7 @@ func NewEnvironmentProvider() *EnvironmentProvider {
 }
 
 // Configure configures the security provider.
-func (p *EnvironmentProvider) Configure(c *config.Config) error {
+func (p *EnvironmentProvider) Configure(c Config) error {
 	return nil
 }
 
@@ -68,13 +47,13 @@ func NewVaultProvider(user string) *VaultProvider {
 }
 
 // Configure configures the security provider.
-func (p *VaultProvider) Configure(c *config.Config) error {
-	if !c.HasVault() {
+func (p *VaultProvider) Configure(c Config) error {
+	if c.Vault() == nil || c.Vault().Address == "" || c.Vault().Application == "" {
 		return errors.New("Unable to configure Vault provider")
 	}
 
-	p.client = NewVaultClient(c.Vault.Address)
-	p.app = c.Vault.Application
+	p.client = NewVaultClient(c.Vault().Address)
+	p.app = c.Vault().Application
 
 	// Authenticate the provider
 	return p.client.Authenticate(p.app, p.user)

@@ -1,7 +1,7 @@
 package usage
 
 import (
-	"github.com/emitter-io/emitter/config"
+	"github.com/emitter-io/config"
 )
 
 // Metering represents a contract for a usage metering

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/emitter-io/emitter/config"
+	"github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/network/http"
 	"github.com/emitter-io/emitter/security/usage"
 )

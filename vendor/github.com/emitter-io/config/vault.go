@@ -1,18 +1,4 @@
-/**********************************************************************************
-* Copyright (c) 2009-2017 Misakai Ltd.
-* This program is free software: you can redistribute it and/or modify it under the
-* terms of the GNU Affero General Public License as published by the  Free Software
-* Foundation, either version 3 of the License, or(at your option) any later version.
-*
-* This program is distributed  in the hope that it  will be useful, but WITHOUT ANY
-* WARRANTY;  without even  the implied warranty of MERCHANTABILITY or FITNESS FOR A
-* PARTICULAR PURPOSE.  See the GNU Affero General Public License  for  more details.
-*
-* You should have  received a copy  of the  GNU Affero General Public License along
-* with this program. If not, see<http://www.gnu.org/licenses/>.
-************************************************************************************/
-
-package security
+package config
 
 import (
 	"encoding/json"
@@ -20,8 +6,6 @@ import (
 	"fmt"
 	"net"
 	"time"
-
-	"github.com/emitter-io/emitter/network/http"
 )
 
 // VaultClient represents a lightweight vault client.
@@ -79,7 +63,7 @@ func (c *VaultClient) ReadSecret(secretName string) (string, error) {
 	return "", errors.New("Unable to find or parse secret " + secretName)
 }
 
-// ReadSecret reads a secret from the vault.
+// ReadCredentials reads a credential from the vault.
 func (c *VaultClient) ReadCredentials(credentialsName string) (*AwsCredentials, error) {
 	output, err := c.get("/aws/sts/" + credentialsName)
 	if err != nil {
@@ -100,14 +84,14 @@ func (c *VaultClient) ReadCredentials(credentialsName string) (*AwsCredentials, 
 
 // Get issues an HTTP GET to a vault server.
 func (c *VaultClient) get(url string) (output *vaultSecret, err error) {
-	var headers []http.HeaderValue
+	var headers []httpHeader
 	if c.IsAuthenticated() {
-		headers = append(headers, http.NewHeader("X-Vault-Token", c.token))
+		headers = append(headers, newHttpHeader("X-Vault-Token", c.token))
 	}
 
 	// Issue the HTTP Get
 	output = new(vaultSecret)
-	err = http.Get(c.address+"/v1"+url, output, headers...)
+	err = httpGet(c.address+"/v1"+url, output, headers...)
 	return
 }
 
@@ -116,9 +100,9 @@ func (c *VaultClient) post(url string, body interface{}) (output *vaultSecret, e
 
 	// Note: The HTTP post is used for authentication only right now, hence no need
 	// to add the X-Vault-Token.
-	var headers []http.HeaderValue
+	var headers []httpHeader
 	output = new(vaultSecret)
-	err = http.Post(c.address+"/v1"+url, body, output, headers...)
+	err = httpPost(c.address+"/v1"+url, body, output, headers...)
 	return
 }
 

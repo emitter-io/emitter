@@ -4,10 +4,10 @@ import (
 	"flag"
 	"os"
 
+	cfg "github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/broker"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/network/address"
-	"github.com/emitter-io/emitter/security"
 )
 
 func main() {
@@ -21,14 +21,13 @@ func main() {
 	}
 
 	// Parse the configuration
-	// TODO: emitter.conf should come from command line args
-	cfg, err := config.ReadOrCreate(*argConfig, security.NewEnvironmentProvider(), security.NewVaultProvider(address.Hardware().Hex()))
+	cfg, err := cfg.ReadOrCreate("emitter", *argConfig, config.NewDefault, cfg.NewEnvironmentProvider(), cfg.NewVaultProvider(address.Hardware().Hex()))
 	if err != nil {
 		panic("Unable to parse configuration, due to " + err.Error())
 	}
 
 	// Setup the new service
-	svc, err := broker.NewService(cfg)
+	svc, err := broker.NewService(cfg.(*config.Config))
 	if err != nil {
 		panic(err.Error())
 	}

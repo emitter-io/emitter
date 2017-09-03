@@ -117,6 +117,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 
 	// Load the metering provider
 	s.metering = config.LoadProvider(cfg.Metering, new(usage.NoopStorage)).(usage.Metering)
+	logging.LogTarget("service", "configured metering provider", s.metering.Name())
 
 	// Load the contract provider
 	s.contracts = config.LoadProvider(cfg.Contract,
