@@ -19,9 +19,6 @@ install:
 build_script:
 - cmd: .\build.bat
 
-test_script:
-- go test ./...
-
 artifacts:  
   - path: build/*
     name: binary

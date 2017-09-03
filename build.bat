@@ -1,10 +1,12 @@
+go test ./...
+
 call :build linux arm  
 call :build linux amd64  
 call :build linux 386  
 call :build darwin amd64  
 call :build darwin 386   
-call :build windows amd64 .exe
 call :build windows 386 .exe
+call :build windows amd64 .exe
 goto :end
 
 :build
