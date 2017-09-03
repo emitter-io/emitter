@@ -1,5 +1,8 @@
-FROM golang:1.9
+FROM golang:1.9-alpine
 MAINTAINER Roman Atachiants "roman@misakai.com"
+
+# Add GCC
+RUN apk add --no-cache g++
 
 # Copy the directory into the container.
 RUN mkdir -p /go/src/github.com/emitter-io/emitter/
