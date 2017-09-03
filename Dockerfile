@@ -7,7 +7,6 @@ WORKDIR /go/src/emitter
 COPY . /go/src/emitter
 
 # Download and install any required third party dependencies into the container.
-RUN go-wrapper download
 RUN go-wrapper install
 
 # Expose emitter ports
