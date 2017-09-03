@@ -7,9 +7,9 @@ WORKDIR /go/src/github.com/emitter-io/emitter/
 ADD . /go/src/github.com/emitter-io/emitter/
 
 # Download and install any required third party dependencies into the container.
-RUN apk add --no-cache g++ &&
-    go-wrapper install &&
-    apk del g++
+RUN apk add --no-cache g++ \ 
+&& go-wrapper install \
+&& apk del g++
 
 # Expose emitter ports
 EXPOSE 4000
