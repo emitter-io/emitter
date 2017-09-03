@@ -184,7 +184,7 @@ func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
 	legacy := new(legacyContract)
 	query := fmt.Sprintf("%s%d", p.url, int32(id)) // meta currently requires a signed int
 	err := http.Get(query, legacy)
-	if err != nil || c.ID == 0 {
+	if err != nil || legacy.ID == 0 {
 		logging.LogError("contract", "fetching http contract", err)
 		return nil
 	}
