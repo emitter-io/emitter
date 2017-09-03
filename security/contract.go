@@ -17,6 +17,7 @@ package security
 import (
 	"errors"
 	"fmt"
+	"github.com/emitter-io/emitter/logging"
 	"sync"
 
 	"github.com/emitter-io/config"
@@ -174,6 +175,7 @@ func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
 	err := http.Get(query, c)
 
 	if err != nil || c.ID == 0 {
+		logging.LogError("contrac", "fetching http contract", err)
 		return nil
 	}
 
