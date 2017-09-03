@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -23,6 +25,30 @@ type httpHeader struct {
 // newHttpHeader builds an HTTP header with a value.
 func newHttpHeader(header, value string) httpHeader {
 	return httpHeader{Header: header, Value: value}
+}
+
+// httpFile downloads a file from HTTP
+var httpFile = func(url string) (*os.File, error) {
+	tokens := strings.Split(url, "/")
+	fileName := tokens[len(tokens)-1]
+
+	output, err := os.Create(fileName)
+	if err != nil {
+		return nil, err
+	}
+	defer output.Close()
+
+	response, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if _, err := io.Copy(output, response.Body); err != nil {
+		return nil, err
+	}
+
+	return output, nil
 }
 
 // httpGet is a utility function which issues an HTTP httpGet on a specified URL. The encoding is JSON.
