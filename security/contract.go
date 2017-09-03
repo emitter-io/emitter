@@ -40,8 +40,8 @@ type Contract interface {
 // contract represents a contract (user account).
 type contract struct {
 	ID        uint32      `json:"id"`     // Gets or sets the contract id.
-	MasterID  uint16      `json:"sign"`   // Gets or sets the master id.
-	Signature uint32      `json:"master"` // Gets or sets the signature of the contract.
+	MasterID  uint16      `json:"master"` // Gets or sets the master id.
+	Signature uint32      `json:"sign"`   // Gets or sets the signature of the contract.
 	State     uint8       `json:"state"`  // Gets or sets the state of the contract.
 	stats     usage.Meter // Gets the usage stats.
 }
