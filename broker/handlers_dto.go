@@ -96,10 +96,10 @@ const (
 
 // presenceNotify represents a state notification.
 type presenceResponse struct {
-	Time    int64          `json:"time"`          // The UNIX timestamp.
-	Event   presenceEvent  `json:"event"`         // The event, must be "status", "subscribe" or "unsubscribe".
-	Channel string         `json:"channel"`       // The target channel for the notification.
-	Who     []presenceInfo `json:"who,omitempty"` // The subscriber ids.
+	Time    int64          `json:"time"`    // The UNIX timestamp.
+	Event   presenceEvent  `json:"event"`   // The event, must be "status", "subscribe" or "unsubscribe".
+	Channel string         `json:"channel"` // The target channel for the notification.
+	Who     []presenceInfo `json:"who"`     // The subscriber ids.
 }
 
 // ------------------------------------------------------------------------------------
