@@ -2,9 +2,9 @@ FROM golang:1.9-alpine
 MAINTAINER Roman Atachiants "roman@misakai.com"
 
 # Copy the directory into the container.
-RUN mkdir -p /go/src/emitter
-WORKDIR /go/src/emitter
-ADD . /go/src/emitter/
+RUN mkdir -p /go/src/github.com/emitter-io/emitter/
+WORKDIR /go/src/github.com/emitter-io/emitter/
+ADD . /go/src/github.com/emitter-io/emitter/
 
 # Download and install any required third party dependencies into the container.
 RUN go-wrapper install
