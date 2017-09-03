@@ -170,7 +170,7 @@ func (p *HTTPContractProvider) Get(id uint32) Contract {
 type legacyContract struct {
 	ID        int32       `json:"id"`     // Gets or sets the contract id.
 	MasterID  uint16      `json:"master"` // Gets or sets the master id.
-	Signature uint32      `json:"sign"`   // Gets or sets the signature of the contract.
+	Signature int32       `json:"sign"`   // Gets or sets the signature of the contract.
 	State     uint8       `json:"state"`  // Gets or sets the state of the contract.
 	stats     usage.Meter // Gets the usage stats.
 }
@@ -192,7 +192,7 @@ func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
 	// Copy to the new struct
 	c.ID = uint32(legacy.ID)
 	c.MasterID = legacy.MasterID
-	c.Signature = legacy.Signature
+	c.Signature = uint32(legacy.Signature)
 	c.State = legacy.State
 	return c
 }
