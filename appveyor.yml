@@ -20,7 +20,7 @@ build_script:
 - cmd: .\build.bat
 
 test_script:
-- go test c:\gopath\src\github.com\emitter-io\emitter\...
+- go test ./...
 
 artifacts:  
   - path: build/*
