@@ -24,5 +24,5 @@ func TestNoop_Store(t *testing.T) {
 
 func TestNoop_Get(t *testing.T) {
 	s := new(NoopStorage)
-	assert.Equal(t, uint32(123), s.Get(123).GetContract())
+	assert.Equal(t, uint32(123), s.Get(123).(Meter).GetContract())
 }

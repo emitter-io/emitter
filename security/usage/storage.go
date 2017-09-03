@@ -12,7 +12,7 @@ type Metering interface {
 	Store() error
 
 	// Get retrieves a meter for a contract.
-	Get(id uint32) Meter
+	Get(id uint32) interface{}
 }
 
 // ------------------------------------------------------------------------------------
@@ -39,6 +39,6 @@ func (s *NoopStorage) Store() error {
 }
 
 // Get retrieves a meter for a contract..
-func (s *NoopStorage) Get(id uint32) Meter {
+func (s *NoopStorage) Get(id uint32) interface{} {
 	return NewMeter(id)
 }

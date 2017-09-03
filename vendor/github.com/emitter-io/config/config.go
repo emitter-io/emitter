@@ -76,12 +76,10 @@ type VaultConfig struct {
 // ProviderConfig represents provider configuration.
 type ProviderConfig struct {
 
-	// The storage provider, this can either be specific builtin or a name of the symbol in
-	// the plugin specified by the plugin path.
+	// The storage provider, this can either be specific builtin or the plugin path (file or
+	// url) if the plugin is specified, it must contain a constructor function named 'New'
+	// which returns an interface{}.
 	Provider string `json:"provider"`
-
-	// The plugin path specifies the location of the plugin which contains the provider.
-	PluginPath string `json:"plugin,omitempty"`
 
 	// The configuration for a provider. This specifies various parameters to provide to the
 	// specific provider during the Configure() call.
@@ -101,36 +99,36 @@ func (c *ProviderConfig) LoadOrPanic(builtins ...Provider) Provider {
 
 // Load loads a provider from the configuration and uses one or several builtins provided.
 func (c *ProviderConfig) Load(builtins ...Provider) (Provider, error) {
-	if c.PluginPath == "" {
-		// Check if a provider configured is a built-in provider
-		for _, builtin := range builtins {
-			if strings.ToLower(builtin.Name()) == strings.ToLower(c.Provider) {
-				if err := builtin.Configure(c.Config); err == nil {
-					return builtin, nil
-				}
+	for _, builtin := range builtins {
+		if strings.ToLower(builtin.Name()) == strings.ToLower(c.Provider) {
+			if err := builtin.Configure(c.Config); err == nil {
+				return builtin, nil
 			}
 		}
-
-		// Not found a builtin provider
-		return nil, errors.New("The provider '" + c.Provider + "' could not be found or configured")
 	}
 
 	// Attempt to load a plugin provider
-	p, err := plugin.Open(resolvePath(c.PluginPath))
+	p, err := plugin.Open(resolvePath(c.Provider))
 	if err != nil {
-		return nil, errors.New("The provider plugin path '" + c.PluginPath + "' could not be opened")
+		return nil, errors.New("The provider plugin '" + c.Provider + "' could not be opened. " + err.Error())
 	}
 
 	// Get the symbol
-	sym, err := p.Lookup(c.Provider)
+	sym, err := p.Lookup("New")
 	if err != nil {
-		return nil, errors.New("The provider '" + c.Provider + "' could not be found in '" + c.PluginPath + "' location")
+		return nil, errors.New("The provider '" + c.Provider + "' does not contain 'func New() interface{}' symbol")
 	}
 
-	// Assert the provider type
-	provider, valid := sym.(Provider)
-	if !valid {
-		return nil, errors.New("The provider '" + c.Provider + "' does not implement Provider interface")
+	// Resolve the
+	pFactory, validFunc := sym.(*func() interface{})
+	if !validFunc {
+		return nil, errors.New("The provider '" + c.Provider + "' does not contain 'func New() interface{}' symbol")
+	}
+
+	// Construct the provider
+	provider, validProv := ((*pFactory)()).(Provider)
+	if !validProv {
+		return nil, errors.New("The provider '" + c.Provider + "' does not implement 'Provider'")
 	}
 
 	// Configure the provider

@@ -21,8 +21,4 @@ func TestNewUsageMeter(t *testing.T) {
 	assert.Equal(t, int64(1), messageEg)
 	assert.Equal(t, int64(200), trafficEg)
 
-	tracker.Reset()
-
-	_, zero := tracker.GetIngress()
-	assert.Equal(t, int64(0), zero)
 }

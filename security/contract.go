@@ -80,7 +80,7 @@ func NewSingleContractProvider(license *License, metering usage.Metering) *Singl
 	p.owner.ID = license.Contract
 	p.owner.Signature = license.Signature
 	p.usage = metering
-	p.owner.stats = p.usage.Get(license.Contract)
+	p.owner.stats = p.usage.Get(license.Contract).(usage.Meter)
 	return p
 }
 
@@ -167,7 +167,7 @@ func (p *HTTPContractProvider) Get(id uint32) Contract {
 
 func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
 	c := &contract{
-		stats: p.usage.Get(id),
+		stats: p.usage.Get(id).(usage.Meter),
 	}
 
 	query := fmt.Sprintf("%s%d", p.url, int32(id)) // meta currently requires a signed int
