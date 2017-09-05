@@ -262,9 +262,111 @@ func TestHandlers_onPublish(t *testing.T) {
 	}
 }
 
+func TestHandlers_onPresence(t *testing.T) {
+	// TODO :
+	// - valid key for the right channel, but no presence right.
+	// - test Who
+	license, _ := security.ParseLicense(testLicense)
+	tests := []struct {
+		channel       string
+		payload       string
+		contractValid bool
+		contractFound bool
+		success       bool
+		err           error
+		resp          presenceResponse
+		msg           string
+	}{
+		{
+			channel:       "emitter/presence/",
+			payload:       "{\"key\":\"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY\",\"channel\":\"a\",\"status\":true}",
+			contractValid: true,
+			contractFound: true,
+			success:       true,
+			err:           nil,
+			resp:          presenceResponse{Event: presenceStatusEvent, Channel: "a"},
+			msg:           "Successful case",
+		},
+		{
+			channel:       "emitter/presence/",
+			payload:       "",
+			err:           ErrBadRequest,
+			success:       false,
+			contractValid: true,
+			contractFound: true,
+			msg:           "Invalid payload case",
+		},
+		{
+			channel:       "emitter/presence/",
+			payload:       "{\"key\":\"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY\",\"channel\":\"a+b\",\"status\":true}",
+			contractValid: true,
+			contractFound: true,
+			success:       false,
+			err:           ErrBadRequest,
+			msg:           "Invalid channel case",
+		},
+		{
+			channel:       "emitter/presence/",
+			payload:       "{\"key\":\"0Nq8SWbL8qoOKEDqh_ebBZRqJDby30m\",\"channel\":\"a\",\"status\":true}",
+			contractValid: true,
+			contractFound: true,
+			success:       false,
+			err:           ErrUnauthorized,
+			msg:           "Key for wrong channel case",
+		},
+		{
+			channel:       "emitter/presence/",
+			payload:       "{\"key\":\"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY\",\"channel\":\"a+b\",\"status\":true}",
+			err:           ErrNotFound,
+			contractValid: true,
+			contractFound: false,
+			msg:           "Contract not found case",
+		},
+		{
+			channel:       "emitter/presence/",
+			payload:       "{\"key\":\"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY\",\"channel\":\"a+b\",\"status\":true}",
+			err:           ErrUnauthorized,
+			contractValid: false,
+			contractFound: true,
+			msg:           "Contract is invalid case",
+		},
+	}
+
+	for _, tc := range tests {
+
+		contract := new(secmock.Contract)
+		contract.On("Validate", mock.Anything).Return(tc.contractValid)
+		contract.On("Stats").Return(usage.NewMeter(0))
+
+		provider := secmock.NewContractProvider()
+		if tc.contractFound {
+			provider.On("Get", mock.Anything).Return(contract).Once()
+		} else {
+			provider.On("Get", mock.Anything).Return(nil).Once()
+		}
+
+		s := &Service{
+			contracts:     provider,
+			subscriptions: subscription.NewTrie(),
+			License:       license,
+		}
+
+		conn := netmock.NewConn()
+		nc := s.newConn(conn.Client)
+		s.Cipher, _ = s.License.Cipher()
+
+		resp, success := nc.onPresence([]byte(tc.payload))
+
+		assert.Equal(t, tc.success, success, tc.msg)
+		if !success {
+			assert.Equal(t, tc.err, resp, tc.msg)
+		}
+	}
+}
+
 /*
 func TestHandlers_onKeygen(t *testing.T) {
-	license, _ := security.ParseLicense("pLcaYvemMQOZR9o9sa5COWztxfAAAAAAAAAAAAAAAAI")
+	license, _ := security.ParseLicense(const testLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
 	tests := []struct {
 		payload string
 		//err           error
