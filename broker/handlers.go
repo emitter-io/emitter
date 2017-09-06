@@ -328,7 +328,10 @@ func (s *Service) lookupPresence(ssid subscription.Ssid) []presenceInfo {
 // onKeyGen processes a keygen request.
 func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 	// Deserialize the payload.
-	message := presenceRequest{}
+	message := presenceRequest{
+		Status:  true, // Default: send status info
+		Changes: true, // Default: send all changes
+	}
 	if err := json.Unmarshal(payload, &message); err != nil {
 		return ErrBadRequest, false
 	}
