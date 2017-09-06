@@ -24,10 +24,12 @@ func TestMock(t *testing.T) {
 	m.On("Configure", cfg).Return(nil)
 	assert.NoError(t, m.Configure(cfg))
 
-	m.On("Get", id).Return(c)
-	assert.Equal(t, c, m.Get(id))
-	assert.True(t, m.Get(id).Validate(nil), true)
-	assert.Equal(t, usage.NewMeter(id), m.Get(id).Stats())
+	m.On("Get", id).Return(c, true)
+	c1, o1 := m.Get(id)
+	assert.True(t, o1)
+	assert.Equal(t, c, c1)
+	assert.True(t, c1.Validate(nil), true)
+	assert.Equal(t, usage.NewMeter(id), c1.Stats())
 
 	m.On("Create").Return(c, nil)
 	contract, err := m.Create()

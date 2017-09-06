@@ -43,16 +43,19 @@ func TestSingleContractProvider_Create(t *testing.T) {
 
 func TestSingleContractProvider_Get(t *testing.T) {
 	p, license := testNewSingleContractProvider()
-	contractByID := p.Get(license.Contract)
-	contractByWrongID := p.Get(0)
-
+	contractByID, ok1 := p.Get(license.Contract)
+	assert.True(t, ok1)
 	assert.NotNil(t, contractByID)
+
+	contractByWrongID, ok2 := p.Get(0)
+	assert.False(t, ok2)
 	assert.Nil(t, contractByWrongID)
 }
 
 func TestSingleContractProvider_Validate(t *testing.T) {
 	p, license := testNewSingleContractProvider()
-	contract := p.Get(license.Contract)
+	contract, ok := p.Get(license.Contract)
+	assert.True(t, ok)
 
 	key := Key(make([]byte, 24))
 	key.SetMaster(1)
@@ -86,11 +89,9 @@ func TestHTTPContractProvider_Name(t *testing.T) {
 
 func TestHTTPContractProvider_Get(t *testing.T) {
 	p, _ := testNewHTTPContractProvider()
-
-	oldGet := http.Get
-	defer func() {
-		http.Get = oldGet
-	}()
+	defer func(f func(string, interface{}, ...http.HeaderValue) error) {
+		http.Get = f
+	}(http.Get)
 
 	http.Get = func(url string, output interface{}, headers ...http.HeaderValue) error {
 		if url == "1" {
@@ -99,10 +100,11 @@ func TestHTTPContractProvider_Get(t *testing.T) {
 		return nil
 	}
 
-	contractByID := p.Get(1)
-	contractByID = p.Get(1)
-	contractByWrongID := p.Get(0)
-	http.Get = oldGet
+	contractByID, ok1 := p.Get(1)
+	assert.True(t, ok1)
 	assert.NotNil(t, contractByID)
+
+	contractByWrongID, ok2 := p.Get(2)
+	assert.False(t, ok2)
 	assert.Nil(t, contractByWrongID)
 }

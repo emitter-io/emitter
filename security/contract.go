@@ -64,7 +64,7 @@ type ContractProvider interface {
 	config.Provider
 
 	Create() (Contract, error)
-	Get(id uint32) Contract
+	Get(id uint32) (Contract, bool)
 }
 
 // SingleContractProvider provides contracts on premise.
@@ -101,11 +101,12 @@ func (p *SingleContractProvider) Create() (Contract, error) {
 }
 
 // Get returns a ContractData fetched by its id.
-func (p *SingleContractProvider) Get(id uint32) Contract {
+func (p *SingleContractProvider) Get(id uint32) (Contract, bool) {
 	if p.owner == nil || p.owner.ID != id {
-		return nil
+		return nil, false
 	}
-	return p.owner
+
+	return p.owner, true
 }
 
 // HTTPContractProvider provides contracts over http.
@@ -155,15 +156,18 @@ func (p *HTTPContractProvider) Create() (Contract, error) {
 }
 
 // Get returns a ContractData fetched by its id.
-func (p *HTTPContractProvider) Get(id uint32) Contract {
+func (p *HTTPContractProvider) Get(id uint32) (Contract, bool) {
 	if c, ok := p.cache.Load(id); ok {
-		return c.(Contract)
+		return c.(Contract), true
 	}
 
 	// Load or store again, since we might have concurrently update it meanwhile
-	contract := p.fetchContract(id)
-	c, _ := p.cache.LoadOrStore(id, contract)
-	return c.(Contract)
+	if contract, ok := p.fetchContract(id); ok {
+		c, _ := p.cache.LoadOrStore(id, contract)
+		return c.(Contract), true
+	}
+
+	return nil, false
 }
 
 // legacyContract represents a contract (user account).
@@ -175,7 +179,7 @@ type legacyContract struct {
 	stats     usage.Meter // Gets the usage stats.
 }
 
-func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
+func (p *HTTPContractProvider) fetchContract(id uint32) (*contract, bool) {
 	c := &contract{
 		stats: p.usage.Get(id).(usage.Meter),
 	}
@@ -184,9 +188,13 @@ func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
 	legacy := new(legacyContract)
 	query := fmt.Sprintf("%s%d", p.url, int32(id)) // meta currently requires a signed int
 	err := http.Get(query, legacy)
-	if err != nil || legacy.ID == 0 {
+	if err != nil {
 		logging.LogError("contract", "fetching http contract", err)
-		return nil
+		return nil, false
+	}
+
+	if legacy.ID == 0 {
+		return nil, false
 	}
 
 	// Copy to the new struct
@@ -194,5 +202,5 @@ func (p *HTTPContractProvider) fetchContract(id uint32) *contract {
 	c.MasterID = legacy.MasterID
 	c.Signature = uint32(legacy.Signature)
 	c.State = legacy.State
-	return c
+	return c, true
 }

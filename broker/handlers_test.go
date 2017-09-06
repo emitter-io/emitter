@@ -110,11 +110,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 		contract.On("Stats").Return(usage.NewMeter(0))
 
 		provider := secmock.NewContractProvider()
-		if tc.contractFound {
-			provider.On("Get", mock.Anything).Return(contract)
-		} else {
-			provider.On("Get", mock.Anything).Return(nil)
-		}
+		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 
 		s := &Service{
 			contracts:     provider,
@@ -240,11 +236,7 @@ func TestHandlers_onPublish(t *testing.T) {
 		contract.On("Stats").Return(usage.NewMeter(0))
 
 		provider := secmock.NewContractProvider()
-		if tc.contractFound {
-			provider.On("Get", mock.Anything).Return(contract).Once()
-		} else {
-			provider.On("Get", mock.Anything).Return(nil).Once()
-		}
+		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 
 		s := &Service{
 			contracts:     provider,
@@ -339,11 +331,7 @@ func TestHandlers_onPresence(t *testing.T) {
 		contract.On("Stats").Return(usage.NewMeter(0))
 
 		provider := secmock.NewContractProvider()
-		if tc.contractFound {
-			provider.On("Get", mock.Anything).Return(contract).Once()
-		} else {
-			provider.On("Get", mock.Anything).Return(nil).Once()
-		}
+		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 
 		s := &Service{
 			contracts:     provider,

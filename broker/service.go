@@ -302,7 +302,7 @@ func (s *Service) onUnsubscribe(ssid subscription.Ssid, sub subscription.Subscri
 // Occurs when a message is received from a peer.
 func (s *Service) onPeerMessage(m *cluster.Message) {
 	// Get the contract
-	contract := s.contracts.Get(m.Ssid.Contract())
+	contract, contractFound := s.contracts.Get(m.Ssid.Contract())
 
 	// Iterate through all subscribers and send them the message
 	for _, subscriber := range s.subscriptions.Lookup(m.Ssid) {
@@ -312,7 +312,7 @@ func (s *Service) onPeerMessage(m *cluster.Message) {
 			subscriber.Send(m.Ssid, m.Channel, m.Payload)
 
 			// Write the egress stats
-			if contract != nil {
+			if contractFound {
 				contract.Stats().AddEgress(int64(len(m.Payload)))
 			}
 		}
