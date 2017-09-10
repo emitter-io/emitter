@@ -250,9 +250,14 @@ func declassify(config interface{}, prefix string, provider SecretStore) {
 func declassifyRecursive(prefix string, provider SecretStore, value reflect.Value) {
 	switch value.Kind() {
 	case reflect.Ptr:
-		if value.Elem().IsValid() {
-			declassifyRecursive(prefix, provider, value.Elem())
+		pValue := value.Elem() 
+		if !pValue.IsValid() {
+			// Create a new struct and set the value
+			pValue = reflect.New(value.Type().Elem())
+			value.Set(pValue)
 		}
+		
+		declassifyRecursive(prefix, provider, pValue)
 
 	// If it is a struct we translate each field
 	case reflect.Struct:
