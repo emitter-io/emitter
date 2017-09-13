@@ -19,11 +19,11 @@ func NewMeter(contract uint32) Meter {
 }
 
 type usage struct {
-	contract  uint32
 	messageIn int64
 	trafficIn int64
 	messageEg int64
 	trafficEg int64
+	contract  uint32
 }
 
 // GetContract returns the associated contract.
