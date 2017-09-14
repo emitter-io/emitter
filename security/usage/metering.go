@@ -15,9 +15,6 @@ import (
 type Metering interface {
 	config.Provider
 
-	// Store stores the meters in some underlying usage storage.
-	Store() error
-
 	// Get retrieves a meter for a contract.
 	Get(id uint32) interface{}
 }
@@ -45,17 +42,15 @@ func (s *NoopStorage) Configure(config map[string]interface{}) error {
 	return nil
 }
 
-// Store stores the meters in some underlying usage storage.
-func (s *NoopStorage) Store() error {
-	return nil
-}
-
 // Get retrieves a meter for a contract.
 func (s *NoopStorage) Get(id uint32) interface{} {
 	return NewMeter(id)
 }
 
 // ------------------------------------------------------------------------------------
+
+// HTTPStorage implements Storage contract.
+var _ Metering = new(HTTPStorage)
 
 // HTTPStorage represents a usage storage which posts meters over HTTP.
 type HTTPStorage struct {
