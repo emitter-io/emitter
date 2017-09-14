@@ -117,7 +117,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	logging.LogTarget("service", "configured storage provider", s.storage.Name())
 
 	// Load the metering provider
-	s.metering = config.LoadProvider(cfg.Metering, new(usage.NoopStorage)).(usage.Metering)
+	s.metering = config.LoadProvider(cfg.Metering, usage.NewNoop(), usage.NewHTTP()).(usage.Metering)
 	logging.LogTarget("service", "configured metering provider", s.metering.Name())
 
 	// Load the contract provider
@@ -180,7 +180,6 @@ func (s *Service) Listen() (err error) {
 	// Set the start time and report status
 	s.startTime = time.Now().UTC()
 	utils.Repeat(s.reportStatus, 100*time.Millisecond, s.Closing)
-	utils.Repeat(s.reportMeters, 10*time.Minute, s.Closing)
 	logging.LogAction("service", "service started")
 
 	// Block

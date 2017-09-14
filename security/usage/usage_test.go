@@ -8,17 +8,20 @@ import (
 
 func TestNewUsageMeter(t *testing.T) {
 	tracker := NewMeter(123)
+	assert.Equal(t, uint32(123), tracker.GetContract())
+}
+
+func TestMeterAdd(t *testing.T) {
+	tracker := &usage{Contract: 123}
 	tracker.AddIngress(100)
 	tracker.AddEgress(200)
 
 	assert.Equal(t, uint32(123), tracker.GetContract())
 
-	messageIn, trafficIn := tracker.GetIngress()
-	messageEg, trafficEg := tracker.GetEgress()
-	assert.Equal(t, int64(1), messageIn)
-	assert.Equal(t, int64(100), trafficIn)
+	assert.Equal(t, int64(1), tracker.MessageIn)
+	assert.Equal(t, int64(100), tracker.TrafficIn)
 
-	assert.Equal(t, int64(1), messageEg)
-	assert.Equal(t, int64(200), trafficEg)
+	assert.Equal(t, int64(1), tracker.MessageEg)
+	assert.Equal(t, int64(200), tracker.TrafficEg)
 
 }
