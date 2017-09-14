@@ -23,5 +23,12 @@ func TestMeterAdd(t *testing.T) {
 
 	assert.Equal(t, int64(1), tracker.MessageEg)
 	assert.Equal(t, int64(200), tracker.TrafficEg)
+}
 
+func TestMeterReset(t *testing.T) {
+	meter := &usage{TrafficIn: 1000}
+	old := meter.reset()
+
+	assert.Equal(t, int64(1000), old.TrafficIn)
+	assert.Equal(t, int64(0), meter.TrafficIn)
 }
