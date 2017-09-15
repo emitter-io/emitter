@@ -15,6 +15,7 @@
 package address
 
 import (
+	"github.com/emitter-io/emitter/logging"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -78,8 +79,10 @@ func initExternal() net.IP {
 
 	// Make sure we have an IP address, otherwise panic
 	if !ok || external == nil {
-		panic("Unable to retrieve external IP address")
+		logging.LogAction("address", "unable to retrieve external IP address")
+		return net.ParseIP("127.0.0.1")
 	}
+
 	return external
 }
 

@@ -2,11 +2,11 @@ package usage
 
 import (
 	"errors"
-	"github.com/emitter-io/emitter/logging"
 	"sync"
 	"time"
 
 	"github.com/emitter-io/config"
+	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/http"
 	"github.com/emitter-io/emitter/utils"
 )
@@ -21,7 +21,7 @@ type Metering interface {
 
 // ------------------------------------------------------------------------------------
 
-// Noop implements Storage contract.
+// Noop implements Metering contract.
 var _ Metering = new(NoopStorage)
 
 // NoopStorage represents a usage storage which does nothing.
@@ -49,7 +49,7 @@ func (s *NoopStorage) Get(id uint32) interface{} {
 
 // ------------------------------------------------------------------------------------
 
-// HTTPStorage implements Storage contract.
+// HTTPStorage implements Metering contract.
 var _ Metering = new(HTTPStorage)
 
 // HTTPStorage represents a usage storage which posts meters over HTTP.

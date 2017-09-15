@@ -23,18 +23,18 @@ import (
 )
 
 func TestLWWESetAddContains(t *testing.T) {
-	lww := NewLWWSet()
+	testStr := "ABCD"
 
-	testStr := "object1"
-	if lww.Contains(testStr) {
-		t.Errorf("set should not contain elem: %q", testStr)
-	}
+	lww := NewLWWSet()
+	assert.False(t, lww.Contains(testStr))
 
 	lww.Add(testStr)
+	assert.True(t, lww.Contains(testStr))
 
-	if !lww.Contains(testStr) {
-		t.Errorf("Expected set to contain: %v, but not found", testStr)
-	}
+	entry := lww.Set[testStr]
+	assert.True(t, entry.IsAdded())
+	assert.False(t, entry.IsRemoved())
+	assert.False(t, entry.IsZero())
 }
 
 func TestLWWESetAddRemoveContains(t *testing.T) {
@@ -46,6 +46,11 @@ func TestLWWESetAddRemoveContains(t *testing.T) {
 	lww.Remove(testStr)
 
 	assert.False(t, lww.Contains(testStr))
+
+	entry := lww.Set[testStr]
+	assert.False(t, entry.IsAdded())
+	assert.True(t, entry.IsRemoved())
+	assert.False(t, entry.IsZero())
 }
 
 func TestLWWESetMerge(t *testing.T) {
@@ -168,4 +173,12 @@ func TestLWWESetMerge(t *testing.T) {
 			assert.False(t, tc.lww1.Contains(obj), fmt.Sprintf("expected merged set to NOT contain %v", obj))
 		}
 	}
+}
+
+func TestLWWESetAll(t *testing.T) {
+	lww := NewLWWSet()
+	lww.Add("ABC")
+
+	all := lww.All()
+	assert.Equal(t, 1, len(all))
 }

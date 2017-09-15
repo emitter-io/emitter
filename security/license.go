@@ -46,6 +46,41 @@ type License struct {
 	Type          uint32    // Gets or sets the license type.
 }
 
+// NewLicense generates a new crypto-random license.
+func NewLicense() *License {
+	raw := make([]byte, 24)
+	rand.Read(raw)
+
+	return &License{
+		EncryptionKey: base64.RawURLEncoding.EncodeToString(raw[0:16]),
+		Contract:      uint32(binary.BigEndian.Uint32(raw[16:20])),
+		Signature:     uint32(binary.BigEndian.Uint32(raw[20:24])),
+		Expires:       time.Unix(0, 0),
+		Type:          LicenseTypeOnPremise,
+	}
+}
+
+// NewLicenseAndMaster generates a new license and master key.
+func NewLicenseAndMaster() (string, string) {
+	license := NewLicense()
+	secret, err := license.NewMasterKey(1)
+	if err != nil {
+		panic(err)
+	}
+
+	cipher, err := license.Cipher()
+	if err != nil {
+		panic(err)
+	}
+
+	master, err := cipher.EncryptKey(secret)
+	if err != nil {
+		panic(err)
+	}
+
+	return license.String(), master
+}
+
 // ParseLicense decrypts the license and verifies it.
 func ParseLicense(data string) (*License, error) {
 	if len(data) == 0 {

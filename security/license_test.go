@@ -84,3 +84,10 @@ func TestNewMasterKey(t *testing.T) {
 	assert.Equal(t, license.Contract, k.Contract())
 	assert.Equal(t, license.Signature, k.Signature())
 }
+
+func TestNewLicense(t *testing.T) {
+	l := NewLicense()
+	assert.NotEqual(t, "", l.EncryptionKey)
+	assert.Equal(t, time.Unix(0, 0), l.Expires)
+	assert.Equal(t, uint32(LicenseTypeOnPremise), l.Type)
+}
