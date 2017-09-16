@@ -46,6 +46,7 @@ type Config struct {
 	Storage    *cfg.ProviderConfig `json:"storage,omitempty"`  // The configuration for the storage provider.
 	Contract   *cfg.ProviderConfig `json:"contract,omitempty"` // The configuration for the contract provider.
 	Metering   *cfg.ProviderConfig `json:"metering,omitempty"` // The configuration for the usage storage for metering.
+	Logging    *cfg.ProviderConfig `json:"logging,omitempty"`  // The configuration for the logger.
 }
 
 // Vault returns a vault configuration.

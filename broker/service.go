@@ -108,6 +108,10 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		s.querier.HandleFunc(s.onPresenceQuery)
 	}
 
+	// Load the logging provider
+	logging.Logger = config.LoadProvider(cfg.Logging, logging.NewStdErr(), logging.NewLoggly()).(logging.Logging)
+	logging.LogTarget("service", "configured logging provider", logging.Logger.Name())
+
 	// Load the storage provider
 	memstore := &storage.InMemory{Query: s.Query}
 	s.querier.HandleFunc(memstore.OnRequest)
