@@ -38,9 +38,9 @@ func NewDefault() cfg.Config {
 
 // Config represents main configuration.
 type Config struct {
-	ListenAddr string              `json:"listen"`             // The API port used for TCP & Websocket communication.'
-	License    string              `json:"license"`            // The port used for gossip.'
-	TLS        *cfg.TLSConfig      `json:"tls,omitempty"`      // The API port used for Secure TCP & Websocket communication.'
+	ListenAddr string              `json:"listen"`             // The API port used for TCP & Websocket communication.
+	License    string              `json:"license"`            // The license file to use for the broker.
+	TLS        *cfg.TLSConfig      `json:"tls,omitempty"`      // The API port used for Secure TCP & Websocket communication.
 	Secrets    *cfg.VaultConfig    `json:"vault,omitempty"`    // The configuration for the Hashicorp Vault.
 	Cluster    *ClusterConfig      `json:"cluster,omitempty"`  // The configuration for the clustering.
 	Storage    *cfg.ProviderConfig `json:"storage,omitempty"`  // The configuration for the storage provider.
@@ -70,7 +70,7 @@ type ClusterConfig struct {
 	AdvertiseAddr string `json:"advertise"`
 
 	// The seed address (or a domain name) for cluster join.
-	Seed string `json:"seed"`
+	Seed string `json:"seed,omitempty"`
 
 	// Passphrase is used to initialize the primary encryption key in a keyring. This key
 	// is used for encrypting all the gossip messages (message-level encryption).
