@@ -109,6 +109,7 @@ The configuration file is in JSON format, but you can override any value by prov
 ```
 
 The structure of the configuration is described below:
+
 | Property | Env. Variable | Description |
 |---|---|---|
 | `license` | `EMITTER_LICENSE` | The license file to use for the broker. This contains the encryption key. |
