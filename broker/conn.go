@@ -16,7 +16,9 @@ package broker
 
 import (
 	"bufio"
+	"fmt"
 	"net"
+	"runtime/debug"
 	"sync"
 
 	"github.com/emitter-io/emitter/broker/subscription"
@@ -216,6 +218,11 @@ func (c *Conn) Close() error {
 	for _, counter := range c.subs.All() {
 		c.service.onUnsubscribe(counter.Ssid, c)
 		c.service.notifyUnsubscribe(c, counter.Ssid, counter.Channel)
+	}
+
+	// Attempt to recover a panic
+	if r := recover(); r != nil {
+		logging.LogAction("closing", fmt.Sprintf("pancic recovered: %s \n %s", r, debug.Stack()))
 	}
 
 	// Close the transport
