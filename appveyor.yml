@@ -2,7 +2,7 @@ version: 2.0.{build}
 platform: x64
 branches:  
   only:
-    - nextgen
+    - master
 
 clone_folder: c:\gopath\src\github.com\emitter-io\emitter
 
@@ -33,4 +33,4 @@ deploy:
     prerelease: true
     artifact: binary
     on:
-      branch: nextgen
+      branch: master
