@@ -35,8 +35,8 @@ func main() {
 		license, secret := security.NewLicenseAndMaster()
 		logging.LogAction("service", "unable to find a license, make sure 'license' "+
 			"value is set in the config file or EMITTER_LICENSE environment variable")
-		logging.LogAction("service", fmt.Sprintf("new generated license: %v", license))
-		logging.LogAction("service", fmt.Sprintf("new generated secret key: %v", secret))
+		logging.LogAction("service", fmt.Sprintf("generated new license: %v", license))
+		logging.LogAction("service", fmt.Sprintf("generated new secret key: %v", secret))
 		os.Exit(0)
 	}
 
