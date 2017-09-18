@@ -4,6 +4,7 @@ import (
 	"net"
 	"testing"
 
+	conf "github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/security"
@@ -18,6 +19,7 @@ func TestPubsub(t *testing.T) {
 	cfg.License = testLicense
 	cfg.ListenAddr = ":9998"
 	cfg.Cluster = nil
+	cfg.TLS = &conf.TLSConfig{}
 
 	// Start the broker asynchronously
 	broker, svcErr := NewService(cfg)

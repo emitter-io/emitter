@@ -23,31 +23,36 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// newTestLogger creates a new default stderr logger.
+func newTestLogger(buffer *bytes.Buffer) Logging {
+	return (*stderrLogger)(log.New(buffer, "", 0))
+}
+
 func TestLogAction(t *testing.T) {
-	defer func(l *log.Logger) { Logger = l }(Logger)
+	defer func(l Logging) { Logger = l }(Logger)
 
 	buffer := bytes.NewBuffer(nil)
-	Logger = log.New(buffer, "", 0)
+	Logger = newTestLogger(buffer)
 
 	LogAction("a", "b")
 	assert.Equal(t, "[a] b\n", string(buffer.Bytes()))
 }
 
 func TestLogError(t *testing.T) {
-	defer func(l *log.Logger) { Logger = l }(Logger)
+	defer func(l Logging) { Logger = l }(Logger)
 
 	buffer := bytes.NewBuffer(nil)
-	Logger = log.New(buffer, "", 0)
+	Logger = newTestLogger(buffer)
 
 	LogError("a", "b", errors.New("err"))
 	assert.Equal(t, "[a] error during b (err)\n", string(buffer.Bytes()))
 }
 
 func TestLogTarget(t *testing.T) {
-	defer func(l *log.Logger) { Logger = l }(Logger)
+	defer func(l Logging) { Logger = l }(Logger)
 
 	buffer := bytes.NewBuffer(nil)
-	Logger = log.New(buffer, "", 0)
+	Logger = newTestLogger(buffer)
 
 	LogTarget("a", "b", 123)
 	assert.Equal(t, "[a] b (123)\n", string(buffer.Bytes()))
