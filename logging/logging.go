@@ -81,7 +81,7 @@ func (s *stderrLogger) Configure(config map[string]interface{}) error {
 
 // Printf prints a log line.
 func (s *stderrLogger) Printf(format string, v ...interface{}) {
-	Logger.Printf(format+"\n", v...)
+	(*log.Logger)(s).Printf(format+"\n", v...)
 }
 
 // ------------------------------------------------------------------------------------

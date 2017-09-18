@@ -28,6 +28,7 @@ func main() {
 	if err != nil {
 		panic("Unable to parse configuration, due to " + err.Error())
 	}
+
 	// Generate a new license if none was provided
 	cfg := c.(*config.Config)
 	if cfg.License == "" {
