@@ -11,25 +11,29 @@ Emitter can be used for online gaming and mobile apps by satisfying the requirem
 [![Build status](https://ci.appveyor.com/api/projects/status/6im4291ao9i664ix?svg=true)](https://ci.appveyor.com/project/Kelindar/emitter)
 [![Twitter Follow](https://img.shields.io/twitter/follow/emitter_io.svg?style=social&label=Follow)](https://twitter.com/emitter_io)
 
-## Server Quick Start
+## Quick Start
 
-The quick way to start an Emitter broker is by using `docker run` command as shown below. Alternatively, you might compile this repository and use `dotnet` CLI or Visual Studio to rebuild and run from source. 
+The quick way to start an Emitter broker is by using `docker run` command as shown below. 
 
 ```shell
 docker run -d --name emitter -p 8080:8080 --privileged --restart=unless-stopped emitter/server
 ```
-The command above starts a new server and if no configuration or environment variables were supplied, it will print out a message similar to the message below once the server has started:
+
+Alternatively, you might compile this repository and use `go get` command to rebuild and run from source. 
 
 ```shell
-Warning: New license: BjeUWk46tfTTL6ks5q-Vnyj-puoAAAAAAAAAAAAAAAI
-Warning: New secret key: Hc4pyBAGEe6Z9PYy77AH0Y43dQm62faH
-...
-Listening: 127.0.0.1:8080
-Listening: 127.0.0.1:8443
-Listening: 127.0.0.1:4000
+go get github.com/emitter-io/emitter && emitter
 ```
 
-This message shows that a new security configuration was generated, you can then re-run EMITTER_LICENSE set to the specified value. Alternatively, you can set `"license"` property in the `emitter.conf` configuration file.
+Both commands above start a new server and if no configuration or environment variables were supplied, it will print out a message similar to the message below once the server has started:
+
+```shell
+[service] unable to find a license, make sure 'license' value is set in the config file or EMITTER_LICENSE environment variable
+[service] generated new license: uppD0PFIcNK6VY-7PTo7uWH8EobaOGgRAAAAAAAAAAI
+[service] generated new secret key: JUoOxjoXLc4muSxXynOpTc60nWtwUI3o
+```
+
+This message shows that a new security configuration was generated, you can then re-run `EMITTER_LICENSE` set to the specified value. Alternatively, you can set `"license"` property in the `emitter.conf` configuration file.
 
 Finally, open a browser and navigate to **<http://127.0.0.1:8080/keygen>** in order to generate your key. Now you can use the secret key generated to create channel keys, which allow you to secure individual channels and start using emitter.
 
@@ -66,16 +70,75 @@ emitter.publish({
 
 Further documentation, demos and language/platform SDKs are available in the [**develop section of our website**](https://emitter.io/develop). Make sure to check out the [**getting started tutorial**](https://emitter.io/develop/getting-started) which explains the basic usage of emitter and MQTT.
 
-## Building
+## Command line arguments
 
-The server requires [.NET Core](https://www.microsoft.com/net/core) platform to be installed. Once you have this installed, simply clone this repository and run the following commands to restore the Nuget packages and run the server.
+The Emitter broker accepts command line arguments, allowing you to specify a configuration file, usage is shown below.
 
 ```shell
-dotnet restore
-cd src/Emitter.Server
-dotnet run
+-config string
+   The configuration file to use for the broker. (default "emitter.conf")
+
+-help
+   Shows the help and usage instead of running the broker.
 ```
-Alternatively, you can use [Visual Studio IDE](https://www.visualstudio.com/) to build, run and debug. Simply open the `Emitter.sln` file provided.
+
+## Configuration File
+
+The configuration file (defaulting to `emitter.conf`) is the main way of configuring the broker. The configuration file is however, not the only way of configuring it as it allows a multi-level override through **environment variables** and/or  **hashicorp Vault**. 
+
+The configuration file is in JSON format, but you can override any value by providing an environment variable which follows a particular format, for example if you'd  like to provide a `license` through environment variable, simply define `EMITTER_LICENSE` environment variable, similarly, if you want to specify a `certificate`, define `EMITTER_TLS_CERTIFICATE` environment variable. Example of configuration file:
+
+```json
+{
+    "listen": ":8080",
+    "license": "/*The license*/",
+    "tls": {
+        "listen": ":8443",
+        "certificate": "./example.cert",
+        "private": "./example.priv"
+    },
+    "cluster": {
+        "listen": ":4000",
+        "seed": " 192.168.0.2:4000",
+        "advertise": "public:4000"
+    },
+    "storage": {
+        "provider": "inmemory"
+    }
+}
+```
+
+The structure of the configuration is described below:
+| Property | Env. Variable | Description |
+|---|---|---|
+| `license` | `EMITTER_LICENSE` | The license file to use for the broker. This contains the encryption key. |
+| `listen` | `EMITTER_LISTEN` | The API address used for TCP & Websocket communication, in `IP:PORT` format (e.g: `:8080`). |
+| `tls.listen` | `EMITTER_TLS_LISTEN` |The API address used for Secure TCP & Websocket communication, in `IP:PORT` format (e.g: `:8443`).  |
+| `tls.certificate` | `EMITTER_TLS_CERTIFICATE` | The path, url or contents of the TLS certificate.  |
+| `tls.private` | `EMITTER_TLS_PRIVATE` |The path, url or contents of the TLS private key. |
+| `vault.address` | `EMITTER_VAULT_ADDRESS` | The Hashicorp Vault address to use to further override configuration. |
+| `vault.app` | `EMITTER_VAULT_APP` | The Hashicorp Vault application ID to use. |
+| `cluster.name` | `EMITTER_CLUSTER_NAME` | The name of this node. This must be unique in the cluster. If this is not set, Emitter will set it to the external IP address of the running machine. |
+| `cluster.listen` | `EMITTER_CLUSTER_LISTEN` | The IP address and port that is used to bind the inter-node communication network. This is used for the actual binding of the port. |
+| `cluster.advertise` | `EMITTER_CLUSTER_ADVERTISE` | The address and port to advertise inter-node communication network. This is used for nat traversal. |
+| `cluster.seed` | `EMITTER_CLUSTER_SEED` | The seed address (or a domain name) for cluster join. |
+| `cluster.passphrase` | `EMITTER_CLUSTER_PASSPHRASE` | Passphrase is used to initialize the primary encryption key in a keyring. This key is used for encrypting all the gossip messages (message-level encryption). |
+
+
+
+## Building and Testing
+
+The server requires [Golang 1.9](https://golang.org/dl/) to be installed. Once you have this installed, simply `go get` this repository and run the following commands to download the package and run the server.
+
+```shell
+go get github.com/emitter-io/emitter && emitter
+```
+
+If you want to run the tests, simply run `go test` command as demonstrated below.
+
+```shell
+go test ./...
+```
 
 ## Deploying as Docker Container
 
@@ -90,7 +153,7 @@ docker run -d -p 8080:8080 emitter/server
 For the clustered (multi-server) mode, the container can be started using the simple docker run with 3 main parameters.
 
 ```shell
-docker run -d -p 8080:8080 -p 4000:4000 -e EMITTER_LICENSE=[key] -e EMITTER_CLUSTER_SEED=[seed] -e EMITTER_CLUSTER_KEY=[name] emitter/server
+docker run -d -p 8080:8080 -p 4000:4000 -e EMITTER_LICENSE=[key] -e EMITTER_CLUSTER_SEED=[seed] -e EMITTER_CLUSTER_PASSPHRASE=[name] emitter/server
 ```
 
 ## Support, Discussion, and Community
@@ -106,4 +169,4 @@ If you'd like to contribute, please fork the repository and use a feature branch
 
 ## Licensing
 
-Copyright (c) 2009-2016 Misakai Ltd. This project is licensed under [Affero General Public License v3](https://github.com/emitter-io/emitter/blob/master/LICENSE).
+Copyright (c) 2009-2017 Misakai Ltd. This project is licensed under [Affero General Public License v3](https://github.com/emitter-io/emitter/blob/master/LICENSE).

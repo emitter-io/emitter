@@ -1,0 +1,27 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.DS_Store": true,
+        ".gitignore": true,
+        "vendor/": true,
+        ".vscode": true,
+        "build*": true,
+        "LICENSE": true,
+        "appveyor.yml": true,
+        "Dockerfile": true
+    },
+    
+    "go.formatTool": "gofmt",
+    "go.formatFlags": [
+        "-s"
+    ],
+    "go.coverOnSave": true,
+    "go.coverageOptions":"showCoveredCodeOnly",
+
+      
+    "TodoParser":
+    {
+        "folderExclude": ["vendor"]
+    }
+
+}

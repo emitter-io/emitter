@@ -1,0 +1,131 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "Lps/+JqMRVlrXgO/+cazYcfsglg=",
+			"path": "github.com/davecgh/go-spew/spew",
+			"revision": "346938d642f2ec3594ed81d874461961cd0faa76",
+			"revisionTime": "2016-10-29T20:57:26Z"
+		},
+		{
+			"checksumSHA1": "kn9oupjAE1q5UPbKETkxIyN0sVU=",
+			"path": "github.com/emitter-io/config",
+			"revision": "55033d2e92a875a613dba3c1fd4f8206b42cc8d8",
+			"revisionTime": "2017-09-10T18:52:20Z"
+		},
+		{
+			"checksumSHA1": "OV+/R43DDDJ/Gxrx9oQob/K7sL0=",
+			"path": "github.com/golang/snappy",
+			"revision": "553a641470496b2327abcac10b36396bd98e45c9",
+			"revisionTime": "2017-02-15T23:32:05Z"
+		},
+		{
+			"checksumSHA1": "W+UDF6H5I7spd9+8iXDbnFGKIo8=",
+			"path": "github.com/gorilla/websocket",
+			"revision": "a91eba7f97777409bc2c443f5534d41dd20c5720",
+			"revisionTime": "2017-03-19T17:27:27Z"
+		},
+		{
+			"checksumSHA1": "Ur9RwaNKnOkCClhztzHPhOR5uAM=",
+			"path": "github.com/hashicorp/go-msgpack/codec",
+			"revision": "fa3f63826f7c23912c15263591e65d54d080b458",
+			"revisionTime": "2015-05-18T23:42:57Z"
+		},
+		{
+			"path": "github.com/hashicorp/hcl/printer",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "nNba6mCG97AbTI9xNrzOIz5NnmY=",
+			"path": "github.com/karlseguin/ccache",
+			"revision": "3ba9789cfd2cb7b4fb4657efc994cc1c599a648c",
+			"revisionTime": "2017-02-17T06:08:20Z"
+		},
+		{
+			"checksumSHA1": "Gv6Kd6mTkqtLX+JBJYslV2I1p9o=",
+			"path": "github.com/kelindar/go-loggly",
+			"revision": "eaef1ca3fdeef9b9684b67e352d25d2139e7df9c",
+			"revisionTime": "2017-09-16T14:33:28Z"
+		},
+		{
+			"checksumSHA1": "aUJlnUep1PBCNkSvNF2RYxKvkbE=",
+			"path": "github.com/kelindar/process",
+			"revision": "69a29e249ec39e635cd4e42f96c227b6ef2f28d7",
+			"revisionTime": "2017-07-30T15:03:28Z"
+		},
+		{
+			"checksumSHA1": "DHuwjN9CXp/0qK0El1ENolq5RUc=",
+			"path": "github.com/kelindar/tcp",
+			"revision": "951ea01d26dd62609c78e16166f0fbbc0babd753",
+			"revisionTime": "2017-09-01T06:00:04Z"
+		},
+		{
+			"checksumSHA1": "R3yk3OJzuq4MVfVGX5AhkkYv1ko=",
+			"path": "github.com/pmezard/go-difflib/difflib",
+			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
+			"revisionTime": "2016-01-10T10:55:54Z"
+		},
+		{
+			"checksumSHA1": "ofNmmhhJAxYL1Mh09iq+utdfHIM=",
+			"path": "github.com/stretchr/objx",
+			"revision": "1a9d0bb9f541897e62256577b352fdbc1fb4fd94",
+			"revisionTime": "2015-09-28T12:21:52Z"
+		},
+		{
+			"checksumSHA1": "A4Px2X/a0JBJfecp+vMiXE8IWFQ=",
+			"path": "github.com/stretchr/testify/assert",
+			"revision": "f6abca593680b2315d2075e0f5e2a9751e3f431a",
+			"revisionTime": "2017-06-01T20:57:54Z"
+		},
+		{
+			"checksumSHA1": "q+MPhXUlpfmP5UgmOySPeldXwvs=",
+			"path": "github.com/stretchr/testify/mock",
+			"revision": "f6abca593680b2315d2075e0f5e2a9751e3f431a",
+			"revisionTime": "2017-06-01T20:57:54Z"
+		},
+		{
+			"checksumSHA1": "nQQ6uCndTVdV1B2xSmCEaZ7ukoE=",
+			"path": "github.com/weaveworks/mesh",
+			"revision": "38e8100dfbc7b28ae8ffde5a2bbeceec57ffa52a",
+			"revisionTime": "2017-07-31T09:06:22Z"
+		},
+		{
+			"checksumSHA1": "MlEHIE/60sB86Lmf0MPTIXHzKzE=",
+			"path": "golang.org/x/crypto/curve25519",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
+		},
+		{
+			"checksumSHA1": "LIOlUuwAjG4+meTovizhtsB+fTE=",
+			"path": "golang.org/x/crypto/nacl/box",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
+		},
+		{
+			"checksumSHA1": "Y/FcWB2/xSfX1rRp7HYhktHNw8s=",
+			"path": "golang.org/x/crypto/nacl/secretbox",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
+		},
+		{
+			"checksumSHA1": "1MGpGDQqnUoRpv7VEcQrXOBydXE=",
+			"path": "golang.org/x/crypto/pbkdf2",
+			"revision": "adbae1b6b6fb4b02448a0fc0dbbc9ba2b95b294d",
+			"revisionTime": "2017-06-19T06:03:41Z"
+		},
+		{
+			"checksumSHA1": "kVKE0OX1Xdw5mG7XKT86DLLKE2I=",
+			"path": "golang.org/x/crypto/poly1305",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
+		},
+		{
+			"checksumSHA1": "YJKRGua3sv61rGQRHhZphoBeF7w=",
+			"path": "golang.org/x/crypto/salsa20/salsa",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
+		}
+	],
+	"rootPath": "github.com/emitter-io/emitter"
+}
