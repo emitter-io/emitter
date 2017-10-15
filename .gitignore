@@ -24,3 +24,4 @@ build/*
 creds.json
 *.crt
 *.key
+status-prd.html

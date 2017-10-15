@@ -27,7 +27,8 @@ import (
 
 // The contract's state possible values.
 const (
-	ContractStateAllowed = uint8(iota)
+	ContractStateUnknown = uint8(iota)
+	ContractStateAllowed
 	ContractStateRefused
 )
 
@@ -80,6 +81,7 @@ func NewSingleContractProvider(license *License, metering usage.Metering) *Singl
 	p.owner.MasterID = 1
 	p.owner.ID = license.Contract
 	p.owner.Signature = license.Signature
+	p.owner.State = ContractStateAllowed
 	p.usage = metering
 	p.owner.stats = p.usage.Get(license.Contract).(usage.Meter)
 	return p

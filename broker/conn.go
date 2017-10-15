@@ -100,6 +100,7 @@ func (c *Conn) Process() error {
 			// Subscribe for each subscription
 			for _, sub := range packet.Subscriptions {
 				if err := c.onSubscribe(sub.Topic); err != nil {
+					logging.LogError("conn", "subscibe received", err)
 					// TODO: Handle Error
 				}
 
@@ -141,8 +142,8 @@ func (c *Conn) Process() error {
 			packet := msg.(*mqtt.Publish)
 
 			if err := c.onPublish(packet.Topic, packet.Payload); err != nil {
+				logging.LogError("conn", "publish received", err)
 				// TODO: Handle Error
-				println(err.Error())
 			}
 
 			// Acknowledge the publication
