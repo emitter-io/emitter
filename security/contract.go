@@ -170,37 +170,18 @@ func (p *HTTPContractProvider) Get(id uint32) (Contract, bool) {
 	return nil, false
 }
 
-// legacyContract represents a contract (user account).
-type legacyContract struct {
-	ID        int32       `json:"id"`     // Gets or sets the contract id.
-	MasterID  uint16      `json:"master"` // Gets or sets the master id.
-	Signature int32       `json:"sign"`   // Gets or sets the signature of the contract.
-	State     uint8       `json:"state"`  // Gets or sets the state of the contract.
-	stats     usage.Meter // Gets the usage stats.
-}
-
 func (p *HTTPContractProvider) fetchContract(id uint32) (*contract, bool) {
-	c := &contract{
-		stats: p.usage.Get(id).(usage.Meter),
-	}
-
-	// Query legacy meta
-	legacy := new(legacyContract)
-	query := fmt.Sprintf("%s%d", p.url, int32(id)) // meta currently requires a signed int
-	err := http.Get(query, legacy)
+	c := new(contract)
+	err := http.Get(fmt.Sprintf("%s%d", p.url, id), c)
 	if err != nil {
 		logging.LogError("contract", "fetching http contract", err)
 		return nil, false
 	}
 
-	if legacy.ID == 0 {
+	if c.ID == 0 {
 		return nil, false
 	}
 
-	// Copy to the new struct
-	c.ID = uint32(legacy.ID)
-	c.MasterID = legacy.MasterID
-	c.Signature = uint32(legacy.Signature)
-	c.State = legacy.State
+	c.stats = p.usage.Get(id).(usage.Meter)
 	return c, true
 }
