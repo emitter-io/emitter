@@ -27,7 +27,7 @@ import (
 
 // MessageFrame represents a message frame which is sent through the wire to the
 // remote server and contains a set of messages
-type MessageFrame []*Message
+type MessageFrame []Message
 
 // Message represents a message which has to be routed.
 type Message struct {
@@ -37,9 +37,9 @@ type Message struct {
 }
 
 // decodeMessageFrame decodes the message frame from the decoder.
-func decodeMessageFrame(decoder encoding.Decoder) (out MessageFrame, err error) {
+func decodeMessageFrame(buf []byte) (out MessageFrame, err error) {
 	out = make(MessageFrame, 0, 64)
-	err = decoder.Decode(&out)
+	err = encoding.Decode(buf, &out)
 	return
 }
 
@@ -111,7 +111,7 @@ func newSubscriptionState() *subscriptionState {
 
 // decodeSubscriptionState decodes the state
 func decodeSubscriptionState(buf []byte) (*subscriptionState, error) {
-	out := map[interface{}]collection.LWWTime{}
+	out := collection.LWWState{}
 
 	err := encoding.Decode(buf, &out)
 	return &subscriptionState{Set: out}, err
@@ -154,6 +154,6 @@ func (st *subscriptionState) Remove(ev string) {
 }
 
 // All ...
-func (st *subscriptionState) All() map[interface{}]collection.LWWTime {
+func (st *subscriptionState) All() collection.LWWState {
 	return (*collection.LWWSet)(st).All()
 }

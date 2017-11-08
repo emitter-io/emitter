@@ -15,7 +15,6 @@
 package cluster
 
 import (
-	"bytes"
 	"net"
 	"strings"
 	"sync"
@@ -23,7 +22,6 @@ import (
 
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/config"
-	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/security"
@@ -194,7 +192,7 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 	for k, v := range other.All() {
 
 		// Decode the event
-		ev, err := decodeSubscriptionEvent(k.(string))
+		ev, err := decodeSubscriptionEvent(k)
 		if err != nil {
 			return nil, err
 		}
@@ -203,12 +201,12 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 		peer := s.FindPeer(ev.Peer)
 
 		// If the subscription is added, notify (TODO: use channels)
-		if v.IsAdded() && peer.onSubscribe(k.(string), ev.Ssid) {
+		if v.IsAdded() && peer.onSubscribe(k, ev.Ssid) {
 			s.OnSubscribe(ev.Ssid, peer)
 		}
 
 		// If the subscription is removed, notify (TODO: use channels)
-		if v.IsRemoved() && peer.onUnsubscribe(k.(string), ev.Ssid) {
+		if v.IsRemoved() && peer.onUnsubscribe(k, ev.Ssid) {
 			s.OnUnsubscribe(ev.Ssid, peer)
 		}
 	}
@@ -255,14 +253,17 @@ func (s *Swarm) OnGossipBroadcast(src mesh.PeerName, buf []byte) (delta mesh.Gos
 
 // OnGossipUnicast occurs when the gossip unicast is received. In emitter this is
 // used only to forward message frames around.
-func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) error {
+func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) (err error) {
 
-	// Make a reader and a decoder for the frame
-	snappy := snappy.NewReader(bytes.NewReader(buf))
-	reader := encoding.NewDecoder(snappy)
+	// Decode snappy
+	var buffer []byte
+	buf, err = snappy.Decode(buffer, buf)
+	if err != nil {
+		return err
+	}
 
 	// Decode an incoming message frame
-	frame, err := decodeMessageFrame(reader)
+	frame, err := decodeMessageFrame(buf)
 	if err != nil {
 		logging.LogError("swarm", "decode frame", err)
 		return err
@@ -270,7 +271,7 @@ func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) error {
 
 	// Go through each message in the decoded frame
 	for _, m := range frame {
-		s.OnMessage(m)
+		s.OnMessage(&m)
 	}
 
 	return nil

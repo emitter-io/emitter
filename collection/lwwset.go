@@ -19,6 +19,10 @@ import (
 	"time"
 )
 
+// LWWKey is the type of the key for LLWSet
+type LWWKey = string
+type LWWState = map[LWWKey]LWWTime
+
 // LWWTime represents a time pair.
 type LWWTime struct {
 	AddTime int64
@@ -43,18 +47,18 @@ func (t LWWTime) IsRemoved() bool {
 // LWWSet represents a last-write-wins CRDT set.
 type LWWSet struct {
 	sync.Mutex
-	Set map[interface{}]LWWTime
+	Set map[LWWKey]LWWTime
 }
 
 // NewLWWSet creates a new last-write-wins set with bias for 'add'.
 func NewLWWSet() *LWWSet {
 	return &LWWSet{
-		Set: make(map[interface{}]LWWTime),
+		Set: make(map[LWWKey]LWWTime),
 	}
 }
 
 // Add adds a value to the set.
-func (s *LWWSet) Add(value interface{}) {
+func (s *LWWSet) Add(value LWWKey) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -63,7 +67,7 @@ func (s *LWWSet) Add(value interface{}) {
 }
 
 // Remove removes the value from the set.
-func (s *LWWSet) Remove(value interface{}) {
+func (s *LWWSet) Remove(value LWWKey) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -72,7 +76,7 @@ func (s *LWWSet) Remove(value interface{}) {
 }
 
 // Contains checks if a value is present in the set.
-func (s *LWWSet) Contains(value interface{}) bool {
+func (s *LWWSet) Contains(value LWWKey) bool {
 	s.Lock()
 	defer s.Unlock()
 
@@ -111,11 +115,11 @@ func (s *LWWSet) Merge(r *LWWSet) {
 }
 
 // All gets all items in the set.
-func (s *LWWSet) All() map[interface{}]LWWTime {
+func (s *LWWSet) All() map[LWWKey]LWWTime {
 	s.Lock()
 	defer s.Unlock()
 
-	items := make(map[interface{}]LWWTime, len(s.Set))
+	items := make(map[LWWKey]LWWTime, len(s.Set))
 	for key, val := range s.Set {
 		items[key] = val
 	}

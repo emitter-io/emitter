@@ -27,12 +27,6 @@
 			"revisionTime": "2017-03-19T17:27:27Z"
 		},
 		{
-			"checksumSHA1": "Ur9RwaNKnOkCClhztzHPhOR5uAM=",
-			"path": "github.com/hashicorp/go-msgpack/codec",
-			"revision": "fa3f63826f7c23912c15263591e65d54d080b458",
-			"revisionTime": "2015-05-18T23:42:57Z"
-		},
-		{
 			"path": "github.com/hashicorp/hcl/printer",
 			"revision": ""
 		},
@@ -41,6 +35,12 @@
 			"path": "github.com/karlseguin/ccache",
 			"revision": "3ba9789cfd2cb7b4fb4657efc994cc1c599a648c",
 			"revisionTime": "2017-02-17T06:08:20Z"
+		},
+		{
+			"checksumSHA1": "e1/UmaZfGs0DSeDgaOVUAkfDNw8=",
+			"path": "github.com/kelindar/binary",
+			"revision": "bbce1ed7db87a20d5e09b5d31164c2672abb739f",
+			"revisionTime": "2017-11-06T16:07:28Z"
 		},
 		{
 			"checksumSHA1": "Gv6Kd6mTkqtLX+JBJYslV2I1p9o=",

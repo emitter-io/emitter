@@ -58,7 +58,7 @@ func TestLWWESetMerge(t *testing.T) {
 		return LWWTime{AddTime: add, DelTime: del}
 	}
 
-	type set map[interface{}]LWWTime
+	type set map[LWWKey]LWWTime
 	for _, tc := range []struct {
 		lww1, lww2, expected, delta *LWWSet
 		valid, invalid              []string

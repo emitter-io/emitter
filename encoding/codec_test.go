@@ -1,5 +1,6 @@
 package encoding
 
+/*
 import (
 	"testing"
 
@@ -26,3 +27,4 @@ func TestEncodeDecode(t *testing.T) {
 	assert.Equal(t, v, o)
 
 }
+*/

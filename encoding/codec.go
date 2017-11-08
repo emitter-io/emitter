@@ -1,10 +1,9 @@
 package encoding
 
 import (
-	"bytes"
 	"io"
 
-	"github.com/hashicorp/go-msgpack/codec"
+	"github.com/kelindar/binary"
 )
 
 // Decoder represents a decoder which can read from a stream.
@@ -18,36 +17,21 @@ type Encoder interface {
 }
 
 // NewDecoder constructs a new decoder
-func NewDecoder(reader io.Reader) Decoder {
-	var handle codec.BincHandle
-	return codec.NewDecoder(reader, &handle)
+func NewDecoder(reader binary.Reader) Decoder {
+	return binary.NewDecoder(reader)
 }
 
 // NewEncoder constructs a new decoder
 func NewEncoder(writer io.Writer) Encoder {
-	var handle codec.BincHandle
-	return codec.NewEncoder(writer, &handle)
+	return binary.NewEncoder(writer)
 }
 
 // Encode serializes the content and writes it to a byte array.
 func Encode(content interface{}) ([]byte, error) {
-	buf := bytes.NewBuffer(nil)
-	err := EncodeTo(buf, content)
-	return buf.Bytes(), err
+	return binary.Marshal(content)
 }
 
 // Decode deserializes the content from a byte array.
 func Decode(buf []byte, out interface{}) error {
-	handle := codec.BincHandle{}
-	return codec.NewDecoderBytes(buf, &handle).Decode(out)
-}
-
-// EncodeTo encodes the content and writes it to a writer.
-func EncodeTo(writer io.Writer, content interface{}) error {
-	return NewEncoder(writer).Encode(content)
-}
-
-// DecodeFrom deserializes the content from a reader.
-func DecodeFrom(reader io.Reader, out interface{}) error {
-	return NewDecoder(reader).Decode(out)
+	return binary.Unmarshal(buf, out)
 }
