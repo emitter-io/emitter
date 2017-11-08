@@ -199,6 +199,7 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 
 		// Get the peer to use
 		peer := s.FindPeer(ev.Peer)
+		println("peer", peer.name.String())
 
 		// If the subscription is added, notify (TODO: use channels)
 		if v.IsAdded() && peer.onSubscribe(k, ev.Ssid) {

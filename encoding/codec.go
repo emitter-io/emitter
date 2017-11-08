@@ -1,6 +1,7 @@
 package encoding
 
 import (
+	"bytes"
 	"io"
 
 	"github.com/kelindar/binary"
@@ -28,7 +29,14 @@ func NewEncoder(writer io.Writer) Encoder {
 
 // Encode serializes the content and writes it to a byte array.
 func Encode(content interface{}) ([]byte, error) {
-	return binary.Marshal(content)
+	//return binary.Marshal(content)
+	b := &bytes.Buffer{}
+	encoder := binary.NewEncoder(b)
+
+	if err := encoder.Encode(content); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
 
 // Decode deserializes the content from a byte array.

@@ -122,6 +122,8 @@ func (p *Peer) processSendQueue() {
 	snappy := snappy.NewBufferedWriter(buffer)
 	writer := encoding.NewEncoder(snappy)
 
+	println(p.frame)
+
 	// Encode the current frame
 	p.Lock()
 	err := writer.Encode(p.frame)
@@ -134,10 +136,14 @@ func (p *Peer) processSendQueue() {
 	}
 
 	println(p.name)
-	// Send the frame directly to the peer.
-	if err := snappy.Close(); err == nil {
-		if err := p.sender.GossipUnicast(p.name, buffer.Bytes()); err != nil {
-			logging.LogError("peer", "gossip unicast", err)
-		}
+	// Close the snappy encoder
+	if err := snappy.Close(); err != nil {
+		logging.LogError("peer", "encoding frame", err)
 	}
+
+	// Send the frame directly to the peer.
+	if err := p.sender.GossipUnicast(p.name, buffer.Bytes()); err != nil {
+		logging.LogError("peer", "gossip unicast", err)
+	}
+
 }
