@@ -111,8 +111,7 @@ func newSubscriptionState() *subscriptionState {
 
 // decodeSubscriptionState decodes the state
 func decodeSubscriptionState(buf []byte) (*subscriptionState, error) {
-	out := collection.LWWState{}
-
+	var out collection.LWWState
 	err := encoding.Decode(buf, &out)
 	return &subscriptionState{Set: out}, err
 }

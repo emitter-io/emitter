@@ -133,10 +133,11 @@ func (p *Peer) processSendQueue() {
 		logging.LogError("peer", "encoding frame", err)
 	}
 
+	println(p.name)
 	// Send the frame directly to the peer.
 	if err := snappy.Close(); err == nil {
 		if err := p.sender.GossipUnicast(p.name, buffer.Bytes()); err != nil {
-			//logging.LogError("peer", "gossip unicast", err)
+			logging.LogError("peer", "gossip unicast", err)
 		}
 	}
 }

@@ -255,6 +255,7 @@ func (s *Swarm) OnGossipBroadcast(src mesh.PeerName, buf []byte) (delta mesh.Gos
 // used only to forward message frames around.
 func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) (err error) {
 
+	println(string(buf))
 	// Decode snappy
 	var buffer []byte
 	buf, err = snappy.Decode(buffer, buf)

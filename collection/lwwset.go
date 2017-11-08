@@ -47,13 +47,13 @@ func (t LWWTime) IsRemoved() bool {
 // LWWSet represents a last-write-wins CRDT set.
 type LWWSet struct {
 	sync.Mutex
-	Set map[LWWKey]LWWTime
+	Set LWWState
 }
 
 // NewLWWSet creates a new last-write-wins set with bias for 'add'.
 func NewLWWSet() *LWWSet {
 	return &LWWSet{
-		Set: make(map[LWWKey]LWWTime),
+		Set: make(LWWState),
 	}
 }
 
@@ -115,11 +115,11 @@ func (s *LWWSet) Merge(r *LWWSet) {
 }
 
 // All gets all items in the set.
-func (s *LWWSet) All() map[LWWKey]LWWTime {
+func (s *LWWSet) All() LWWState {
 	s.Lock()
 	defer s.Unlock()
 
-	items := make(map[LWWKey]LWWTime, len(s.Set))
+	items := make(LWWState, len(s.Set))
 	for key, val := range s.Set {
 		items[key] = val
 	}
