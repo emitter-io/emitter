@@ -2,6 +2,8 @@ package utils
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 //  16.1 ns/op             0 B/op          0 allocs/op
@@ -13,6 +15,11 @@ func BenchmarkGetHash(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = GetHash(v)
 	}
+}
+
+func TestMeHash(t *testing.T) {
+	h := GetHash([]byte("me"))
+	assert.Equal(t, uint32(2539734036), h)
 }
 
 func TestGetHash(t *testing.T) {
