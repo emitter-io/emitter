@@ -69,6 +69,12 @@ func (m *keyGenRequest) access() uint32 {
 
 // ------------------------------------------------------------------------------------
 
+type meResponse struct {
+	Id string `json:"id"`
+}
+
+// ------------------------------------------------------------------------------------
+
 type keyGenResponse struct {
 	Status  int    `json:"status"`
 	Key     string `json:"key"`

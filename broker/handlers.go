@@ -28,6 +28,7 @@ import (
 const (
 	requestKeygen   = 548658350
 	requestPresence = 3869262148
+	requestMe       = 2539734036
 )
 
 // ------------------------------------------------------------------------------------
@@ -239,9 +240,23 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 	case requestPresence:
 		resp, ok = c.onPresence(payload)
 		return
+	case requestMe:
+		resp, ok = c.onMe()
+		return
 	default:
+		println(channel.Query[0])
 		return
 	}
+}
+
+// ------------------------------------------------------------------------------------
+
+// OnMe is a handler that returns information to the connection.
+func (c *Conn) onMe() (interface{}, bool) {
+	// Success, return the response
+	return &meResponse{
+		Id: c.ID(),
+	}, true
 }
 
 // ------------------------------------------------------------------------------------
