@@ -15,16 +15,13 @@
 package cluster
 
 import (
-	"bytes"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
-	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/utils"
-	"github.com/golang/snappy"
 	"github.com/weaveworks/mesh"
 )
 
@@ -117,32 +114,20 @@ func (p *Peer) processSendQueue() {
 		return // Nothing to send.
 	}
 
-	// Compress in-memory. TODO: Optimize the shit out of that, we don't really need to use binc
-	buffer := bytes.NewBuffer(nil)
-	snappy := snappy.NewBufferedWriter(buffer)
-	writer := encoding.NewEncoder(snappy)
-
-	println(p.frame)
-
 	// Encode the current frame
 	p.Lock()
-	err := writer.Encode(p.frame)
+	buffer, err := p.frame.Encode()
 	p.frame = p.frame[:0]
 	p.Unlock()
 
-	// Something went wrong during the encoding
+	// Log the error
 	if err != nil {
 		logging.LogError("peer", "encoding frame", err)
-	}
-
-	println(p.name)
-	// Close the snappy encoder
-	if err := snappy.Close(); err != nil {
-		logging.LogError("peer", "encoding frame", err)
+		return
 	}
 
 	// Send the frame directly to the peer.
-	if err := p.sender.GossipUnicast(p.name, buffer.Bytes()); err != nil {
+	if err := p.sender.GossipUnicast(p.name, buffer); err != nil {
 		logging.LogError("peer", "gossip unicast", err)
 	}
 

@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/emitter-io/emitter/broker/subscription"
-	"github.com/emitter-io/emitter/encoding"
-	"github.com/golang/snappy"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,8 +14,8 @@ func TestOnGossipUnicast(t *testing.T) {
 	}
 
 	// Encode using binary + snappy
-	encoded, _ := encoding.Encode(&frame)
-	encoded = snappy.Encode([]byte{}, encoded)
+	encoded, err := frame.Encode()
+	assert.NoError(t, err)
 
 	// Create a dummy swarm
 	var count int
@@ -29,7 +27,7 @@ func TestOnGossipUnicast(t *testing.T) {
 	}
 
 	// Test the unicast receive
-	err := swarm.OnGossipUnicast(1, encoded)
+	err = swarm.OnGossipUnicast(1, encoded)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, count)
 }

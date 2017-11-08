@@ -5,7 +5,6 @@ import (
 
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/collection"
-	"github.com/emitter-io/emitter/encoding"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,7 +15,7 @@ func Test_decodeMessageFrame(t *testing.T) {
 	}
 
 	// Encode
-	buffer, err := encoding.Encode(&frame)
+	buffer, err := frame.Encode()
 	assert.NoError(t, err)
 
 	// Decode

@@ -26,7 +26,6 @@ import (
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/security"
 	"github.com/emitter-io/emitter/utils"
-	"github.com/golang/snappy"
 	"github.com/weaveworks/mesh"
 )
 
@@ -199,7 +198,6 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 
 		// Get the peer to use
 		peer := s.FindPeer(ev.Peer)
-		println("peer", peer.name.String())
 
 		// If the subscription is added, notify (TODO: use channels)
 		if v.IsAdded() && peer.onSubscribe(k, ev.Ssid) {
@@ -255,14 +253,6 @@ func (s *Swarm) OnGossipBroadcast(src mesh.PeerName, buf []byte) (delta mesh.Gos
 // OnGossipUnicast occurs when the gossip unicast is received. In emitter this is
 // used only to forward message frames around.
 func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) (err error) {
-
-	println(string(buf))
-	// Decode snappy
-	var buffer []byte
-	buf, err = snappy.Decode(buffer, buf)
-	if err != nil {
-		return err
-	}
 
 	// Decode an incoming message frame
 	frame, err := decodeMessageFrame(buf)

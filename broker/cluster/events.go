@@ -22,6 +22,7 @@ import (
 	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/security"
+	"github.com/golang/snappy"
 	"github.com/weaveworks/mesh"
 )
 
@@ -36,10 +37,25 @@ type Message struct {
 	Payload []byte            // The payload of the message
 }
 
+// Encode encodes the message frame
+func (f *MessageFrame) Encode() (out []byte, err error) {
+	// TODO: optimize
+	var enc []byte
+	if enc, err = encoding.Encode(f); err == nil {
+		out = snappy.Encode(out, enc)
+		return
+	}
+	return
+}
+
 // decodeMessageFrame decodes the message frame from the decoder.
 func decodeMessageFrame(buf []byte) (out MessageFrame, err error) {
-	out = make(MessageFrame, 0, 64)
-	err = encoding.Decode(buf, &out)
+	// TODO: optimize
+	var buffer []byte
+	if buf, err = snappy.Decode(buffer, buf); err == nil {
+		out = make(MessageFrame, 0, 64)
+		err = encoding.Decode(buf, &out)
+	}
 	return
 }
 
