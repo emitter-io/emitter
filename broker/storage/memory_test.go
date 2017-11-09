@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/utils"
 	"github.com/stretchr/testify/assert"
@@ -61,8 +62,7 @@ func TestInMemory_Store(t *testing.T) {
 
 	err := s.Store([]uint32{1, 2, 3}, []byte("test"), 10*time.Second)
 	assert.NoError(t, err)
-
-	assert.Equal(t, []byte("test"), s.mem.Get("0000000100000002:1").Value().(message).Payload)
+	assert.Equal(t, []byte("test"), s.mem.Get("0000000100000002:1").Value().(message.Message).Payload)
 }
 
 func TestInMemory_QueryLast(t *testing.T) {
@@ -157,9 +157,7 @@ func TestInMemory_OnRequest(t *testing.T) {
 		resp, ok := s.OnRequest(tc.name, q)
 		assert.Equal(t, tc.expectOk, ok)
 		if tc.expectOk && ok {
-
-			var msgs []message
-			err := utils.Decode(resp, &msgs)
+			msgs, err := message.DecodeFrame(resp)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectCount, len(msgs))
 		}
@@ -183,9 +181,4 @@ func Test_param(t *testing.T) {
 
 	v := param(cfg.Config, "maxsize", 0)
 	assert.Equal(t, int64(99999999), v)
-}
-
-func Test_messageSize(t *testing.T) {
-	msg := message{Ssid: "abc", Payload: []byte("hello")}
-	assert.Equal(t, int64(5), msg.Size())
 }

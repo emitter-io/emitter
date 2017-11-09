@@ -22,42 +22,8 @@ import (
 	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/security"
 	"github.com/emitter-io/emitter/utils"
-	"github.com/golang/snappy"
 	"github.com/weaveworks/mesh"
 )
-
-// MessageFrame represents a message frame which is sent through the wire to the
-// remote server and contains a set of messages
-type MessageFrame []Message
-
-// Message represents a message which has to be routed.
-type Message struct {
-	Ssid    subscription.Ssid // The Ssid of the message
-	Channel []byte            // The channel of the message
-	Payload []byte            // The payload of the message
-}
-
-// Encode encodes the message frame
-func (f *MessageFrame) Encode() (out []byte, err error) {
-	// TODO: optimize
-	var enc []byte
-	if enc, err = utils.Encode(f); err == nil {
-		out = snappy.Encode(out, enc)
-		return
-	}
-	return
-}
-
-// decodeMessageFrame decodes the message frame from the decoder.
-func decodeMessageFrame(buf []byte) (out MessageFrame, err error) {
-	// TODO: optimize
-	var buffer []byte
-	if buf, err = snappy.Decode(buffer, buf); err == nil {
-		out = make(MessageFrame, 0, 64)
-		err = utils.Decode(buf, &out)
-	}
-	return
-}
 
 // SubscriptionEvent represents a subscription event.
 type SubscriptionEvent struct {
