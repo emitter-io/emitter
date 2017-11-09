@@ -27,12 +27,13 @@ type testStorageConfig struct {
 func newTestMemStore() *InMemory {
 	s := new(InMemory)
 	s.Configure(nil)
-	s.Store([]uint32{0, 1, 1, 1}, []byte("1,1,1"), 10*time.Second)
-	s.Store([]uint32{0, 1, 1, 2}, []byte("1,1,2"), 10*time.Second)
-	s.Store([]uint32{0, 1, 2, 1}, []byte("1,2,1"), 10*time.Second)
-	s.Store([]uint32{0, 1, 2, 2}, []byte("1,2,2"), 10*time.Second)
-	s.Store([]uint32{0, 1, 3, 1}, []byte("1,3,1"), 10*time.Second)
-	s.Store([]uint32{0, 1, 3, 2}, []byte("1,3,2"), 10*time.Second)
+
+	s.Store(testMessage(1, 1, 1), 10*time.Second)
+	s.Store(testMessage(1, 1, 2), 10*time.Second)
+	s.Store(testMessage(1, 2, 1), 10*time.Second)
+	s.Store(testMessage(1, 2, 2), 10*time.Second)
+	s.Store(testMessage(1, 3, 1), 10*time.Second)
+	s.Store(testMessage(1, 3, 2), 10*time.Second)
 	return s
 }
 
@@ -59,9 +60,9 @@ func TestInMemory_Store(t *testing.T) {
 	s := new(InMemory)
 	s.Configure(nil)
 
-	err := s.Store([]uint32{1, 2, 3}, []byte("test"), 10*time.Second)
+	err := s.Store(testMessage(1, 2, 3), 10*time.Second)
 	assert.NoError(t, err)
-	assert.Equal(t, []byte("test"), s.mem.Get("0000000100000002:1").Value().(message.Message).Payload)
+	assert.Equal(t, []byte("1,2,3"), s.mem.Get("0000000000000001:1").Value().(message.Message).Payload)
 }
 
 func TestInMemory_QueryLast(t *testing.T) {
