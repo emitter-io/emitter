@@ -150,7 +150,12 @@ func (c *QueryManager) Query(query string, payload []byte) (message.Awaiter, err
 	channel := fmt.Sprintf("%v/%v", query, c.service.LocalName())
 
 	// Publish the query as a message
-	c.service.publish(message.Ssid{idSystem, idQuery, awaiter.id}, []byte(channel), payload)
+	c.service.publish(&message.Message{
+		Ssid:    message.Ssid{idSystem, idQuery, awaiter.id},
+		Channel: []byte(channel),
+		Payload: payload,
+	})
+
 	return awaiter, nil
 }
 
