@@ -12,7 +12,7 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package subscription
+package message
 
 import (
 	"encoding/binary"
@@ -120,7 +120,7 @@ const (
 type Subscriber interface {
 	ID() string
 	Type() SubscriberType
-	Send(ssid Ssid, channel []byte, payload []byte) error
+	Send(*Message) error
 }
 
 // ------------------------------------------------------------------------------------

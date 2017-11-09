@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
@@ -41,9 +41,9 @@ type Swarm struct {
 	gossip  mesh.Gossip           // The gossip protocol.
 	members *sync.Map             // The map of members in the peer set.
 
-	OnSubscribe   func(subscription.Ssid, subscription.Subscriber) bool // Delegate to invoke when the subscription event is received.
-	OnUnsubscribe func(subscription.Ssid, subscription.Subscriber) bool // Delegate to invoke when the subscription event is received.
-	OnMessage     func(*Message)                                        // Delegate to invoke when a new message is received.
+	OnSubscribe   func(message.Ssid, message.Subscriber) bool // Delegate to invoke when the subscription event is received.
+	OnUnsubscribe func(message.Ssid, message.Subscriber) bool // Delegate to invoke when the subscription event is received.
+	OnMessage     func(*message.Message)                      // Delegate to invoke when a new message is received.
 }
 
 // Swarm implements mesh.Gossiper.
@@ -255,7 +255,7 @@ func (s *Swarm) OnGossipBroadcast(src mesh.PeerName, buf []byte) (delta mesh.Gos
 func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) (err error) {
 
 	// Decode an incoming message frame
-	frame, err := decodeMessageFrame(buf)
+	frame, err := message.DecodeFrame(buf)
 	if err != nil {
 		logging.LogError("swarm", "decode frame", err)
 		return err
@@ -270,7 +270,7 @@ func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) (err error) {
 }
 
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Swarm) NotifySubscribe(conn security.ID, ssid subscription.Ssid) {
+func (s *Swarm) NotifySubscribe(conn security.ID, ssid message.Ssid) {
 	event := SubscriptionEvent{
 		Peer: s.name,
 		Conn: conn,
@@ -287,7 +287,7 @@ func (s *Swarm) NotifySubscribe(conn security.ID, ssid subscription.Ssid) {
 }
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
-func (s *Swarm) NotifyUnsubscribe(conn security.ID, ssid subscription.Ssid) {
+func (s *Swarm) NotifyUnsubscribe(conn security.ID, ssid message.Ssid) {
 	event := SubscriptionEvent{
 		Peer: s.name,
 		Conn: conn,

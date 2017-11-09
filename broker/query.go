@@ -23,7 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/security"
 	"github.com/weaveworks/mesh"
 )
@@ -58,7 +58,7 @@ func newQueryManager(s *Service) *QueryManager {
 
 // Start subscribes the manager to the query channel.
 func (c *QueryManager) Start() {
-	ssid := subscription.Ssid{idSystem, idQuery}
+	ssid := message.Ssid{idSystem, idQuery}
 	if ok := c.service.onSubscribe(ssid, c); ok {
 		c.service.cluster.NotifySubscribe(c.luid, ssid)
 	}
@@ -75,24 +75,24 @@ func (c *QueryManager) ID() string {
 }
 
 // Type returns the type of the subscriber
-func (c *QueryManager) Type() subscription.SubscriberType {
-	return subscription.SubscriberDirect
+func (c *QueryManager) Type() message.SubscriberType {
+	return message.SubscriberDirect
 }
 
 // Send occurs when we have received a message.
-func (c *QueryManager) Send(ssid subscription.Ssid, channel []byte, payload []byte) error {
-	if len(ssid) != 3 {
+func (c *QueryManager) Send(m *message.Message) error {
+	if len(m.Ssid) != 3 {
 		return errors.New("Invalid query received")
 	}
 
-	switch string(channel) {
+	switch string(m.Channel) {
 	case "response":
 		// We received a response, find the awaiter and forward a message to it
-		return c.onResponse(ssid[2], payload)
+		return c.onResponse(m.Ssid[2], m.Payload)
 
 	default:
 		// We received a request, need to handle that by calling the appropriate handler
-		return c.onRequest(ssid, string(channel), payload)
+		return c.onRequest(m.Ssid, string(m.Channel), m.Payload)
 	}
 }
 
@@ -105,7 +105,7 @@ func (c *QueryManager) onResponse(id uint32, payload []byte) error {
 }
 
 // onRequest handles an incoming request
-func (c *QueryManager) onRequest(ssid subscription.Ssid, channel string, payload []byte) error {
+func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []byte) error {
 	// Get the query and reply node
 	ch := strings.Split(channel, "/")
 	query := ch[0]
@@ -120,7 +120,11 @@ func (c *QueryManager) onRequest(ssid subscription.Ssid, channel string, payload
 	// Go through all the handlers and execute the first matching one
 	for _, handle := range c.handlers {
 		if response, ok := handle(query, payload); ok {
-			return peer.Send(ssid, []byte("response"), response)
+			return peer.Send(&message.Message{
+				Ssid:    ssid,
+				Channel: []byte("response"),
+				Payload: response,
+			})
 		}
 	}
 
@@ -128,7 +132,7 @@ func (c *QueryManager) onRequest(ssid subscription.Ssid, channel string, payload
 }
 
 // Query issues a cluster-wide request.
-func (c *QueryManager) Query(query string, payload []byte) (subscription.Awaiter, error) {
+func (c *QueryManager) Query(query string, payload []byte) (message.Awaiter, error) {
 
 	// Create an awaiter
 	// TODO: replace the max with the total number of cluster nodes
@@ -146,7 +150,12 @@ func (c *QueryManager) Query(query string, payload []byte) (subscription.Awaiter
 	channel := fmt.Sprintf("%v/%v", query, c.service.LocalName())
 
 	// Publish the query as a message
-	c.service.publish(subscription.Ssid{idSystem, idQuery, awaiter.id}, []byte(channel), payload)
+	c.service.publish(&message.Message{
+		Ssid:    message.Ssid{idSystem, idQuery, awaiter.id},
+		Channel: []byte(channel),
+		Payload: payload,
+	})
+
 	return awaiter, nil
 }
 

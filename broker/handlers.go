@@ -19,10 +19,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emitter-io/emitter/broker/subscription"
-	"github.com/emitter-io/emitter/encoding"
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/security"
+	"github.com/emitter-io/emitter/utils"
 )
 
 const (
@@ -75,7 +75,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Subscribe the client to the channel
-	ssid := subscription.NewSsid(key.Contract(), channel)
+	ssid := message.NewSsid(key.Contract(), channel)
 	c.Subscribe(ssid, channel.Channel)
 
 	// In case of ttl, check the key provides the permission to store (soft permission)
@@ -88,7 +88,12 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 
 		// Range over the messages in the channel and forward them
 		for msg := range msgs {
-			c.Send(ssid, channel.Channel, msg)
+			c.Send(&message.Message{
+				// TODO: time?
+				Ssid:    ssid,
+				Channel: channel.Channel,
+				Payload: msg,
+			})
 		}
 	}
 
@@ -139,7 +144,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Unsubscribe the client from the channel
-	ssid := subscription.NewSsid(key.Contract(), channel)
+	ssid := message.NewSsid(key.Contract(), channel)
 	c.Unsubscribe(ssid, channel.Channel)
 
 	return nil
@@ -199,16 +204,21 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 		return ErrUnauthorized
 	}
 
-	// Create an SSID
-	ssid := subscription.NewSsid(key.Contract(), channel)
+	// Create a new message
+	msg := &message.Message{
+		Time:    time.Now().UnixNano(),
+		Ssid:    message.NewSsid(key.Contract(), channel),
+		Channel: channel.Channel,
+		Payload: payload,
+	}
 
 	// In case of ttl, check the key provides the permission to store (soft permission)
 	if ttl, ok := channel.TTL(); ok && key.HasPermission(security.AllowStore) {
-		c.service.storage.Store(ssid, payload, time.Duration(ttl)*time.Second)
+		c.service.storage.Store(msg, time.Duration(ttl)*time.Second)
 	}
 
 	// Iterate through all subscribers and send them the message
-	size := c.service.publish(ssid, channel.Channel, payload)
+	size := c.service.publish(msg)
 
 	// Write the stats
 	contract.Stats().AddIngress(int64(len(payload)))
@@ -223,7 +233,10 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 	var resp interface{}
 	defer func() {
 		if b, err := json.Marshal(resp); err == nil {
-			c.Send(nil, []byte("emitter/"+string(channel.Channel)), b)
+			c.Send(&message.Message{
+				Channel: []byte("emitter/" + string(channel.Channel)), // TODO: reduce allocations
+				Payload: b,
+			})
 		}
 	}()
 
@@ -309,22 +322,22 @@ func (s *Service) onPresenceQuery(queryType string, payload []byte) ([]byte, boo
 	}
 
 	// Decode the request
-	var target subscription.Ssid
-	if err := encoding.Decode(payload, &target); err != nil {
+	var target message.Ssid
+	if err := utils.Decode(payload, &target); err != nil {
 		return nil, false
 	}
 
 	logging.LogTarget("query", queryType+" query received", target)
 
 	// Send back the response
-	if b, err := encoding.Encode(s.lookupPresence(target)); err == nil {
+	if b, err := utils.Encode(s.lookupPresence(target)); err == nil {
 		return b, true
 	}
 	return nil, false
 }
 
 // lookupPresence performs a subscriptions lookup and returns a presence information.
-func (s *Service) lookupPresence(ssid subscription.Ssid) []presenceInfo {
+func (s *Service) lookupPresence(ssid message.Ssid) []presenceInfo {
 	resp := make([]presenceInfo, 0, 4)
 	for _, subscriber := range s.subscriptions.Lookup(ssid) {
 		if conn, ok := subscriber.(*Conn); ok {
@@ -342,16 +355,16 @@ func (s *Service) lookupPresence(ssid subscription.Ssid) []presenceInfo {
 // onKeyGen processes a keygen request.
 func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 	// Deserialize the payload.
-	message := presenceRequest{
+	msg := presenceRequest{
 		Status:  true, // Default: send status info
 		Changes: true, // Default: send all changes
 	}
-	if err := json.Unmarshal(payload, &message); err != nil {
+	if err := json.Unmarshal(payload, &msg); err != nil {
 		return ErrBadRequest, false
 	}
 
 	// Attempt to parse the key, this should be a master key
-	key, err := c.service.Cipher.DecryptKey([]byte(message.Key))
+	key, err := c.service.Cipher.DecryptKey([]byte(msg.Key))
 	if err != nil || !key.HasPermission(security.AllowPresence) || key.IsExpired() {
 		return ErrUnauthorized, false
 	}
@@ -368,42 +381,42 @@ func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 	}
 
 	// Ensure we have trailing slash
-	if !strings.HasSuffix(message.Channel, "/") {
-		message.Channel = message.Channel + "/"
+	if !strings.HasSuffix(msg.Channel, "/") {
+		msg.Channel = msg.Channel + "/"
 	}
 
 	// Parse the channel
-	channel := security.ParseChannel([]byte("emitter/" + message.Channel))
+	channel := security.ParseChannel([]byte("emitter/" + msg.Channel))
 	if channel.ChannelType == security.ChannelInvalid {
 		return ErrBadRequest, false
 	}
 
 	// Create the ssid for the presence
-	ssid := subscription.NewSsid(key.Contract(), channel)
+	ssid := message.NewSsid(key.Contract(), channel)
 
 	// Check if the client is interested in subscribing/unsubscribing from changes.
-	if message.Changes {
-		c.Subscribe(subscription.NewSsidForPresence(ssid), nil)
+	if msg.Changes {
+		c.Subscribe(message.NewSsidForPresence(ssid), nil)
 	} else {
-		c.Unsubscribe(subscription.NewSsidForPresence(ssid), nil)
+		c.Unsubscribe(message.NewSsidForPresence(ssid), nil)
 	}
 
 	// If we requested a status, populate the slice via scatter/gather.
 	now := time.Now().UTC().Unix()
 	who := make([]presenceInfo, 0, 4)
-	if message.Status {
+	if msg.Status {
 
 		// Gather local presence first
 		who = append(who, c.service.lookupPresence(ssid)...)
 
 		// Issue the presence query to the cluster
-		if req, err := encoding.Encode(ssid); err == nil {
+		if req, err := utils.Encode(ssid); err == nil {
 			if awaiter, err := c.service.Query("presence", req); err == nil {
 
 				// Wait for all presence updates to come back (or a deadline)
 				for _, resp := range awaiter.Gather(1000 * time.Millisecond) {
 					info := []presenceInfo{}
-					if err := encoding.Decode(resp, &info); err == nil {
+					if err := utils.Decode(resp, &info); err == nil {
 						//logging.LogTarget("query", "response gathered", info)
 						who = append(who, info...)
 					}
@@ -415,7 +428,7 @@ func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 	return &presenceResponse{
 		Time:    now,
 		Event:   presenceStatusEvent,
-		Channel: message.Channel,
+		Channel: msg.Channel,
 		Who:     who,
 	}, true
 }

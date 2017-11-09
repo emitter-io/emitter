@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/emitter-io/emitter/broker/subscription"
-	"github.com/emitter-io/emitter/encoding"
+	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,12 +27,13 @@ type testStorageConfig struct {
 func newTestMemStore() *InMemory {
 	s := new(InMemory)
 	s.Configure(nil)
-	s.Store([]uint32{0, 1, 1, 1}, []byte("1,1,1"), 10*time.Second)
-	s.Store([]uint32{0, 1, 1, 2}, []byte("1,1,2"), 10*time.Second)
-	s.Store([]uint32{0, 1, 2, 1}, []byte("1,2,1"), 10*time.Second)
-	s.Store([]uint32{0, 1, 2, 2}, []byte("1,2,2"), 10*time.Second)
-	s.Store([]uint32{0, 1, 3, 1}, []byte("1,3,1"), 10*time.Second)
-	s.Store([]uint32{0, 1, 3, 2}, []byte("1,3,2"), 10*time.Second)
+
+	s.Store(testMessage(1, 1, 1), 10*time.Second)
+	s.Store(testMessage(1, 1, 2), 10*time.Second)
+	s.Store(testMessage(1, 2, 1), 10*time.Second)
+	s.Store(testMessage(1, 2, 2), 10*time.Second)
+	s.Store(testMessage(1, 3, 1), 10*time.Second)
+	s.Store(testMessage(1, 3, 2), 10*time.Second)
 	return s
 }
 
@@ -59,10 +60,9 @@ func TestInMemory_Store(t *testing.T) {
 	s := new(InMemory)
 	s.Configure(nil)
 
-	err := s.Store([]uint32{1, 2, 3}, []byte("test"), 10*time.Second)
+	err := s.Store(testMessage(1, 2, 3), 10*time.Second)
 	assert.NoError(t, err)
-
-	assert.Equal(t, []byte("test"), s.mem.Get("0000000100000002:1").Value().(message).Payload)
+	assert.Equal(t, []byte("1,2,3"), s.mem.Get("0000000000000001:1").Value().(message.Message).Payload)
 }
 
 func TestInMemory_QueryLast(t *testing.T) {
@@ -89,7 +89,7 @@ func TestInMemory_QueryLast(t *testing.T) {
 		if tc.gathered == nil {
 			s.Query = nil
 		} else {
-			s.Query = func(string, []byte) (subscription.Awaiter, error) {
+			s.Query = func(string, []byte) (message.Awaiter, error) {
 				return &mockAwaiter{f: func(_ time.Duration) [][]byte { return [][]byte{tc.gathered} }}, nil
 			}
 		}
@@ -153,13 +153,11 @@ func TestInMemory_OnRequest(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		q, _ := encoding.Encode(tc.query)
+		q, _ := utils.Encode(tc.query)
 		resp, ok := s.OnRequest(tc.name, q)
 		assert.Equal(t, tc.expectOk, ok)
 		if tc.expectOk && ok {
-
-			var msgs []message
-			err := encoding.Decode(resp, &msgs)
+			msgs, err := message.DecodeFrame(resp)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectCount, len(msgs))
 		}
@@ -183,9 +181,4 @@ func Test_param(t *testing.T) {
 
 	v := param(cfg.Config, "maxsize", 0)
 	assert.Equal(t, int64(99999999), v)
-}
-
-func Test_messageSize(t *testing.T) {
-	msg := message{Ssid: "abc", Payload: []byte("hello")}
-	assert.Equal(t, int64(5), msg.Size())
 }

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/security"
 )
@@ -120,17 +120,17 @@ type presenceInfo struct {
 
 // presenceNotify represents a state notification.
 type presenceNotify struct {
-	Time    int64             `json:"time"`    // The UNIX timestamp.
-	Event   presenceEvent     `json:"event"`   // The event, must be "status", "subscribe" or "unsubscribe".
-	Channel string            `json:"channel"` // The target channel for the notification.
-	Who     presenceInfo      `json:"who"`     // The subscriber id.
-	Ssid    subscription.Ssid `json:"-"`       // The ssid to dispatch the notification on.
+	Time    int64         `json:"time"`    // The UNIX timestamp.
+	Event   presenceEvent `json:"event"`   // The event, must be "status", "subscribe" or "unsubscribe".
+	Channel string        `json:"channel"` // The target channel for the notification.
+	Who     presenceInfo  `json:"who"`     // The subscriber id.
+	Ssid    message.Ssid  `json:"-"`       // The ssid to dispatch the notification on.
 }
 
 // newPresenceNotify creates a new notification payload.
-func newPresenceNotify(ssid subscription.Ssid, event presenceEvent, channel string, id string, username string) *presenceNotify {
+func newPresenceNotify(ssid message.Ssid, event presenceEvent, channel string, id string, username string) *presenceNotify {
 	return &presenceNotify{
-		Ssid:    subscription.NewSsidForPresence(ssid),
+		Ssid:    message.NewSsidForPresence(ssid),
 		Time:    time.Now().UTC().Unix(),
 		Event:   event,
 		Channel: channel,

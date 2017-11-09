@@ -3,14 +3,14 @@ package cluster
 import (
 	"testing"
 
-	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestOnGossipUnicast(t *testing.T) {
-	frame := MessageFrame{
-		Message{Ssid: subscription.Ssid{1, 2, 3}, Channel: []byte("a/b/c/"), Payload: []byte("hello abc")},
-		Message{Ssid: subscription.Ssid{1, 2, 3}, Channel: []byte("a/b/"), Payload: []byte("hello ab")},
+	frame := message.Frame{
+		{Ssid: message.Ssid{1, 2, 3}, Channel: []byte("a/b/c/"), Payload: []byte("hello abc")},
+		{Ssid: message.Ssid{1, 2, 3}, Channel: []byte("a/b/"), Payload: []byte("hello ab")},
 	}
 
 	// Encode using binary + snappy
@@ -20,7 +20,7 @@ func TestOnGossipUnicast(t *testing.T) {
 	// Create a dummy swarm
 	var count int
 	swarm := Swarm{
-		OnMessage: func(m *Message) {
+		OnMessage: func(m *message.Message) {
 			assert.Equal(t, frame[count], *m)
 			count++
 		},

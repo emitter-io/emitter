@@ -3,26 +3,10 @@ package cluster
 import (
 	"testing"
 
-	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/collection"
 	"github.com/stretchr/testify/assert"
 )
-
-func Test_decodeMessageFrame(t *testing.T) {
-	frame := MessageFrame{
-		Message{Ssid: subscription.Ssid{1, 2, 3}, Channel: []byte("a/b/c/"), Payload: []byte("hello abc")},
-		Message{Ssid: subscription.Ssid{1, 2, 3}, Channel: []byte("a/b/"), Payload: []byte("hello ab")},
-	}
-
-	// Encode
-	buffer, err := frame.Encode()
-	assert.NoError(t, err)
-
-	// Decode
-	output, err := decodeMessageFrame(buffer)
-	assert.NoError(t, err)
-	assert.Equal(t, frame, output)
-}
 
 func TestEncodeSubscriptionState(t *testing.T) {
 	state := (*subscriptionState)(&collection.LWWSet{
@@ -41,7 +25,7 @@ func TestEncodeSubscriptionState(t *testing.T) {
 
 func TestEncodeSubscriptionEvent(t *testing.T) {
 	ev := SubscriptionEvent{
-		Ssid: subscription.Ssid{1, 2, 3, 4, 5},
+		Ssid: message.Ssid{1, 2, 3, 4, 5},
 		Peer: 657,
 		Conn: 12456,
 	}

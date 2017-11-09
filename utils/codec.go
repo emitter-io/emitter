@@ -1,4 +1,4 @@
-package encoding
+package utils
 
 import (
 	"github.com/kelindar/binary"
