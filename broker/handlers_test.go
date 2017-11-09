@@ -3,7 +3,7 @@ package broker
 import (
 	"testing"
 
-	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/broker/message"
 	netmock "github.com/emitter-io/emitter/network/mock"
 	"github.com/emitter-io/emitter/security"
 	secmock "github.com/emitter-io/emitter/security/mock"
@@ -15,7 +15,7 @@ import (
 func TestHandlers_onMe(t *testing.T) {
 	license, _ := security.ParseLicense(testLicense)
 	s := &Service{
-		subscriptions: subscription.NewTrie(),
+		subscriptions: message.NewTrie(),
 		License:       license,
 	}
 
@@ -131,7 +131,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 
 		s := &Service{
 			contracts:     provider,
-			subscriptions: subscription.NewTrie(),
+			subscriptions: message.NewTrie(),
 			License:       license,
 			presence:      make(chan *presenceNotify, 100),
 		}
@@ -147,7 +147,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 		// Search for the ssid.
 		channel := security.ParseChannel([]byte(tc.channel))
 		key, _ := s.Cipher.DecryptKey(channel.Key)
-		ssid := subscription.NewSsid(key.Contract(), channel)
+		ssid := message.NewSsid(key.Contract(), channel)
 		subscribers := s.subscriptions.Lookup(ssid)
 		assert.Equal(t, tc.subCount, len(subscribers))
 
@@ -257,7 +257,7 @@ func TestHandlers_onPublish(t *testing.T) {
 
 		s := &Service{
 			contracts:     provider,
-			subscriptions: subscription.NewTrie(),
+			subscriptions: message.NewTrie(),
 			License:       license,
 		}
 
@@ -352,7 +352,7 @@ func TestHandlers_onPresence(t *testing.T) {
 
 		s := &Service{
 			contracts:     provider,
-			subscriptions: subscription.NewTrie(),
+			subscriptions: message.NewTrie(),
 			License:       license,
 		}
 

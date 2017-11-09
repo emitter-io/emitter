@@ -15,7 +15,6 @@
 package message
 
 import (
-	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/utils"
 	"github.com/golang/snappy"
 )
@@ -26,10 +25,10 @@ type Frame []Message
 
 // Message represents a message which has to be forwarded or stored.
 type Message struct {
-	Time    int64             `json:"ts,omitempty"`   // The timestamp of the message
-	Ssid    subscription.Ssid `json:"ssid,omitempty"` // The Ssid of the message
-	Channel []byte            `json:"chan,omitempty"` // The channel of the message
-	Payload []byte            `json:"data,omitempty"` // The payload of the message
+	Time    int64  `json:"ts,omitempty"`   // The timestamp of the message
+	Ssid    Ssid   `json:"ssid,omitempty"` // The Ssid of the message
+	Channel []byte `json:"chan,omitempty"` // The channel of the message
+	Payload []byte `json:"data,omitempty"` // The payload of the message
 }
 
 // Size returns the byte size of the message.
@@ -49,7 +48,7 @@ func (f *Frame) Encode() (out []byte, err error) {
 }
 
 // Append appends the message to a frame.
-func (f *Frame) Append(time int64, ssid subscription.Ssid, channel, payload []byte) {
+func (f *Frame) Append(time int64, ssid Ssid, channel, payload []byte) {
 	*f = append(*f, Message{Time: time, Ssid: ssid, Channel: channel, Payload: payload})
 }
 

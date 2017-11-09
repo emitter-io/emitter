@@ -30,7 +30,6 @@ import (
 	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/broker/storage"
-	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
@@ -48,7 +47,7 @@ type Service struct {
 	Cipher        *security.Cipher          // The cipher to use for decoding and encoding keys.
 	License       *security.License         // The licence for this emitter server.
 	Config        *config.Config            // The configuration for the service.
-	subscriptions *subscription.Trie        // The subscription matching trie.
+	subscriptions *message.Trie             // The subscription matching trie.
 	http          *http.Server              // The underlying HTTP server.
 	tcp           *tcp.Server               // The underlying TCP server.
 	cluster       *cluster.Swarm            // The gossip-based cluster mechanism.
@@ -65,7 +64,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	s = &Service{
 		Closing:       make(chan bool),
 		Config:        cfg,
-		subscriptions: subscription.NewTrie(),
+		subscriptions: message.NewTrie(),
 		http:          new(http.Server),
 		tcp:           new(tcp.Server),
 		presence:      make(chan *presenceNotify, 100),
@@ -228,7 +227,7 @@ func (s *Service) notifyPresenceChange() {
 }
 
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Service) notifySubscribe(conn *Conn, ssid subscription.Ssid, channel []byte) {
+func (s *Service) notifySubscribe(conn *Conn, ssid message.Ssid, channel []byte) {
 
 	// If we have a new direct subscriber, issue presence message and publish it
 	if channel != nil {
@@ -242,7 +241,7 @@ func (s *Service) notifySubscribe(conn *Conn, ssid subscription.Ssid, channel []
 }
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
-func (s *Service) notifyUnsubscribe(conn *Conn, ssid subscription.Ssid, channel []byte) {
+func (s *Service) notifyUnsubscribe(conn *Conn, ssid message.Ssid, channel []byte) {
 
 	// If we have a new direct subscriber, issue presence message and publish it
 	if channel != nil {
@@ -285,7 +284,7 @@ func (s *Service) onHTTPKeyGen(w http.ResponseWriter, r *http.Request) {
 }
 
 // Occurs when a peer has a new subscription.
-func (s *Service) onSubscribe(ssid subscription.Ssid, sub subscription.Subscriber) bool {
+func (s *Service) onSubscribe(ssid message.Ssid, sub message.Subscriber) bool {
 	if _, err := s.subscriptions.Subscribe(ssid, sub); err != nil {
 		return false // Unable to subscribe
 	}
@@ -295,7 +294,7 @@ func (s *Service) onSubscribe(ssid subscription.Ssid, sub subscription.Subscribe
 }
 
 // Occurs when a peer has unsubscribed.
-func (s *Service) onUnsubscribe(ssid subscription.Ssid, sub subscription.Subscriber) (ok bool) {
+func (s *Service) onUnsubscribe(ssid message.Ssid, sub message.Subscriber) (ok bool) {
 	subscribers := s.subscriptions.Lookup(ssid)
 	if ok = subscribers.Contains(sub); ok {
 		s.subscriptions.Unsubscribe(ssid, sub)
@@ -312,10 +311,10 @@ func (s *Service) onPeerMessage(m *message.Message) {
 
 	// Iterate through all subscribers and send them the message
 	for _, subscriber := range s.subscriptions.Lookup(m.Ssid) {
-		if subscriber.Type() == subscription.SubscriberDirect {
+		if subscriber.Type() == message.SubscriberDirect {
 
 			// Send to the local subscriber
-			subscriber.Send(m.Ssid, m.Channel, m.Payload)
+			subscriber.Send(m)
 
 			// Write the egress stats
 			if contractFound {
@@ -326,7 +325,7 @@ func (s *Service) onPeerMessage(m *message.Message) {
 }
 
 // Query sends out a query to all the peers.
-func (s *Service) Query(query string, payload []byte) (subscription.Awaiter, error) {
+func (s *Service) Query(query string, payload []byte) (message.Awaiter, error) {
 	if s.querier != nil {
 		return s.querier.Query(query, payload)
 	}
@@ -335,13 +334,17 @@ func (s *Service) Query(query string, payload []byte) (subscription.Awaiter, err
 }
 
 // Publish publishes a message to everyone and returns the number of outgoing bytes written.
-func (s *Service) publish(ssid subscription.Ssid, channel, payload []byte) (n int64) {
+func (s *Service) publish(ssid message.Ssid, channel, payload []byte) (n int64) {
 	size := int64(len(payload))
 	for _, subscriber := range s.subscriptions.Lookup(ssid) {
-		subscriber.Send(ssid, channel, payload)
+		subscriber.Send(&message.Message{
+			Ssid:    ssid,
+			Channel: channel,
+			Payload: payload,
+		})
 
 		// Increment the egress size only for direct subscribers
-		if subscriber.Type() == subscription.SubscriberDirect {
+		if subscriber.Type() == message.SubscriberDirect {
 			n += size
 		}
 	}
@@ -353,7 +356,7 @@ func (s *Service) publish(ssid subscription.Ssid, channel, payload []byte) (n in
 func (s *Service) selfPublish(channelName string, payload []byte) {
 	channel := security.ParseChannel([]byte("emitter/" + channelName))
 	if channel.ChannelType == security.ChannelStatic {
-		s.publish(subscription.NewSsid(s.License.Contract, channel), channel.Channel, payload)
+		s.publish(message.NewSsid(s.License.Contract, channel), channel.Channel, payload)
 	}
 }
 

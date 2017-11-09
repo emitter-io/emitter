@@ -3,7 +3,7 @@ package cluster
 import (
 	"testing"
 
-	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/collection"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,7 +25,7 @@ func TestEncodeSubscriptionState(t *testing.T) {
 
 func TestEncodeSubscriptionEvent(t *testing.T) {
 	ev := SubscriptionEvent{
-		Ssid: subscription.Ssid{1, 2, 3, 4, 5},
+		Ssid: message.Ssid{1, 2, 3, 4, 5},
 		Peer: 657,
 		Conn: 12456,
 	}

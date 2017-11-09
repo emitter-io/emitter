@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	"github.com/emitter-io/emitter/broker/message"
-	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestOnGossipUnicast(t *testing.T) {
 	frame := message.Frame{
-		{Ssid: subscription.Ssid{1, 2, 3}, Channel: []byte("a/b/c/"), Payload: []byte("hello abc")},
-		{Ssid: subscription.Ssid{1, 2, 3}, Channel: []byte("a/b/"), Payload: []byte("hello ab")},
+		{Ssid: message.Ssid{1, 2, 3}, Channel: []byte("a/b/c/"), Payload: []byte("hello abc")},
+		{Ssid: message.Ssid{1, 2, 3}, Channel: []byte("a/b/"), Payload: []byte("hello ab")},
 	}
 
 	// Encode using binary + snappy
