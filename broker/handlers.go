@@ -244,7 +244,6 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 		resp, ok = c.onMe()
 		return
 	default:
-		println(channel.Query[0])
 		return
 	}
 }
