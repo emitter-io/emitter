@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/message"
-	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/utils"
 	"github.com/karlseguin/ccache"
 )
@@ -44,9 +43,9 @@ var _ Storage = new(InMemory)
 
 // InMemory represents a storage which does nothing.
 type InMemory struct {
-	cur   *sync.Map                                          // The cursor map which stores the last written offset.
-	mem   *ccache.Cache                                      // The LRU cache with TTL.
-	Query func(string, []byte) (subscription.Awaiter, error) // The cluster request function.
+	cur   *sync.Map                                     // The cursor map which stores the last written offset.
+	mem   *ccache.Cache                                 // The LRU cache with TTL.
+	Query func(string, []byte) (message.Awaiter, error) // The cluster request function.
 }
 
 // Name returns the name of the provider.
@@ -73,7 +72,7 @@ func (s *InMemory) Configure(config map[string]interface{}) error {
 func (s *InMemory) Store(ssid []uint32, payload []byte, ttl time.Duration) error {
 
 	// Get the string version of the SSID trunk
-	key := subscription.Ssid(ssid).Encode()
+	key := message.Ssid(ssid).Encode()
 	trunk := key[:16]
 
 	// Get and increment the last message cursor
@@ -161,7 +160,7 @@ func (s *InMemory) lookup(q lookupQuery) (matches message.Frame) {
 	matchCount := 0
 
 	// Get the string version of the SSID trunk
-	key := subscription.Ssid(q.Ssid).Encode()
+	key := message.Ssid(q.Ssid).Encode()
 	trunk := key[:16]
 
 	// Get the value of the last message cursor

@@ -1,4 +1,4 @@
-package subscription
+package message
 
 import (
 	"math/rand"
@@ -21,7 +21,7 @@ func (s *testSubscriber) Type() SubscriberType {
 	return SubscriberDirect
 }
 
-func (s *testSubscriber) Send(ssid Ssid, channel []byte, payload []byte) error {
+func (s *testSubscriber) Send(*Message) error {
 	return nil
 }
 

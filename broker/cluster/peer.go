@@ -20,24 +20,23 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/message"
-	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/utils"
 	"github.com/weaveworks/mesh"
 )
 
 // Peer implements subscription.Subscriber
-var _ subscription.Subscriber = &Peer{}
+var _ message.Subscriber = &Peer{}
 
 // Peer represents a remote peer.
 type Peer struct {
 	sync.Mutex
-	sender   mesh.Gossip            // The gossip interface to use for sending.
-	name     mesh.PeerName          // The peer name for communicating.
-	frame    message.Frame          // The current message frame.
-	subs     *subscription.Counters // The SSIDs of active subscriptions for this peer.
-	activity int64                  // The time of last activity of the peer.
-	closing  chan bool              // The closing channel for the peer.
+	sender   mesh.Gossip       // The gossip interface to use for sending.
+	name     mesh.PeerName     // The peer name for communicating.
+	frame    message.Frame     // The current message frame.
+	subs     *message.Counters // The SSIDs of active subscriptions for this peer.
+	activity int64             // The time of last activity of the peer.
+	closing  chan bool         // The closing channel for the peer.
 }
 
 // NewPeer creates a new peer for the connection.
@@ -46,7 +45,7 @@ func (s *Swarm) newPeer(name mesh.PeerName) *Peer {
 		sender:   s.gossip,
 		name:     name,
 		frame:    make(message.Frame, 0, 64),
-		subs:     subscription.NewCounters(),
+		subs:     message.NewCounters(),
 		activity: time.Now().Unix(),
 		closing:  make(chan bool),
 	}
@@ -57,12 +56,12 @@ func (s *Swarm) newPeer(name mesh.PeerName) *Peer {
 }
 
 // Occurs when the peer is subscribed
-func (p *Peer) onSubscribe(encodedEvent string, ssid subscription.Ssid) bool {
+func (p *Peer) onSubscribe(encodedEvent string, ssid message.Ssid) bool {
 	return p.subs.Increment(ssid, []byte(encodedEvent))
 }
 
 // Occurs when the peer is unsubscribed
-func (p *Peer) onUnsubscribe(encodedEvent string, ssid subscription.Ssid) bool {
+func (p *Peer) onUnsubscribe(encodedEvent string, ssid message.Ssid) bool {
 	return p.subs.Decrement(ssid)
 }
 
@@ -80,8 +79,8 @@ func (p *Peer) ID() string {
 }
 
 // Type returns the type of the subscriber.
-func (p *Peer) Type() subscription.SubscriberType {
-	return subscription.SubscriberRemote
+func (p *Peer) Type() message.SubscriberType {
+	return message.SubscriberRemote
 }
 
 // IsActive checks whether a peer is still active or not.
@@ -90,13 +89,13 @@ func (p *Peer) IsActive() bool {
 }
 
 // Send forwards the message to the remote server.
-func (p *Peer) Send(ssid subscription.Ssid, channel []byte, payload []byte) error {
+func (p *Peer) Send(m *message.Message) error {
 	p.Lock()
 	defer p.Unlock()
 
 	// TODO: Make sure we don't send to a dead peer
 	if p.IsActive() {
-		p.frame.Append(0, ssid, channel, payload)
+		p.frame = append(p.frame, *m)
 	}
 
 	return nil
