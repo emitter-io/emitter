@@ -21,7 +21,7 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/mqtt"
@@ -31,12 +31,12 @@ import (
 // Conn represents an incoming connection.
 type Conn struct {
 	sync.Mutex
-	socket   net.Conn               // The transport used to read and write messages.
-	username string                 // The username provided by the client during MQTT connect.
-	luid     security.ID            // The locally unique id of the connection.
-	guid     string                 // The globally unique id of the connection.
-	service  *Service               // The service for this connection.
-	subs     *subscription.Counters // The subscriptions for this connection.
+	socket   net.Conn          // The transport used to read and write messages.
+	username string            // The username provided by the client during MQTT connect.
+	luid     security.ID       // The locally unique id of the connection.
+	guid     string            // The globally unique id of the connection.
+	service  *Service          // The service for this connection.
+	subs     *message.Counters // The subscriptions for this connection.
 }
 
 // NewConn creates a new connection.
@@ -45,7 +45,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		luid:    security.NewID(),
 		service: s,
 		socket:  t,
-		subs:    subscription.NewCounters(),
+		subs:    message.NewCounters(),
 	}
 
 	// Generate a globally unique id as well
@@ -60,8 +60,8 @@ func (c *Conn) ID() string {
 }
 
 // Type returns the type of the subscriber
-func (c *Conn) Type() subscription.SubscriberType {
-	return subscription.SubscriberDirect
+func (c *Conn) Type() message.SubscriberType {
+	return message.SubscriberDirect
 }
 
 // Process processes the messages.
@@ -158,14 +158,14 @@ func (c *Conn) Process() error {
 }
 
 // Send forwards the message to the underlying client.
-func (c *Conn) Send(ssid subscription.Ssid, channel []byte, payload []byte) error {
+func (c *Conn) Send(m *message.Message) error {
 	packet := mqtt.Publish{
 		Header: &mqtt.StaticHeader{
 			QOS: 0, // TODO when we'll support more QoS
 		},
-		MessageID: 0,       // TODO
-		Topic:     channel, // The channel for this message.
-		Payload:   payload, // The payload for this message.
+		MessageID: 0,         // TODO
+		Topic:     m.Channel, // The channel for this message.
+		Payload:   m.Payload, // The payload for this message.
 	}
 
 	// Acknowledge the publication
@@ -179,7 +179,7 @@ func (c *Conn) Send(ssid subscription.Ssid, channel []byte, payload []byte) erro
 }
 
 // Subscribe subscribes to a particular channel.
-func (c *Conn) Subscribe(ssid subscription.Ssid, channel []byte) {
+func (c *Conn) Subscribe(ssid message.Ssid, channel []byte) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -195,7 +195,7 @@ func (c *Conn) Subscribe(ssid subscription.Ssid, channel []byte) {
 }
 
 // Unsubscribe unsubscribes this client from a particular channel.
-func (c *Conn) Unsubscribe(ssid subscription.Ssid, channel []byte) {
+func (c *Conn) Unsubscribe(ssid message.Ssid, channel []byte) {
 	c.Lock()
 	defer c.Unlock()
 

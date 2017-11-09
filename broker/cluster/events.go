@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"github.com/emitter-io/emitter/broker/subscription"
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/security"
 	"github.com/emitter-io/emitter/utils"
@@ -27,9 +27,9 @@ import (
 
 // SubscriptionEvent represents a subscription event.
 type SubscriptionEvent struct {
-	Ssid subscription.Ssid // The SSID for the subscription.
-	Peer mesh.PeerName     // The name of the peer.
-	Conn security.ID       // The connection identifier.
+	Ssid message.Ssid  // The SSID for the subscription.
+	Peer mesh.PeerName // The name of the peer.
+	Conn security.ID   // The connection identifier.
 }
 
 // Encode encodes the event to string representation.

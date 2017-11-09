@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/message"
-	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -89,7 +88,7 @@ func TestInMemory_QueryLast(t *testing.T) {
 		if tc.gathered == nil {
 			s.Query = nil
 		} else {
-			s.Query = func(string, []byte) (subscription.Awaiter, error) {
+			s.Query = func(string, []byte) (message.Awaiter, error) {
 				return &mockAwaiter{f: func(_ time.Duration) [][]byte { return [][]byte{tc.gathered} }}, nil
 			}
 		}

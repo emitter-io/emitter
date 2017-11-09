@@ -3,15 +3,14 @@ package message
 import (
 	"testing"
 
-	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDecodeFrame(t *testing.T) {
 	frame := Frame{
-		Message{Ssid: subscription.Ssid{1, 2, 3}, Channel: []byte("a/b/c/"), Payload: []byte("hello abc")},
-		Message{Ssid: subscription.Ssid{1, 2, 3}, Channel: []byte("a/b/"), Payload: []byte("hello ab")},
+		Message{Ssid: Ssid{1, 2, 3}, Channel: []byte("a/b/c/"), Payload: []byte("hello abc")},
+		Message{Ssid: Ssid{1, 2, 3}, Channel: []byte("a/b/"), Payload: []byte("hello ab")},
 	}
 
 	// Encode
@@ -26,8 +25,8 @@ func TestDecodeFrame(t *testing.T) {
 
 func TestFrameAppend(t *testing.T) {
 	var frame Frame
-	frame.Append(1111, subscription.Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"))
-	frame.Append(1111, subscription.Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"))
+	frame.Append(1111, Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"))
+	frame.Append(1111, Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"))
 	assert.Len(t, frame, 2)
 }
 
