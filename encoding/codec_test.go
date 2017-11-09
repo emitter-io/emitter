@@ -24,5 +24,4 @@ func TestEncodeDecode(t *testing.T) {
 	err = Decode(encoded, &o)
 	assert.NoError(t, err)
 	assert.Equal(t, v, o)
-
 }

@@ -22,12 +22,13 @@ import (
 	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/security"
+	"github.com/golang/snappy"
 	"github.com/weaveworks/mesh"
 )
 
 // MessageFrame represents a message frame which is sent through the wire to the
 // remote server and contains a set of messages
-type MessageFrame []*Message
+type MessageFrame []Message
 
 // Message represents a message which has to be routed.
 type Message struct {
@@ -36,10 +37,25 @@ type Message struct {
 	Payload []byte            // The payload of the message
 }
 
+// Encode encodes the message frame
+func (f *MessageFrame) Encode() (out []byte, err error) {
+	// TODO: optimize
+	var enc []byte
+	if enc, err = encoding.Encode(f); err == nil {
+		out = snappy.Encode(out, enc)
+		return
+	}
+	return
+}
+
 // decodeMessageFrame decodes the message frame from the decoder.
-func decodeMessageFrame(decoder encoding.Decoder) (out MessageFrame, err error) {
-	out = make(MessageFrame, 0, 64)
-	err = decoder.Decode(&out)
+func decodeMessageFrame(buf []byte) (out MessageFrame, err error) {
+	// TODO: optimize
+	var buffer []byte
+	if buf, err = snappy.Decode(buffer, buf); err == nil {
+		out = make(MessageFrame, 0, 64)
+		err = encoding.Decode(buf, &out)
+	}
 	return
 }
 
@@ -111,8 +127,7 @@ func newSubscriptionState() *subscriptionState {
 
 // decodeSubscriptionState decodes the state
 func decodeSubscriptionState(buf []byte) (*subscriptionState, error) {
-	out := map[interface{}]collection.LWWTime{}
-
+	var out collection.LWWState
 	err := encoding.Decode(buf, &out)
 	return &subscriptionState{Set: out}, err
 }
@@ -154,6 +169,6 @@ func (st *subscriptionState) Remove(ev string) {
 }
 
 // All ...
-func (st *subscriptionState) All() map[interface{}]collection.LWWTime {
+func (st *subscriptionState) All() collection.LWWState {
 	return (*collection.LWWSet)(st).All()
 }

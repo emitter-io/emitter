@@ -58,103 +58,102 @@ func TestLWWESetMerge(t *testing.T) {
 		return LWWTime{AddTime: add, DelTime: del}
 	}
 
-	type set map[interface{}]LWWTime
 	for _, tc := range []struct {
 		lww1, lww2, expected, delta *LWWSet
 		valid, invalid              []string
 	}{
 		{
 			lww1: &LWWSet{
-				Set: set{"A": T(10, 0), "B": T(20, 0)},
+				Set: LWWState{"A": T(10, 0), "B": T(20, 0)},
 			},
 			lww2: &LWWSet{
-				Set: set{"A": T(0, 20), "B": T(0, 20)},
+				Set: LWWState{"A": T(0, 20), "B": T(0, 20)},
 			},
 			expected: &LWWSet{
-				Set: set{"A": T(10, 20), "B": T(20, 20)},
+				Set: LWWState{"A": T(10, 20), "B": T(20, 20)},
 			},
 			delta: &LWWSet{
-				Set: set{"A": T(0, 20), "B": T(0, 20)},
+				Set: LWWState{"A": T(0, 20), "B": T(0, 20)},
 			},
 			valid:   []string{"B"},
 			invalid: []string{"A"},
 		},
 		{
 			lww1: &LWWSet{
-				Set: set{"A": T(10, 0), "B": T(20, 0)},
+				Set: LWWState{"A": T(10, 0), "B": T(20, 0)},
 			},
 			lww2: &LWWSet{
-				Set: set{"A": T(0, 20), "B": T(10, 0)},
+				Set: LWWState{"A": T(0, 20), "B": T(10, 0)},
 			},
 			expected: &LWWSet{
-				Set: set{"A": T(10, 20), "B": T(20, 0)},
+				Set: LWWState{"A": T(10, 20), "B": T(20, 0)},
 			},
 			delta: &LWWSet{
-				Set: set{"A": T(0, 20)},
+				Set: LWWState{"A": T(0, 20)},
 			},
 			valid:   []string{"B"},
 			invalid: []string{"A"},
 		},
 		{
 			lww1: &LWWSet{
-				Set: set{"A": T(30, 0), "B": T(20, 0)},
+				Set: LWWState{"A": T(30, 0), "B": T(20, 0)},
 			},
 			lww2: &LWWSet{
-				Set: set{"A": T(20, 0), "B": T(10, 0)},
+				Set: LWWState{"A": T(20, 0), "B": T(10, 0)},
 			},
 			expected: &LWWSet{
-				Set: set{"A": T(30, 0), "B": T(20, 0)},
+				Set: LWWState{"A": T(30, 0), "B": T(20, 0)},
 			},
 			delta: &LWWSet{
-				Set: set{},
+				Set: LWWState{},
 			},
 			valid:   []string{"A", "B"},
 			invalid: []string{},
 		},
 		{
 			lww1: &LWWSet{
-				Set: set{"A": T(10, 0), "B": T(0, 20)},
+				Set: LWWState{"A": T(10, 0), "B": T(0, 20)},
 			},
 			lww2: &LWWSet{
-				Set: set{"C": T(10, 0), "D": T(0, 20)},
+				Set: LWWState{"C": T(10, 0), "D": T(0, 20)},
 			},
 			expected: &LWWSet{
-				Set: set{"A": T(10, 0), "B": T(0, 20), "C": T(10, 0), "D": T(0, 20)},
+				Set: LWWState{"A": T(10, 0), "B": T(0, 20), "C": T(10, 0), "D": T(0, 20)},
 			},
 			delta: &LWWSet{
-				Set: set{"C": T(10, 0), "D": T(0, 20)},
+				Set: LWWState{"C": T(10, 0), "D": T(0, 20)},
 			},
 			valid:   []string{"A", "C"},
 			invalid: []string{"B", "D"},
 		},
 		{
 			lww1: &LWWSet{
-				Set: set{"A": T(10, 0), "B": T(30, 0)},
+				Set: LWWState{"A": T(10, 0), "B": T(30, 0)},
 			},
 			lww2: &LWWSet{
-				Set: set{"A": T(20, 0), "B": T(20, 0)},
+				Set: LWWState{"A": T(20, 0), "B": T(20, 0)},
 			},
 			expected: &LWWSet{
-				Set: set{"A": T(20, 0), "B": T(30, 0)},
+				Set: LWWState{"A": T(20, 0), "B": T(30, 0)},
 			},
 			delta: &LWWSet{
-				Set: set{"A": T(20, 0)},
+				Set: LWWState{"A": T(20, 0)},
 			},
 			valid:   []string{"A", "B"},
 			invalid: []string{},
 		},
 		{
 			lww1: &LWWSet{
-				Set: set{"A": T(0, 10), "B": T(0, 30)},
+				Set: LWWState{"A": T(0, 10), "B": T(0, 30)},
 			},
 			lww2: &LWWSet{
-				Set: set{"A": T(0, 20), "B": T(0, 20)},
+				Set: LWWState{"A": T(0, 20), "B": T(0, 20)},
 			},
 			expected: &LWWSet{
-				Set: set{"A": T(0, 20), "B": T(0, 30)},
+				Set: LWWState{"A": T(0, 20), "B": T(0, 30)},
 			},
 			delta: &LWWSet{
-				Set: set{"A": T(0, 20)},
+				Set: LWWState{"A": T(0, 20)},
 			},
 			valid:   []string{},
 			invalid: []string{"A", "B"},
