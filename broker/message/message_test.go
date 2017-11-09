@@ -23,13 +23,6 @@ func TestDecodeFrame(t *testing.T) {
 	assert.Equal(t, frame, output)
 }
 
-func TestFrameAppend(t *testing.T) {
-	var frame Frame
-	frame.Append(1111, Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"))
-	frame.Append(1111, Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"))
-	assert.Len(t, frame, 2)
-}
-
 func TestMessageSize(t *testing.T) {
 	m := Message{Payload: []byte("hello abc")}
 	assert.Equal(t, int64(9), m.Size())
