@@ -204,16 +204,21 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 		return ErrUnauthorized
 	}
 
-	// Create an SSID
-	ssid := message.NewSsid(key.Contract(), channel)
+	// Create a new message
+	msg := &message.Message{
+		Time:    time.Now().UnixNano(),
+		Ssid:    message.NewSsid(key.Contract(), channel),
+		Channel: channel.Channel,
+		Payload: payload,
+	}
 
 	// In case of ttl, check the key provides the permission to store (soft permission)
 	if ttl, ok := channel.TTL(); ok && key.HasPermission(security.AllowStore) {
-		c.service.storage.Store(ssid, payload, time.Duration(ttl)*time.Second)
+		c.service.storage.Store(msg, time.Duration(ttl)*time.Second)
 	}
 
 	// Iterate through all subscribers and send them the message
-	size := c.service.publish(ssid, channel.Channel, payload)
+	size := c.service.publish(msg)
 
 	// Write the stats
 	contract.Stats().AddIngress(int64(len(payload)))

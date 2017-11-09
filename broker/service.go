@@ -219,7 +219,11 @@ func (s *Service) notifyPresenceChange() {
 				return
 			case notif := <-s.presence:
 				if encoded, ok := notif.Encode(); ok {
-					s.publish(notif.Ssid, channel, encoded)
+					s.publish(&message.Message{
+						Ssid:    notif.Ssid,
+						Channel: channel,
+						Payload: encoded,
+					})
 				}
 			}
 		}
@@ -334,14 +338,10 @@ func (s *Service) Query(query string, payload []byte) (message.Awaiter, error) {
 }
 
 // Publish publishes a message to everyone and returns the number of outgoing bytes written.
-func (s *Service) publish(ssid message.Ssid, channel, payload []byte) (n int64) {
-	size := int64(len(payload))
-	for _, subscriber := range s.subscriptions.Lookup(ssid) {
-		subscriber.Send(&message.Message{
-			Ssid:    ssid,
-			Channel: channel,
-			Payload: payload,
-		})
+func (s *Service) publish(m *message.Message) (n int64) {
+	size := m.Size()
+	for _, subscriber := range s.subscriptions.Lookup(m.Ssid) {
+		subscriber.Send(m)
 
 		// Increment the egress size only for direct subscribers
 		if subscriber.Type() == message.SubscriberDirect {
@@ -356,7 +356,11 @@ func (s *Service) publish(ssid message.Ssid, channel, payload []byte) (n int64) 
 func (s *Service) selfPublish(channelName string, payload []byte) {
 	channel := security.ParseChannel([]byte("emitter/" + channelName))
 	if channel.ChannelType == security.ChannelStatic {
-		s.publish(message.NewSsid(s.License.Contract, channel), channel.Channel, payload)
+		s.publish(&message.Message{
+			Ssid:    message.NewSsid(s.License.Contract, channel),
+			Channel: channel.Channel,
+			Payload: payload,
+		})
 	}
 }
 
