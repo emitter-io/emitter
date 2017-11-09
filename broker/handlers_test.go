@@ -12,6 +12,23 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func TestHandlers_onMe(t *testing.T) {
+	license, _ := security.ParseLicense(testLicense)
+	s := &Service{
+		subscriptions: subscription.NewTrie(),
+		License:       license,
+	}
+
+	conn := netmock.NewConn()
+	nc := s.newConn(conn.Client)
+	resp, success := nc.onMe()
+	meResp := resp.(*meResponse)
+
+	assert.Equal(t, success, true, success)
+	assert.NotNil(t, resp)
+	assert.NotZero(t, len(meResp.Id))
+}
+
 func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 	license, _ := security.ParseLicense(testLicense)
 	tests := []struct {
