@@ -20,8 +20,8 @@ import (
 
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/collection"
-	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/security"
+	"github.com/emitter-io/emitter/utils"
 	"github.com/golang/snappy"
 	"github.com/weaveworks/mesh"
 )
@@ -41,7 +41,7 @@ type Message struct {
 func (f *MessageFrame) Encode() (out []byte, err error) {
 	// TODO: optimize
 	var enc []byte
-	if enc, err = encoding.Encode(f); err == nil {
+	if enc, err = utils.Encode(f); err == nil {
 		out = snappy.Encode(out, enc)
 		return
 	}
@@ -54,7 +54,7 @@ func decodeMessageFrame(buf []byte) (out MessageFrame, err error) {
 	var buffer []byte
 	if buf, err = snappy.Decode(buffer, buf); err == nil {
 		out = make(MessageFrame, 0, 64)
-		err = encoding.Decode(buf, &out)
+		err = utils.Decode(buf, &out)
 	}
 	return
 }
@@ -128,7 +128,7 @@ func newSubscriptionState() *subscriptionState {
 // decodeSubscriptionState decodes the state
 func decodeSubscriptionState(buf []byte) (*subscriptionState, error) {
 	var out collection.LWWState
-	err := encoding.Decode(buf, &out)
+	err := utils.Decode(buf, &out)
 	return &subscriptionState{Set: out}, err
 }
 
@@ -138,7 +138,7 @@ func (st *subscriptionState) Encode() [][]byte {
 	lww.Lock()
 	defer lww.Unlock()
 
-	buf, err := encoding.Encode(lww.Set)
+	buf, err := utils.Encode(lww.Set)
 	if err != nil {
 		panic(err)
 	}

@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
-	"github.com/emitter-io/emitter/encoding"
+	"github.com/emitter-io/emitter/utils"
 	"github.com/karlseguin/ccache"
 )
 
@@ -108,13 +108,13 @@ func (s *InMemory) QueryLast(ssid []uint32, limit int) (<-chan []byte, error) {
 	match := s.lookup(query)
 
 	// Issue the presence query to the cluster
-	if req, err := encoding.Encode(query); err == nil && s.Query != nil {
+	if req, err := utils.Encode(query); err == nil && s.Query != nil {
 		if awaiter, err := s.Query("memstore", req); err == nil {
 
 			// Wait for all presence updates to come back (or a deadline)
 			for _, resp := range awaiter.Gather(2000 * time.Millisecond) {
 				info := []message{}
-				if err := encoding.Decode(resp, &info); err == nil {
+				if err := utils.Decode(resp, &info); err == nil {
 					match = append(match, info...)
 				}
 			}
@@ -150,7 +150,7 @@ func (s *InMemory) OnRequest(queryType string, payload []byte) ([]byte, bool) {
 
 	// Decode the request
 	var query lookupQuery
-	if err := encoding.Decode(payload, &query); err != nil {
+	if err := utils.Decode(payload, &query); err != nil {
 		return nil, false
 	}
 
@@ -162,7 +162,7 @@ func (s *InMemory) OnRequest(queryType string, payload []byte) ([]byte, bool) {
 	//logging.LogTarget("memstore", queryType+" query received", query)
 
 	// Send back the response
-	b, err := encoding.Encode(s.lookup(query))
+	b, err := utils.Encode(s.lookup(query))
 	return b, err == nil
 }
 

@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
-	"github.com/emitter-io/emitter/encoding"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/security"
+	"github.com/emitter-io/emitter/utils"
 )
 
 const (
@@ -310,14 +310,14 @@ func (s *Service) onPresenceQuery(queryType string, payload []byte) ([]byte, boo
 
 	// Decode the request
 	var target subscription.Ssid
-	if err := encoding.Decode(payload, &target); err != nil {
+	if err := utils.Decode(payload, &target); err != nil {
 		return nil, false
 	}
 
 	logging.LogTarget("query", queryType+" query received", target)
 
 	// Send back the response
-	if b, err := encoding.Encode(s.lookupPresence(target)); err == nil {
+	if b, err := utils.Encode(s.lookupPresence(target)); err == nil {
 		return b, true
 	}
 	return nil, false
@@ -397,13 +397,13 @@ func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 		who = append(who, c.service.lookupPresence(ssid)...)
 
 		// Issue the presence query to the cluster
-		if req, err := encoding.Encode(ssid); err == nil {
+		if req, err := utils.Encode(ssid); err == nil {
 			if awaiter, err := c.service.Query("presence", req); err == nil {
 
 				// Wait for all presence updates to come back (or a deadline)
 				for _, resp := range awaiter.Gather(1000 * time.Millisecond) {
 					info := []presenceInfo{}
-					if err := encoding.Decode(resp, &info); err == nil {
+					if err := utils.Decode(resp, &info); err == nil {
 						//logging.LogTarget("query", "response gathered", info)
 						who = append(who, info...)
 					}
