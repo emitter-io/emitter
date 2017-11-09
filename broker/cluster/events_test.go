@@ -8,22 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_decodeMessageFrame(t *testing.T) {
-	frame := MessageFrame{
-		Message{Ssid: subscription.Ssid{1, 2, 3}, Channel: []byte("a/b/c/"), Payload: []byte("hello abc")},
-		Message{Ssid: subscription.Ssid{1, 2, 3}, Channel: []byte("a/b/"), Payload: []byte("hello ab")},
-	}
-
-	// Encode
-	buffer, err := frame.Encode()
-	assert.NoError(t, err)
-
-	// Decode
-	output, err := decodeMessageFrame(buffer)
-	assert.NoError(t, err)
-	assert.Equal(t, frame, output)
-}
-
 func TestEncodeSubscriptionState(t *testing.T) {
 	state := (*subscriptionState)(&collection.LWWSet{
 		Set: collection.LWWState{"A": {AddTime: 10, DelTime: 50}},

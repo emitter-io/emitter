@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/logging"
@@ -43,7 +44,7 @@ type Swarm struct {
 
 	OnSubscribe   func(subscription.Ssid, subscription.Subscriber) bool // Delegate to invoke when the subscription event is received.
 	OnUnsubscribe func(subscription.Ssid, subscription.Subscriber) bool // Delegate to invoke when the subscription event is received.
-	OnMessage     func(*Message)                                        // Delegate to invoke when a new message is received.
+	OnMessage     func(*message.Message)                                // Delegate to invoke when a new message is received.
 }
 
 // Swarm implements mesh.Gossiper.
@@ -255,7 +256,7 @@ func (s *Swarm) OnGossipBroadcast(src mesh.PeerName, buf []byte) (delta mesh.Gos
 func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) (err error) {
 
 	// Decode an incoming message frame
-	frame, err := decodeMessageFrame(buf)
+	frame, err := message.DecodeFrame(buf)
 	if err != nil {
 		logging.LogError("swarm", "decode frame", err)
 		return err
