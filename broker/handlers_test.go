@@ -26,7 +26,7 @@ func TestHandlers_onMe(t *testing.T) {
 
 	assert.Equal(t, success, true, success)
 	assert.NotNil(t, resp)
-	assert.NotZero(t, len(meResp.Id))
+	assert.NotZero(t, len(meResp.ID))
 }
 
 func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {

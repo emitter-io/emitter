@@ -255,7 +255,7 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 func (c *Conn) onMe() (interface{}, bool) {
 	// Success, return the response
 	return &meResponse{
-		Id: c.ID(),
+		ID: c.ID(),
 	}, true
 }
 
