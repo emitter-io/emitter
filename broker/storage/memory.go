@@ -69,18 +69,23 @@ func (s *InMemory) Configure(config map[string]interface{}) error {
 // SSID, where first element should be a contract ID. The time resolution
 // for TTL will be in seconds. The function is executed synchronously and
 // it returns an error if some error was encountered during storage.
-func (s *InMemory) Store(ssid []uint32, payload []byte, ttl time.Duration) error {
+func (s *InMemory) Store(m *message.Message, ttl time.Duration) error {
 
 	// Get the string version of the SSID trunk
-	key := message.Ssid(ssid).Encode()
+	key := message.Ssid(m.Ssid).Encode()
 	trunk := key[:16]
 
 	// Get and increment the last message cursor
 	cur, _ := s.cur.LoadOrStore(trunk, new(uint64))
 	idx := atomic.AddUint64(cur.(*uint64), 1)
 
+	// If no time was set, add it
+	if m.Time == 0 {
+		m.Time = time.Now().UnixNano()
+	}
+
 	// Set the key in form of (ssid:index) so we can retrieve
-	s.mem.Set(fmt.Sprintf("%v:%v", trunk, idx), message.Message{Ssid: ssid, Time: time.Now().UnixNano(), Payload: payload}, ttl)
+	s.mem.Set(fmt.Sprintf("%v:%v", trunk, idx), *m, ttl)
 
 	//logging.LogTarget("memstore", "message stored", idx)
 	return nil
