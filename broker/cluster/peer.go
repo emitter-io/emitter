@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/utils"
@@ -33,7 +34,7 @@ type Peer struct {
 	sync.Mutex
 	sender   mesh.Gossip            // The gossip interface to use for sending.
 	name     mesh.PeerName          // The peer name for communicating.
-	frame    MessageFrame           // The current message frame.
+	frame    message.Frame          // The current message frame.
 	subs     *subscription.Counters // The SSIDs of active subscriptions for this peer.
 	activity int64                  // The time of last activity of the peer.
 	closing  chan bool              // The closing channel for the peer.
@@ -44,7 +45,7 @@ func (s *Swarm) newPeer(name mesh.PeerName) *Peer {
 	peer := &Peer{
 		sender:   s.gossip,
 		name:     name,
-		frame:    make(MessageFrame, 0, 64),
+		frame:    make(message.Frame, 0, 64),
 		subs:     subscription.NewCounters(),
 		activity: time.Now().Unix(),
 		closing:  make(chan bool),
@@ -95,9 +96,7 @@ func (p *Peer) Send(ssid subscription.Ssid, channel []byte, payload []byte) erro
 
 	// TODO: Make sure we don't send to a dead peer
 	if p.IsActive() {
-
-		// Send simply appends the message to a frame
-		p.frame = append(p.frame, Message{Ssid: ssid, Channel: channel, Payload: payload})
+		p.frame.Append(0, ssid, channel, payload)
 	}
 
 	return nil

@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/cluster"
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/broker/storage"
 	"github.com/emitter-io/emitter/broker/subscription"
 	"github.com/emitter-io/emitter/config"
@@ -305,7 +306,7 @@ func (s *Service) onUnsubscribe(ssid subscription.Ssid, sub subscription.Subscri
 }
 
 // Occurs when a message is received from a peer.
-func (s *Service) onPeerMessage(m *cluster.Message) {
+func (s *Service) onPeerMessage(m *message.Message) {
 	// Get the contract
 	contract, contractFound := s.contracts.Get(m.Ssid.Contract())
 
