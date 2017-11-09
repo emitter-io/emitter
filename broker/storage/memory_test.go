@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/subscription"
-	"github.com/emitter-io/emitter/encoding"
+	"github.com/emitter-io/emitter/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -153,13 +153,13 @@ func TestInMemory_OnRequest(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		q, _ := encoding.Encode(tc.query)
+		q, _ := utils.Encode(tc.query)
 		resp, ok := s.OnRequest(tc.name, q)
 		assert.Equal(t, tc.expectOk, ok)
 		if tc.expectOk && ok {
 
 			var msgs []message
-			err := encoding.Decode(resp, &msgs)
+			err := utils.Decode(resp, &msgs)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectCount, len(msgs))
 		}
