@@ -92,7 +92,7 @@ type byteSliceCodec struct{}
 func (c *byteSliceCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) {
 	l := rv.Len()
 	e.writeUint64(uint64(l))
-	_, err = e.Write(rv.Bytes())
+	e.write(rv.Bytes())
 	return
 }
 
@@ -224,7 +224,7 @@ func (c *customMarshalCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) 
 	// Write the marshaled byte slice
 	buffer := ret[0].Bytes()
 	e.writeUint64(uint64(len(buffer)))
-	_, err = e.Write(buffer)
+	e.write(buffer)
 	return
 }
 
@@ -410,7 +410,8 @@ type complex64Codec struct{}
 
 // Encode encodes a value into the encoder.
 func (c *complex64Codec) EncodeTo(e *Encoder, rv reflect.Value) error {
-	return binary.Write(e, e.Order, complex64(rv.Complex()))
+	e.writeComplex(rv.Complex())
+	return nil
 }
 
 // Decode decodes into a reflect value from the decoder.
@@ -427,7 +428,8 @@ type complex128Codec struct{}
 
 // Encode encodes a value into the encoder.
 func (c *complex128Codec) EncodeTo(e *Encoder, rv reflect.Value) error {
-	return binary.Write(e, e.Order, rv.Complex())
+	e.writeComplex(rv.Complex())
+	return nil
 }
 
 // Decode decodes into a reflect value from the decoder.
@@ -444,7 +446,8 @@ type float32Codec struct{}
 
 // Encode encodes a value into the encoder.
 func (c *float32Codec) EncodeTo(e *Encoder, rv reflect.Value) error {
-	return binary.Write(e, e.Order, float32(rv.Float()))
+	e.writeFloat(rv.Float())
+	return nil
 }
 
 // Decode decodes into a reflect value from the decoder.
@@ -461,7 +464,8 @@ type float64Codec struct{}
 
 // Encode encodes a value into the encoder.
 func (c *float64Codec) EncodeTo(e *Encoder, rv reflect.Value) error {
-	return binary.Write(e, e.Order, rv.Float())
+	e.writeFloat(rv.Float())
+	return nil
 }
 
 // Decode decodes into a reflect value from the decoder.
