@@ -97,19 +97,19 @@ type Publish struct {
 	Payload   []byte
 }
 
-//Puback is sent for QOS level one to verify the reciept of a publish
+//Puback is sent for QOS level one to verify the receipt of a publish
 //Qoth the spec: "A PUBACK message is sent by a server in response to a PUBLISH message from a publishing client, and by a subscriber in response to a PUBLISH message from the server."
 type Puback struct {
 	MessageID uint16
 }
 
-//Pubrec is for verifying the reciept of a publish
+//Pubrec is for verifying the receipt of a publish
 //Qoth the spec:"It is the second message of the QoS level 2 protocol flow. A PUBREC message is sent by the server in response to a PUBLISH message from a publishing client, or by a subscriber in response to a PUBLISH message from the server."
 type Pubrec struct {
 	MessageID uint16
 }
 
-//Pubrelis third, a response to pubrec from either the client or server.
+//Pubrel is a response to pubrec from either the client or server.
 type Pubrel struct {
 	MessageID uint16
 	//QOS1
@@ -684,7 +684,7 @@ func decodeSuback(data []byte, hdr *StaticHeader) Message {
 	msgID := readUint16(data, &bookmark)
 	var qoses []uint8
 	maxlen := uint32(len(data))
-	//is this efficent
+	//is this efficient
 	for bookmark < maxlen {
 		qos := data[bookmark]
 		bookmark++

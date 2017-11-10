@@ -6,10 +6,12 @@ type Addr struct {
 	AddrString    string
 }
 
+// Network gets the network string.
 func (a Addr) Network() string {
 	return a.NetworkString
 }
 
+// Network gets the addr string.
 func (a Addr) String() string {
 	return a.AddrString
 }

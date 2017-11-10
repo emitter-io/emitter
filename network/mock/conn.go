@@ -2,13 +2,14 @@ package mock
 
 import "io"
 
-// MockConn facilitates testing by providing two connected ReadWriteClosers
+// Conn facilitates testing by providing two connected ReadWriteClosers
 // each of which can be used in place of a net.Conn
 type Conn struct {
 	Server *End
 	Client *End
 }
 
+// NewConn creates a new mock connection.
 func NewConn() *Conn {
 	// A connection consists of two pipes:
 	// Client      |      Server
@@ -30,6 +31,7 @@ func NewConn() *Conn {
 	}
 }
 
+// Close closes the mock connection.
 func (c *Conn) Close() error {
 	if err := c.Server.Close(); err != nil {
 		return err
