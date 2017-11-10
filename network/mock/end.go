@@ -17,10 +17,8 @@ func (e End) Close() error {
 	if err := e.Writer.Close(); err != nil {
 		return err
 	}
-	if err := e.Reader.Close(); err != nil {
-		return err
-	}
-	return nil
+
+	return e.Reader.Close()
 }
 
 // LocalAddr gets the local address.

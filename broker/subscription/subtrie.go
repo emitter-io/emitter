@@ -192,43 +192,45 @@ func (c *Trie) iinsert(i, parent *iNode, words []uint32, sub Subscriber) bool {
 	switch {
 	case main.cNode != nil:
 		cn := main.cNode
-		if br := cn.branches[words[0]]; br == nil {
+		br := cn.branches[words[0]]
+		if br == nil {
 			// If the relevant branch is not in the map, a copy of the C-node
 			// with the new entry is created. The linearization point is a
 			// successful CAS.
 			ncn := &mainNode{cNode: cn.inserted(words, sub)}
 			return atomic.CompareAndSwapPointer(
 				mainPtr, unsafe.Pointer(main), unsafe.Pointer(ncn))
-		} else {
-			// If the relevant key is present in the map, its corresponding
-			// branch is read.
-			if len(words) > 1 {
-				// If more than 1 word is present in the path, the tree must be
-				// traversed deeper.
-				if br.iNode != nil {
-					// If the branch has an I-node, iinsert is called
-					// recursively.
-					return c.iinsert(br.iNode, i, words[1:], sub)
-				}
-				// Otherwise, an I-node which points to a new C-node must be
-				// added. The linearization point is a successful CAS.
-				nin := &iNode{main: &mainNode{cNode: newCNode(words[1:], sub)}}
-				ncn := &mainNode{cNode: cn.updatedBranch(words[0], nin, br)}
-				return atomic.CompareAndSwapPointer(
-					mainPtr, unsafe.Pointer(main), unsafe.Pointer(ncn))
-			}
+		}
 
-			if br.subs.Contains(sub) {
-				// Already subscribed.
-				return true
+		// If the relevant key is present in the map, its corresponding
+		// branch is read.
+		if len(words) > 1 {
+			// If more than 1 word is present in the path, the tree must be
+			// traversed deeper.
+			if br.iNode != nil {
+				// If the branch has an I-node, iinsert is called
+				// recursively.
+				return c.iinsert(br.iNode, i, words[1:], sub)
 			}
-
-			// Insert the Subscriber by copying the C-node and updating the
-			// respective branch. The linearization point is a successful CAS.
-			ncn := &mainNode{cNode: cn.updated(words[0], sub)}
+			// Otherwise, an I-node which points to a new C-node must be
+			// added. The linearization point is a successful CAS.
+			nin := &iNode{main: &mainNode{cNode: newCNode(words[1:], sub)}}
+			ncn := &mainNode{cNode: cn.updatedBranch(words[0], nin, br)}
 			return atomic.CompareAndSwapPointer(
 				mainPtr, unsafe.Pointer(main), unsafe.Pointer(ncn))
 		}
+
+		if br.subs.Contains(sub) {
+			// Already subscribed.
+			return true
+		}
+
+		// Insert the Subscriber by copying the C-node and updating the
+		// respective branch. The linearization point is a successful CAS.
+		ncn := &mainNode{cNode: cn.updated(words[0], sub)}
+		return atomic.CompareAndSwapPointer(
+			mainPtr, unsafe.Pointer(main), unsafe.Pointer(ncn))
+
 	case main.tNode != nil:
 		clean(parent)
 		return false
