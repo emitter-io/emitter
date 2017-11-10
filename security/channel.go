@@ -15,7 +15,6 @@
 package security
 
 import (
-	"reflect"
 	"strconv"
 	"unsafe"
 
@@ -96,7 +95,7 @@ func ParseChannel(text []byte) (channel *Channel) {
 	// Now parse the options
 	offset += i
 	if offset < len(text) {
-		i, ok = channel.parseOptions(text[offset:])
+		_, ok = channel.parseOptions(text[offset:])
 		if !ok {
 			channel.ChannelType = ChannelInvalid
 			return channel
@@ -251,8 +250,10 @@ func (c *Channel) parseOptions(text []byte) (i int, ok bool) {
 	return i, true
 }
 
-func unsafeToString(b []byte) string {
-	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	sh := reflect.StringHeader{bh.Data, bh.Len}
-	return *(*string)(unsafe.Pointer(&sh))
+// unsafeToString is used when you really want to convert a slice
+// of bytes to a string without incurring overhead. It is only safe
+// to use if you really know the byte slice is not going to change
+// in the lifetime of the string
+func unsafeToString(bs []byte) string {
+	return *(*string)(unsafe.Pointer(&bs))
 }

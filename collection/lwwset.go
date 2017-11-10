@@ -21,6 +21,8 @@ import (
 
 // LWWKey is the type of the key for LLWSet
 type LWWKey = string
+
+// LWWState represents the internal state
 type LWWState = map[LWWKey]LWWTime
 
 // LWWTime represents a time pair.

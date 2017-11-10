@@ -2,7 +2,6 @@ package mqtt
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"log"
 	"reflect"
@@ -400,7 +399,7 @@ func Test_encodeLength(t *testing.T) {
 		fmtStr := "invalid response from encodeLength field %b leng %d, expected field %b expected value %d\n"
 		leng, field := encodeLength(testval)
 		if field != expecField || leng != expecLeng {
-			t.Error(fmt.Sprintf(fmtStr, field, leng, expecField, expecLeng))
+			t.Errorf(fmtStr, field, leng, expecField, expecLeng)
 		}
 	}
 
@@ -424,7 +423,7 @@ func Test_DecodeLength(t *testing.T) {
 		byteee[2] = byte(enclen >> 8)
 		byteee[3] = byte(enclen)
 		if res := decodeLen(byteee[:]); res != tst {
-			t.Error(fmt.Sprintf("expected %d and got %d\n", tst, res))
+			t.Errorf("expected %d and got %d\n", tst, res)
 		}
 	}
 
@@ -438,7 +437,7 @@ func Test_DecodeLength(t *testing.T) {
 
 		field := decodeLen(blah[:])
 		if field != expecField {
-			t.Error(fmt.Sprintf(fmtStr, field, 0, expecField, expecLeng))
+			t.Errorf(fmtStr, field, 0, expecField, expecLeng)
 		}
 	}
 	tst(986889, t)

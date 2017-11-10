@@ -226,10 +226,10 @@ func TestTimeout(t *testing.T) {
 	}
 	Close()
 	if rl != 3 {
-		log.Print("testTimeout failed: response from wrong sevice ", rl)
+		log.Print("testTimeout failed: response from wrong service ", rl)
 	}
 	if string(buffer[0:3]) != "any" {
-		log.Print("testTimeout failed: response from wrong sevice ")
+		log.Print("testTimeout failed: response from wrong service ")
 	}
 	time.Sleep(testDuration * 2)
 	if len(result) != 2 {

@@ -12,16 +12,18 @@ type End struct {
 	Writer *io.PipeWriter
 }
 
-func (c End) Close() error {
-	if err := c.Writer.Close(); err != nil {
+// Close closes the End.
+func (e End) Close() error {
+	if err := e.Writer.Close(); err != nil {
 		return err
 	}
-	if err := c.Reader.Close(); err != nil {
+	if err := e.Reader.Close(); err != nil {
 		return err
 	}
 	return nil
 }
 
+// LocalAddr gets the local address.
 func (e End) LocalAddr() net.Addr {
 	return Addr{
 		NetworkString: "tcp",
@@ -29,6 +31,7 @@ func (e End) LocalAddr() net.Addr {
 	}
 }
 
+// RemoteAddr gets the local address.
 func (e End) RemoteAddr() net.Addr {
 	return Addr{
 		NetworkString: "tcp",
@@ -36,8 +39,17 @@ func (e End) RemoteAddr() net.Addr {
 	}
 }
 
-func (e End) Read(data []byte) (n int, err error)  { return e.Reader.Read(data) }
+// Read implements the interface.
+func (e End) Read(data []byte) (n int, err error) { return e.Reader.Read(data) }
+
+// Write implements the interface.
 func (e End) Write(data []byte) (n int, err error) { return e.Writer.Write(data) }
-func (e End) SetDeadline(t time.Time) error        { return nil }
-func (e End) SetReadDeadline(t time.Time) error    { return nil }
-func (e End) SetWriteDeadline(t time.Time) error   { return nil }
+
+// SetDeadline implements the interface.
+func (e End) SetDeadline(t time.Time) error { return nil }
+
+// SetReadDeadline implements the interface.
+func (e End) SetReadDeadline(t time.Time) error { return nil }
+
+// SetWriteDeadline implements the interface.
+func (e End) SetWriteDeadline(t time.Time) error { return nil }
