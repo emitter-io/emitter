@@ -36,8 +36,6 @@ func (c *Conn) Close() error {
 	if err := c.Server.Close(); err != nil {
 		return err
 	}
-	if err := c.Client.Close(); err != nil {
-		return err
-	}
-	return nil
+
+	return c.Client.Close()
 }

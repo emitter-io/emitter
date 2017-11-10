@@ -166,7 +166,7 @@ func (s *InMemory) OnRequest(queryType string, payload []byte) ([]byte, bool) {
 	return b, err == nil
 }
 
-// Lookup performs a query agains the cache.
+// Lookup performs a query against the cache.
 func (s *InMemory) lookup(q lookupQuery) (matches []message) {
 	matches = make([]message, 0, q.Limit)
 	matchCount := 0
