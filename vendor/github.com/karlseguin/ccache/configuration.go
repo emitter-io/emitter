@@ -65,7 +65,7 @@ func (c *Configuration) DeleteBuffer(size uint32) *Configuration {
 	return c
 }
 
-// Give a large cache with a high read / write ratio, it's usually unecessary
+// Give a large cache with a high read / write ratio, it's usually unnecessary
 // to promote an item on every Get. GetsPerPromote specifies the number of Gets
 // a key must have before being promoted
 // [3]

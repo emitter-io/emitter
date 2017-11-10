@@ -159,7 +159,7 @@ func (s *InMemory) OnRequest(queryType string, payload []byte) ([]byte, bool) {
 	return b, err == nil
 }
 
-// Lookup performs a against agains the cache.
+// Lookup performs a against the cache.
 func (s *InMemory) lookup(q lookupQuery) (matches message.Frame) {
 	matches = make(message.Frame, 0, q.Limit)
 	matchCount := 0

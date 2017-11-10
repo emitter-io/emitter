@@ -125,6 +125,7 @@ func (c *Client) Write(b []byte) (int, error) {
 
 	c.buffer = append(c.buffer, b)
 
+
 	if len(c.buffer) >= c.BufferSize {
 		go c.Flush()
 	}
