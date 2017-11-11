@@ -57,6 +57,7 @@ type Service struct {
 	contracts     security.ContractProvider // The contract provider for the service.
 	storage       storage.Storage           // The storage provider for the service.
 	metering      usage.Metering            // The usage storage for metering contracts.
+	connections   int64                     // The number of currently open connections.
 }
 
 // NewService creates a new service.
