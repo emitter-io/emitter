@@ -21,6 +21,7 @@ import (
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/logging"
@@ -74,6 +75,9 @@ func (c *Conn) Process() error {
 	reader := bufio.NewReaderSize(c.socket, 65536)
 
 	for {
+		// Set read/write deadlines so we can close dangling connections
+		c.socket.SetDeadline(time.Now().Add(time.Second * 60))
+
 		// Decode an incoming MQTT packet
 		msg, err := mqtt.DecodePacket(reader)
 		if err != nil {
