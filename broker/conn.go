@@ -212,7 +212,7 @@ func (c *Conn) Unsubscribe(ssid message.Ssid, channel []byte) {
 
 // Close terminates the connection.
 func (c *Conn) Close() error {
-	logging.LogTarget("conn", "closed", c.luid)
+	logging.LogTarget("conn", "closed", c.guid)
 
 	// Unsubscribe from everything, no need to lock since each Unsubscribe is
 	// already locked. Locking the 'Close()' would result in a deadlock.
