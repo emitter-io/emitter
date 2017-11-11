@@ -244,6 +244,11 @@ func (s *Swarm) OnGossip(buf []byte) (delta mesh.GossipData, err error) {
 // OnGossipBroadcast merges received data into state and returns a representation
 // of the received data (typically a delta) for further propagation.
 func (s *Swarm) OnGossipBroadcast(src mesh.PeerName, buf []byte) (delta mesh.GossipData, err error) {
+	if src == s.name {
+		logging.LogAction("merge", "got our own broadcast")
+		return
+	}
+
 	if delta, err = s.merge(buf); err != nil {
 		logging.LogError("merge", "merging", err)
 	}

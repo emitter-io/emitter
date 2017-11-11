@@ -114,8 +114,14 @@ func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []by
 		return err
 	}
 
+	// Do not answer our own requests
+	replyAddr := mesh.PeerName(reply)
+	if c.service.cluster.ID() == uint64(replyAddr) {
+		return nil
+	}
+
 	// Get the peer to reply to
-	peer := c.service.cluster.FindPeer(mesh.PeerName(reply))
+	peer := c.service.cluster.FindPeer(replyAddr)
 
 	// Go through all the handlers and execute the first matching one
 	for _, handle := range c.handlers {
