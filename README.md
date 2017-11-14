@@ -22,7 +22,7 @@ docker run -d --name emitter -p 8080:8080 --privileged --restart=unless-stopped 
 Alternatively, you might compile this repository and use `go get` command to rebuild and run from source. 
 
 ```shell
-go get github.com/emitter-io/emitter && emitter
+go get -u github.com/emitter-io/emitter && emitter
 ```
 
 Both commands above start a new server and if no configuration or environment variables were supplied, it will print out a message similar to the message below once the server has started:
@@ -132,7 +132,7 @@ The structure of the configuration is described below:
 The server requires [Golang 1.9](https://golang.org/dl/) to be installed. Once you have this installed, simply `go get` this repository and run the following commands to download the package and run the server.
 
 ```shell
-go get github.com/emitter-io/emitter && emitter
+go get -u github.com/emitter-io/emitter && emitter
 ```
 
 If you want to run the tests, simply run `go test` command as demonstrated below.
