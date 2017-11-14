@@ -16,13 +16,13 @@ import (
 
 func main() {
 	// Get the directory of the process
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	exe, err := os.Executable()
 	if err != nil {
 		panic(err.Error())
 	}
 
 	// Process command-line arguments
-	argConfig := flag.String("config", filepath.Join(dir, "emitter.conf"), "The configuration file to use for the broker.")
+	argConfig := flag.String("config", filepath.Join(filepath.Dir(exe), "emitter.conf"), "The configuration file to use for the broker.")
 	argHelp := flag.Bool("help", false, "Shows the help and usage instead of running the broker.")
 	flag.Parse()
 	if *argHelp {
@@ -53,11 +53,6 @@ func main() {
 		panic(err.Error())
 	}
 
-	//secret, _ := svc.License.NewMasterKey(1)
-	//c, _ := svc.Cipher.GenerateKey(secret, "cluster", security.AllowRead, time.Unix(0, 0))
-	//println(c)
-
 	// Listen and serve
 	svc.Listen()
-
 }
