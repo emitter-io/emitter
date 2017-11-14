@@ -132,7 +132,7 @@ The structure of the configuration is described below:
 The server requires [Golang 1.9](https://golang.org/dl/) to be installed. Once you have this installed, simply `go get` this repository and run the following commands to download the package and run the server.
 
 ```shell
-go get github.com/emitter-io/emitter && emitter
+go get github.com/emitter-io/emitter && go build && emitter
 ```
 
 If you want to run the tests, simply run `go test` command as demonstrated below.
