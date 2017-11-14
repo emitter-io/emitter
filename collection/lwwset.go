@@ -19,11 +19,8 @@ import (
 	"time"
 )
 
-// LWWKey is the type of the key for LLWSet
-type LWWKey = string
-
 // LWWState represents the internal state
-type LWWState = map[LWWKey]LWWTime
+type LWWState = map[string]LWWTime
 
 // LWWTime represents a time pair.
 type LWWTime struct {
@@ -60,7 +57,7 @@ func NewLWWSet() *LWWSet {
 }
 
 // Add adds a value to the set.
-func (s *LWWSet) Add(value LWWKey) {
+func (s *LWWSet) Add(value string) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -69,7 +66,7 @@ func (s *LWWSet) Add(value LWWKey) {
 }
 
 // Remove removes the value from the set.
-func (s *LWWSet) Remove(value LWWKey) {
+func (s *LWWSet) Remove(value string) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -78,7 +75,7 @@ func (s *LWWSet) Remove(value LWWKey) {
 }
 
 // Contains checks if a value is present in the set.
-func (s *LWWSet) Contains(value LWWKey) bool {
+func (s *LWWSet) Contains(value string) bool {
 	s.Lock()
 	defer s.Unlock()
 

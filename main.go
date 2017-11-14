@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	cfg "github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/broker"
@@ -14,8 +15,14 @@ import (
 )
 
 func main() {
+	// Get the directory of the process
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		panic(err.Error())
+	}
+
 	// Process command-line arguments
-	argConfig := flag.String("config", "emitter.conf", "The configuration file to use for the broker.")
+	argConfig := flag.String("config", filepath.Join(dir, "emitter.conf"), "The configuration file to use for the broker.")
 	argHelp := flag.Bool("help", false, "Shows the help and usage instead of running the broker.")
 	flag.Parse()
 	if *argHelp {
