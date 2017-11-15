@@ -193,7 +193,7 @@ func write(config interface{}, output io.Writer) (int, error) {
 
 // createDefault writes the default configuration to disk.
 func createDefault(path string, newDefault func() Config) (Config, error) {
-	f, err := os.OpenFile(path, os.O_CREATE, os.ModePerm)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
