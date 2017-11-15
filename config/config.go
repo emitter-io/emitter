@@ -28,10 +28,15 @@ const (
 func NewDefault() cfg.Config {
 	return &Config{
 		ListenAddr: ":8080",
+		TLS: &cfg.TLSConfig{
+			ListenAddr: ":8443",
+		},
 		Cluster: &ClusterConfig{
 			ListenAddr:    ":4000",
 			AdvertiseAddr: "public:4000",
-			Passphrase:    "emitter-io",
+		},
+		Storage: &cfg.ProviderConfig{
+			Provider: "inmemory",
 		},
 	}
 }
