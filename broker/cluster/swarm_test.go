@@ -1,9 +1,11 @@
 package cluster
 
 import (
+	"io"
 	"testing"
 
 	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,4 +32,30 @@ func TestOnGossipUnicast(t *testing.T) {
 	err = swarm.OnGossipUnicast(1, encoded)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, count)
+}
+
+func TestNewSwarm(t *testing.T) {
+	cfg := config.ClusterConfig{
+		NodeName:      "00:00:00:00:00:01",
+		ListenAddr:    ":4000",
+		AdvertiseAddr: ":4001",
+	}
+
+	// Create a new swarm and check if it was constructed well
+	s := NewSwarm(&cfg, make(chan bool))
+	assert.Equal(t, 0, s.NumPeers())
+	assert.Equal(t, uint64(1), s.ID())
+	assert.NotNil(t, s.Gossip())
+
+	// Gossip with empty payload should not fail
+	_, err := s.OnGossip([]byte{})
+	assert.NoError(t, err)
+
+	// Gossip with invalid data
+	_, err = s.OnGossip([]byte{1, 2, 3})
+	assert.Equal(t, io.EOF, err)
+
+	// Close the swarm
+	err = s.Close()
+	assert.NoError(t, err)
 }
