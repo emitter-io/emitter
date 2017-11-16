@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/kelindar/process"
 )
@@ -43,16 +42,9 @@ func (s *Service) getStatus() (*StatusInfo, error) {
 
 // Reports the status periodically.
 func (s *Service) reportStatus() {
-	status, err := s.getStatus()
-	if err != nil {
-		return
+	if status, err := s.getStatus(); err == nil {
+		if b, err := json.Marshal(status); err == nil {
+			s.selfPublish("cluster/"+status.Addr+"/", b)
+		}
 	}
-
-	b, err := json.Marshal(status)
-	if err != nil {
-		logging.LogError("service", "reporting status", err)
-		return
-	}
-
-	s.selfPublish("cluster/"+status.Addr+"/", b)
 }
