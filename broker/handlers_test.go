@@ -369,116 +369,76 @@ func TestHandlers_onPresence(t *testing.T) {
 	}
 }
 
-/*
 func TestHandlers_onKeygen(t *testing.T) {
-	license, _ := security.ParseLicense(const testLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
+	license, _ := security.ParseLicense("N7XxQbUEPxJ_RIj4muLUdLGYtR1kdKe2AAAAAAAAAAI")
 	tests := []struct {
-		payload string
-		//err           error
+		payload       string
 		contractValid bool
 		contractFound bool
 		generated     bool
-		resp          keyGenResponse
+		resp          interface{}
 		msg           string
 	}{
 		{
-			payload: "{\"key\":\"xEbaDPaICEwVhgdnl2rg_1DWi_MAg_3B\",\"channel\":\"article1\"}",
-			//err:           (*EventError)(nil),
+			payload:       "+{\"key\":\"xEbaDPaICEwVhgdnl2rg_1DWi_MAg_3B\",\"channel\":\"article1\"}",
+			contractValid: true,
+			contractFound: true,
+			generated:     false,
+			resp:          ErrBadRequest,
+			msg:           "Invalid request case",
+		},
+		{
+			payload:       "{\"key\":\"xEbaDPaICEwVhgdnl2rg_1DWi_MAg_3B\",\"channel\":\"article1\"}",
+			contractValid: true,
+			contractFound: true,
+			generated:     false,
+			resp:          ErrUnauthorized,
+			msg:           "No keygen permission case (not a master key)",
+		},
+		{
+			payload:       "{\"key\":\"8GR6MtpL7Xut-pyogQMeS_gyxEA21BbR\",\"channel\":\"article1\"}",
+			contractValid: true,
+			contractFound: false,
+			generated:     false,
+			resp:          ErrNotFound,
+			msg:           "Contract not found case",
+		},
+		{
+			payload:       "{\"key\":\"8GR6MtpL7Xut-pyogQMeS_gyxEA21BbR\",\"channel\":\"article1\"}",
+			contractValid: false,
+			contractFound: true,
+			generated:     false,
+			resp:          ErrUnauthorized,
+			msg:           "Contract not valid case",
+		},
+		{
+			payload:       "{\"key\":\"8GR6MtpL7Xut-pyogQMeS_gyxEA21BbR\",\"channel\":\"article1\"}",
 			contractValid: true,
 			contractFound: true,
 			generated:     true,
 			resp:          keyGenResponse{Status: 200, Key: "76w5HdpyIOQh70HnB4d33gbqD5fFztGY", Channel: "article1"},
 			msg:           "Successful case",
-		}, /*
-			{
-				channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a+q/b/c/",
-				payload:       "test",
-				err:           ErrBadRequest,
-				contractValid: true,
-				contractFound: true,
-				msg:           "Invalid channel case",
-			},
-			{
-				channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/+/b/c/",
-				payload:       "test",
-				err:           ErrForbidden,
-				contractValid: true,
-				contractFound: true,
-				msg:           "Channel is not static case",
-			},
-			{
-				channel:       "0Nq8SWbL8qoOKEDqh_ebBZRqJDby30mT/a/b/c/",
-				payload:       "test",
-				err:           ErrUnauthorized,
-				contractValid: true,
-				contractFound: true,
-				msg:           "Expired key case",
-			},
-			{
-				channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
-				payload:       "test",
-				err:           ErrNotFound,
-				contractValid: true,
-				contractFound: false,
-				msg:           "Contract not found case",
-			},
-			{
-				channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
-				payload:       "test",
-				err:           ErrUnauthorized,
-				contractValid: false,
-				contractFound: true,
-				msg:           "Contract is invalid case",
-			},
-			{
-				channel:       "0Nq8SWbL8qoJzie4_C4yvupug6cLLlWO/a/b/c/",
-				payload:       "test",
-				err:           ErrUnauthorized,
-				contractValid: true,
-				contractFound: true,
-				msg:           "No write permission case",
-			},
-			{
-				channel:       "0Nq8SWbL8qoOKEDqh_ebBZHmCtcvoHGQ/a/b/c/",
-				payload:       "test",
-				err:           ErrUnauthorized,
-				contractValid: true,
-				contractFound: true,
-				msg:           "Wrong target case",
-			},
-			{
-				channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
-				payload:       "test",
-				err:           (*EventError)(nil),
-				contractValid: true,
-				contractFound: true,
-				msg:           "No store permission case",
-			},*/ /*
+		},
 	}
 
+	//keyGenResponse{Status: 200, Key: "76w5HdpyIOQh70HnB4d33gbqD5fFztGY", Channel: "article1"},
 	for _, tc := range tests {
-		//HOW COULD I MOCK KEY SET SALT??????????????????????????????????????????
-
-		security.Key.SetSalt = (k Key) func (value uint16) {
-			k[0] = byte(value >> 8)
-			k[1] = byte(value)
-		}
-
-
+		provider := secmock.NewContractProvider()
 		contract := new(secmock.Contract)
 		contract.On("Validate", mock.Anything).Return(tc.contractValid)
-		contract.On("Stats").Return(security.NewUsageStats())
+		contract.On("Stats").Return(usage.NewMeter(0))
 
-		provider := secmock.NewContractProvider()
-		if tc.contractFound {
-			provider.On("Get", mock.Anything).Return(contract).Once()
-		} else {
-			provider.On("Get", mock.Anything).Return(nil).Once()
-		}
+		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
+		/*
+			if tc.contractFound {
+				provider.On("Get", mock.Anything).Return(contract).Once()
+			} else {
+				provider.On("Get", mock.Anything).Return(nil).Once()
+			}*/
 
 		s := &Service{
-			Contracts:     provider,
-			subscriptions: subscription.NewTrie(),
+			contracts:     provider,
+			subscriptions: message.NewTrie(),
 			License:       license,
 		}
 
@@ -490,10 +450,15 @@ func TestHandlers_onKeygen(t *testing.T) {
 		resp, generated := nc.onKeyGen([]byte(tc.payload))
 		assert.Equal(t, tc.generated, generated, tc.msg)
 
-		if generated {
-			keyGenResp := resp.(*keyGenResponse)
+		if !generated {
+			keyGenResp := resp.(*EventError)
 			assert.Equal(t, tc.resp, keyGenResp)
+		} else {
+			keyGenResp := resp.(*keyGenResponse)
+			expected := tc.resp.(keyGenResponse)
+			//assert.Equal(t, tc.resp, keyGenResp)
+			assert.Equal(t, expected.Status, keyGenResp.Status)
 
 		}
 	}
-}*/
+}
