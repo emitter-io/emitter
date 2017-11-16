@@ -39,7 +39,7 @@ type Swarm struct {
 	state   *subscriptionState    // The state to synchronise.
 	router  *mesh.Router          // The mesh router.
 	gossip  mesh.Gossip           // The gossip protocol.
-	members *sync.Map             // The map of members in the peer set.
+	members sync.Map              // The map of members in the peer set.
 
 	OnSubscribe   func(message.Ssid, message.Subscriber) bool // Delegate to invoke when the subscription event is received.
 	OnUnsubscribe func(message.Ssid, message.Subscriber) bool // Delegate to invoke when the subscription event is received.
@@ -57,7 +57,6 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 		closing: closing,
 		config:  cfg,
 		state:   newSubscriptionState(),
-		members: new(sync.Map),
 	}
 
 	// Get the cluster binding address
@@ -215,6 +214,10 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 
 // NumPeers returns the number of connected peers.
 func (s *Swarm) NumPeers() int {
+	if s.router == nil {
+		return 0
+	}
+
 	for _, peer := range s.router.Peers.Descriptions() {
 		if peer.Self {
 			return peer.NumConnections
