@@ -55,7 +55,33 @@ func TestNewSwarm(t *testing.T) {
 	_, err = s.OnGossip([]byte{1, 2, 3})
 	assert.Equal(t, io.EOF, err)
 
+	// Self broadcast should not fail
+	_, err = s.OnGossipBroadcast(1, []byte{1, 2, 3})
+	assert.NoError(t, err)
+
+	// Broadcast with invalid data
+	_, err = s.OnGossipBroadcast(2, []byte{1, 2, 3})
+	assert.Equal(t, io.EOF, err)
+
 	// Close the swarm
 	err = s.Close()
 	assert.NoError(t, err)
+}
+
+func TestNotify(t *testing.T) {
+	cfg := config.ClusterConfig{
+		NodeName:      "00:00:00:00:00:01",
+		ListenAddr:    ":4000",
+		AdvertiseAddr: ":4001",
+	}
+
+	// Create a new swarm and check if it was constructed well
+	s := NewSwarm(&cfg, make(chan bool))
+	defer s.Close()
+
+	// TODO: Test actual correctness as well
+	assert.NotPanics(t, func() {
+		s.NotifySubscribe(5, []uint32{1, 2, 3})
+		s.NotifyUnsubscribe(5, []uint32{1, 2, 3})
+	})
 }
