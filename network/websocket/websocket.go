@@ -24,10 +24,20 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type websocketConn interface {
+	NextReader() (messageType int, r io.Reader, err error)
+	NextWriter(messageType int) (io.WriteCloser, error)
+	Close() error
+	LocalAddr() net.Addr
+	RemoteAddr() net.Addr
+	SetReadDeadline(t time.Time) error
+	SetWriteDeadline(t time.Time) error
+}
+
 // websocketConn represents a websocket connection.
 type websocketTransport struct {
 	sync.Mutex
-	socket  *websocket.Conn
+	socket  websocketConn
 	reader  io.Reader
 	closing chan bool
 }
@@ -59,7 +69,7 @@ func TryUpgrade(w http.ResponseWriter, r *http.Request) (net.Conn, bool) {
 }
 
 // newConn creates a new transport from websocket.
-func newConn(ws *websocket.Conn) net.Conn {
+func newConn(ws websocketConn) net.Conn {
 	conn := &websocketTransport{
 		socket:  ws,
 		closing: make(chan bool),
@@ -125,13 +135,11 @@ func (c *websocketTransport) Write(b []byte) (n int, err error) {
 	defer c.Unlock()
 
 	var w io.WriteCloser
-	if w, err = c.socket.NextWriter(websocket.BinaryMessage); err != nil {
-		return
+	if w, err = c.socket.NextWriter(websocket.BinaryMessage); err == nil {
+		if n, err = w.Write(b); err == nil {
+			err = w.Close()
+		}
 	}
-	if n, err = w.Write(b); err != nil {
-		return
-	}
-	err = w.Close()
 	return
 }
 
@@ -153,12 +161,11 @@ func (c *websocketTransport) RemoteAddr() net.Addr {
 // SetDeadline sets the read and write deadlines associated
 // with the connection. It is equivalent to calling both
 // SetReadDeadline and SetWriteDeadline.
-func (c *websocketTransport) SetDeadline(t time.Time) error {
-	if err := c.socket.SetReadDeadline(t); err != nil {
-		return err
+func (c *websocketTransport) SetDeadline(t time.Time) (err error) {
+	if err = c.socket.SetReadDeadline(t); err == nil {
+		err = c.socket.SetWriteDeadline(t)
 	}
-
-	return c.socket.SetWriteDeadline(t)
+	return
 }
 
 // SetReadDeadline sets the deadline for future Read calls
