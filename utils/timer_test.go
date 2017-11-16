@@ -13,6 +13,6 @@ func TestRepeat(t *testing.T) {
 	defer close(closing)
 
 	Repeat(func() { count++ }, 1*time.Millisecond, closing)
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	assert.True(t, count > 0)
 }
