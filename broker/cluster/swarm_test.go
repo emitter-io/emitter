@@ -98,3 +98,35 @@ func TestNotify(t *testing.T) {
 		s.NotifyUnsubscribe(5, []uint32{1, 2, 3})
 	})
 }
+
+func Test_merge(t *testing.T) {
+	cfg := config.ClusterConfig{
+		NodeName:      "00:00:00:00:00:01",
+		ListenAddr:    ":4000",
+		AdvertiseAddr: ":4001",
+	}
+
+	ev1 := SubscriptionEvent{
+		Ssid: []uint32{1, 2, 3},
+		Peer: 2,
+		Conn: 30,
+	}
+
+	in := newSubscriptionState()
+	in.Add(ev1.Encode())
+
+	// Counter of events
+	var subscribed bool
+
+	// Create a new swarm and check if it was constructed well
+	s := NewSwarm(&cfg, make(chan bool))
+	s.OnSubscribe = func(message.Ssid, message.Subscriber) bool {
+		subscribed = true
+		return true
+	}
+	defer s.Close()
+
+	_, err := s.merge(in.Encode()[0])
+	assert.NoError(t, err)
+	assert.True(t, subscribed)
+}

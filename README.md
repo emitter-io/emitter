@@ -9,6 +9,7 @@ Emitter can be used for online gaming and mobile apps by satisfying the requirem
 
 [![Join the chat at https://gitter.im/emitter-io/public](https://badges.gitter.im/emitter-io/public.svg)](https://gitter.im/emitter-io/public?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
 [![Build status](https://ci.appveyor.com/api/projects/status/6im4291ao9i664ix?svg=true)](https://ci.appveyor.com/project/Kelindar/emitter)
+[![Coverage Status](https://coveralls.io/repos/github/emitter-io/emitter/badge.svg?branch=master)](https://coveralls.io/github/emitter-io/emitter?branch=master)
 [![Twitter Follow](https://img.shields.io/twitter/follow/emitter_io.svg?style=social&label=Follow)](https://twitter.com/emitter_io)
 
 ## Quick Start
