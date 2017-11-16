@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"github.com/weaveworks/mesh"
 	"io"
 	"testing"
 
@@ -34,7 +35,7 @@ func TestOnGossipUnicast(t *testing.T) {
 	assert.Equal(t, 2, count)
 }
 
-func TestNewSwarm(t *testing.T) {
+func TestNewSwarm_Scenario(t *testing.T) {
 	cfg := config.ClusterConfig{
 		NodeName:      "00:00:00:00:00:01",
 		ListenAddr:    ":4000",
@@ -62,6 +63,18 @@ func TestNewSwarm(t *testing.T) {
 	// Broadcast with invalid data
 	_, err = s.OnGossipBroadcast(2, []byte{1, 2, 3})
 	assert.Equal(t, io.EOF, err)
+
+	// Find peer
+	peer := s.FindPeer(123)
+	assert.NotNil(t, peer)
+	assert.Equal(t, "00:00:00:00:00:7b", peer.ID())
+	_, ok := s.members.Load(mesh.PeerName(123))
+	assert.True(t, ok)
+
+	// Remove that peer, it should not be there anymore
+	s.onPeerOffline(123)
+	_, ok = s.members.Load(mesh.PeerName(123))
+	assert.False(t, ok)
 
 	// Close the swarm
 	err = s.Close()
