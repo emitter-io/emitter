@@ -15,6 +15,9 @@ install:
   - appveyor DownloadFile https://storage.googleapis.com/golang/go1.9.windows-amd64.zip
   - 7z x go1.9.windows-amd64.zip -y -oC:\ > NUL
   - go version
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
+  - go get github.com/go-playground/overalls
 
 build_script:
 - cmd: .\build.bat

@@ -1,4 +1,6 @@
 go test ./...
+%GOPATH%/bin/overalls -project=github.com\emitter-io\emitter
+%GOPATH%/bin/goveralls -coverprofile=overalls.coverprofile -service=appveyor-ci -repotoken=%COVERALLS_TOKEN%
 
 call :build linux arm  
 call :build linux amd64  
