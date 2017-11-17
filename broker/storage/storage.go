@@ -16,7 +16,6 @@ package storage
 
 import (
 	"io"
-	"time"
 
 	"github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/broker/message"
@@ -32,7 +31,7 @@ type Storage interface {
 	// SSID, where first element should be a contract ID. The time resolution
 	// for TTL will be in seconds. The function is executed synchronously and
 	// it returns an error if some error was encountered during storage.
-	Store(m *message.Message, ttl time.Duration) error
+	Store(m *message.Message) error
 
 	// QueryLast performs a query and attempts to fetch last n messages where
 	// n is specified by limit argument. It returns a channel which will be
@@ -64,7 +63,7 @@ func (s *Noop) Configure(config map[string]interface{}) error {
 // SSID, where first element should be a contract ID. The time resolution
 // for TTL will be in seconds. The function is executed synchronously and
 // it returns an error if some error was encountered during storage.
-func (s *Noop) Store(m *message.Message, ttl time.Duration) error {
+func (s *Noop) Store(m *message.Message) error {
 	return nil
 }
 

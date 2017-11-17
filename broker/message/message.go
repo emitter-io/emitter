@@ -29,6 +29,7 @@ type Message struct {
 	Ssid    Ssid   `json:"ssid,omitempty"` // The Ssid of the message
 	Channel []byte `json:"chan,omitempty"` // The channel of the message
 	Payload []byte `json:"data,omitempty"` // The payload of the message
+	TTL     uint32 `json:"ttl,omitempty"`  // The time-to-live of the message
 }
 
 // Size returns the byte size of the message.

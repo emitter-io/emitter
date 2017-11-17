@@ -57,3 +57,9 @@ func TestLogTarget(t *testing.T) {
 	LogTarget("a", "b", 123)
 	assert.Equal(t, "[a] b (123)\n", string(buffer.Bytes()))
 }
+
+func TestStdErrLogger(t *testing.T) {
+	l := NewStdErr()
+	assert.NoError(t, l.Configure(nil))
+	assert.Equal(t, "stderr", l.Name())
+}

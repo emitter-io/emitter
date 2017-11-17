@@ -16,7 +16,7 @@ type Metering interface {
 	config.Provider
 
 	// Get retrieves a meter for a contract.
-	Get(id uint32) interface{}
+	Get(id uint32) Meter
 }
 
 // ------------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ func (s *NoopStorage) Configure(config map[string]interface{}) error {
 }
 
 // Get retrieves a meter for a contract.
-func (s *NoopStorage) Get(id uint32) interface{} {
+func (s *NoopStorage) Get(id uint32) Meter {
 	return NewMeter(id)
 }
 
@@ -101,9 +101,9 @@ func (s *HTTPStorage) Configure(config map[string]interface{}) (err error) {
 }
 
 // Get retrieves a meter for a contract.
-func (s *HTTPStorage) Get(id uint32) interface{} {
+func (s *HTTPStorage) Get(id uint32) Meter {
 	meter, _ := s.counters.LoadOrStore(id, NewMeter(id))
-	return meter
+	return meter.(Meter)
 }
 
 // Store periodically stores the counters by sending them through HTTP.

@@ -69,7 +69,7 @@ func (s *InMemory) Configure(config map[string]interface{}) error {
 // SSID, where first element should be a contract ID. The time resolution
 // for TTL will be in seconds. The function is executed synchronously and
 // it returns an error if some error was encountered during storage.
-func (s *InMemory) Store(m *message.Message, ttl time.Duration) error {
+func (s *InMemory) Store(m *message.Message) error {
 
 	// Get the string version of the SSID trunk
 	key := message.Ssid(m.Ssid).Encode()
@@ -85,7 +85,7 @@ func (s *InMemory) Store(m *message.Message, ttl time.Duration) error {
 	}
 
 	// Set the key in form of (ssid:index) so we can retrieve
-	s.mem.Set(fmt.Sprintf("%v:%v", trunk, idx), *m, ttl)
+	s.mem.Set(fmt.Sprintf("%v:%v", trunk, idx), *m, time.Duration(m.TTL)*time.Second)
 
 	//logging.LogTarget("memstore", "message stored", idx)
 	return nil
