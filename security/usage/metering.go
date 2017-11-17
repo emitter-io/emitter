@@ -54,7 +54,7 @@ var _ Metering = new(HTTPStorage)
 
 // HTTPStorage represents a usage storage which posts meters over HTTP.
 type HTTPStorage struct {
-	counters *sync.Map   // The counters map.
+	counters sync.Map    // The counters map.
 	url      string      // The url to post to.
 	http     http.Client // The http client to use.
 	done     chan bool   // The closing channel.
@@ -63,8 +63,7 @@ type HTTPStorage struct {
 // NewHTTP creates a new HTTP storage
 func NewHTTP() *HTTPStorage {
 	return &HTTPStorage{
-		counters: new(sync.Map),
-		done:     make(chan bool),
+		done: make(chan bool),
 	}
 }
 
@@ -90,10 +89,9 @@ func (s *HTTPStorage) Configure(config map[string]interface{}) (err error) {
 	// Get the url from the provider configuration
 	if url, ok := config["url"]; ok {
 		s.url = url.(string)
-		utils.Repeat(s.store, interval, s.done) // TODO: closing chan
-
-		// Create a new HTTP client to use
 		s.http, err = http.NewClient(s.url, 30*time.Second)
+
+		utils.Repeat(s.store, interval, s.done) // TODO: closing chan
 		return
 	}
 
