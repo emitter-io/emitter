@@ -7,6 +7,7 @@ import (
 	"github.com/emitter-io/emitter/network/http"
 	"github.com/emitter-io/emitter/security/usage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func testNewSingleContractProvider() (*SingleContractProvider, *License) {
@@ -88,17 +89,17 @@ func TestHTTPContractProvider_Name(t *testing.T) {
 }
 
 func TestHTTPContractProvider_Get(t *testing.T) {
-	p, _ := testNewHTTPContractProvider()
-	defer func(f func(string, interface{}, ...http.HeaderValue) error) {
-		http.Get = f
-	}(http.Get)
 
-	http.Get = func(url string, output interface{}, headers ...http.HeaderValue) error {
-		if url == "1" {
-			return json.Unmarshal([]byte(`{"id": 1}`), output)
-		}
-		return nil
-	}
+	h := http.NewMockClient()
+	h.On("Get", "1", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		output := args.Get(1).(interface{})
+		json.Unmarshal([]byte(`{"id": 1}`), output)
+	}).Return(nil)
+
+	h.On("Get", "2", mock.Anything, mock.Anything).Return(nil)
+
+	p, _ := testNewHTTPContractProvider()
+	p.http = h
 
 	contractByID, ok1 := p.Get(1)
 	assert.True(t, ok1)

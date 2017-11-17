@@ -17,10 +17,11 @@ package security
 import (
 	"errors"
 	"fmt"
-	"github.com/emitter-io/emitter/logging"
 	"sync"
+	"time"
 
 	"github.com/emitter-io/config"
+	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/http"
 	"github.com/emitter-io/emitter/security/usage"
 )
@@ -117,6 +118,7 @@ type HTTPContractProvider struct {
 	owner *contract      // The owner contract.
 	cache *sync.Map      // The cache for the contracts.
 	usage usage.Metering // The usage stats container.
+	http  http.Client    // The http client to use.
 }
 
 // NewHTTPContractProvider creates a new single contract provider.
@@ -138,7 +140,7 @@ func (p *HTTPContractProvider) Name() string {
 }
 
 // Configure configures the provider.
-func (p *HTTPContractProvider) Configure(config map[string]interface{}) error {
+func (p *HTTPContractProvider) Configure(config map[string]interface{}) (err error) {
 	if config == nil {
 		return errors.New("Configuration was not provided for HTTP contract provider")
 	}
@@ -146,7 +148,10 @@ func (p *HTTPContractProvider) Configure(config map[string]interface{}) error {
 	// Get the url from the provider configuration
 	if url, ok := config["url"]; ok {
 		p.url = url.(string)
-		return nil
+
+		// Create a new HTTP client to use
+		p.http, err = http.NewClient(p.url, 10*time.Second)
+		return
 	}
 
 	return errors.New("The 'url' parameter was not provider in the configuration for HTTP contract provider")
@@ -174,7 +179,7 @@ func (p *HTTPContractProvider) Get(id uint32) (Contract, bool) {
 
 func (p *HTTPContractProvider) fetchContract(id uint32) (*contract, bool) {
 	c := new(contract)
-	err := http.Get(fmt.Sprintf("%s%d", p.url, id), c)
+	err := p.http.Get(fmt.Sprintf("%s%d", p.url, id), c)
 	if err != nil {
 		logging.LogError("contract", "fetching http contract", err)
 		return nil, false

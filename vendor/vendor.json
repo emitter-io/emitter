@@ -61,6 +61,30 @@
 			"revisionTime": "2017-09-01T06:00:04Z"
 		},
 		{
+			"checksumSHA1": "fmtdR8Bx6OYas5G0uxhDYiBuhgk=",
+			"path": "github.com/klauspost/compress/flate",
+			"revision": "ea08389e0dc46025380296f7dd04ab0e8de36adb",
+			"revisionTime": "2017-11-04T14:42:46Z"
+		},
+		{
+			"checksumSHA1": "rO+kZTobMQp2VTLPrxLovqFWz3U=",
+			"path": "github.com/klauspost/compress/gzip",
+			"revision": "ea08389e0dc46025380296f7dd04ab0e8de36adb",
+			"revisionTime": "2017-11-04T14:42:46Z"
+		},
+		{
+			"checksumSHA1": "tyO2QCRaqKdoRFNc5bU2tVRK6x8=",
+			"path": "github.com/klauspost/compress/zlib",
+			"revision": "ea08389e0dc46025380296f7dd04ab0e8de36adb",
+			"revisionTime": "2017-11-04T14:42:46Z"
+		},
+		{
+			"checksumSHA1": "91I4GuLrSgEBZAY5YaYEJFpSTFg=",
+			"path": "github.com/klauspost/cpuid",
+			"revision": "ae7887de9fa5d2db4eaa8174a7eff2c1ac00f2da",
+			"revisionTime": "2017-07-28T05:55:34Z"
+		},
+		{
 			"checksumSHA1": "R3yk3OJzuq4MVfVGX5AhkkYv1ko=",
 			"path": "github.com/pmezard/go-difflib/difflib",
 			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
@@ -83,6 +107,30 @@
 			"path": "github.com/stretchr/testify/mock",
 			"revision": "2aa2c176b9dab406a6970f6a55f513e8a8c8b18f",
 			"revisionTime": "2017-08-14T20:04:35Z"
+		},
+		{
+			"checksumSHA1": "x6+Vi9WumwYUrK8ZUmkGLDgOLtc=",
+			"path": "github.com/valyala/bytebufferpool",
+			"revision": "e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7",
+			"revisionTime": "2016-08-17T18:16:52Z"
+		},
+		{
+			"checksumSHA1": "z7+4iHIzzVilQ9xTnNJQLknoeOg=",
+			"path": "github.com/valyala/fasthttp",
+			"revision": "51bb00256c3cb0a130d470a087a98684ce003065",
+			"revisionTime": "2017-11-08T17:16:02Z"
+		},
+		{
+			"checksumSHA1": "PR0VJo4sMXprWz+/zeKnLH9Yw/k=",
+			"path": "github.com/valyala/fasthttp/fasthttputil",
+			"revision": "51bb00256c3cb0a130d470a087a98684ce003065",
+			"revisionTime": "2017-11-08T17:16:02Z"
+		},
+		{
+			"checksumSHA1": "0l/kTZy4cwC8P71DIi0CynmX4Bg=",
+			"path": "github.com/valyala/fasthttp/stackless",
+			"revision": "51bb00256c3cb0a130d470a087a98684ce003065",
+			"revisionTime": "2017-11-08T17:16:02Z"
 		},
 		{
 			"checksumSHA1": "nQQ6uCndTVdV1B2xSmCEaZ7ukoE=",
