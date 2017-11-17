@@ -28,12 +28,12 @@ func newTestMemStore() *InMemory {
 	s := new(InMemory)
 	s.Configure(nil)
 
-	s.Store(testMessage(1, 1, 1), 10*time.Second)
-	s.Store(testMessage(1, 1, 2), 10*time.Second)
-	s.Store(testMessage(1, 2, 1), 10*time.Second)
-	s.Store(testMessage(1, 2, 2), 10*time.Second)
-	s.Store(testMessage(1, 3, 1), 10*time.Second)
-	s.Store(testMessage(1, 3, 2), 10*time.Second)
+	s.Store(testMessage(1, 1, 1))
+	s.Store(testMessage(1, 1, 2))
+	s.Store(testMessage(1, 2, 1))
+	s.Store(testMessage(1, 2, 2))
+	s.Store(testMessage(1, 3, 1))
+	s.Store(testMessage(1, 3, 2))
 	return s
 }
 
@@ -60,7 +60,7 @@ func TestInMemory_Store(t *testing.T) {
 	s := new(InMemory)
 	s.Configure(nil)
 
-	err := s.Store(testMessage(1, 2, 3), 10*time.Second)
+	err := s.Store(testMessage(1, 2, 3))
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("1,2,3"), s.mem.Get("0000000000000001:1").Value().(message.Message).Payload)
 }

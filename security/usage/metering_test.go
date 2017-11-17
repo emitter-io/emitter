@@ -4,7 +4,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/emitter-io/emitter/network/http"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestNoop_New(t *testing.T) {
@@ -56,4 +58,22 @@ func TestHTTP_Configure(t *testing.T) {
 		assert.Equal(t, "http://localhost/test", s.url)
 		assert.NotNil(t, s.http)
 	}
+}
+
+func TestHTTP_Store(t *testing.T) {
+	h := http.NewMockClient()
+	h.On("PostJSON", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	u1 := usage{MessageIn: 1, TrafficIn: 200, MessageEg: 1, TrafficEg: 100, Contract: 0x1}
+	u2 := usage{MessageIn: 0, TrafficIn: 0, MessageEg: 0, TrafficEg: 0, Contract: 0x1}
+
+	s := NewHTTP()
+	s.http = h
+
+	c := s.Get(1)
+	c.AddEgress(100)
+	c.AddIngress(200)
+	assert.Equal(t, &u1, c)
+
+	s.store()
+	assert.Equal(t, &u2, c)
 }

@@ -214,7 +214,8 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 
 	// In case of ttl, check the key provides the permission to store (soft permission)
 	if ttl, ok := channel.TTL(); ok && key.HasPermission(security.AllowStore) {
-		c.service.storage.Store(msg, time.Duration(ttl)*time.Second)
+		msg.TTL = ttl // Add the TTL to the message
+		c.service.storage.Store(msg)
 	}
 
 	// Iterate through all subscribers and send them the message

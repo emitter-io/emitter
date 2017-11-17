@@ -3,7 +3,6 @@ package storage
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/stretchr/testify/assert"
@@ -15,12 +14,13 @@ func testMessage(a, b, c uint32) *message.Message {
 		Ssid:    []uint32{0, a, b, c},
 		Channel: []byte("test/channel/"),
 		Payload: []byte(fmt.Sprintf("%v,%v,%v", a, b, c)),
+		TTL:     10,
 	}
 }
 
 func TestNoop_Store(t *testing.T) {
 	s := new(Noop)
-	err := s.Store(testMessage(1, 2, 3), 10*time.Second)
+	err := s.Store(testMessage(1, 2, 3))
 	assert.NoError(t, err)
 }
 
