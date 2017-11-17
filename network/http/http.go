@@ -1,18 +1,29 @@
+/**********************************************************************************
+* Copyright (c) 2009-2017 Misakai Ltd.
+* This program is free software: you can redistribute it and/or modify it under the
+* terms of the GNU Affero General Public License as published by the  Free Software
+* Foundation, either version 3 of the License, or(at your option) any later version.
+*
+* This program is distributed  in the hope that it  will be useful, but WITHOUT ANY
+* WARRANTY;  without even  the implied warranty of MERCHANTABILITY or FITNESS FOR A
+* PARTICULAR PURPOSE.  See the GNU Affero General Public License  for  more details.
+*
+* You should have  received a copy  of the  GNU Affero General Public License along
+* with this program. If not, see<http://www.gnu.org/licenses/>.
+************************************************************************************/
+
 package http
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
-	"io"
-	"net/http"
+	"net"
+	"net/url"
+	"strings"
 	"time"
-)
 
-// DefaultClient used for http with a shorter timeout.
-var defaultClient = &http.Client{
-	Timeout: 5 * time.Second,
-}
+	"github.com/emitter-io/emitter/utils"
+	"github.com/valyala/fasthttp"
+)
 
 // HeaderValue represents a header with a value attached.
 type HeaderValue struct {
@@ -25,66 +36,137 @@ func NewHeader(header, value string) HeaderValue {
 	return HeaderValue{Header: header, Value: value}
 }
 
-// Get is a utility function which issues an HTTP Get on a specified URL. The encoding is JSON.
-var Get = func(url string, output interface{}, headers ...HeaderValue) error {
-	req, err := http.NewRequest("GET", url, nil)
+// Client represents an HTTP client which can be used for issuing requests concurrently.
+type Client interface {
+	Get(url string, output interface{}, headers ...HeaderValue) error
+	Post(url string, body []byte, output interface{}, headers ...HeaderValue) error
+	PostJSON(url string, body interface{}, output interface{}) (err error)
+	PostBinary(url string, body interface{}, output interface{}) (err error)
+}
+
+// Client implementation.
+type client struct {
+	host string               // The host name of the client.
+	http *fasthttp.HostClient // The underlying client.
+}
+
+// NewClient creates a new HTTP Client for the provided host. This will use round-robin
+// to load-balance the requests to the addresses resolved by the host.
+func NewClient(host string, timeout time.Duration) (Client, error) {
+
+	u, err := url.Parse(host)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Set the headers provided
+	// Get the addresses by performing a DNS lookup, this should not fail
+	addr, err := net.LookupHost(u.Hostname())
+	if err != nil {
+		return nil, err
+	}
+
+	// Add port to each address
+	for i, a := range addr {
+		addr[i] = a + ":" + u.Port()
+	}
+
+	// Construct a new client
+	c := new(client)
+	c.host = host
+	c.http = &fasthttp.HostClient{
+		Addr:         strings.Join(addr, ","),
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
+	}
+	return c, nil
+}
+
+// Get issues an HTTP Get on a specified URL and decodes the payload as JSON.
+func (c *client) Get(url string, output interface{}, headers ...HeaderValue) error {
+
+	// Prepare the request
+	req := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(req)
+	req.SetRequestURI(url)
+
+	// Set the headers
+	req.Header.Set("Accept", "application/json, application/binary")
 	for _, h := range headers {
 		req.Header.Set(h.Header, h.Value)
 	}
 
+	// Acquire a response
+	res := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(res)
+
 	// Issue the request
-	resp, err := defaultClient.Do(req)
+	err := c.http.Do(req, res)
 	if err != nil {
 		return err
 	}
 
-	return UnmarshalJSON(resp.Body, output)
+	// Get the content type
+	mime := string(res.Header.ContentType())
+	switch mime {
+	case "application/binary":
+		return utils.Decode(res.Body(), output)
+	}
+
+	// Always default to JSON here
+	return json.Unmarshal(res.Body(), output)
 }
 
-// Post is a utility function which marshals and issues an HTTP post on a specified URL. The
-// encoding is JSON.
-var Post = func(url string, body interface{}, output interface{}, headers ...HeaderValue) error {
-	b, err := json.Marshal(body)
-	if err != nil {
-		return err
-	}
+// Post is a utility function which marshals and issues an HTTP post on a specified URL.
+func (c *client) Post(url string, body []byte, output interface{}, headers ...HeaderValue) error {
 
-	// Build a new request
-	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
+	// Prepare the request
+	req := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(req)
+	req.SetRequestURI(url)
+	req.SetBody(body)
 
-	// Set the headers provided
+	// Set the headers
+	req.Header.SetMethod("POST")
+	req.Header.Set("Accept", "application/json, application/binary")
 	for _, h := range headers {
 		req.Header.Set(h.Header, h.Value)
 	}
 
+	// Acquire a response
+	res := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(res)
+
 	// Issue the request
-	resp, err := defaultClient.Do(req)
+	err := c.http.Do(req, res)
 	if err != nil {
 		return err
 	}
 
-	return UnmarshalJSON(resp.Body, output)
+	// Get the content type
+	mime := string(res.Header.ContentType())
+	switch mime {
+	case "application/binary":
+		return utils.Decode(res.Body(), output)
+	}
+
+	// Always default to JSON here
+	return json.Unmarshal(res.Body(), output)
 }
 
-// UnmarshalJSON unmarshals the given io.Reader pointing to a JSON, into a desired object
-var UnmarshalJSON = func(r io.Reader, out interface{}) error {
-	if r == nil {
-		return errors.New("'io.Reader' being decoded is nil")
+// PostJSON is a helper function which posts a JSON body with an appropriate content type.
+func (c *client) PostJSON(url string, body interface{}, output interface{}) (err error) {
+	var buffer []byte
+	if buffer, err = json.Marshal(body); err == nil {
+		err = c.Post(url, buffer, output, NewHeader("Content-Type", "application/json"))
 	}
+	return
+}
 
-	if out == nil {
-		return errors.New("output parameter 'out' is nil")
+// PostBinary is a helper function which posts a binary body with an appropriate content type.
+func (c *client) PostBinary(url string, body interface{}, output interface{}) (err error) {
+	var buffer []byte
+	if buffer, err = utils.Encode(body); err == nil {
+		err = c.Post(url, buffer, output, NewHeader("Content-Type", "application/binary"))
 	}
-
-	// Decode the json
-	dec := json.NewDecoder(r)
-	return dec.Decode(out)
+	return
 }

@@ -54,8 +54,9 @@ var _ Metering = new(HTTPStorage)
 
 // HTTPStorage represents a usage storage which posts meters over HTTP.
 type HTTPStorage struct {
-	counters *sync.Map
-	url      string
+	counters *sync.Map   // The counters map.
+	url      string      // The url to post to.
+	http     http.Client // The http client to use.
 }
 
 // NewHTTP creates a new HTTP storage
@@ -71,7 +72,7 @@ func (s *HTTPStorage) Name() string {
 }
 
 // Configure configures the provider.
-func (s *HTTPStorage) Configure(config map[string]interface{}) error {
+func (s *HTTPStorage) Configure(config map[string]interface{}) (err error) {
 	if config == nil {
 		return errors.New("Configuration was not provided for HTTP metering provider")
 	}
@@ -88,7 +89,10 @@ func (s *HTTPStorage) Configure(config map[string]interface{}) error {
 	if url, ok := config["url"]; ok {
 		s.url = url.(string)
 		utils.Repeat(s.store, interval, make(chan bool)) // TODO: closing chan
-		return nil
+
+		// Create a new HTTP client to use
+		s.http, err = http.NewClient(s.url, 30*time.Second)
+		return
 	}
 
 	return errors.New("The 'url' parameter was not provider in the configuration for HTTP contract provider")
@@ -109,7 +113,7 @@ func (s *HTTPStorage) store() {
 	})
 
 	var out interface{}
-	if err := http.Post(s.url, counters, &out); err != nil {
+	if err := s.http.PostJSON(s.url, counters, &out); err != nil {
 		logging.LogError("http metering", "reporting counters", err)
 	}
 }
