@@ -40,24 +40,26 @@ func TestHTTP_Name(t *testing.T) {
 	assert.Equal(t, "http", s.Name())
 }
 
+func TestHTTP_ConfigureErr(t *testing.T) {
+	s := NewHTTP()
+	close(s.done)
+
+	err := s.Configure(nil)
+	assert.Error(t, errors.New("Configuration was not provided for HTTP metering provider"), err)
+}
+
 func TestHTTP_Configure(t *testing.T) {
 	s := NewHTTP()
-	defer close(s.done)
+	close(s.done)
 
-	{
-		err := s.Configure(nil)
-		assert.Error(t, errors.New("Configuration was not provided for HTTP metering provider"), err)
-	}
+	err := s.Configure(map[string]interface{}{
+		"interval": 1000.0,
+		"url":      "http://localhost/test",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "http://localhost/test", s.url)
+	assert.NotNil(t, s.http)
 
-	{
-		err := s.Configure(map[string]interface{}{
-			"interval": 1000.0,
-			"url":      "http://localhost/test",
-		})
-		assert.NoError(t, err)
-		assert.Equal(t, "http://localhost/test", s.url)
-		assert.NotNil(t, s.http)
-	}
 }
 
 func TestHTTP_Store(t *testing.T) {
@@ -67,6 +69,7 @@ func TestHTTP_Store(t *testing.T) {
 	u2 := usage{MessageIn: 0, TrafficIn: 0, MessageEg: 0, TrafficEg: 0, Contract: 0x1}
 
 	s := NewHTTP()
+	defer close(s.done)
 	s.http = h
 
 	c := s.Get(1)
