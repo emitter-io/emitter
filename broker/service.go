@@ -110,7 +110,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	}
 
 	// Load the logging provider
-	logging.Logger = config.LoadProvider(cfg.Logging, logging.NewStdErr(), logging.NewLoggly()).(logging.Logging)
+	logging.Logger = config.LoadProvider(cfg.Logging, logging.NewStdErr()).(logging.Logging)
 	logging.LogTarget("service", "configured logging provider", logging.Logger.Name())
 
 	// Load the storage provider

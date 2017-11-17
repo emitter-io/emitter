@@ -1,6 +1,7 @@
 package usage
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,4 +36,24 @@ func TestHTTP_New(t *testing.T) {
 func TestHTTP_Name(t *testing.T) {
 	s := new(HTTPStorage)
 	assert.Equal(t, "http", s.Name())
+}
+
+func TestHTTP_Configure(t *testing.T) {
+	s := NewHTTP()
+	defer close(s.done)
+
+	{
+		err := s.Configure(nil)
+		assert.Error(t, errors.New("Configuration was not provided for HTTP metering provider"), err)
+	}
+
+	{
+		err := s.Configure(map[string]interface{}{
+			"interval": 1000.0,
+			"url":      "http://localhost/test",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "http://localhost/test", s.url)
+		assert.NotNil(t, s.http)
+	}
 }

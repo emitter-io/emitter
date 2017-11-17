@@ -15,14 +15,11 @@
 package logging
 
 import (
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 
 	"github.com/emitter-io/config"
-	"github.com/kelindar/go-loggly"
 )
 
 // Discard is the discard logger.
@@ -82,41 +79,4 @@ func (s *stderrLogger) Configure(config map[string]interface{}) error {
 // Printf prints a log line.
 func (s *stderrLogger) Printf(format string, v ...interface{}) {
 	(*log.Logger)(s).Printf(format+"\n", v...)
-}
-
-// ------------------------------------------------------------------------------------
-
-// logglyLogger implements Logging contract.
-var _ Logging = new(logglyLogger)
-
-// logglyLogger represents a simple golang logger.
-type logglyLogger struct {
-	cli *loggly.Client
-}
-
-// NewLoggly creates a new loggly logger.
-func NewLoggly() Logging {
-	return &logglyLogger{}
-}
-
-// Name returns the name of the provider.
-func (s *logglyLogger) Name() string {
-	return "loggly"
-}
-
-// Configure configures the provider
-func (s *logglyLogger) Configure(config map[string]interface{}) error {
-	if v, ok := config["token"]; ok {
-		if token, ok := v.(string); ok {
-			s.cli = loggly.New(token)
-			return nil
-		}
-	}
-
-	return errors.New("Loggly client did not contain a configuration for the 'token'")
-}
-
-// Printf prints a log line.
-func (s *logglyLogger) Printf(format string, v ...interface{}) {
-	s.cli.Info(fmt.Sprintf(format, v...))
 }
