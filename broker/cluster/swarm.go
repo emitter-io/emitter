@@ -172,8 +172,23 @@ func (s *Swarm) update() {
 }
 
 // Join attempts to join a set of existing peers.
-func (s *Swarm) Join(peers ...string) []error {
-	return s.router.ConnectionMaker.InitiateConnections(peers, false)
+func (s *Swarm) Join(peers ...string) (errs []error) {
+
+	// Resolve the host-names of the peers provided
+	var addrs []string
+	for _, h := range peers {
+		ips, err := net.LookupHost(h)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		addrs = append(addrs, ips...)
+	}
+
+	// Use all the available addresses to initiate the connections
+	if s.router != nil {
+		errs = s.router.ConnectionMaker.InitiateConnections(addrs, false)
+	}
+	return
 }
 
 // Merge merges the incoming state and returns a delta

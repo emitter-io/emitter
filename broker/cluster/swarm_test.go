@@ -130,3 +130,10 @@ func Test_merge(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, subscribed)
 }
+
+func TestJoin(t *testing.T) {
+	s := new(Swarm)
+
+	errs := s.Join("google.com", "127.0.0.1")
+	assert.Empty(t, errs)
+}
