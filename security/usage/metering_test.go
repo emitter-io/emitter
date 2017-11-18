@@ -33,6 +33,7 @@ func TestNoop_Get(t *testing.T) {
 func TestHTTP_New(t *testing.T) {
 	s := NewHTTP()
 	assert.NotNil(t, s.counters)
+
 }
 
 func TestHTTP_Name(t *testing.T) {
@@ -59,7 +60,6 @@ func TestHTTP_Configure(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "http://localhost/test", s.url)
 	assert.NotNil(t, s.http)
-
 }
 
 func TestHTTP_Store(t *testing.T) {

@@ -42,7 +42,8 @@ type HTTP struct {
 // NewHTTP creates a new HTTP storage.
 func NewHTTP() *HTTP {
 	return &HTTP{
-		done: make(chan bool),
+		frame: make(message.Frame, 0, 64),
+		done:  make(chan bool),
 	}
 }
 
@@ -95,7 +96,7 @@ func (s *HTTP) Store(m *message.Message) error {
 // n is specified by limit argument. It returns a channel which will be
 // ranged over to retrieve messages asynchronously.
 func (s *HTTP) QueryLast(ssid []uint32, limit int) (ch <-chan []byte, err error) {
-	re := make(chan []byte)
+	re := make(chan []byte, limit)
 	ch = re // We need to return the same channel, but receive only
 
 	// Get the raw bytes
@@ -115,6 +116,7 @@ func (s *HTTP) QueryLast(ssid []uint32, limit int) (ch <-chan []byte, err error)
 	if err != nil {
 		close(re)
 	}
+
 	return
 }
 

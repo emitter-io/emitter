@@ -18,7 +18,9 @@ import (
 	"testing"
 
 	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/network/http"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestHTTP_Name(t *testing.T) {
@@ -48,10 +50,40 @@ func TestHTTP_format(t *testing.T) {
 }
 
 func TestHTTP_Store(t *testing.T) {
-	s := NewHTTP()
+	h := http.NewMockClient()
+	h.On("Post", "msg/append", mock.Anything, nil, mock.Anything).Return([]byte{}, nil).Once()
 
-	s.Store(&message.Message{
-		Time: 0,
-	})
+	s := NewHTTP()
+	s.http = h
+
+	s.Store(&message.Message{})
 	assert.Equal(t, 1, len(s.frame))
+
+	s.store()
+	assert.Equal(t, 0, len(s.frame))
+}
+
+func TestHTTP_QueryLast(t *testing.T) {
+	frame := message.Frame{
+		*testMessage(1, 2, 3),
+		*testMessage(1, 2, 3),
+	}
+
+	encoded, _ := frame.Encode()
+
+	h := http.NewMockClient()
+	h.On("Get", "msg/last?ssid=[1,2,3]&n=10", nil, mock.Anything).Return(encoded, nil).Once()
+
+	s := NewHTTP()
+	s.http = h
+
+	out, err := s.QueryLast([]uint32{1, 2, 3}, 10)
+	assert.NoError(t, err)
+
+	count := 0
+	for range out {
+		count++
+	}
+
+	assert.Equal(t, 2, count)
 }
