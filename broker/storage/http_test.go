@@ -13,3 +13,45 @@
 ************************************************************************************/
 
 package storage
+
+import (
+	"testing"
+
+	"github.com/emitter-io/emitter/broker/message"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestHTTP_Name(t *testing.T) {
+	s := NewHTTP()
+	assert.Equal(t, "http", s.Name())
+}
+
+func TestHTTP_Configure(t *testing.T) {
+	s := NewHTTP()
+	cfg := map[string]interface{}{
+		"interval": float64(100),
+		"url":      "http://127.0.0.1/",
+	}
+
+	err := s.Configure(cfg)
+	assert.NoError(t, err)
+
+	errClose := s.Close()
+	assert.NoError(t, errClose)
+}
+
+func TestHTTP_format(t *testing.T) {
+	s := NewHTTP()
+
+	assert.Equal(t, "msg/append", s.buildAppendURL())
+	assert.Equal(t, "msg/last?ssid=[1,2,3]&n=100", s.buildLastURL([]uint32{1, 2, 3}, 100))
+}
+
+func TestHTTP_Store(t *testing.T) {
+	s := NewHTTP()
+
+	s.Store(&message.Message{
+		Time: 0,
+	})
+	assert.Equal(t, 1, len(s.frame))
+}

@@ -127,9 +127,13 @@ func (s *HTTP) Close() error {
 
 // Store periodically flushes the pending queue.
 func (s *HTTP) store() {
+	s.Lock()
+	if len(s.frame) == 0 {
+		s.Unlock()
+		return
+	}
 
 	// Encode the frame
-	s.Lock()
 	buffer, _ := s.frame.Encode()
 	s.frame = s.frame[:0]
 	s.Unlock()
