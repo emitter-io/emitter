@@ -1,12 +1,13 @@
 package http
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"encoding/json"
+	"github.com/emitter-io/emitter/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,6 +25,7 @@ func TestNewClient(t *testing.T) {
 		{url: "http://google.com/123", ok: true},
 		{url: "google.com/123", ok: false},
 		{url: "235235", ok: false},
+		{url: "::", ok: false},
 	}
 
 	for _, tc := range tests {
@@ -38,11 +40,20 @@ func TestNewClient(t *testing.T) {
 }
 
 func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	b, _ := json.Marshal(&testObject{
-		Field: "response",
-	})
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
+	var response []byte
+	if r.Header.Get("Content-Type") == "application/binary" {
+		w.Header().Set("Content-Type", "application/binary")
+		response, _ = utils.Encode(&testObject{
+			Field: "response",
+		})
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		response, _ = json.Marshal(&testObject{
+			Field: "response",
+		})
+	}
+
+	w.Write(response)
 }
 
 func TestPostGet(t *testing.T) {
@@ -54,19 +65,25 @@ func TestPostGet(t *testing.T) {
 	jsonBody, _ := json.Marshal(body)
 
 	// Reuse the client
-	c, err := NewClient(s.URL, time.Second)
+	c, err := NewClient(s.URL, time.Second, NewHeader("Authorization", "123"))
 	assert.NoError(t, err)
 
 	{
 		output := new(testObject)
-		err := c.Get(s.URL, output)
+		_, err := c.Get(s.URL, output)
 		assert.NoError(t, err)
 		assert.EqualValues(t, expect, output)
 	}
 
 	{
+		body, err := c.Get(s.URL, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, body)
+	}
+
+	{
 		output := new(testObject)
-		err := c.Post(s.URL, jsonBody, output)
+		_, err := c.Post(s.URL, jsonBody, output)
 		assert.NoError(t, err)
 		assert.EqualValues(t, expect, output)
 	}

@@ -48,6 +48,13 @@ type InMemory struct {
 	Query func(string, []byte) (message.Awaiter, error) // The cluster request function.
 }
 
+// NewInMemory creates a new in-memory storage.
+func NewInMemory(q func(string, []byte) (message.Awaiter, error)) *InMemory {
+	return &InMemory{
+		Query: q,
+	}
+}
+
 // Name returns the name of the provider.
 func (s *InMemory) Name() string {
 	return "inmemory"

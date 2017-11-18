@@ -179,7 +179,7 @@ func (p *HTTPContractProvider) Get(id uint32) (Contract, bool) {
 
 func (p *HTTPContractProvider) fetchContract(id uint32) (*contract, bool) {
 	c := new(contract)
-	err := p.http.Get(fmt.Sprintf("%s%d", p.url, id), c)
+	_, err := p.http.Get(fmt.Sprintf("%s%d", p.url, id), c)
 	if err != nil {
 		logging.LogError("contract", "fetching http contract", err)
 		return nil, false

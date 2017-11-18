@@ -47,6 +47,11 @@ var _ Storage = new(Noop)
 // Noop represents a storage which does nothing.
 type Noop struct{}
 
+// NewNoop creates a new no-op storage.
+func NewNoop() *Noop {
+	return new(Noop)
+}
+
 // Name returns the name of the provider.
 func (s *Noop) Name() string {
 	return "noop"

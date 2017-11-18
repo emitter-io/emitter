@@ -1,13 +1,13 @@
 package cluster
 
 import (
-	"github.com/weaveworks/mesh"
 	"io"
 	"testing"
 
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/weaveworks/mesh"
 )
 
 func TestOnGossipUnicast(t *testing.T) {
@@ -134,6 +134,6 @@ func Test_merge(t *testing.T) {
 func TestJoin(t *testing.T) {
 	s := new(Swarm)
 
-	errs := s.Join("google.com", "127.0.0.1")
+	errs := s.Join("google.com", "127.0.0.1", "127.0.0.1:4000")
 	assert.Empty(t, errs)
 }

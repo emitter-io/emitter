@@ -15,6 +15,8 @@
 package cluster
 
 import (
+	"errors"
+	"fmt"
 	"net"
 	"strings"
 	"sync"
@@ -60,13 +62,13 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 	}
 
 	// Get the cluster binding address
-	listenAddr, err := parseAddr(cfg.ListenAddr)
+	listenAddr, err := parseAddr(cfg.ListenAddr, 4000)
 	if err != nil {
 		panic(err)
 	}
 
 	// Get the advertised address
-	advertiseAddr, err := parseAddr(cfg.AdvertiseAddr)
+	advertiseAddr, err := parseAddr(cfg.AdvertiseAddr, 4000)
 	if err != nil {
 		panic(err)
 	}
@@ -173,15 +175,33 @@ func (s *Swarm) update() {
 
 // Join attempts to join a set of existing peers.
 func (s *Swarm) Join(peers ...string) (errs []error) {
+	for _, a := range peers {
+		println("peers", a)
+	}
 
 	// Resolve the host-names of the peers provided
 	var addrs []string
 	for _, h := range peers {
-		ips, err := net.LookupHost(h)
+
+		// Check first if this is a domain name and add its addresses
+		if ips, err := net.LookupHost(h); err == nil {
+			addrs = append(addrs, ips...)
+			continue
+		}
+
+		// It's not a host name, parse the address
+		addr, err := parseAddr(h, 80)
 		if err != nil {
 			errs = append(errs, err)
+			continue
 		}
-		addrs = append(addrs, ips...)
+
+		// Successfullyt parsed the address
+		addrs = append(addrs, addr.String())
+	}
+
+	for _, a := range addrs {
+		println("join", a)
 	}
 
 	// Use all the available addresses to initiate the connections
@@ -332,9 +352,18 @@ func (s *Swarm) Close() error {
 }
 
 // parseAddr parses a TCP address.
-func parseAddr(text string) (*net.TCPAddr, error) {
+func parseAddr(text string, defaultPort int) (*net.TCPAddr, error) {
+	if text == "" {
+		return nil, errors.New("unable to parse an empty address")
+	}
+
 	if text[0] == ':' {
 		text = "0.0.0.0" + text
+	}
+
+	// If we have only an IP address, use the default port
+	if ip := net.ParseIP(text); ip != nil {
+		text = fmt.Sprintf("%s:%d", ip, defaultPort)
 	}
 
 	addr := strings.Replace(text, "public", address.External().String(), 1)

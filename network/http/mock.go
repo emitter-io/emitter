@@ -31,15 +31,15 @@ func NewMockClient() *MockClient {
 }
 
 // Get issues an HTTP Get on a specified URL and decodes the payload as JSON.
-func (mock *MockClient) Get(url string, output interface{}, headers ...HeaderValue) error {
+func (mock *MockClient) Get(url string, output interface{}, headers ...HeaderValue) ([]byte, error) {
 	mockArgs := mock.Called(url, output, headers)
-	return mockArgs.Error(0)
+	return mockArgs.Get(0).([]byte), mockArgs.Error(1)
 }
 
 // Post is a utility function which marshals and issues an HTTP post on a specified URL.
-func (mock *MockClient) Post(url string, body []byte, output interface{}, headers ...HeaderValue) error {
+func (mock *MockClient) Post(url string, body []byte, output interface{}, headers ...HeaderValue) ([]byte, error) {
 	mockArgs := mock.Called(url, body, output, headers)
-	return mockArgs.Error(0)
+	return mockArgs.Get(0).([]byte), mockArgs.Error(1)
 }
 
 // PostJSON is a helper function which posts a JSON body with an appropriate content type.

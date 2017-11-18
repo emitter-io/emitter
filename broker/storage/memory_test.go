@@ -38,7 +38,7 @@ func newTestMemStore() *InMemory {
 }
 
 func TestInMemory_Name(t *testing.T) {
-	s := new(InMemory)
+	s := NewInMemory(nil)
 	assert.Equal(t, "inmemory", s.Name())
 }
 

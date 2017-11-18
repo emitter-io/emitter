@@ -94,9 +94,9 @@ func TestHTTPContractProvider_Get(t *testing.T) {
 	h.On("Get", "1", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		output := args.Get(1).(interface{})
 		json.Unmarshal([]byte(`{"id": 1}`), output)
-	}).Return(nil)
+	}).Return([]byte{}, nil)
 
-	h.On("Get", "2", mock.Anything, mock.Anything).Return(nil)
+	h.On("Get", "2", mock.Anything, mock.Anything).Return([]byte{}, nil)
 
 	p, _ := testNewHTTPContractProvider()
 	p.http = h
