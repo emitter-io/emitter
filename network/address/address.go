@@ -15,13 +15,14 @@
 package address
 
 import (
-	"github.com/emitter-io/emitter/logging"
 	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/emitter-io/emitter/logging"
 )
 
 var hardware uint64
@@ -47,21 +48,19 @@ func getExternal(urls ...string) (net.IP, bool) {
 	for _, url := range urls {
 		cli := http.Client{Timeout: time.Duration(5 * time.Second)}
 		res, err := cli.Get(url)
-		if err != nil {
-			continue
-		}
+		if err == nil {
 
-		// Read the response
-		defer res.Body.Close()
-		r, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			continue
-		}
+			// Read the response
+			defer res.Body.Close()
+			r, err := ioutil.ReadAll(res.Body)
+			if err == nil {
 
-		// Fix and parse
-		addr := strings.Replace(string(r), "\n", "", -1)
-		ip := net.ParseIP(addr)
-		return ip, ip != nil
+				// Fix and parse
+				addr := strings.Replace(string(r), "\n", "", -1)
+				ip := net.ParseIP(addr)
+				return ip, ip != nil
+			}
+		}
 	}
 
 	return nil, false

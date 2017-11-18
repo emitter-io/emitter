@@ -48,12 +48,14 @@ type Client interface {
 type client struct {
 	host string               // The host name of the client.
 	http *fasthttp.HostClient // The underlying client.
+	head []HeaderValue        // The default headers to add on each request.
 }
 
 // NewClient creates a new HTTP Client for the provided host. This will use round-robin
 // to load-balance the requests to the addresses resolved by the host.
-func NewClient(host string, timeout time.Duration) (Client, error) {
+func NewClient(host string, timeout time.Duration, defaultHeaders ...HeaderValue) (Client, error) {
 
+	// Parse the URL
 	u, err := url.Parse(host)
 	if err != nil {
 		return nil, err
@@ -73,6 +75,7 @@ func NewClient(host string, timeout time.Duration) (Client, error) {
 	// Construct a new client
 	c := new(client)
 	c.host = host
+	c.head = defaultHeaders
 	c.http = &fasthttp.HostClient{
 		Addr:         strings.Join(addr, ","),
 		ReadTimeout:  timeout,
@@ -83,74 +86,12 @@ func NewClient(host string, timeout time.Duration) (Client, error) {
 
 // Get issues an HTTP Get on a specified URL and decodes the payload as JSON.
 func (c *client) Get(url string, output interface{}, headers ...HeaderValue) error {
-
-	// Prepare the request
-	req := fasthttp.AcquireRequest()
-	defer fasthttp.ReleaseRequest(req)
-	req.SetRequestURI(url)
-
-	// Set the headers
-	req.Header.Set("Accept", "application/json, application/binary")
-	for _, h := range headers {
-		req.Header.Set(h.Header, h.Value)
-	}
-
-	// Acquire a response
-	res := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(res)
-
-	// Issue the request
-	err := c.http.Do(req, res)
-	if err != nil {
-		return err
-	}
-
-	// Get the content type
-	mime := string(res.Header.ContentType())
-	switch mime {
-	case "application/binary":
-		return utils.Decode(res.Body(), output)
-	}
-
-	// Always default to JSON here
-	return json.Unmarshal(res.Body(), output)
+	return c.do(url, "GET", nil, output, headers)
 }
 
 // Post is a utility function which marshals and issues an HTTP post on a specified URL.
 func (c *client) Post(url string, body []byte, output interface{}, headers ...HeaderValue) error {
-
-	// Prepare the request
-	req := fasthttp.AcquireRequest()
-	defer fasthttp.ReleaseRequest(req)
-	req.SetRequestURI(url)
-	req.SetBody(body)
-
-	// Set the headers
-	req.Header.SetMethod("POST")
-	req.Header.Set("Accept", "application/json, application/binary")
-	for _, h := range headers {
-		req.Header.Set(h.Header, h.Value)
-	}
-
-	// Acquire a response
-	res := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(res)
-
-	// Issue the request
-	err := c.http.Do(req, res)
-	if err != nil {
-		return err
-	}
-
-	// Get the content type
-	mime := string(res.Header.ContentType())
-	switch mime {
-	case "application/binary":
-		return utils.Decode(res.Body(), output)
-	}
-
-	// Always default to JSON here
-	return json.Unmarshal(res.Body(), output)
+	return c.do(url, "POST", body, output, headers)
 }
 
 // PostJSON is a helper function which posts a JSON body with an appropriate content type.
@@ -167,6 +108,52 @@ func (c *client) PostBinary(url string, body interface{}, output interface{}) (e
 	var buffer []byte
 	if buffer, err = utils.Encode(body); err == nil {
 		err = c.Post(url, buffer, output, NewHeader("Content-Type", "application/binary"))
+	}
+	return
+}
+
+// This performs a request
+func (c *client) do(url, method string, body []byte, output interface{}, headers []HeaderValue) (err error) {
+
+	// Prepare the request
+	req := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(req)
+	req.SetRequestURI(url)
+
+	// Set body if provided
+	if body != nil {
+		req.SetBody(body)
+	}
+
+	// Set the default headers
+	for _, h := range c.head {
+		req.Header.Set(h.Header, h.Value)
+	}
+
+	// Set the headers
+	req.Header.SetMethod(method)
+	req.Header.Set("Accept", "application/json, application/binary")
+	for _, h := range headers {
+		req.Header.Set(h.Header, h.Value)
+	}
+
+	// Acquire a response
+	res := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(res)
+
+	// Issue the request
+	err = c.http.Do(req, res)
+	if err == nil {
+		// Get the content type
+		mime := string(res.Header.ContentType())
+		switch mime {
+		case "application/binary":
+			err = utils.Decode(res.Body(), output)
+
+		default:
+			// Always default to JSON here
+			err = json.Unmarshal(res.Body(), output)
+		}
 	}
 	return
 }

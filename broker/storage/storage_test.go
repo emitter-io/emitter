@@ -19,7 +19,7 @@ func testMessage(a, b, c uint32) *message.Message {
 }
 
 func TestNoop_Store(t *testing.T) {
-	s := new(Noop)
+	s := NewNoop()
 	err := s.Store(testMessage(1, 2, 3))
 	assert.NoError(t, err)
 }

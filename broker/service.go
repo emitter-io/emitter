@@ -114,11 +114,9 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	logging.LogTarget("service", "configured logging provider", logging.Logger.Name())
 
 	// Load the storage provider
-	memstore := &storage.InMemory{Query: s.Query}
+	memstore := storage.NewInMemory(s.Query)
 	s.querier.HandleFunc(memstore.OnRequest)
-	s.storage = config.LoadProvider(cfg.Storage,
-		new(storage.Noop),
-		memstore).(storage.Storage)
+	s.storage = config.LoadProvider(cfg.Storage, storage.NewNoop(), storage.NewHTTP(), memstore).(storage.Storage)
 	logging.LogTarget("service", "configured storage provider", s.storage.Name())
 
 	// Load the metering provider

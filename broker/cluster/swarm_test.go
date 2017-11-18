@@ -1,13 +1,13 @@
 package cluster
 
 import (
-	"github.com/weaveworks/mesh"
 	"io"
 	"testing"
 
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/weaveworks/mesh"
 )
 
 func TestOnGossipUnicast(t *testing.T) {
