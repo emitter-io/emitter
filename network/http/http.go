@@ -38,8 +38,8 @@ func NewHeader(header, value string) HeaderValue {
 
 // Client represents an HTTP client which can be used for issuing requests concurrently.
 type Client interface {
-	Get(url string, output interface{}, headers ...HeaderValue) error
-	Post(url string, body []byte, output interface{}, headers ...HeaderValue) error
+	Get(url string, output interface{}, headers ...HeaderValue) ([]byte, error)
+	Post(url string, body []byte, output interface{}, headers ...HeaderValue) ([]byte, error)
 	PostJSON(url string, body interface{}, output interface{}) (err error)
 	PostBinary(url string, body interface{}, output interface{}) (err error)
 }
@@ -85,12 +85,12 @@ func NewClient(host string, timeout time.Duration, defaultHeaders ...HeaderValue
 }
 
 // Get issues an HTTP Get on a specified URL and decodes the payload as JSON.
-func (c *client) Get(url string, output interface{}, headers ...HeaderValue) error {
+func (c *client) Get(url string, output interface{}, headers ...HeaderValue) ([]byte, error) {
 	return c.do(url, "GET", nil, output, headers)
 }
 
 // Post is a utility function which marshals and issues an HTTP post on a specified URL.
-func (c *client) Post(url string, body []byte, output interface{}, headers ...HeaderValue) error {
+func (c *client) Post(url string, body []byte, output interface{}, headers ...HeaderValue) ([]byte, error) {
 	return c.do(url, "POST", body, output, headers)
 }
 
@@ -98,7 +98,7 @@ func (c *client) Post(url string, body []byte, output interface{}, headers ...He
 func (c *client) PostJSON(url string, body interface{}, output interface{}) (err error) {
 	var buffer []byte
 	if buffer, err = json.Marshal(body); err == nil {
-		err = c.Post(url, buffer, output, NewHeader("Content-Type", "application/json"))
+		_, err = c.Post(url, buffer, output, NewHeader("Content-Type", "application/json"))
 	}
 	return
 }
@@ -107,13 +107,13 @@ func (c *client) PostJSON(url string, body interface{}, output interface{}) (err
 func (c *client) PostBinary(url string, body interface{}, output interface{}) (err error) {
 	var buffer []byte
 	if buffer, err = utils.Encode(body); err == nil {
-		err = c.Post(url, buffer, output, NewHeader("Content-Type", "application/binary"))
+		_, err = c.Post(url, buffer, output, NewHeader("Content-Type", "application/binary"))
 	}
 	return
 }
 
 // This performs a request
-func (c *client) do(url, method string, body []byte, output interface{}, headers []HeaderValue) (err error) {
+func (c *client) do(url, method string, body []byte, output interface{}, headers []HeaderValue) (responseBody []byte, err error) {
 
 	// Prepare the request
 	req := fasthttp.AcquireRequest()
@@ -144,15 +144,21 @@ func (c *client) do(url, method string, body []byte, output interface{}, headers
 	// Issue the request
 	err = c.http.Do(req, res)
 	if err == nil {
-		// Get the content type
-		mime := string(res.Header.ContentType())
-		switch mime {
-		case "application/binary":
-			err = utils.Decode(res.Body(), output)
+		// Set the response body
+		responseBody = res.Body()
 
-		default:
-			// Always default to JSON here
-			err = json.Unmarshal(res.Body(), output)
+		// Decode if necessary
+		if output != nil {
+			// Get the content type
+			mime := string(res.Header.ContentType())
+			switch mime {
+			case "application/binary":
+				err = utils.Decode(res.Body(), output)
+
+			default:
+				// Always default to JSON here
+				err = json.Unmarshal(res.Body(), output)
+			}
 		}
 	}
 	return

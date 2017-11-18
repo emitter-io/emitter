@@ -70,14 +70,20 @@ func TestPostGet(t *testing.T) {
 
 	{
 		output := new(testObject)
-		err := c.Get(s.URL, output)
+		_, err := c.Get(s.URL, output)
 		assert.NoError(t, err)
 		assert.EqualValues(t, expect, output)
 	}
 
 	{
+		body, err := c.Get(s.URL, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, body)
+	}
+
+	{
 		output := new(testObject)
-		err := c.Post(s.URL, jsonBody, output)
+		_, err := c.Post(s.URL, jsonBody, output)
 		assert.NoError(t, err)
 		assert.EqualValues(t, expect, output)
 	}
