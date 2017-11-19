@@ -40,8 +40,6 @@ func NewHeader(header, value string) HeaderValue {
 type Client interface {
 	Get(url string, output interface{}, headers ...HeaderValue) ([]byte, error)
 	Post(url string, body []byte, output interface{}, headers ...HeaderValue) ([]byte, error)
-	PostJSON(url string, body interface{}, output interface{}) (err error)
-	PostBinary(url string, body interface{}, output interface{}) (err error)
 }
 
 // Client implementation.
@@ -92,24 +90,6 @@ func (c *client) Get(url string, output interface{}, headers ...HeaderValue) ([]
 // Post is a utility function which marshals and issues an HTTP post on a specified URL.
 func (c *client) Post(url string, body []byte, output interface{}, headers ...HeaderValue) ([]byte, error) {
 	return c.do(url, "POST", body, output, headers)
-}
-
-// PostJSON is a helper function which posts a JSON body with an appropriate content type.
-func (c *client) PostJSON(url string, body interface{}, output interface{}) (err error) {
-	var buffer []byte
-	if buffer, err = json.Marshal(body); err == nil {
-		_, err = c.Post(url, buffer, output, NewHeader("Content-Type", "application/json"))
-	}
-	return
-}
-
-// PostBinary is a helper function which posts a binary body with an appropriate content type.
-func (c *client) PostBinary(url string, body interface{}, output interface{}) (err error) {
-	var buffer []byte
-	if buffer, err = utils.Encode(body); err == nil {
-		_, err = c.Post(url, buffer, output, NewHeader("Content-Type", "application/binary"))
-	}
-	return
 }
 
 // This performs a request

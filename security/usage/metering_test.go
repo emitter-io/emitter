@@ -64,11 +64,12 @@ func TestHTTP_Configure(t *testing.T) {
 
 func TestHTTP_Store(t *testing.T) {
 	h := http.NewMockClient()
-	h.On("PostJSON", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	h.On("Post", "http://127.0.0.1", mock.Anything, nil, mock.Anything).Return([]byte{}, nil)
 	u1 := usage{MessageIn: 1, TrafficIn: 200, MessageEg: 1, TrafficEg: 100, Contract: 0x1}
 	u2 := usage{MessageIn: 0, TrafficIn: 0, MessageEg: 0, TrafficEg: 0, Contract: 0x1}
 
 	s := NewHTTP()
+	s.url = "http://127.0.0.1"
 	defer close(s.done)
 	s.http = h
 

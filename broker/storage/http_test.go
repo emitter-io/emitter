@@ -28,11 +28,25 @@ func TestHTTP_Name(t *testing.T) {
 	assert.Equal(t, "http", s.Name())
 }
 
+func TestHTTP_ConfigureNil(t *testing.T) {
+	s := NewHTTP()
+
+	err1 := s.Configure(nil)
+	assert.Error(t, err1)
+
+	err2 := s.Configure(map[string]interface{}{})
+	assert.Error(t, err2)
+
+	errClose := s.Close()
+	assert.NoError(t, errClose)
+}
+
 func TestHTTP_Configure(t *testing.T) {
 	s := NewHTTP()
 	cfg := map[string]interface{}{
-		"interval": float64(100),
-		"url":      "http://127.0.0.1/",
+		"interval":      float64(100),
+		"url":           "http://127.0.0.1/",
+		"authorization": "Digest 1234",
 	}
 
 	err := s.Configure(cfg)
@@ -41,7 +55,6 @@ func TestHTTP_Configure(t *testing.T) {
 	errClose := s.Close()
 	assert.NoError(t, errClose)
 }
-
 func TestHTTP_format(t *testing.T) {
 	s := NewHTTP()
 

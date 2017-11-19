@@ -41,15 +41,3 @@ func (mock *MockClient) Post(url string, body []byte, output interface{}, header
 	mockArgs := mock.Called(url, body, output, headers)
 	return mockArgs.Get(0).([]byte), mockArgs.Error(1)
 }
-
-// PostJSON is a helper function which posts a JSON body with an appropriate content type.
-func (mock *MockClient) PostJSON(url string, body interface{}, output interface{}) (err error) {
-	mockArgs := mock.Called(url, body, output)
-	return mockArgs.Error(0)
-}
-
-// PostBinary is a helper function which posts a binary body with an appropriate content type.
-func (mock *MockClient) PostBinary(url string, body interface{}, output interface{}) (err error) {
-	mockArgs := mock.Called(url, body, output)
-	return mockArgs.Error(0)
-}

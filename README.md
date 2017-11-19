@@ -1,5 +1,11 @@
 ![](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/logo/emitter_logo_blue.png)
 
+[![Join the chat at https://gitter.im/emitter-io/public](https://badges.gitter.im/emitter-io/public.svg)](https://gitter.im/emitter-io/public?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
+[![Build status](https://ci.appveyor.com/api/projects/status/6im4291ao9i664ix?svg=true)](https://ci.appveyor.com/project/Kelindar/emitter)
+[![Coverage Status](https://coveralls.io/repos/github/emitter-io/emitter/badge.svg?branch=master)](https://coveralls.io/github/emitter-io/emitter?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/emitter-io/emitter)](https://goreportcard.com/report/github.com/emitter-io/emitter)
+[![Twitter Follow](https://img.shields.io/twitter/follow/emitter_io.svg?style=social&label=Follow)](https://twitter.com/emitter_io)
+
 # Emitter: Clustered Publish-Subscribe Broker
 > [Emitter is a free open source real-time messaging service](https://emitter.io) that connects all devices. This publish-subscribe messaging API is built for speed and security.
 
@@ -7,10 +13,6 @@ Emitter is a real-time communication service for connecting online devices. Infr
 
 Emitter can be used for online gaming and mobile apps by satisfying the requirements for low latency, binary messaging and high throughput. It can also be used for the real-time web application such as dashboards or visual analytics or chat systems. Moreover, Emitter is perfect for the internet of things and allows sensors to be controlled and data gathered and analyzed.
 
-[![Join the chat at https://gitter.im/emitter-io/public](https://badges.gitter.im/emitter-io/public.svg)](https://gitter.im/emitter-io/public?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
-[![Build status](https://ci.appveyor.com/api/projects/status/6im4291ao9i664ix?svg=true)](https://ci.appveyor.com/project/Kelindar/emitter)
-[![Coverage Status](https://coveralls.io/repos/github/emitter-io/emitter/badge.svg?branch=master)](https://coveralls.io/github/emitter-io/emitter?branch=master)
-[![Twitter Follow](https://img.shields.io/twitter/follow/emitter_io.svg?style=social&label=Follow)](https://twitter.com/emitter_io)
 
 ## Quick Start
 
