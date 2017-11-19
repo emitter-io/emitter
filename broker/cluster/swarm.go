@@ -175,10 +175,6 @@ func (s *Swarm) update() {
 
 // Join attempts to join a set of existing peers.
 func (s *Swarm) Join(peers ...string) (errs []error) {
-	for _, a := range peers {
-		println("peers", a)
-	}
-
 	// Resolve the host-names of the peers provided
 	var addrs []string
 	for _, h := range peers {
@@ -201,7 +197,7 @@ func (s *Swarm) Join(peers ...string) (errs []error) {
 	}
 
 	for _, a := range addrs {
-		println("join", a)
+		logging.LogTarget("swarm", "joining", a)
 	}
 
 	// Use all the available addresses to initiate the connections
