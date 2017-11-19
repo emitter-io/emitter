@@ -104,7 +104,8 @@ func (s *HTTP) QueryLast(ssid []uint32, limit int) (ch <-chan []byte, err error)
 	if resp, err = s.http.Get(s.buildLastURL(ssid, limit), nil, http.NewHeader("Accept", "application/binary")); err == nil {
 
 		// Decode the frame we received from the server
-		if frame, err := message.DecodeFrame(resp); err == nil {
+		var frame message.Frame
+		if frame, err = message.DecodeFrame(resp); err == nil {
 			for _, msg := range frame {
 				re <- msg.Payload
 			}
