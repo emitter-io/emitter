@@ -1,6 +1,7 @@
 package usage
 
 import (
+	"encoding/json"
 	"errors"
 	"sync"
 	"time"
@@ -54,10 +55,11 @@ var _ Metering = new(HTTPStorage)
 
 // HTTPStorage represents a usage storage which posts meters over HTTP.
 type HTTPStorage struct {
-	counters *sync.Map   // The counters map.
-	url      string      // The url to post to.
-	http     http.Client // The http client to use.
-	done     chan bool   // The closing channel.
+	counters *sync.Map          // The counters map.
+	url      string             // The url to post to.
+	http     http.Client        // The http client to use.
+	done     chan bool          // The closing channel.
+	head     []http.HeaderValue // The http headers to add with each request.
 }
 
 // NewHTTP creates a new HTTP storage
@@ -87,6 +89,14 @@ func (s *HTTPStorage) Configure(config map[string]interface{}) (err error) {
 		}
 	}
 
+	// Get the authorization header to add to the request
+	headers := []http.HeaderValue{http.NewHeader("Accept", "application/json")}
+	if v, ok := config["authorization"]; ok {
+		if header, ok := v.(string); ok {
+			headers = append(headers, http.NewHeader("Authorization", header))
+		}
+	}
+
 	// Get the url from the provider configuration
 	if url, ok := config["url"]; ok {
 		s.url = url.(string)
@@ -113,8 +123,10 @@ func (s *HTTPStorage) store() {
 		return true
 	})
 
-	var out interface{}
-	if err := s.http.PostJSON(s.url, counters, &out); err != nil {
-		logging.LogError("http metering", "reporting counters", err)
+	// Encode as JSON and post without waiting for the body
+	if encoded, err := json.Marshal(counters); err == nil {
+		if _, err := s.http.Post(s.url, encoded, nil, s.head...); err != nil {
+			logging.LogError("http metering", "reporting counters", err)
+		}
 	}
 }

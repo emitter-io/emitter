@@ -33,10 +33,11 @@ var _ Storage = new(HTTP)
 // HTTP represents a storage which uses HTTP requests to store/retrieve messages.
 type HTTP struct {
 	sync.Mutex
-	frame message.Frame // The pending message frame.
-	base  string        // The base url to use for the storage.
-	http  http.Client   // The http client to use.
-	done  chan bool     // The closing channel.
+	frame message.Frame      // The pending message frame.
+	base  string             // The base url to use for the storage.
+	http  http.Client        // The http client to use.
+	head  []http.HeaderValue // The http headers to add with each request.
+	done  chan bool          // The closing channel.
 }
 
 // NewHTTP creates a new HTTP storage.
@@ -68,10 +69,19 @@ func (s *HTTP) Configure(config map[string]interface{}) (err error) {
 		}
 	}
 
+	// Get the authorization header to add to the request
+	headers := []http.HeaderValue{http.NewHeader("Accept", "application/binary")}
+	if v, ok := config["authorization"]; ok {
+		if header, ok := v.(string); ok {
+			headers = append(headers, http.NewHeader("Authorization", header))
+		}
+	}
+
 	// Get the url from the provider configuration
 	if url, ok := config["url"]; ok {
 		s.base = url.(string)
 		s.http, err = http.NewClient(s.base, 30*time.Second)
+		s.head = headers
 
 		utils.Repeat(s.store, interval, s.done) // TODO: closing chan
 		return
@@ -101,7 +111,7 @@ func (s *HTTP) QueryLast(ssid []uint32, limit int) (ch <-chan []byte, err error)
 
 	// Get the raw bytes
 	var resp []byte
-	if resp, err = s.http.Get(s.buildLastURL(ssid, limit), nil, http.NewHeader("Accept", "application/binary")); err == nil {
+	if resp, err = s.http.Get(s.buildLastURL(ssid, limit), nil, s.head...); err == nil {
 
 		// Decode the frame we received from the server
 		var frame message.Frame
@@ -142,7 +152,7 @@ func (s *HTTP) store() {
 	s.Unlock()
 
 	// TODO: Make sure we don't lose messages if something happens
-	if _, err := s.http.Post(s.buildAppendURL(), buffer, nil, http.NewHeader("Content-Type", "application/binary")); err != nil {
+	if _, err := s.http.Post(s.buildAppendURL(), buffer, nil, s.head...); err != nil {
 		logging.LogError("http storage", "storing messages", err)
 	}
 }

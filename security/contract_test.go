@@ -109,3 +109,25 @@ func TestHTTPContractProvider_Get(t *testing.T) {
 	assert.False(t, ok2)
 	assert.Nil(t, contractByWrongID)
 }
+
+func TestHTTPContractPovider_Configure(t *testing.T) {
+	p, _ := testNewHTTPContractProvider()
+
+	{
+		err := p.Configure(nil)
+		assert.Error(t, err)
+	}
+
+	{
+		err := p.Configure(map[string]interface{}{})
+		assert.Error(t, err)
+	}
+
+	{
+		err := p.Configure(map[string]interface{}{
+			"authorization": "Digest 123",
+			"url":           "http://127.0.0.1",
+		})
+		assert.NoError(t, err)
+	}
+}

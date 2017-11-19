@@ -88,17 +88,4 @@ func TestPostGet(t *testing.T) {
 		assert.EqualValues(t, expect, output)
 	}
 
-	{
-		output := new(testObject)
-		err := c.PostJSON(s.URL, body, output)
-		assert.NoError(t, err)
-		assert.EqualValues(t, expect, output)
-	}
-
-	{
-		output := new(testObject)
-		err := c.PostBinary(s.URL, body, output)
-		assert.NoError(t, err)
-		assert.EqualValues(t, expect, output)
-	}
 }

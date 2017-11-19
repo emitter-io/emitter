@@ -25,11 +25,4 @@ func TestMock(t *testing.T) {
 	_, e2 := c.Post(url, buf, out)
 	assert.Nil(t, e2)
 
-	// PostJSON(url string, body interface{}, output interface{}) (err error)
-	c.On("PostJSON", url, mock.Anything, mock.Anything).Return(nil).Once()
-	assert.Nil(t, c.PostJSON(url, out, out))
-
-	// PostBinary(url string, body interface{}, output interface{}) (err error)
-	c.On("PostBinary", url, mock.Anything, mock.Anything).Return(nil).Once()
-	assert.Nil(t, c.PostBinary(url, out, out))
 }

@@ -114,11 +114,12 @@ func (p *SingleContractProvider) Get(id uint32) (Contract, bool) {
 
 // HTTPContractProvider provides contracts over http.
 type HTTPContractProvider struct {
-	url   string         // The url to hit for the provider.
-	owner *contract      // The owner contract.
-	cache *sync.Map      // The cache for the contracts.
-	usage usage.Metering // The usage stats container.
-	http  http.Client    // The http client to use.
+	url   string             // The url to hit for the provider.
+	owner *contract          // The owner contract.
+	cache *sync.Map          // The cache for the contracts.
+	usage usage.Metering     // The usage stats container.
+	http  http.Client        // The http client to use.
+	head  []http.HeaderValue // The http headers to add with each request.
 }
 
 // NewHTTPContractProvider creates a new single contract provider.
@@ -145,12 +146,21 @@ func (p *HTTPContractProvider) Configure(config map[string]interface{}) (err err
 		return errors.New("Configuration was not provided for HTTP contract provider")
 	}
 
+	// Get the authorization header to add to the request
+	headers := []http.HeaderValue{http.NewHeader("Accept", "application/json")}
+	if v, ok := config["authorization"]; ok {
+		if header, ok := v.(string); ok {
+			headers = append(headers, http.NewHeader("Authorization", header))
+		}
+	}
+
 	// Get the url from the provider configuration
 	if url, ok := config["url"]; ok {
 		p.url = url.(string)
 
 		// Create a new HTTP client to use
 		p.http, err = http.NewClient(p.url, 10*time.Second)
+		p.head = headers
 		return
 	}
 
@@ -179,7 +189,7 @@ func (p *HTTPContractProvider) Get(id uint32) (Contract, bool) {
 
 func (p *HTTPContractProvider) fetchContract(id uint32) (*contract, bool) {
 	c := new(contract)
-	_, err := p.http.Get(fmt.Sprintf("%s%d", p.url, id), c)
+	_, err := p.http.Get(fmt.Sprintf("%s%d", p.url, id), c, p.head...)
 	if err != nil {
 		logging.LogError("contract", "fetching http contract", err)
 		return nil, false
