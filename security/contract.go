@@ -24,6 +24,7 @@ import (
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/http"
 	"github.com/emitter-io/emitter/security/usage"
+	"github.com/emitter-io/emitter/utils"
 )
 
 // The contract's state possible values.
@@ -120,6 +121,7 @@ type HTTPContractProvider struct {
 	usage usage.Metering     // The usage stats container.
 	http  http.Client        // The http client to use.
 	head  []http.HeaderValue // The http headers to add with each request.
+	done  chan bool          // The closing channel.
 }
 
 // NewHTTPContractProvider creates a new single contract provider.
@@ -131,7 +133,7 @@ func NewHTTPContractProvider(license *License, metering usage.Metering) *HTTPCon
 	p.owner.Signature = license.Signature
 	p.cache = new(sync.Map)
 	p.usage = metering
-
+	p.done = make(chan bool)
 	return &p
 }
 
@@ -144,6 +146,14 @@ func (p *HTTPContractProvider) Name() string {
 func (p *HTTPContractProvider) Configure(config map[string]interface{}) (err error) {
 	if config == nil {
 		return errors.New("Configuration was not provided for HTTP contract provider")
+	}
+
+	// Get the interval from the provider configuration
+	interval := 10 * time.Minute
+	if v, ok := config["interval"]; ok {
+		if i, ok := v.(float64); ok {
+			interval = time.Duration(i) * time.Millisecond
+		}
 	}
 
 	// Get the authorization header to add to the request
@@ -161,6 +171,9 @@ func (p *HTTPContractProvider) Configure(config map[string]interface{}) (err err
 		// Create a new HTTP client to use
 		p.http, err = http.NewClient(p.url, 10*time.Second)
 		p.head = headers
+
+		// Periodically refresh contracts
+		utils.Repeat(p.refresh, interval, p.done) // TODO: closing chan
 		return
 	}
 
@@ -187,6 +200,7 @@ func (p *HTTPContractProvider) Get(id uint32) (Contract, bool) {
 	return nil, false
 }
 
+// Fetches a single contract from the underlying contract provider.
 func (p *HTTPContractProvider) fetchContract(id uint32) (*contract, bool) {
 	c := new(contract)
 	_, err := p.http.Get(fmt.Sprintf("%s%d", p.url, id), c, p.head...)
@@ -201,4 +215,16 @@ func (p *HTTPContractProvider) fetchContract(id uint32) (*contract, bool) {
 
 	c.stats = p.usage.Get(id).(usage.Meter)
 	return c, true
+}
+
+// Refresh fetches all the contracts from the underlying contract provider.
+func (p *HTTPContractProvider) refresh() {
+	p.cache.Range(func(k, v interface{}) bool {
+		if id, ok := k.(uint32); ok {
+			if contract, ok := p.fetchContract(id); ok {
+				p.cache.Store(id, contract)
+			}
+		}
+		return true
+	})
 }

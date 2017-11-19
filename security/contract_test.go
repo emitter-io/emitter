@@ -127,7 +127,27 @@ func TestHTTPContractPovider_Configure(t *testing.T) {
 		err := p.Configure(map[string]interface{}{
 			"authorization": "Digest 123",
 			"url":           "http://127.0.0.1",
+			"interval":      600000.0,
 		})
 		assert.NoError(t, err)
 	}
+}
+
+func TestHTTPContractPovider_refresh(t *testing.T) {
+	h := http.NewMockClient()
+	h.On("Get", "1", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		output := args.Get(1).(interface{})
+		json.Unmarshal([]byte(`{"id": 1, "state": 2}`), output)
+	}).Return([]byte{}, nil)
+
+	p, _ := testNewHTTPContractProvider()
+	p.http = h
+
+	p.cache.Store(uint32(1), nil)
+	p.refresh()
+
+	c, ok := p.cache.Load(uint32(1))
+	assert.True(t, ok)
+	assert.NotNil(t, c)
+	assert.Equal(t, uint8(2), c.(*contract).State)
 }
