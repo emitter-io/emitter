@@ -43,7 +43,7 @@ func (m *keyGenRequest) expires() time.Time {
 		return time.Unix(0, 0)
 	}
 
-	return time.Now().Add(time.Second).UTC()
+	return time.Now().Add(time.Duration(m.TTL) * time.Second).UTC()
 }
 
 func (m *keyGenRequest) access() uint32 {
