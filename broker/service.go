@@ -198,7 +198,7 @@ func (s *Service) listen(address string, certs ...tls.Certificate) {
 	}
 
 	// Set the read timeout on our mux listener
-	l.SetReadTimeout(60 * time.Second)
+	l.SetReadTimeout(120 * time.Second)
 
 	// Configure the matchers
 	l.ServeAsync(listener.MatchHTTP(), s.http.Serve)
