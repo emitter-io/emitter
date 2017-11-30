@@ -76,7 +76,7 @@ func (c *Conn) Process() error {
 
 	for {
 		// Set read/write deadlines so we can close dangling connections
-		c.socket.SetDeadline(time.Now().Add(time.Second * 60))
+		c.socket.SetDeadline(time.Now().Add(time.Second * 120))
 
 		// Decode an incoming MQTT packet
 		msg, err := mqtt.DecodePacket(reader)
