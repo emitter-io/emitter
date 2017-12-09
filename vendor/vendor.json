@@ -3,10 +3,28 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "hpyxiXYtjxKbEqR101SrH+VMWFE=",
+			"path": "github.com/axiomhq/hyperloglog",
+			"revision": "8300947202c9fbce15a5a299b27c8b0f5092a520",
+			"revisionTime": "2017-11-14T17:57:03Z"
+		},
+		{
 			"checksumSHA1": "GcIrB1ug6mS8aG73v1KtlHfva9Q=",
 			"path": "github.com/davecgh/go-spew/spew",
 			"revision": "ecdeabc65495df2dec95d7c4a4c3e021903035e5",
 			"revisionTime": "2017-10-02T20:02:53Z"
+		},
+		{
+			"checksumSHA1": "9jpXfXi24nozRJ5m+4Z1+oqphec=",
+			"path": "github.com/dgryski/go-bits",
+			"revision": "2ad8d707cc05b1815ce6ff2543bb5e8d8f9298ef",
+			"revisionTime": "2016-06-01T07:36:36Z"
+		},
+		{
+			"checksumSHA1": "wsR0rjangSgOpRkyTa4s1bSz7t8=",
+			"path": "github.com/dgryski/go-metro",
+			"revision": "e7aec1ade50b797c654e33c634eadabefab66c6e",
+			"revisionTime": "2017-11-29T05:14:37Z"
 		},
 		{
 			"checksumSHA1": "tXkiIxnfHFsA+A5fsPWbGolxoek=",
