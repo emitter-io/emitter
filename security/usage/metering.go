@@ -1,7 +1,6 @@
 package usage
 
 import (
-	"encoding/json"
 	"errors"
 	"sync"
 	"time"
@@ -89,8 +88,10 @@ func (s *HTTPStorage) Configure(config map[string]interface{}) (err error) {
 		}
 	}
 
+	// Set accept header for the metering
+	headers := []http.HeaderValue{http.NewHeader("Accept", "application/binary")}
+
 	// Get the authorization header to add to the request
-	headers := []http.HeaderValue{http.NewHeader("Accept", "application/json")}
 	if v, ok := config["authorization"]; ok {
 		if header, ok := v.(string); ok {
 			headers = append(headers, http.NewHeader("Authorization", header))
@@ -117,14 +118,14 @@ func (s *HTTPStorage) Get(id uint32) Meter {
 
 // Store periodically stores the counters by sending them through HTTP.
 func (s *HTTPStorage) store() {
-	counters := make([]*usage, 0)
+	counters := make([]encodedUsage, 0)
 	s.counters.Range(func(k, v interface{}) bool {
 		counters = append(counters, v.(*usage).reset())
 		return true
 	})
 
-	// Encode as JSON and post without waiting for the body
-	if encoded, err := json.Marshal(counters); err == nil {
+	// Encode as binary and post without waiting for the body
+	if encoded, err := utils.Encode(counters); err == nil {
 		if _, err := s.http.Post(s.url, encoded, nil, s.head...); err != nil {
 			logging.LogError("http metering", "reporting counters", err)
 		}

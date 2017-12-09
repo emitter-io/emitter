@@ -47,6 +47,9 @@ func TestHTTP_ConfigureErr(t *testing.T) {
 
 	err := s.Configure(nil)
 	assert.Error(t, errors.New("Configuration was not provided for HTTP metering provider"), err)
+
+	err = s.Configure(map[string]interface{}{})
+	assert.Error(t, errors.New("Configuration was not provided for HTTP metering provider"), err)
 }
 
 func TestHTTP_Configure(t *testing.T) {
@@ -54,8 +57,9 @@ func TestHTTP_Configure(t *testing.T) {
 	close(s.done)
 
 	err := s.Configure(map[string]interface{}{
-		"interval": 1000.0,
-		"url":      "http://localhost/test",
+		"interval":      1000.0,
+		"url":           "http://localhost/test",
+		"authorization": "test",
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "http://localhost/test", s.url)
@@ -73,11 +77,20 @@ func TestHTTP_Store(t *testing.T) {
 	defer close(s.done)
 	s.http = h
 
-	c := s.Get(1)
+	c := s.Get(1).(*usage)
 	c.AddEgress(100)
 	c.AddIngress(200)
-	assert.Equal(t, &u1, c)
+
+	assert.Equal(t, u1.MessageIn, c.MessageIn)
+	assert.Equal(t, u1.TrafficIn, c.TrafficIn)
+	assert.Equal(t, u1.MessageEg, c.MessageEg)
+	assert.Equal(t, u1.TrafficEg, c.TrafficEg)
+	assert.Equal(t, u1.Contract, c.Contract)
 
 	s.store()
-	assert.Equal(t, &u2, c)
+	assert.Equal(t, u2.MessageIn, c.MessageIn)
+	assert.Equal(t, u2.TrafficIn, c.TrafficIn)
+	assert.Equal(t, u2.MessageEg, c.MessageEg)
+	assert.Equal(t, u2.TrafficEg, c.TrafficEg)
+	assert.Equal(t, u2.Contract, c.Contract)
 }

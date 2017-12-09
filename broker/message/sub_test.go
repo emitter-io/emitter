@@ -124,10 +124,13 @@ func TestSub_Increment(t *testing.T) {
 	isFirst = counters.Increment(ssid2, []byte("test"))
 	assert.False(t, isFirst)
 	assert.Equal(t, 2, counters.m[key2].Counter)
-}
 
-/*
-// TODO : test concurrency
-fund TestSub_Decrement(t *testing.T) {
+	// Test decrement previously incremented counter.
+	isDecremented := counters.Decrement(ssid2)
+	assert.False(t, isDecremented)
+	assert.Equal(t, 1, counters.m[key2].Counter)
+
+	// Test decrement previously incremented counter.
+	isDecremented = counters.Decrement(ssid2)
+	assert.True(t, isDecremented)
 }
-*/

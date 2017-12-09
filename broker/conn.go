@@ -33,6 +33,7 @@ import (
 // Conn represents an incoming connection.
 type Conn struct {
 	sync.Mutex
+	tracked  uint32            // Whether the connection was already tracked or not.
 	socket   net.Conn          // The transport used to read and write messages.
 	username string            // The username provided by the client during MQTT connect.
 	luid     security.ID       // The locally unique id of the connection.
@@ -44,6 +45,7 @@ type Conn struct {
 // NewConn creates a new connection.
 func (s *Service) newConn(t net.Conn) *Conn {
 	c := &Conn{
+		tracked: 0,
 		luid:    security.NewID(),
 		service: s,
 		socket:  t,
@@ -67,6 +69,14 @@ func (c *Conn) ID() string {
 // Type returns the type of the subscriber
 func (c *Conn) Type() message.SubscriberType {
 	return message.SubscriberDirect
+}
+
+// Track tracks the connection by adding it to the metering.
+func (c Conn) track(contract security.Contract) {
+	if atomic.LoadUint32(&c.tracked) == 0 {
+		contract.Stats().AddDevice(c.socket.RemoteAddr().String())
+		atomic.StoreUint32(&c.tracked, 1)
+	}
 }
 
 // Process processes the messages.
