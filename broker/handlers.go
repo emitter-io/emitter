@@ -44,12 +44,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 
 	// Attempt to parse the key
 	key, err := c.service.Cipher.DecryptKey(channel.Key)
-	if err != nil {
-		return ErrBadRequest
-	}
-
-	// Has the key expired?
-	if key.IsExpired() {
+	if err != nil || key.IsExpired() {
 		return ErrUnauthorized
 	}
 
@@ -97,6 +92,8 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 		}
 	}
 
+	// Write the stats
+	c.track(contract)
 	return nil
 }
 
@@ -113,12 +110,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 
 	// Attempt to parse the key
 	key, err := c.service.Cipher.DecryptKey(channel.Key)
-	if err != nil {
-		return ErrBadRequest
-	}
-
-	// Has the key expired?
-	if key.IsExpired() {
+	if err != nil || key.IsExpired() {
 		return ErrUnauthorized
 	}
 
@@ -146,7 +138,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 	// Unsubscribe the client from the channel
 	ssid := message.NewSsid(key.Contract(), channel)
 	c.Unsubscribe(ssid, channel.Channel)
-
+	c.track(contract)
 	return nil
 }
 
@@ -174,12 +166,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 
 	// Attempt to parse the key
 	key, err := c.service.Cipher.DecryptKey(channel.Key)
-	if err != nil {
-		return ErrUnauthorized
-	}
-
-	// Has the key expired?
-	if key.IsExpired() {
+	if err != nil || key.IsExpired() {
 		return ErrUnauthorized
 	}
 
@@ -221,7 +208,8 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	// Iterate through all subscribers and send them the message
 	size := c.service.publish(msg)
 
-	// Write the stats
+	// Write the monitoring information
+	c.track(contract)
 	contract.Stats().AddIngress(int64(len(payload)))
 	contract.Stats().AddEgress(size)
 	return nil

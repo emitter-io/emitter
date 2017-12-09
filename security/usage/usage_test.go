@@ -17,8 +17,8 @@ func TestMeterAdd(t *testing.T) {
 	meter := &usage{Contract: 123, Lock: new(sync.Mutex), Devices: hyperloglog.New()}
 	meter.AddIngress(100)
 	meter.AddEgress(200)
-	meter.AddDevice(123)
-	meter.AddDevice(456)
+	meter.AddDevice("123")
+	meter.AddDevice("456")
 
 	assert.Equal(t, uint32(123), meter.GetContract())
 
@@ -36,8 +36,8 @@ func TestMeterReset(t *testing.T) {
 
 	// Add a device and some traffic
 	meter.AddIngress(1000)
-	meter.AddDevice(123)
-	meter.AddDevice(153)
+	meter.AddDevice("123")
+	meter.AddDevice("153")
 	old1 := meter.reset().toUsage()
 
 	// Assert
@@ -48,8 +48,8 @@ func TestMeterReset(t *testing.T) {
 
 	// Add a device and some traffic and reset again
 	meter.AddIngress(1000)
-	meter.AddDevice(123)
-	meter.AddDevice(345)
+	meter.AddDevice("123")
+	meter.AddDevice("345")
 	old2 := meter.reset().toUsage()
 
 	// Assert

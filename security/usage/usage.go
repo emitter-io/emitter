@@ -26,7 +26,7 @@ type Meter interface {
 	GetContract() uint32   // Returns the associated contract.
 	AddIngress(size int64) // Records the ingress message size.
 	AddEgress(size int64)  // Records the egress message size.
-	AddDevice(addr uint64) // Records the device address.
+	AddDevice(addr string) // Records the device address.
 }
 
 // NewMeter constructs a new usage statistics instance.
@@ -66,10 +66,10 @@ func (t *usage) AddEgress(size int64) {
 }
 
 // Records the device address.
-func (t *usage) AddDevice(addr uint64) {
+func (t *usage) AddDevice(addr string) {
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
-	t.Devices.InsertHash(addr)
+	t.Devices.Insert([]byte(addr))
 }
 
 // Returns the estimated number of devices.
