@@ -71,10 +71,18 @@ func (c *Conn) Type() message.SubscriberType {
 	return message.SubscriberDirect
 }
 
-// Track tracks the connection by adding it to the metering.
-func (c Conn) track(contract security.Contract) {
+// track tracks the connection by adding it to the metering.
+func (c *Conn) track(contract security.Contract) {
 	if atomic.LoadUint32(&c.tracked) == 0 {
-		contract.Stats().AddDevice(c.socket.RemoteAddr().String())
+
+		// We keep only the IP address for fair tracking
+		addr := c.socket.RemoteAddr().String()
+		if tcp, ok := c.socket.RemoteAddr().(*net.TCPAddr); ok {
+			addr = tcp.IP.String()
+		}
+
+		// Add the device to the stats and mark as done
+		contract.Stats().AddDevice(addr)
 		atomic.StoreUint32(&c.tracked, 1)
 	}
 }
