@@ -13,6 +13,9 @@ func TestDecodeFrame(t *testing.T) {
 		Message{Ssid: Ssid{1, 2, 3}, Channel: []byte("a/b/"), Payload: []byte("hello ab")},
 	}
 
+	// Append
+	frame.Append(0, Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"))
+
 	// Encode
 	buffer, err := frame.Encode()
 	assert.NoError(t, err)
