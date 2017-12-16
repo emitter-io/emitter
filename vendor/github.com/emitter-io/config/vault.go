@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -63,23 +62,12 @@ func (c *VaultClient) ReadSecret(secretName string) (string, error) {
 	return "", errors.New("Unable to find or parse secret " + secretName)
 }
 
-// ReadCredentials reads a credential from the vault.
-func (c *VaultClient) ReadCredentials(credentialsName string) (*AwsCredentials, error) {
-	output, err := c.get("/aws/sts/" + credentialsName)
-	if err != nil {
-		return nil, err
-	}
-
-	if s, err := json.Marshal(output.Data); err == nil {
-		creds := new(AwsCredentials)
-		if err := json.Unmarshal(s, creds); err == nil && creds.AccessKey != "" {
-			creds.Duration = time.Duration(output.LeaseDuration) * time.Second
-			creds.Expires = time.Now().UTC().Add(creds.Duration)
-			return creds, nil
-		}
-	}
-
-	return nil, errors.New("Unable to find or parse credentials " + credentialsName)
+// WriteSecret writes a secret to the vault.
+func (c *VaultClient) WriteSecret(secretName string, value string) error {
+	_, err := c.post("/secret/"+secretName, map[string]string{
+		"value": value,
+	})
+	return err
 }
 
 // Get issues an HTTP GET to a vault server.
@@ -97,10 +85,12 @@ func (c *VaultClient) get(url string) (output *vaultSecret, err error) {
 
 // Post issues an HTTP POST to a vault server.
 func (c *VaultClient) post(url string, body interface{}) (output *vaultSecret, err error) {
-
-	// Note: The HTTP post is used for authentication only right now, hence no need
-	// to add the X-Vault-Token.
 	var headers []httpHeader
+	if c.IsAuthenticated() {
+		headers = append(headers, newHttpHeader("X-Vault-Token", c.token))
+	}
+
+	// Issue the HTTP Post
 	output = new(vaultSecret)
 	err = httpPost(c.address+"/v1"+url, body, output, headers...)
 	return

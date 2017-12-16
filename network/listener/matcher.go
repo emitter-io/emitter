@@ -27,6 +27,7 @@ var defaultHTTPMethods = []string{
 	"GET",
 	"HEAD",
 	"POST",
+	"PATCH",
 	"PUT",
 	"DELETE",
 	"TRACE",
