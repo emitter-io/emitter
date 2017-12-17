@@ -35,7 +35,7 @@ func NewDefault() cfg.Config {
 	return &Config{
 		ListenAddr: ":8080",
 		TLS: &cfg.TLSConfig{
-			ListenAddr: ":8443",
+			ListenAddr: ":443",
 		},
 		Cluster: &ClusterConfig{
 			ListenAddr:    ":4000",
