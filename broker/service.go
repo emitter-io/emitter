@@ -173,11 +173,9 @@ func (s *Service) Listen() (err error) {
 	}
 
 	// Setup the listeners on both default and a secure addresses
-	s.listen(s.Config.ListenAddr)
-	if cert, err := s.Config.TLS.Load(); err != nil {
-		logging.LogError("service", "setup of TLS/SSL listener", err)
-	} else {
-		s.listen(s.Config.TLS.ListenAddr, cert)
+	s.listen(s.Config.ListenAddr, nil)
+	if tls, ok := s.Config.Certificate(); ok {
+		s.listen(s.Config.TLS.ListenAddr, tls)
 	}
 
 	// Set the start time and report status
@@ -190,9 +188,9 @@ func (s *Service) Listen() (err error) {
 }
 
 // listen configures an main listener on a specified address.
-func (s *Service) listen(address string, certs ...tls.Certificate) {
+func (s *Service) listen(address string, conf *tls.Config) {
 	logging.LogTarget("service", "starting the listener", address)
-	l, err := listener.New(address, certs...)
+	l, err := listener.New(address, conf)
 	if err != nil {
 		panic(err)
 	}

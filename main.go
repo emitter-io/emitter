@@ -10,7 +10,6 @@ import (
 	"github.com/emitter-io/emitter/broker"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/logging"
-	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/security"
 )
 
@@ -22,6 +21,7 @@ func main() {
 	}
 
 	// Process command-line arguments
+	logging.LogTarget("service", "resolved node name", config.VaultUser)
 	argConfig := flag.String("config", filepath.Join(filepath.Dir(exe), "emitter.conf"), "The configuration file to use for the broker.")
 	argHelp := flag.Bool("help", false, "Shows the help and usage instead of running the broker.")
 	flag.Parse()
@@ -31,7 +31,9 @@ func main() {
 	}
 
 	// Parse the configuration
-	c, err := cfg.ReadOrCreate("emitter", *argConfig, config.NewDefault, cfg.NewEnvironmentProvider(), cfg.NewVaultProvider(address.Hardware().Hex()))
+	c, err := cfg.ReadOrCreate("emitter", *argConfig, config.NewDefault,
+		cfg.NewEnvironmentProvider(),
+		cfg.NewVaultProvider(config.VaultUser))
 	if err != nil {
 		panic("Unable to parse configuration, due to " + err.Error())
 	}

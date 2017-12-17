@@ -15,7 +15,10 @@
 package config
 
 import (
+	"crypto/tls"
+
 	cfg "github.com/emitter-io/config"
+	"github.com/emitter-io/emitter/network/address"
 )
 
 // Constants used throughout the service.
@@ -24,12 +27,15 @@ const (
 	MaxMessageSize   = 65536 // Maximum message size allowed from/to the peer.
 )
 
+// VaultUser is the vault user to use for authentication
+var VaultUser = address.Hardware().Hex()
+
 // NewDefault creates a default configuration.
 func NewDefault() cfg.Config {
 	return &Config{
 		ListenAddr: ":8080",
 		TLS: &cfg.TLSConfig{
-			ListenAddr: ":8443",
+			ListenAddr: ":443",
 		},
 		Cluster: &ClusterConfig{
 			ListenAddr:    ":4000",
@@ -57,6 +63,17 @@ type Config struct {
 // Vault returns a vault configuration.
 func (c *Config) Vault() *cfg.VaultConfig {
 	return c.Secrets
+}
+
+// Certificate returns TLS configuration.
+func (c *Config) Certificate() (tls *tls.Config, ok bool) {
+	if c.TLS != nil {
+		cache, err := cfg.NewVaultCache(VaultUser, c)
+		tls, err = c.TLS.Load(cache)
+		ok = err == nil
+	}
+
+	return
 }
 
 // ClusterConfig represents the configuration for the cluster.

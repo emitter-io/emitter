@@ -53,7 +53,7 @@ func safeDial(t *testing.T, addr net.Addr) (*rpc.Client, func()) {
 }
 
 func testListener(t *testing.T) (*Listener, func()) {
-	l, err := New(":0")
+	l, err := New(":0", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

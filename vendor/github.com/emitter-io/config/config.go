@@ -13,12 +13,19 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"golang.org/x/crypto/acme/autocert"
 )
 
 // SecretStore represents a contract for a store capable of resolving secrets.
 type SecretStore interface {
 	Configure(config Config) error
 	GetSecret(secretName string) (string, bool)
+}
+
+// CertificateStore represents a secret store which can be used for certificates.
+type CertificateStore interface {
+	autocert.Cache
 }
 
 // Provider represents a configurable provider.
@@ -34,43 +41,50 @@ type Config interface {
 
 // TLSConfig represents TLS listener configuration.
 type TLSConfig struct {
-	ListenAddr  string `json:"listen"`      // The address to listen on.
-	Certificate string `json:"certificate"` // The certificate request.
-	PrivateKey  string `json:"private"`     // The private key for the certificate.
+	ListenAddr string `json:"listen"`          // The address to listen on.
+	Host       string `json:"host"`            // The hostname to whitelist.
+	Email      string `json:"email,omitempty"` // The email address for autocert.
 }
 
-// Load loads a certificate from the configuration.
-func (c *TLSConfig) Load() (tls.Certificate, error) {
-	if c.Certificate == "" || c.PrivateKey == ""{
-		return tls.Certificate{}, errors.New("No certificate or private key configured")
+// Load loads the certificates from the cache or the configuration.
+func (c *TLSConfig) Load(certCache autocert.Cache) (*tls.Config, error) {
+	if c.Host == "" {
+		return nil, errors.New("unable to request a certificate, no host name configured")
 	}
 
-	// If the certificate provided is in plain text, write to file so we can read it.
-	if strings.HasPrefix(c.Certificate, "---") {
-		if err := ioutil.WriteFile("broker.crt", []byte(c.Certificate), os.ModePerm); err == nil {
-			c.Certificate = "broker.crt"
-		}
+	// Default to disk cache
+	if certCache == nil {
+		certCache = autocert.DirCache("certs")
 	}
 
-	// If the private key provided is in plain text, write to file so we can read it.
-	if strings.HasPrefix(c.PrivateKey, "---") {
-		if err := ioutil.WriteFile("broker.key", []byte(c.PrivateKey), os.ModePerm); err == nil {
-			c.PrivateKey = "broker.key"
-		}
+	// Create an auto-cert manager
+	certManager := autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(c.Host),
+		Email:      c.Email,
+		Cache:      certCache,
 	}
 
-	// Make sure the paths are absolute, otherwise we won't be able to read the files.
-	c.Certificate = resolvePath(c.Certificate)
-	c.PrivateKey = resolvePath(c.PrivateKey)
-
-	// Load the certificate from the cert/key files.
-	return tls.LoadX509KeyPair(c.Certificate, c.PrivateKey)
+	return &tls.Config{
+		GetCertificate: certManager.GetCertificate,
+	}, nil
 }
 
 // VaultConfig represents Vault configuration.
 type VaultConfig struct {
 	Address     string `json:"address"` // The vault address to use.
 	Application string `json:"app"`     // The vault application ID to use.
+}
+
+// NewClient creates a new vault client for the configuration.
+func (c *VaultConfig) NewClient(user string) (client *VaultClient, err error) {
+	if c.Address == "" || c.Application == "" {
+		return nil, errors.New("unable to configure Vault provider")
+	}
+
+	client = NewVaultClient(c.Address)
+	err = client.Authenticate(c.Application, user)
+	return
 }
 
 // ProviderConfig represents provider configuration.
@@ -139,29 +153,6 @@ func (c *ProviderConfig) Load(builtins ...Provider) (Provider, error) {
 
 	// Succesfully opened and configured a provider
 	return provider, nil
-}
-
-// ClusterConfig represents the configuration for the cluster.
-type ClusterConfig struct {
-
-	// The name of this node. This must be unique in the cluster. If this is not set, Emitter
-	// will set it to the external IP address of the running machine.
-	NodeName string `json:"name,omitempty"`
-
-	// The IP address and port that is used to bind the inter-node communication network. This
-	// is used for the actual binding of the port.
-	ListenAddr string `json:"listen"`
-
-	// The address and port to advertise inter-node communication network. This is used for nat
-	// traversal.
-	AdvertiseAddr string `json:"advertise"`
-
-	// The seed address (or a domain name) for cluster join.
-	Seed string `json:"seed"`
-
-	// Passphrase is used to initialize the primary encryption key in a keyring. This key
-	// is used for encrypting all the gossip messages (message-level encryption).
-	Passphrase string `json:"passphrase,omitempty"`
 }
 
 // LoadProvider loads a provider from the configuration or panics if the configuration is
@@ -250,13 +241,13 @@ func declassify(config interface{}, prefix string, provider SecretStore) {
 func declassifyRecursive(prefix string, provider SecretStore, value reflect.Value) {
 	switch value.Kind() {
 	case reflect.Ptr:
-		pValue := value.Elem() 
+		pValue := value.Elem()
 		if !pValue.IsValid() {
 			// Create a new struct and set the value
 			pValue = reflect.New(value.Type().Elem())
 			value.Set(pValue)
 		}
-		
+
 		declassifyRecursive(prefix, provider, pValue)
 
 	// If it is a struct we translate each field
