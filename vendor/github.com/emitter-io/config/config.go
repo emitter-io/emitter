@@ -115,9 +115,11 @@ func (c *ProviderConfig) LoadOrPanic(builtins ...Provider) Provider {
 func (c *ProviderConfig) Load(builtins ...Provider) (Provider, error) {
 	for _, builtin := range builtins {
 		if strings.ToLower(builtin.Name()) == strings.ToLower(c.Provider) {
-			if err := builtin.Configure(c.Config); err == nil {
-				return builtin, nil
+			if err := builtin.Configure(c.Config); err != nil {
+				return nil, errors.New("The provider '" + c.Provider + "' could not be loaded. " + err.Error())
 			}
+
+			return builtin, nil
 		}
 	}
 

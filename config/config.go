@@ -28,7 +28,7 @@ const (
 )
 
 // VaultUser is the vault user to use for authentication
-var VaultUser = address.Hardware().Hex()
+var VaultUser = address.External().String()
 
 // NewDefault creates a default configuration.
 func NewDefault() cfg.Config {
