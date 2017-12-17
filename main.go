@@ -21,6 +21,7 @@ func main() {
 	}
 
 	// Process command-line arguments
+	logging.LogTarget("service", "resolved node name", config.VaultUser)
 	argConfig := flag.String("config", filepath.Join(filepath.Dir(exe), "emitter.conf"), "The configuration file to use for the broker.")
 	argHelp := flag.Bool("help", false, "Shows the help and usage instead of running the broker.")
 	flag.Parse()
