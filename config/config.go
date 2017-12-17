@@ -16,6 +16,8 @@ package config
 
 import (
 	"crypto/tls"
+	"net"
+	"strings"
 
 	cfg "github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/network/address"
@@ -28,7 +30,14 @@ const (
 )
 
 // VaultUser is the vault user to use for authentication
-var VaultUser = address.External().String()
+var VaultUser = toUsername(address.External())
+
+// toUsername converts an ip address to a username for Vault.
+func toUsername(a net.IP) string {
+	return strings.Replace(
+		strings.Replace(a.String(), ".", "-", -1),
+		":", "-", -1)
+}
 
 // NewDefault creates a default configuration.
 func NewDefault() cfg.Config {
