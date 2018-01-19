@@ -126,7 +126,7 @@ func (c *Conn) Process() error {
 			// Subscribe for each subscription
 			for _, sub := range packet.Subscriptions {
 				if err := c.onSubscribe(sub.Topic); err != nil {
-					logging.LogError("conn", "subscibe received", err)
+					logging.LogError("conn", "subscribe received", err)
 					ack.Qos = append(ack.Qos, 0x80) // 0x80 indicate subscription failure
 				} else {
 					// Append the QoS
