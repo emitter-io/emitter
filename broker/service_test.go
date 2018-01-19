@@ -1,18 +1,135 @@
 package broker
 
 import (
+	"encoding/json"
 	"net"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	conf "github.com/emitter-io/config"
+	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/security"
+	secmock "github.com/emitter-io/emitter/security/mock"
 	"github.com/emitter-io/emitter/security/usage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 const testLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
+
+func Test_onHTTPPresence(t *testing.T) {
+	license, _ := security.ParseLicense(testLicense)
+
+	tests := []struct {
+		payload       string
+		contractValid bool
+		contractFound bool
+		status        int
+		success       bool
+		err           error
+		resp          presenceResponse
+		msg           string
+	}{
+		{
+			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a","status":true}`,
+			contractValid: true,
+			contractFound: true,
+			success:       true,
+			status:        http.StatusOK,
+			err:           nil,
+			resp:          presenceResponse{Event: presenceStatusEvent, Channel: "a"},
+			msg:           "Successful case",
+		},
+		{
+			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a","status":true}`,
+			contractValid: true,
+			contractFound: true,
+			success:       true,
+			status:        http.StatusOK,
+			err:           nil,
+			resp:          presenceResponse{Event: presenceStatusEvent, Channel: "a"},
+			msg:           "Successful case",
+		},
+		{
+			payload:       "",
+			err:           ErrBadRequest,
+			success:       false,
+			status:        http.StatusBadRequest,
+			contractValid: true,
+			contractFound: true,
+			msg:           "Invalid payload case",
+		},
+		{
+			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
+			contractValid: true,
+			contractFound: true,
+			success:       false,
+			status:        http.StatusBadRequest,
+			err:           ErrBadRequest,
+			msg:           "Invalid channel case",
+		},
+		{
+			payload:       `{"key":"0Nq8SWbL8qoOKEDqh_ebBZRqJDby30m","channel":"a","status":true}`,
+			contractValid: true,
+			contractFound: true,
+			success:       false,
+			status:        http.StatusUnauthorized,
+			err:           ErrUnauthorized,
+			msg:           "Key for wrong channel case",
+		},
+		{
+			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
+			err:           ErrNotFound,
+			status:        http.StatusNotFound,
+			contractValid: true,
+			contractFound: false,
+			msg:           "Contract not found case",
+		},
+		{
+			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
+			err:           ErrUnauthorized,
+			status:        http.StatusUnauthorized,
+			contractValid: false,
+			contractFound: true,
+			msg:           "Contract is invalid case",
+		},
+	}
+
+	for _, tc := range tests {
+
+		contract := new(secmock.Contract)
+		contract.On("Validate", mock.Anything).Return(tc.contractValid)
+		contract.On("Stats").Return(usage.NewMeter(0))
+
+		provider := secmock.NewContractProvider()
+		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
+
+		s := &Service{
+			contracts:     provider,
+			subscriptions: message.NewTrie(),
+			License:       license,
+		}
+		s.Cipher, _ = s.License.Cipher()
+
+		req, _ := http.NewRequest("POST", "/presence", strings.NewReader(tc.payload))
+
+		// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(s.onHTTPPresence)
+		handler.ServeHTTP(rr, req)
+
+		var parsedResp presenceResponse
+		json.Unmarshal(rr.Body.Bytes(), &parsedResp)
+
+		// Check the response body is what we expect.
+		assert.Equal(t, tc.status, rr.Code)
+		assert.Equal(t, 0, len(parsedResp.Who))
+	}
+}
 
 func TestPubsub(t *testing.T) {
 	cfg := config.NewDefault().(*config.Config)
