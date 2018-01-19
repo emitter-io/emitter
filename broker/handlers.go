@@ -341,7 +341,33 @@ func (s *Service) lookupPresence(ssid message.Ssid) []presenceInfo {
 
 // ------------------------------------------------------------------------------------
 
-// onKeyGen processes a keygen request.
+func getClusterPresence(s *Service, ssid message.Ssid) []presenceInfo {
+	who := make([]presenceInfo, 0, 4)
+	if req, err := utils.Encode(ssid); err == nil {
+		if awaiter, err := s.Query("presence", req); err == nil {
+
+			// Wait for all presence updates to come back (or a deadline)
+			for _, resp := range awaiter.Gather(1000 * time.Millisecond) {
+				info := []presenceInfo{}
+				if err := utils.Decode(resp, &info); err == nil {
+					//logging.LogTarget("query", "response gathered", info)
+					who = append(who, info...)
+				}
+			}
+		}
+	}
+	return who
+}
+
+func getLocalPresence(s *Service, ssid message.Ssid) []presenceInfo {
+	return s.lookupPresence(ssid)
+}
+
+func getAllPresence(s *Service, ssid message.Ssid) []presenceInfo {
+	return append(getLocalPresence(s, ssid), getClusterPresence(s, ssid)...)
+}
+
+// onPresence processes a presence request.
 func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 	// Deserialize the payload.
 	msg := presenceRequest{
@@ -395,23 +421,8 @@ func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 	who := make([]presenceInfo, 0, 4)
 	if msg.Status {
 
-		// Gather local presence first
-		who = append(who, c.service.lookupPresence(ssid)...)
-
-		// Issue the presence query to the cluster
-		if req, err := utils.Encode(ssid); err == nil {
-			if awaiter, err := c.service.Query("presence", req); err == nil {
-
-				// Wait for all presence updates to come back (or a deadline)
-				for _, resp := range awaiter.Gather(1000 * time.Millisecond) {
-					info := []presenceInfo{}
-					if err := utils.Decode(resp, &info); err == nil {
-						//logging.LogTarget("query", "response gathered", info)
-						who = append(who, info...)
-					}
-				}
-			}
-		}
+		// Gather local & cluster presence
+		who = append(who, getAllPresence(c.service, ssid)...)
 	}
 
 	return &presenceResponse{

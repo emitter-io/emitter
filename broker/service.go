@@ -16,6 +16,7 @@ package broker
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -24,6 +25,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -76,6 +78,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", s.onHealth)
 	mux.HandleFunc("/keygen", s.onHTTPKeyGen)
+	mux.HandleFunc("/presence", s.onHTTPPresence)
 	mux.HandleFunc("/debug/pprof/", pprof.Index)          // TODO: use config flag to enable/disable this
 	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline) // TODO: use config flag to enable/disable this
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile) // TODO: use config flag to enable/disable this
@@ -285,6 +288,77 @@ func (s *Service) onHTTPKeyGen(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+// Occurs when a new HTTP presence request is received.
+func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	// Deserialize the body.
+	msg := presenceRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&msg)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// Attempt to parse the key, this should be a master key
+	key, err := s.Cipher.DecryptKey([]byte(msg.Key))
+	if err != nil || !key.HasPermission(security.AllowPresence) || key.IsExpired() {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract, contractFound := s.contracts.Get(key.Contract())
+	if !contractFound {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	// Validate the contract
+	if !contract.Validate(key) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Ensure we have trailing slash
+	if !strings.HasSuffix(msg.Channel, "/") {
+		msg.Channel = msg.Channel + "/"
+	}
+
+	// Parse the channel
+	channel := security.ParseChannel([]byte("emitter/" + msg.Channel))
+	if channel.ChannelType == security.ChannelInvalid {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Create the ssid for the presence
+	ssid := message.NewSsid(key.Contract(), channel)
+
+	now := time.Now().UTC().Unix()
+
+	who := getAllPresence(s, ssid)
+
+	resp, err := json.Marshal(&presenceResponse{
+		Time:    now,
+		Event:   presenceStatusEvent,
+		Channel: msg.Channel,
+		Who:     who,
+	})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(resp)
+	return
 }
 
 // Occurs when a peer has a new subscription.
