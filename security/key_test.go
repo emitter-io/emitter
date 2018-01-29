@@ -12,6 +12,37 @@ func TestKeyIsEmpty(t *testing.T) {
 	assert.True(t, true, key.IsEmpty())
 }
 
+func TestKey1(t *testing.T) {
+	key := Key(make([]byte, 24))
+
+	// Test exact channel
+	key.SetTarget("a/b/c/")
+	assert.False(t, key.ValidateChannel("a/b/"))
+	assert.True(t, key.ValidateChannel("a/b/c/"))
+	assert.False(t, key.ValidateChannel("a/b/c/d/"))
+
+	// Test exact channel with wildcard
+	key.SetTarget("a/+/c/")
+	assert.True(t, key.ValidateChannel("a/b/c/"))
+	assert.True(t, key.ValidateChannel("a/c/c/"))
+	assert.True(t, key.ValidateChannel("a/d/c/"))
+	assert.True(t, key.ValidateChannel("a/+/c/"))
+	assert.False(t, key.ValidateChannel("a/b/+/"))
+
+	// Test open channel
+	key.SetTarget("a/b/c/#/")
+	assert.False(t, key.ValidateChannel("a/b/"))
+	assert.True(t, key.ValidateChannel("a/b/c/"))
+	assert.True(t, key.ValidateChannel("a/b/c/d/"))
+	assert.True(t, key.ValidateChannel("a/b/c/d/e/"))
+	assert.True(t, key.ValidateChannel("a/b/c/d/+/f/"))
+	assert.True(t, key.ValidateChannel("a/b/c/d/+/f/#/"))
+
+	assert.Nil(t, key.SetTarget("1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/"))
+	assert.Nil(t, key.SetTarget("1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/#/"))
+	assert.NotNil(t, key.SetTarget("1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/"))
+}
+
 func TestKey(t *testing.T) {
 	key := Key(make([]byte, 24))
 
@@ -20,7 +51,6 @@ func TestKey(t *testing.T) {
 	key.SetContract(123)
 	key.SetSignature(777)
 	key.SetPermissions(AllowReadWrite)
-	key.SetTarget(56789)
 	key.SetExpires(time.Unix(1497683272, 0).UTC())
 
 	assert.Equal(t, uint16(999), key.Salt())
@@ -28,7 +58,6 @@ func TestKey(t *testing.T) {
 	assert.Equal(t, uint32(123), key.Contract())
 	assert.Equal(t, uint32(777), key.Signature())
 	assert.Equal(t, AllowReadWrite, key.Permissions())
-	assert.Equal(t, uint32(56789), key.Target())
 	assert.Equal(t, time.Unix(1497683272, 0).UTC(), key.Expires())
 
 	key.SetExpires(time.Unix(0, 0))

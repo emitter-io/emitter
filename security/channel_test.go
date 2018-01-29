@@ -152,19 +152,3 @@ func TestGetChannelLast(t *testing.T) {
 		assert.Equal(t, hasValue, tc.ok)
 	}
 }
-
-func TestGetChannelTarget(t *testing.T) {
-	tests := []struct {
-		channel string
-		target  uint32
-	}{
-		{channel: "emitter/a/?ttl=42&abc=9", target: 0xc103eab3},
-	}
-
-	for _, tc := range tests {
-		channel := ParseChannel([]byte(tc.channel))
-		target := channel.Target()
-
-		assert.Equal(t, tc.target, target)
-	}
-}

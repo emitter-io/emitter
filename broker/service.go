@@ -429,7 +429,7 @@ func (s *Service) onHTTPPublish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the key has the permission for the required channel
-	if key.Target() != 0 && key.Target() != channel.Target() {
+	if !key.ValidateChannel(string(channel.Channel)) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}

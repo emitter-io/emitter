@@ -65,7 +65,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Check if the key has the permission for the required channel
-	if key.Target() != 0 && key.Target() != channel.Target() {
+	if !key.ValidateChannel(string(channel.Channel)) {
 		return ErrUnauthorized
 	}
 
@@ -131,7 +131,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Check if the key has the permission for the required channel
-	if key.Target() != 0 && key.Target() != channel.Target() {
+	if !key.ValidateChannel(string(channel.Channel)) {
 		return ErrUnauthorized
 	}
 
@@ -187,7 +187,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	}
 
 	// Check if the key has the permission for the required channel
-	if key.Target() != 0 && key.Target() != channel.Target() {
+	if !key.ValidateChannel(string(channel.Channel)) {
 		return ErrUnauthorized
 	}
 
