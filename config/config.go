@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	cfg "github.com/emitter-io/config"
+	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 )
 
@@ -77,11 +78,17 @@ func (c *Config) Vault() *cfg.VaultConfig {
 // Certificate returns TLS configuration.
 func (c *Config) Certificate() (tls *tls.Config, ok bool) {
 	if c.TLS != nil {
+
+		// Attempt to use Vault cache
 		cache, err := cfg.NewVaultCache(VaultUser, c)
+		if err != nil {
+			logging.LogAction("tls", "unable to setup Vault certificate cache, using disk")
+		}
+
+		// Load from TLS
 		tls, err = c.TLS.Load(cache)
 		ok = err == nil
 	}
-
 	return
 }
 
