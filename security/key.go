@@ -15,7 +15,11 @@
 package security
 
 import (
+	"errors"
+	"strings"
 	"time"
+
+	"github.com/emitter-io/emitter/utils"
 )
 
 // Access types for a security key.
@@ -89,28 +93,89 @@ func (k Key) SetSignature(value uint32) {
 
 // Permissions gets the permission flags.
 func (k Key) Permissions() uint32 {
-	return uint32(k[12])<<24 | uint32(k[13])<<16 | uint32(k[14])<<8 | uint32(k[15])
+	return uint32(k[12])
 }
 
 // SetPermissions sets the permission flags.
 func (k Key) SetPermissions(value uint32) {
-	k[12] = byte(value >> 24)
-	k[13] = byte(value >> 16)
-	k[14] = byte(value >> 8)
-	k[15] = byte(value)
+	k[12] = byte(value)
 }
 
 // Target gets the target for the key.
-func (k Key) Target() uint32 {
-	return uint32(k[16])<<24 | uint32(k[17])<<16 | uint32(k[18])<<8 | uint32(k[19])
+func (k Key) ValidateChannel(channel string) bool {
+	channel = strings.TrimRight(channel, "/")
+	parts := strings.Split(channel, "/")
+	wc := parts[len(parts)-1] == "#"
+	if wc {
+		parts = parts[0 : len(parts)-1]
+	}
+
+	targetBytes := uint16(k[13])<<8 | uint16(k[14])
+	maxDepth := 0
+	for i := 0; i < 15; i++ {
+		if ((targetBytes >> (14 - uint16(i))) & 1) == 1 {
+			maxDepth = i
+		}
+	}
+	maxDepth += 1
+
+	keyIsExactTarget := ((targetBytes >> 15) & 1) == 0
+	if len(parts) < maxDepth || (keyIsExactTarget && len(parts) != maxDepth) {
+		return false
+	}
+
+	for idx, part := range parts {
+		if part == "+" {
+			if ((targetBytes >> (14 - uint16(idx))) & 1) == 1 {
+				return false
+			}
+		}
+		if ((targetBytes >> (14 - uint16(idx))) & 1) == 0 {
+			parts[idx] = "+"
+		}
+	}
+
+	newChannel := strings.Join(parts[0:maxDepth], "/") + "/"
+	h := utils.GetHash([]byte(newChannel))
+
+	// Bytes 16-17-18-19 contains target hash
+	keyHash := uint32(k[16])<<24 | uint32(k[17])<<16 | uint32(k[18])<<8 | uint32(k[19])
+	return h == keyHash
 }
 
 // SetTarget sets the target for the key.
-func (k Key) SetTarget(value uint32) {
+func (k Key) SetTarget(channel string) error {
+	channel = strings.TrimRight(channel, "/")
+	parts := strings.Split(channel, "/")
+	var bitPath uint16 = 0
+	wc := parts[len(parts)-1] == "#"
+	if wc {
+		parts = parts[0 : len(parts)-1]
+		bitPath |= uint16(1 << 15)
+	}
+
+	if len(parts) > 15 {
+		return errors.New("Channel can not have more than 15 parts.")
+	}
+
+	for idx, part := range parts {
+		if part != "+" && part != "#" {
+			bitPath |= uint16(1 << (14 - uint16(idx)))
+		}
+	}
+
+	newChannel := strings.Join(parts, "/") + "/"
+	value := utils.GetHash([]byte(newChannel))
+
+	k[13] = byte(bitPath >> 8)
+	k[14] = byte(bitPath)
+
 	k[16] = byte(value >> 24)
 	k[17] = byte(value >> 16)
 	k[18] = byte(value >> 8)
 	k[19] = byte(value)
+
+	return nil
 }
 
 // Expires gets the expiration date for the key.

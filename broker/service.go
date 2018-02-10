@@ -79,6 +79,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	mux.HandleFunc("/health", s.onHealth)
 	mux.HandleFunc("/keygen", s.onHTTPKeyGen)
 	mux.HandleFunc("/presence", s.onHTTPPresence)
+	mux.HandleFunc("/publish", s.onHTTPPublish)
 	mux.HandleFunc("/debug/pprof/", pprof.Index)          // TODO: use config flag to enable/disable this
 	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline) // TODO: use config flag to enable/disable this
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile) // TODO: use config flag to enable/disable this
@@ -358,6 +359,101 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(resp)
+	return
+}
+
+// Occurs when a new HTTP publish request is received.
+func (s *Service) onHTTPPublish(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	// Deserialize the body.
+	var payload struct {
+		Topic   string
+		Payload string
+	}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&payload)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// Parse the channel
+	channel := security.ParseChannel([]byte(payload.Topic))
+	if channel.ChannelType == security.ChannelInvalid {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Publish should only have static channel strings
+	if channel.ChannelType != security.ChannelStatic {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	// Check whether the key is 'emitter' which means it's an API request
+	//if len(channel.Key) == 7 && string(channel.Key) == "emitter" {
+	//	c.onEmitterRequest(channel, payload)
+	//	return nil
+	//}
+
+	// Attempt to parse the key
+	key, err := s.Cipher.DecryptKey(channel.Key)
+	if err != nil || key.IsExpired() {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract, contractFound := s.contracts.Get(key.Contract())
+	if !contractFound {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	// Validate the contract
+	if !contract.Validate(key) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Check if the key has the permission to write here
+	if !key.HasPermission(security.AllowWrite) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Check if the key has the permission for the required channel
+	if !key.ValidateChannel(string(channel.Channel)) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Create a new message
+	msg := &message.Message{
+		Time:    time.Now().UnixNano(),
+		Ssid:    message.NewSsid(key.Contract(), channel),
+		Channel: channel.Channel,
+		Payload: []byte(payload.Payload),
+	}
+
+	// In case of ttl, check the key provides the permission to store (soft permission)
+	if ttl, ok := channel.TTL(); ok && key.HasPermission(security.AllowStore) {
+		msg.TTL = ttl // Add the TTL to the message
+		s.storage.Store(msg)
+	}
+
+	// Iterate through all subscribers and send them the message
+	size := s.publish(msg)
+
+	// Write the monitoring information
+	contract.Stats().AddIngress(int64(len(payload.Payload)))
+	contract.Stats().AddEgress(size)
 	return
 }
 

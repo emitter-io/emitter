@@ -44,11 +44,6 @@ type Channel struct {
 	ChannelType uint8
 }
 
-// Target returns the channel target (first element of the query, second element of an SSID)
-func (c *Channel) Target() uint32 {
-	return c.Query[0]
-}
-
 // TTL returns a Time-To-Live option
 func (c *Channel) TTL() (uint32, bool) {
 	return c.getOptUint("ttl")

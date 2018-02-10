@@ -25,6 +25,34 @@ func (s *testSubscriber) Send(*Message) error {
 	return nil
 }
 
+func TestTrieMatch_MultiLevelWC(t *testing.T) {
+	m := NewTrie()
+	testPopulateWithStrings(m, []string{
+		"#",
+		"a/#",
+		"a/b/#",
+	})
+
+	// Tests to run
+	tests := []struct {
+		topic string
+		n     int
+	}{
+		{topic: "a", n: 1},
+		{topic: "a/b", n: 2},
+		{topic: "a/b/c", n: 3},
+		{topic: "a/b/c/d", n: 3},
+		{topic: "a/b/c/d/e", n: 3},
+		{topic: "b", n: 1},
+		{topic: "b/c", n: 1},
+		{topic: "b/c/d", n: 1},
+	}
+	for _, tc := range tests {
+		result := m.Lookup(testSub(tc.topic))
+		assert.Equal(t, tc.n, len(result))
+	}
+}
+
 func TestTrieMatch(t *testing.T) {
 	m := NewTrie()
 	testPopulateWithStrings(m, []string{
@@ -44,16 +72,16 @@ func TestTrieMatch(t *testing.T) {
 		n     int
 	}{
 		{topic: "a/", n: 1},
-		{topic: "a/1/", n: 1},
-		{topic: "a/2/", n: 1},
-		{topic: "a/1/2/", n: 1},
-		{topic: "a/1/2/3/", n: 1},
-		{topic: "a/x/y/c/", n: 1},
-		{topic: "a/x/c/", n: 2},
-		{topic: "a/b/c/", n: 3},
-		{topic: "a/b/c/d/", n: 5},
-		{topic: "a/b/c/e/", n: 4},
-		{topic: "x/y/c/e/", n: 2},
+		{topic: "a/1/", n: 0},
+		{topic: "a/2/", n: 0},
+		{topic: "a/1/2/", n: 0},
+		{topic: "a/1/2/3/", n: 0},
+		{topic: "a/x/y/c/", n: 0},
+		{topic: "a/x/c/", n: 1},
+		{topic: "a/b/c/", n: 2},
+		{topic: "a/b/c/d/", n: 2},
+		{topic: "a/b/c/e/", n: 1},
+		{topic: "x/y/c/e/", n: 0},
 	}
 
 	for _, tc := range tests {
