@@ -15,7 +15,11 @@
 package security
 
 import (
+	"errors"
+	"strings"
 	"time"
+
+	"github.com/emitter-io/emitter/utils"
 )
 
 // Access types for a security key.
@@ -29,6 +33,12 @@ const (
 	AllowPresence  = uint32(1 << 5)         // Key should be allowed to query the presence on the target channel.
 	AllowReadWrite = AllowRead | AllowWrite // Key should be allowed to read and write to the target channel.
 	AllowStoreLoad = AllowStore | AllowLoad // Key should be allowed to read and write the message history.
+)
+
+// Key errors
+var (
+	ErrTargetInvalid = errors.New("channel should end with `/` for strict types or `/#` for wildcards")
+	ErrTargetTooLong = errors.New("channel can not have more than 15 parts")
 )
 
 // Key represents a security key.
@@ -89,28 +99,112 @@ func (k Key) SetSignature(value uint32) {
 
 // Permissions gets the permission flags.
 func (k Key) Permissions() uint32 {
-	return uint32(k[12])<<24 | uint32(k[13])<<16 | uint32(k[14])<<8 | uint32(k[15])
+	return uint32(k[15])
 }
 
 // SetPermissions sets the permission flags.
 func (k Key) SetPermissions(value uint32) {
-	k[12] = byte(value >> 24)
-	k[13] = byte(value >> 16)
-	k[14] = byte(value >> 8)
 	k[15] = byte(value)
 }
 
-// Target gets the target for the key.
-func (k Key) Target() uint32 {
-	return uint32(k[16])<<24 | uint32(k[17])<<16 | uint32(k[18])<<8 | uint32(k[19])
+// ValidateChannel validates the channel string.
+func (k Key) ValidateChannel(ch *Channel) bool {
+
+	// Bytes 16-17-18-19 contains target hash
+	target := uint32(k[16])<<24 | uint32(k[17])<<16 | uint32(k[18])<<8 | uint32(k[19])
+	targetPath := uint16(k[12])<<8 | uint16(k[13])
+
+	// Retro-compatibility: if there's no depth specified we default to a single-level validation
+	if targetPath == 0 {
+		return target == ch.Target()
+	}
+
+	channel := string(ch.Channel)
+	channel = strings.TrimRight(channel, "/")
+	parts := strings.Split(channel, "/")
+	wc := parts[len(parts)-1] == "#"
+	if wc {
+		parts = parts[0 : len(parts)-1]
+	}
+
+	maxDepth := 0
+
+	for i := 0; i < 15; i++ {
+		if ((targetPath >> (14 - uint16(i))) & 1) == 1 {
+			maxDepth = i
+		}
+	}
+	maxDepth++
+
+	// Get the first bit, whether the key is the exact match or not
+	keyIsExactTarget := ((targetPath >> 15) & 1) == 1
+	if len(parts) < maxDepth || (keyIsExactTarget && len(parts) != maxDepth) {
+		return false
+	}
+
+	for idx, part := range parts {
+		if part == "+" {
+			if ((targetPath >> (14 - uint16(idx))) & 1) == 1 {
+				return false
+			}
+		}
+		if ((targetPath >> (14 - uint16(idx))) & 1) == 0 {
+			parts[idx] = "+"
+		}
+	}
+
+	newChannel := strings.Join(parts[0:maxDepth], "/") + "/"
+	println(maxDepth, newChannel, channel)
+
+	h := utils.GetHash([]byte(newChannel))
+
+	return h == target
 }
 
-// SetTarget sets the target for the key.
-func (k Key) SetTarget(value uint32) {
+// SetTarget sets the target channel for the key.
+func (k Key) SetTarget(channel string) error {
+	if !strings.HasSuffix(channel, "/") {
+		return ErrTargetInvalid
+	}
+
+	// Get all of the parts for the target channel
+	// History: https://github.com/emitter-io/emitter/issues/76
+	parts := strings.Split(strings.TrimRight(channel, "/"), "/")
+	wildcard := parts[len(parts)-1] == "#"
+
+	// 1st bit is 0 for wildcard, 1 for strict type
+	bitPath := uint16(1 << 15)
+	if wildcard {
+		parts = parts[0 : len(parts)-1]
+		bitPath = 0
+	}
+
+	// Perform some validation
+	if len(parts) > 15 {
+		return ErrTargetTooLong
+	}
+
+	// Encode all of the parts
+	for idx, part := range parts {
+		if part != "+" && part != "#" {
+			bitPath |= uint16(1 << (14 - uint16(idx)))
+		}
+	}
+
+	// Create a new channel and get the hash for this channel
+	newChannel := strings.Join(parts, "/") + "/"
+	value := utils.GetHash([]byte(newChannel))
+
+	// Set the bit path
+	k[12] = byte(bitPath >> 8)
+	k[13] = byte(bitPath)
+
+	// Set the hash of the target
 	k[16] = byte(value >> 24)
 	k[17] = byte(value >> 16)
 	k[18] = byte(value >> 8)
 	k[19] = byte(value)
+	return nil
 }
 
 // Expires gets the expiration date for the key.
