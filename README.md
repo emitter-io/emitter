@@ -44,7 +44,7 @@ Finally, open a browser and navigate to **<http://127.0.0.1:8080/keygen>** in or
 
 Emitter has a [sandbox](https://emitter.io/login) - a free cloud cluster which allows you to quickly try out the platform and see how simple it is to create connected, real-time applications. The movie below shows you how to create your sandbox account and create a simple hello-world application within **5 minutes**.
 
-[![Getting Started With Emitter](https://s3-eu-west-1.amazonaws.com/emitter.io/content/img/wiki/thumb1.png)](https://www.youtube.com/watch?v=WyPMeIgfxSM "Getting Started With Emitter")
+[![Emitter Overview](https://img.youtube.com/vi/M8VhWckhZoM/0.jpg)](https://www.youtube.com/watch?v=M8VhWckhZoM)
 
 
 ## Usage Example
@@ -96,9 +96,8 @@ The configuration file is in JSON format, but you can override any value by prov
     "listen": ":8080",
     "license": "/*The license*/",
     "tls": {
-        "listen": ":8443",
-        "certificate": "./example.cert",
-        "private": "./example.priv"
+        "listen": ":443",
+        "host": "example.com"
     },
     "cluster": {
         "listen": ":4000",
@@ -117,9 +116,9 @@ The structure of the configuration is described below:
 |---|---|---|
 | `license` | `EMITTER_LICENSE` | The license file to use for the broker. This contains the encryption key. |
 | `listen` | `EMITTER_LISTEN` | The API address used for TCP & Websocket communication, in `IP:PORT` format (e.g: `:8080`). |
-| `tls.listen` | `EMITTER_TLS_LISTEN` |The API address used for Secure TCP & Websocket communication, in `IP:PORT` format (e.g: `:8443`).  |
-| `tls.certificate` | `EMITTER_TLS_CERTIFICATE` | The path, url or contents of the TLS certificate.  |
-| `tls.private` | `EMITTER_TLS_PRIVATE` |The path, url or contents of the TLS private key. |
+| `tls.listen` | `EMITTER_TLS_LISTEN` |The API address used for Secure TCP & Websocket communication, in `IP:PORT` format (e.g: `:443`).  |
+| `tls.host` | `EMITTER_TLS_HOST` | The hostname to whitelist for the certificate.  |
+| `tls.email` | `EMITTER_TLS_EMAIL` |The email account to use for autocert. |
 | `vault.address` | `EMITTER_VAULT_ADDRESS` | The Hashicorp Vault address to use to further override configuration. |
 | `vault.app` | `EMITTER_VAULT_APP` | The Hashicorp Vault application ID to use. |
 | `cluster.name` | `EMITTER_CLUSTER_NAME` | The name of this node. This must be unique in the cluster. If this is not set, Emitter will set it to the external IP address of the running machine. |
