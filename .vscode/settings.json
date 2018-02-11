@@ -16,7 +16,7 @@
         "-s"
     ],
     "go.coverOnSave": true,
-    "go.coverageOptions":"showCoveredCodeOnly",
+    "go.coverageOptions":"showUncoveredCodeOnly",
 
       
     "TodoParser":

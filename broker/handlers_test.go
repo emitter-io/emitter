@@ -121,44 +121,44 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		t.Run(tc.msg, func(*testing.T) {
+			contract := new(secmock.Contract)
+			contract.On("Validate", mock.Anything).Return(tc.contractValid)
+			contract.On("Stats").Return(usage.NewMeter(0))
 
-		contract := new(secmock.Contract)
-		contract.On("Validate", mock.Anything).Return(tc.contractValid)
-		contract.On("Stats").Return(usage.NewMeter(0))
+			provider := secmock.NewContractProvider()
+			provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 
-		provider := secmock.NewContractProvider()
-		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
+			s := &Service{
+				contracts:     provider,
+				subscriptions: message.NewTrie(),
+				License:       license,
+				presence:      make(chan *presenceNotify, 100),
+			}
 
-		s := &Service{
-			contracts:     provider,
-			subscriptions: message.NewTrie(),
-			License:       license,
-			presence:      make(chan *presenceNotify, 100),
-		}
+			conn := netmock.NewConn()
+			nc := s.newConn(conn.Client)
+			s.Cipher, _ = s.License.Cipher()
 
-		conn := netmock.NewConn()
-		nc := s.newConn(conn.Client)
-		s.Cipher, _ = s.License.Cipher()
+			// Subscribe and check for error.
+			subErr := nc.onSubscribe([]byte(tc.channel))
+			assert.Equal(t, tc.subErr, subErr, tc.msg)
 
-		// Subscribe and check for error.
-		subErr := nc.onSubscribe([]byte(tc.channel))
-		assert.Equal(t, tc.subErr, subErr, tc.msg)
+			// Search for the ssid.
+			channel := security.ParseChannel([]byte(tc.channel))
+			key, _ := s.Cipher.DecryptKey(channel.Key)
+			ssid := message.NewSsid(key.Contract(), channel)
+			subscribers := s.subscriptions.Lookup(ssid)
+			assert.Equal(t, tc.subCount, len(subscribers))
 
-		// Search for the ssid.
-		channel := security.ParseChannel([]byte(tc.channel))
-		key, _ := s.Cipher.DecryptKey(channel.Key)
-		ssid := message.NewSsid(key.Contract(), channel)
-		subscribers := s.subscriptions.Lookup(ssid)
-		assert.Equal(t, tc.subCount, len(subscribers))
+			// Unsubscribe and check for error.
+			unsubErr := nc.onUnsubscribe([]byte(tc.channel))
+			assert.Equal(t, tc.unsubErr, unsubErr, tc.msg)
 
-		// Unsubscribe and check for error.
-		unsubErr := nc.onUnsubscribe([]byte(tc.channel))
-		assert.Equal(t, tc.unsubErr, unsubErr, tc.msg)
-
-		// Search for the ssid.
-		subscribers = s.subscriptions.Lookup(ssid)
-		assert.Equal(t, tc.unsubCount, len(subscribers))
-
+			// Search for the ssid.
+			subscribers = s.subscriptions.Lookup(ssid)
+			assert.Equal(t, tc.unsubCount, len(subscribers))
+		})
 	}
 }
 
@@ -415,50 +415,59 @@ func TestHandlers_onKeygen(t *testing.T) {
 			payload:       "{\"key\":\"8GR6MtpL7Xut-pyogQMeS_gyxEA21BbR\",\"channel\":\"article1\"}",
 			contractValid: true,
 			contractFound: true,
+			generated:     false,
+			resp:          ErrTargetInvalid,
+			msg:           "Target invalid case",
+		},
+		{
+			payload:       "{\"key\":\"8GR6MtpL7Xut-pyogQMeS_gyxEA21BbR\",\"channel\":\"article1/\"}",
+			contractValid: true,
+			contractFound: true,
 			generated:     true,
-			resp:          keyGenResponse{Status: 200, Key: "76w5HdpyIOQh70HnB4d33gbqD5fFztGY", Channel: "article1"},
+			resp:          keyGenResponse{Status: 200, Key: "76w5HdpyIOQh70HnB4d33gbqD5fFztGY", Channel: "article1/"},
 			msg:           "Successful case",
 		},
 	}
 
 	//keyGenResponse{Status: 200, Key: "76w5HdpyIOQh70HnB4d33gbqD5fFztGY", Channel: "article1"},
 	for _, tc := range tests {
-		provider := secmock.NewContractProvider()
-		contract := new(secmock.Contract)
-		contract.On("Validate", mock.Anything).Return(tc.contractValid)
-		contract.On("Stats").Return(usage.NewMeter(0))
+		t.Run(tc.msg, func(*testing.T) {
+			provider := secmock.NewContractProvider()
+			contract := new(secmock.Contract)
+			contract.On("Validate", mock.Anything).Return(tc.contractValid)
+			contract.On("Stats").Return(usage.NewMeter(0))
 
-		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
-		/*
-			if tc.contractFound {
-				provider.On("Get", mock.Anything).Return(contract).Once()
+			provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
+			/*
+				if tc.contractFound {
+					provider.On("Get", mock.Anything).Return(contract).Once()
+				} else {
+					provider.On("Get", mock.Anything).Return(nil).Once()
+				}*/
+
+			s := &Service{
+				contracts:     provider,
+				subscriptions: message.NewTrie(),
+				License:       license,
+			}
+
+			conn := netmock.NewConn()
+			nc := s.newConn(conn.Client)
+			s.Cipher, _ = s.License.Cipher()
+
+			//resp
+			resp, generated := nc.onKeyGen([]byte(tc.payload))
+			assert.Equal(t, tc.generated, generated, tc.msg)
+
+			if !generated {
+				keyGenResp := resp.(*EventError)
+				assert.Equal(t, tc.resp, keyGenResp)
 			} else {
-				provider.On("Get", mock.Anything).Return(nil).Once()
-			}*/
-
-		s := &Service{
-			contracts:     provider,
-			subscriptions: message.NewTrie(),
-			License:       license,
-		}
-
-		conn := netmock.NewConn()
-		nc := s.newConn(conn.Client)
-		s.Cipher, _ = s.License.Cipher()
-
-		//resp
-		resp, generated := nc.onKeyGen([]byte(tc.payload))
-		assert.Equal(t, tc.generated, generated, tc.msg)
-
-		if !generated {
-			keyGenResp := resp.(*EventError)
-			assert.Equal(t, tc.resp, keyGenResp)
-		} else {
-			keyGenResp := resp.(*keyGenResponse)
-			expected := tc.resp.(keyGenResponse)
-			//assert.Equal(t, tc.resp, keyGenResp)
-			assert.Equal(t, expected.Status, keyGenResp.Status)
-
-		}
+				keyGenResp := resp.(*keyGenResponse)
+				expected := tc.resp.(keyGenResponse)
+				//assert.Equal(t, tc.resp, keyGenResp)
+				assert.Equal(t, expected.Status, keyGenResp.Status)
+			}
+		})
 	}
 }
