@@ -65,7 +65,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Check if the key has the permission for the required channel
-	if key.Target() != 0 && key.Target() != channel.Target() {
+	if !key.ValidateChannel(channel) {
 		return ErrUnauthorized
 	}
 
@@ -131,7 +131,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 	}
 
 	// Check if the key has the permission for the required channel
-	if key.Target() != 0 && key.Target() != channel.Target() {
+	if !key.ValidateChannel(channel) {
 		return ErrUnauthorized
 	}
 
@@ -187,7 +187,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	}
 
 	// Check if the key has the permission for the required channel
-	if key.Target() != 0 && key.Target() != channel.Target() {
+	if !key.ValidateChannel(channel) {
 		return ErrUnauthorized
 	}
 
@@ -290,7 +290,14 @@ func (c *Conn) onKeyGen(payload []byte) (interface{}, bool) {
 	// Use the cipher to generate the key
 	key, err := c.service.Cipher.GenerateKey(masterKey, message.Channel, message.access(), message.expires(), -1)
 	if err != nil {
-		return ErrServerError, false
+		switch err {
+		case security.ErrTargetInvalid:
+			return ErrTargetInvalid, false
+		case security.ErrTargetTooLong:
+			return ErrTargetTooLong, false
+		default:
+			return ErrServerError, false
+		}
 	}
 
 	// Success, return the response
@@ -299,7 +306,6 @@ func (c *Conn) onKeyGen(payload []byte) (interface{}, bool) {
 		Key:     key,
 		Channel: message.Channel,
 	}, true
-
 }
 
 // ------------------------------------------------------------------------------------

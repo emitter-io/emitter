@@ -27,6 +27,8 @@ var (
 	ErrNotFound        = &EventError{Status: 404, Message: "The resource requested does not exist."}
 	ErrServerError     = &EventError{Status: 500, Message: "An unexpected condition was encountered and no more specific message is suitable."}
 	ErrNotImplemented  = &EventError{Status: 501, Message: "The server either does not recognize the request method, or it lacks the ability to fulfill the request."}
+	ErrTargetInvalid   = &EventError{Status: 400, Message: "Channel should end with `/` for strict types or `/#/` for wildcards."}
+	ErrTargetTooLong   = &EventError{Status: 400, Message: "Channel can not have more than 23 parts."}
 )
 
 // ------------------------------------------------------------------------------------
