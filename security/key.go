@@ -138,6 +138,12 @@ func (k Key) ValidateChannel(ch *Channel) bool {
 		}
 	}
 
+	// If no depth defined, all the parts in key target were wildcards (+)
+	// We need to compare the key hash with the whole channel we received.
+	if maxDepth == 0 {
+		maxDepth = len(parts)
+	}
+
 	// Get the first bit, whether the key is the exact match or not
 	keyIsExactTarget := ((targetPath >> 23) & 1) == 1
 	if len(parts) < maxDepth || (keyIsExactTarget && len(parts) != maxDepth) {

@@ -45,6 +45,27 @@ func TestKey_New(t *testing.T) {
 	assert.True(t, validateChannel(key, "a/+/c/"))
 	assert.False(t, validateChannel(key, "a/b/+/"))
 
+	key.SetTarget("+/")
+	assert.True(t, validateChannel(key, "/"))
+	assert.True(t, validateChannel(key, "a/"))
+	assert.False(t, validateChannel(key, "a/b/"))
+	assert.False(t, validateChannel(key, "a/b/c/"))
+
+	key.SetTarget("+/+/")
+	assert.False(t, validateChannel(key, "/"))
+	assert.False(t, validateChannel(key, "a/"))
+	assert.True(t, validateChannel(key, "a/b/"))
+	assert.False(t, validateChannel(key, "a/b/c/"))
+	assert.True(t, validateChannel(key, "a/+/"))
+	assert.True(t, validateChannel(key, "+/b/"))
+	assert.True(t, validateChannel(key, "+/+/"))
+
+	key.SetTarget("+/+/+/")
+	assert.False(t, validateChannel(key, "/"))
+	assert.False(t, validateChannel(key, "a/"))
+	assert.False(t, validateChannel(key, "a/b/"))
+	assert.True(t, validateChannel(key, "a/b/c/"))
+
 	// Test open channel
 	key.SetTarget("#/")
 	assert.True(t, validateChannel(key, "/"))
