@@ -128,13 +128,12 @@ func (k Key) ValidateChannel(ch *Channel) bool {
 	}
 
 	maxDepth := 0
-
-	for i := 0; i < 23; i++ {
-		if ((targetPath >> (22 - uint32(i))) & 1) == 1 {
-			maxDepth = i
+	for i := uint32(0); i < 23; i++ {
+		if ((targetPath >> i) & 1) == 1 {
+			maxDepth = 23 - int(i)
+			break
 		}
 	}
-	maxDepth++
 
 	// Get the first bit, whether the key is the exact match or not
 	keyIsExactTarget := ((targetPath >> 23) & 1) == 1
