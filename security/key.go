@@ -116,6 +116,9 @@ func (k Key) ValidateChannel(ch *Channel) bool {
 
 	// Retro-compatibility: if there's no depth specified we default to a single-level validation
 	if targetPath == 0 {
+		if target == 1325880984 { // Key target was "#/" (1325880984 == hash(""))
+			return true
+		}
 		return target == ch.Target()
 	}
 
