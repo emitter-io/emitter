@@ -151,12 +151,11 @@ func (k Key) ValidateChannel(ch *Channel) bool {
 	}
 
 	for idx, part := range parts {
-		if part == "+" {
-			if ((targetPath >> (22 - uint32(idx))) & 1) == 1 {
+		if ((targetPath >> (22 - uint32(idx))) & 1) == 1 {
+			if part == "+" {
 				return false
 			}
-		}
-		if ((targetPath >> (22 - uint32(idx))) & 1) == 0 {
+		} else {
 			parts[idx] = "+"
 		}
 	}
