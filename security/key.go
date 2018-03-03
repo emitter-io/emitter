@@ -163,7 +163,6 @@ func (k Key) ValidateChannel(ch *Channel) bool {
 	newChannel := strings.Join(parts[0:maxDepth], "/")
 
 	h := utils.GetHash([]byte(newChannel))
-
 	return h == target
 }
 

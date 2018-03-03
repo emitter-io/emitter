@@ -49,6 +49,11 @@ func TestEncryptDecrypt(t *testing.T) {
 			acl:     "sl",
 		},
 		{
+			key:     "-ZgVnx1gr7BxxRCDsrEXBvmLVz86vGzs",
+			channel: "cluster/#/",
+			acl:     "rwsl",
+		},
+		{
 			key: "",
 			err: true,
 		},
@@ -171,18 +176,32 @@ func TestGenerateKey(t *testing.T) {
 
 	tests := []struct {
 		channel  string
+		channels []string
 		expected string
 		err      bool
 	}{
 		{channel: "article1", err: true},
-		{channel: "article1/", expected: "jhdrak0aHbbK6TbmyA391n2FucwUj7Q2"},
+		{channel: "article1/", expected: "jhdrak0aHbbK6TbmyA391ndW3JwwgtNw", channels: []string{"article1/"}},
+		{channel: "article1/#/", expected: "jhdrak0aHbbRDL1NpzzN4HdW3JwwgtNw", channels: []string{"article1/", "article1/a/", "article1/a/b/c/", "article1/+/a/b/c/"}},
 	}
 
 	for _, tc := range tests {
 		key, err := cipher.GenerateKey(masterKey, tc.channel, AllowRead, time.Unix(0, 0), 1)
 		assert.Equal(t, tc.err, err != nil)
-		if !tc.err {
-			assert.Equal(t, tc.expected, key)
+		if tc.err {
+			continue
 		}
+
+		// Assert the key
+		assert.Equal(t, tc.expected, key)
+
+		// Attempt to parse the key
+		for _, c := range tc.channels {
+			channel := ParseChannel([]byte(tc.expected + "/" + c))
+			k, err := cipher.DecryptKey([]byte(key))
+			assert.NoError(t, err)
+			assert.True(t, k.ValidateChannel(channel))
+		}
+
 	}
 }
