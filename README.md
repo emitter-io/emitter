@@ -148,7 +148,7 @@ go test ./...
 [![Docker Automated build](https://img.shields.io/docker/automated/emitter/server.svg)](https://hub.docker.com/r/emitter/server/)
 [![Docker Pulls](https://img.shields.io/docker/pulls/emitter/server.svg)](https://hub.docker.com/r/emitter/server/)
 
-Emitter is convinently packaged as a docker container. To run the emitter service on a single server, use the command below. Once the server is started, it will generate a new security configuration, you can then re-run the same command with an additional environment variable -e EMITTER_LICENSE set to the provided value.
+Emitter is conveniently packaged as a docker container. To run the emitter service on a single server, use the command below. Once the server is started, it will generate a new security configuration, you can then re-run the same command with an additional environment variable -e EMITTER_LICENSE set to the provided value.
 
 ```shell
 docker run -d -p 8080:8080 emitter/server
