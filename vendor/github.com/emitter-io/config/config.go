@@ -40,33 +40,68 @@ type Config interface {
 
 // TLSConfig represents TLS listener configuration.
 type TLSConfig struct {
-	ListenAddr string `json:"listen"`          // The address to listen on.
-	Host       string `json:"host"`            // The hostname to whitelist.
-	Email      string `json:"email,omitempty"` // The email address for autocert.
+	ListenAddr  string `json:"listen"`                // The address to listen on.
+	Host        string `json:"host"`                  // The hostname to whitelist.
+	Email       string `json:"email,omitempty"`       // The email address for autocert.
+	Certificate string `json:"certificate,omitempty"` // The certificate request.
+	PrivateKey  string `json:"private,omitempty"`     // The private key for the certificate.
 }
 
 // Load loads the certificates from the cache or the configuration.
 func (c *TLSConfig) Load(certCache autocert.Cache) (*tls.Config, error) {
-	if c.Host == "" {
-		return nil, errors.New("unable to request a certificate, no host name configured")
+	if c.Certificate != "" {
+		if c.Certificate == "" || c.PrivateKey == "" {
+			return &tls.Config{}, errors.New("No certificate or private key configured")
+		}
+
+		// If the certificate provided is in plain text, write to file so we can read it.
+		if strings.HasPrefix(c.Certificate, "---") {
+			if err := ioutil.WriteFile("broker.crt", []byte(c.Certificate), os.ModePerm); err == nil {
+				c.Certificate = "broker.crt"
+			}
+		}
+
+		// If the private key provided is in plain text, write to file so we can read it.
+		if strings.HasPrefix(c.PrivateKey, "---") {
+			if err := ioutil.WriteFile("broker.key", []byte(c.PrivateKey), os.ModePerm); err == nil {
+				c.PrivateKey = "broker.key"
+			}
+		}
+
+		// Make sure the paths are absolute, otherwise we won't be able to read the files.
+		c.Certificate = resolvePath(c.Certificate)
+		c.PrivateKey = resolvePath(c.PrivateKey)
+
+		// Load the certificate from the cert/key files.
+
+		cer, err := tls.LoadX509KeyPair(c.Certificate, c.PrivateKey)
+		return &tls.Config{
+			Certificates: []tls.Certificate{cer},
+		}, err
+	} else {
+
+		if c.Host == "" {
+			return nil, errors.New("unable to request a certificate, no host name configured")
+		}
+
+		// Default to disk cache
+		if certCache == nil {
+			certCache = autocert.DirCache("certs")
+		}
+
+		// Create an auto-cert manager
+		certManager := autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(c.Host),
+			Email:      c.Email,
+			Cache:      certCache,
+		}
+
+		return &tls.Config{
+			GetCertificate: certManager.GetCertificate,
+		}, nil
 	}
 
-	// Default to disk cache
-	if certCache == nil {
-		certCache = autocert.DirCache("certs")
-	}
-
-	// Create an auto-cert manager
-	certManager := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(c.Host),
-		Email:      c.Email,
-		Cache:      certCache,
-	}
-
-	return &tls.Config{
-		GetCertificate: certManager.GetCertificate,
-	}, nil
 }
 
 // VaultConfig represents Vault configuration.
