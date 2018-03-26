@@ -7,6 +7,7 @@ import (
 	"plugin"
 )
 
+//
 func (c *ProviderConfig) LoadPlugin() (Provider, error) {
 	// Attempt to load a plugin provider
 	p, err := plugin.Open(resolvePath(c.Provider))
