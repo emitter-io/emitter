@@ -1,7 +1,7 @@
 package hyperloglog
 
 import (
-	bits "github.com/dgryski/go-bits"
+	"math/bits"
 )
 
 func getIndex(k uint32, p, pp uint8) uint32 {
@@ -15,7 +15,7 @@ func getIndex(k uint32, p, pp uint8) uint32 {
 func encodeHash(x uint64, p, pp uint8) uint32 {
 	idx := uint32(bextr(x, 64-pp, pp))
 	if bextr(x, 64-pp, pp-p) == 0 {
-		zeros := bits.Clz((bextr(x, 0, 64-pp)<<pp)|(1<<pp-1)) + 1
+		zeros := bits.LeadingZeros64((bextr(x, 0, 64-pp)<<pp)|(1<<pp-1)) + 1
 		return idx<<7 | uint32(zeros<<1) | 1
 	}
 	return idx << 1
@@ -29,15 +29,14 @@ func decodeHash(k uint32, p, pp uint8) (uint32, uint8) {
 	} else {
 		// We can use the 64bit clz implementation and reduce the result
 		// by 32 to get a clz for a 32bit word.
-		r = uint8(bits.Clz(uint64(k<<(32-pp+p-1))) - 31) // -32 + 1
+		r = uint8(bits.LeadingZeros64(uint64(k<<(32-pp+p-1))) - 31) // -32 + 1
 	}
 	return getIndex(k, p, pp), r
 }
 
 type set map[uint32]struct{}
 
-func (s set) add(v uint32)      { s[v] = struct{}{} }
-func (s set) has(v uint32) bool { _, ok := s[v]; return ok }
+func (s set) add(v uint32) { s[v] = struct{}{} }
 
 func (s set) Clone() set {
 	if s == nil {

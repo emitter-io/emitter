@@ -1,4 +1,4 @@
-// +build amd64,!appengine
+// +build !gccgo,!appengine
 
 // func Clz(x uint64) uint64
 TEXT ·Clz(SB),4,$0-16

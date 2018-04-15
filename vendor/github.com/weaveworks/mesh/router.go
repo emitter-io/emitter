@@ -32,9 +32,9 @@ const (
 type Config struct {
 	Host               string
 	Port               int
-	ProtocolMinVersion byte
 	Password           []byte
 	ConnLimit          int
+	ProtocolMinVersion byte
 	PeerDiscovery      bool
 	TrustedSubnets     []*net.IPNet
 }
@@ -99,11 +99,11 @@ func (router *Router) usingPassword() bool {
 }
 
 func (router *Router) listenTCP() {
-	localAddr, err := net.ResolveTCPAddr("tcp4", net.JoinHostPort(router.Host, fmt.Sprint(router.Port)))
+	localAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(router.Host, fmt.Sprint(router.Port)))
 	if err != nil {
 		panic(err)
 	}
-	ln, err := net.ListenTCP("tcp4", localAddr)
+	ln, err := net.ListenTCP("tcp", localAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -274,7 +274,7 @@ func (router *Router) applyTopologyUpdate(update []byte) (peerNameSet, peerNameS
 }
 
 func (router *Router) trusts(remote *remoteConnection) bool {
-	if tcpAddr, err := net.ResolveTCPAddr("tcp4", remote.remoteTCPAddr); err == nil {
+	if tcpAddr, err := net.ResolveTCPAddr("tcp", remote.remoteTCPAddr); err == nil {
 		for _, trustedSubnet := range router.TrustedSubnets {
 			if trustedSubnet.Contains(tcpAddr.IP) {
 				return true

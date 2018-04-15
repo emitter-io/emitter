@@ -1,4 +1,4 @@
-// +build amd64,!appengine
+// +build !gccgo,!appengine
 
 // func Ctz(x uint64) uint64
 TEXT ·Ctz(SB),4,$0-16
