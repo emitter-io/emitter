@@ -54,7 +54,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 
 	// Generate a globally unique id as well
 	c.guid = c.luid.Unique(uint64(address.Hardware()), "emitter")
-	logging.LogTarget("conn", "created", c.luid)
+	logging.LogTarget("conn", "created", c.guid)
 
 	// Increment the connection counter
 	atomic.AddInt64(&s.connections, 1)
