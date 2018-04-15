@@ -1,4 +1,4 @@
-// +build amd64,!appengine,!popcntgo
+// +build !gccgo,!appengine,!popcntgo
 
 #define POPCNTQ_DX_DX BYTE $0xf3; BYTE $0x48; BYTE $0x0f; BYTE $0xb8; BYTE $0xd2
 

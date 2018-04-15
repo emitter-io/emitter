@@ -174,7 +174,11 @@ func (sk *Sketch) insert(i uint32, r uint8) {
 		}
 	}
 	if r > sk.b {
-		val := uint8(math.Min(float64(r-sk.b), float64(capacity-1)))
+		val := r - sk.b
+		if c1 := capacity - 1; c1 < val {
+			val = c1
+		}
+
 		if val > sk.regs.get(i) {
 			sk.regs.set(i, val)
 		}
@@ -191,9 +195,9 @@ func (sk *Sketch) Insert(e []byte) {
 func (sk *Sketch) InsertHash(x uint64) {
 	if sk.sparse {
 		sk.tmpSet.add(encodeHash(x, sk.p, pp))
-		if uint32(len(sk.tmpSet))*100 > sk.m {
+		if uint32(len(sk.tmpSet))*100 > sk.m/2 {
 			sk.mergeSparse()
-			if uint32(sk.sparseList.Len()) > sk.m {
+			if uint32(sk.sparseList.Len()) > sk.m/2 {
 				sk.toNormal()
 			}
 		}
@@ -222,9 +226,9 @@ func (sk *Sketch) Estimate() uint64 {
 	}
 
 	if sk.b == 0 {
-		est = (sk.alpha * m * (m - ez) / (sum + beta(ez))) + 0.5
+		est = (sk.alpha * m * (m - ez) / (sum + beta(ez)))
 	} else {
-		est = (sk.alpha * m * m / sum) + 0.5
+		est = (sk.alpha * m * m / sum)
 	}
 
 	return uint64(est + 0.5)

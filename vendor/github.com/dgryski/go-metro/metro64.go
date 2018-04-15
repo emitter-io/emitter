@@ -1,4 +1,4 @@
-// +build !amd64
+// +build noasm !amd64 gccgo
 
 package metro
 
@@ -21,18 +21,15 @@ func Hash64(buffer []byte, seed uint64) uint64 {
 		v := [4]uint64{hash, hash, hash, hash}
 
 		for len(ptr) >= 32 {
-			v[0] += binary.LittleEndian.Uint64(ptr) * k0
-			ptr = ptr[8:]
+			v[0] += binary.LittleEndian.Uint64(ptr[:8]) * k0
 			v[0] = rotate_right(v[0], 29) + v[2]
-			v[1] += binary.LittleEndian.Uint64(ptr) * k1
-			ptr = ptr[8:]
+			v[1] += binary.LittleEndian.Uint64(ptr[8:16]) * k1
 			v[1] = rotate_right(v[1], 29) + v[3]
-			v[2] += binary.LittleEndian.Uint64(ptr) * k2
-			ptr = ptr[8:]
+			v[2] += binary.LittleEndian.Uint64(ptr[16:24]) * k2
 			v[2] = rotate_right(v[2], 29) + v[0]
-			v[3] += binary.LittleEndian.Uint64(ptr) * k3
-			ptr = ptr[8:]
+			v[3] += binary.LittleEndian.Uint64(ptr[24:32]) * k3
 			v[3] = rotate_right(v[3], 29) + v[1]
+			ptr = ptr[32:]
 		}
 
 		v[2] ^= rotate_right(((v[0]+v[3])*k0)+v[1], 37) * k1
@@ -43,31 +40,30 @@ func Hash64(buffer []byte, seed uint64) uint64 {
 	}
 
 	if len(ptr) >= 16 {
-		v0 := hash + (binary.LittleEndian.Uint64(ptr) * k2)
-		ptr = ptr[8:]
+		v0 := hash + (binary.LittleEndian.Uint64(ptr[:8]) * k2)
 		v0 = rotate_right(v0, 29) * k3
-		v1 := hash + (binary.LittleEndian.Uint64(ptr) * k2)
-		ptr = ptr[8:]
+		v1 := hash + (binary.LittleEndian.Uint64(ptr[8:16]) * k2)
 		v1 = rotate_right(v1, 29) * k3
 		v0 ^= rotate_right(v0*k0, 21) + v1
 		v1 ^= rotate_right(v1*k3, 21) + v0
 		hash += v1
+		ptr = ptr[16:]
 	}
 
 	if len(ptr) >= 8 {
-		hash += binary.LittleEndian.Uint64(ptr) * k3
+		hash += binary.LittleEndian.Uint64(ptr[:8]) * k3
 		ptr = ptr[8:]
 		hash ^= rotate_right(hash, 55) * k1
 	}
 
 	if len(ptr) >= 4 {
-		hash += uint64(binary.LittleEndian.Uint32(ptr)) * k3
-		ptr = ptr[4:]
+		hash += uint64(binary.LittleEndian.Uint32(ptr[:4])) * k3
 		hash ^= rotate_right(hash, 26) * k1
+		ptr = ptr[4:]
 	}
 
 	if len(ptr) >= 2 {
-		hash += uint64(binary.LittleEndian.Uint16(ptr)) * k3
+		hash += uint64(binary.LittleEndian.Uint16(ptr[:2])) * k3
 		ptr = ptr[2:]
 		hash ^= rotate_right(hash, 48) * k1
 	}

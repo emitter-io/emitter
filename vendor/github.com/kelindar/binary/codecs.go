@@ -72,7 +72,7 @@ func (c *reflectSliceCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) {
 // Decode decodes into a reflect value from the decoder.
 func (c *reflectSliceCodec) DecodeTo(d *Decoder, rv reflect.Value) (err error) {
 	var l uint64
-	if l, err = binary.ReadUvarint(d.r); err == nil {
+	if l, err = binary.ReadUvarint(d.r); err == nil && l > 0 {
 		rv.Set(reflect.MakeSlice(rv.Type(), int(l), int(l)))
 		for i := 0; i < int(l); i++ {
 			v := reflect.Indirect(rv.Index(i))
@@ -99,7 +99,7 @@ func (c *byteSliceCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) {
 // Decode decodes into a reflect value from the decoder.
 func (c *byteSliceCodec) DecodeTo(d *Decoder, rv reflect.Value) (err error) {
 	var l uint64
-	if l, err = binary.ReadUvarint(d.r); err == nil {
+	if l, err = binary.ReadUvarint(d.r); err == nil && l > 0 {
 		buffer := make([]byte, int(l))
 		if _, err = d.r.Read(buffer); err == nil {
 			rv.Set(reflect.ValueOf(buffer))

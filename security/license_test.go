@@ -91,3 +91,11 @@ func TestNewLicense(t *testing.T) {
 	assert.Equal(t, time.Unix(0, 0), l.Expires)
 	assert.Equal(t, uint32(LicenseTypeOnPremise), l.Type)
 }
+
+func TestNewLicenseAndMaster(t *testing.T) {
+	assert.NotPanics(t, func() {
+		l, m := NewLicenseAndMaster()
+		assert.NotEmpty(t, l)
+		assert.NotEmpty(t, m)
+	})
+}

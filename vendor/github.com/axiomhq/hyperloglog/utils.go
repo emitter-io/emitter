@@ -2,8 +2,8 @@ package hyperloglog
 
 import (
 	"math"
+	"math/bits"
 
-	bits "github.com/dgryski/go-bits"
 	metro "github.com/dgryski/go-metro"
 )
 
@@ -48,7 +48,7 @@ func alpha(m float64) float64 {
 func getPosVal(x uint64, p uint8) (uint64, uint8) {
 	i := bextr(x, 64-p, p) // {x63,...,x64-p}
 	w := x<<p | 1<<(p-1)   // {x63-p,...,x0}
-	rho := uint8(bits.Clz(w)) + 1
+	rho := uint8(bits.LeadingZeros64(w)) + 1
 	return i, rho
 }
 
