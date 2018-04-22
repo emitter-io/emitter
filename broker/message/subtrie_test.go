@@ -25,6 +25,26 @@ func (s *testSubscriber) Send(*Message) error {
 	return nil
 }
 
+func TestTrieMatch1(t *testing.T) {
+	m := NewTrie()
+	testPopulateWithStrings(m, []string{
+		"a/",
+	})
+
+	// Tests to run
+	tests := []struct {
+		topic string
+		n     int
+	}{
+		{topic: "a/b/", n: 1},
+	}
+
+	for _, tc := range tests {
+		result := m.Lookup(testSub(tc.topic))
+		assert.Equal(t, tc.n, len(result))
+	}
+}
+
 func TestTrieMatch(t *testing.T) {
 	m := NewTrie()
 	testPopulateWithStrings(m, []string{
@@ -85,6 +105,8 @@ func TestTrieIntegration(t *testing.T) {
 	assert.NoError(err)
 	sub6, err := m.Subscribe([]uint32{wildcard}, s2)
 	assert.NoError(err)
+	_, err = m.Subscribe([]uint32{wildcard}, s2)
+	assert.NoError(err)
 
 	assertEqual(assert, Subscribers{s0, s1, s2}, m.Lookup([]uint32{1, 3}))
 	assertEqual(assert, Subscribers{s2}, m.Lookup([]uint32{1}))
@@ -98,6 +120,7 @@ func TestTrieIntegration(t *testing.T) {
 	m.Unsubscribe(sub3.Ssid, sub3.Subscriber)
 	m.Unsubscribe(sub4.Ssid, sub4.Subscriber)
 	m.Unsubscribe(sub5.Ssid, sub5.Subscriber)
+	m.Unsubscribe(sub6.Ssid, sub6.Subscriber)
 	m.Unsubscribe(sub6.Ssid, sub6.Subscriber)
 
 	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1, 3}))
@@ -222,7 +245,7 @@ func BenchmarkSubscriptionTrieLookupCold(b *testing.B) {
 func assertEqual(assert *assert.Assertions, expected, actual Subscribers) {
 	assert.Len(actual, len(expected))
 	for _, sub := range actual {
-		assert.True(expected.Contains(sub))
+		assert.True(expected.contains(sub))
 	}
 }
 
