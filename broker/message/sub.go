@@ -130,7 +130,7 @@ type Subscribers []Subscriber
 
 // AddUnique adds a subscriber to the set.
 func (s *Subscribers) AddUnique(value Subscriber) {
-	if s.contains(value) == false {
+	if s.Contains(value) == false {
 		*s = append(*s, value)
 	}
 }
@@ -149,8 +149,8 @@ func (s *Subscribers) Remove(value Subscriber) {
 	}
 }
 
-// contains checks whether a subscriber is in the set.
-func (s *Subscribers) contains(value Subscriber) bool {
+// Contains checks whether a subscriber is in the set.
+func (s *Subscribers) Contains(value Subscriber) bool {
 	for _, v := range *s {
 		if v == value {
 			return true
