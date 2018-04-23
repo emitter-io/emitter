@@ -135,6 +135,20 @@ func (s *Subscribers) AddUnique(value Subscriber) {
 	}
 }
 
+// Remove removes a subscriber from the set.
+func (s *Subscribers) Remove(value Subscriber) {
+	for i, v := range *s {
+		if v == value {
+			a := *s
+			a[i] = a[len(a)-1]
+			a[len(a)-1] = nil
+			a = a[:len(a)-1]
+			*s = a
+			return
+		}
+	}
+}
+
 // Contains checks whether a subscriber is in the set.
 func (s *Subscribers) Contains(value Subscriber) bool {
 	for _, v := range *s {

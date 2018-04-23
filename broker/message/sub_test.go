@@ -17,6 +17,12 @@ func BenchmarkSsidEncode(b *testing.B) {
 	}
 }
 
+func TestSsidPresence(t *testing.T) {
+	ssid := NewSsidForPresence(Ssid{1, 2, 3})
+	assert.NotNil(t, ssid)
+	assert.EqualValues(t, Ssid{0, 3869262148, 1, 2, 3}, ssid)
+}
+
 func TestSsid(t *testing.T) {
 	c := security.Channel{
 		Key:         []byte("key"),
@@ -90,10 +96,6 @@ func TestSub_All(t *testing.T) {
 
 	// Assertions.
 	assert.Equal(t, 1, len(allCounters))
-
-	// TODO : just don't know what I'm doing... http://reactiongifs.me/wp-content/uploads/2013/08/house-pretend-to-work-now.gif
-	// tired, will try again another time. (pointers)
-
 	assert.Equal(t, createdCounter, &allCounters[0])
 }
 

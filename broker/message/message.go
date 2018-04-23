@@ -43,7 +43,6 @@ func (f *Frame) Encode() (out []byte, err error) {
 	var enc []byte
 	if enc, err = utils.Encode(f); err == nil {
 		out = snappy.Encode(out, enc)
-		return
 	}
 	return
 }
