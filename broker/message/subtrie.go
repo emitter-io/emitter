@@ -38,8 +38,8 @@ func (n *node) orphan() {
 
 // Trie represents an efficient collection of subscriptions with lookup capability.
 type Trie struct {
+	sync.RWMutex
 	root *node
-	mu   sync.RWMutex
 }
 
 // NewTrie creates a new matcher for the subscriptions.
@@ -54,7 +54,7 @@ func NewTrie() *Trie {
 
 // Subscribe adds the Subscriber to the topic and returns a Subscription.
 func (t *Trie) Subscribe(ssid Ssid, sub Subscriber) (*Subscription, error) {
-	t.mu.Lock()
+	t.Lock()
 	curr := t.root
 	for _, word := range ssid {
 		child, ok := curr.children[word]
@@ -71,19 +71,19 @@ func (t *Trie) Subscribe(ssid Ssid, sub Subscriber) (*Subscription, error) {
 	}
 
 	curr.subs.AddUnique(sub)
-	t.mu.Unlock()
+	t.Unlock()
 	return &Subscription{Ssid: ssid, Subscriber: sub}, nil
 }
 
 // Unsubscribe removes the Subscription.
 func (t *Trie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
-	t.mu.Lock()
+	t.Lock()
 	curr := t.root
 	for _, word := range ssid {
 		child, ok := curr.children[word]
 		if !ok {
 			// Subscription doesn't exist.
-			t.mu.Unlock()
+			t.Unlock()
 			return
 		}
 		curr = child
@@ -92,14 +92,14 @@ func (t *Trie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 	if len(curr.subs) == 0 && len(curr.children) == 0 {
 		curr.orphan()
 	}
-	t.mu.Unlock()
+	t.Unlock()
 }
 
 // Lookup returns the Subscribers for the given topic.
 func (t *Trie) Lookup(query Ssid) (subs Subscribers) {
-	t.mu.RLock()
+	t.RLock()
 	t.lookup(query, &subs, t.root)
-	t.mu.RUnlock()
+	t.RUnlock()
 	return
 }
 
