@@ -96,36 +96,31 @@ func (t *Trie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 }
 
 // Lookup returns the Subscribers for the given topic.
-func (t *Trie) Lookup(query Ssid) Subscribers {
+func (t *Trie) Lookup(query Ssid) (subs Subscribers) {
 	t.mu.RLock()
-	subs := t.lookup(query, t.root)
+	t.lookup(query, &subs, t.root)
 	t.mu.RUnlock()
-	return subs
+	return
 }
 
-func (t *Trie) lookup(query Ssid, node *node) Subscribers {
-	if len(query) == 0 {
-		return node.subs
-	}
+func (t *Trie) lookup(query Ssid, subs *Subscribers, node *node) {
 
 	// Add subscribers from the current branch
-	var subs Subscribers
 	for _, s := range node.subs {
 		subs.AddUnique(s)
 	}
 
-	// Go through the exact match branch
-	if n, ok := node.children[query[0]]; ok {
-		for _, v := range t.lookup(query[1:], n) {
-			subs.AddUnique(v)
-		}
-	}
+	// If we're not yet done, continue
+	if len(query) > 0 {
 
-	// Go through wildcard match branc
-	if n, ok := node.children[wildcard]; ok {
-		for _, v := range t.lookup(query[1:], n) {
-			subs.AddUnique(v)
+		// Go through the exact match branch
+		if n, ok := node.children[query[0]]; ok {
+			t.lookup(query[1:], subs, n)
+		}
+
+		// Go through wildcard match branc
+		if n, ok := node.children[wildcard]; ok {
+			t.lookup(query[1:], subs, n)
 		}
 	}
-	return subs
 }
