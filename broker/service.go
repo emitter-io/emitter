@@ -191,9 +191,17 @@ func (s *Service) Listen() (err error) {
 }
 
 // listen configures an main listener on a specified address.
-func (s *Service) listen(address string, conf *tls.Config) {
-	logging.LogTarget("service", "starting the listener", address)
-	l, err := listener.New(address, conf)
+func (s *Service) listen(addr string, conf *tls.Config) {
+
+	// Parse the listen address
+	listenAddr, err := address.Parse(addr, 0)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create new listener
+	logging.LogTarget("service", "starting the listener", listenAddr)
+	l, err := listener.New(listenAddr.String(), conf)
 	if err != nil {
 		panic(err)
 	}

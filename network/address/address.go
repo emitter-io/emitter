@@ -15,6 +15,8 @@
 package address
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -23,6 +25,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/logging"
+	"github.com/hashicorp/go-sockaddr"
 )
 
 var hardware uint64
@@ -45,6 +48,7 @@ func Hardware() Fingerprint {
 
 // getExternal retrieves an external IP address
 func getExternal(urls ...string) (net.IP, bool) {
+
 	for _, url := range urls {
 		cli := http.Client{Timeout: time.Duration(5 * time.Second)}
 		res, err := cli.Get(url)
@@ -138,4 +142,46 @@ func intmac(key uint64) (r net.HardwareAddr) {
 		key >>= 8
 	}
 	return
+}
+
+// getPrivateAddr gets the first private address
+func getPrivateAddr() (addr string) {
+	addr = "127.0.0.1"
+	if privateAddrs, err := sockaddr.GetPrivateIPs(); err == nil {
+		addrs := strings.Split(privateAddrs, " ")
+		if len(addrs) > 0 {
+			addr = addrs[0]
+		}
+	}
+	return
+}
+
+// Parse parses a TCP address + port combination.
+func Parse(addr string, defaultPort int) (*net.TCPAddr, error) {
+	if addr == "" {
+		return nil, errors.New("unable to parse an empty address")
+	}
+
+	// Default to 0.0.0.0 interface
+	if addr[0] == ':' {
+		addr = "0.0.0.0" + addr
+	}
+
+	// Convenience: set private address
+	if strings.Contains(addr, "private") {
+		addr = strings.Replace(addr, "private", getPrivateAddr(), 1)
+	}
+
+	// Convenience: set public address
+	if strings.Contains(addr, "public") {
+		addr = strings.Replace(addr, "public", External().String(), 1)
+	}
+
+	// If we have only an IP address, use the default port
+	if ip := net.ParseIP(addr); ip != nil {
+		addr = fmt.Sprintf("%s:%d", ip, defaultPort)
+	}
+
+	// Resolve the address
+	return net.ResolveTCPAddr("tcp", addr)
 }

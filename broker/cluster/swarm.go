@@ -15,10 +15,7 @@
 package cluster
 
 import (
-	"errors"
-	"fmt"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -62,13 +59,13 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 	}
 
 	// Get the cluster binding address
-	listenAddr, err := parseAddr(cfg.ListenAddr, 4000)
+	listenAddr, err := address.Parse(cfg.ListenAddr, 4000)
 	if err != nil {
 		panic(err)
 	}
 
 	// Get the advertised address
-	advertiseAddr, err := parseAddr(cfg.AdvertiseAddr, 4000)
+	advertiseAddr, err := address.Parse(cfg.AdvertiseAddr, 4000)
 	if err != nil {
 		panic(err)
 	}
@@ -186,7 +183,7 @@ func (s *Swarm) Join(peers ...string) (errs []error) {
 		}
 
 		// It's not a host name, parse the address
-		addr, err := parseAddr(h, 80)
+		addr, err := address.Parse(h, 80)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -345,25 +342,6 @@ func (s *Swarm) NotifyUnsubscribe(conn security.ID, ssid message.Ssid) {
 // Close terminates the connection.
 func (s *Swarm) Close() error {
 	return s.router.Stop()
-}
-
-// parseAddr parses a TCP address.
-func parseAddr(text string, defaultPort int) (*net.TCPAddr, error) {
-	if text == "" {
-		return nil, errors.New("unable to parse an empty address")
-	}
-
-	if text[0] == ':' {
-		text = "0.0.0.0" + text
-	}
-
-	// If we have only an IP address, use the default port
-	if ip := net.ParseIP(text); ip != nil {
-		text = fmt.Sprintf("%s:%d", ip, defaultPort)
-	}
-
-	addr := strings.Replace(text, "public", address.External().String(), 1)
-	return net.ResolveTCPAddr("tcp", addr)
 }
 
 // getLocalPeerName retrieves or generates a local node name.
