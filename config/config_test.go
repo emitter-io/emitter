@@ -11,7 +11,7 @@ func Test_NewDefaut(t *testing.T) {
 	assert.Equal(t, ":8080", c.ListenAddr)
 	assert.Nil(t, c.Vault())
 
-	tls, ok := c.Certificate()
+	tls, _, ok := c.Certificate()
 	assert.Nil(t, tls)
 	assert.False(t, ok)
 }

@@ -177,7 +177,14 @@ func (s *Service) Listen() (err error) {
 
 	// Setup the listeners on both default and a secure addresses
 	s.listen(s.Config.ListenAddr, nil)
-	if tls, ok := s.Config.Certificate(); ok {
+	if tls, tlsValidator, ok := s.Config.Certificate(); ok {
+
+		// If we need to validate certificate, spin up a listener on port 80
+		// More info: https://community.letsencrypt.org/t/2018-01-11-update-regarding-acme-tls-sni-and-shared-hosting-infrastructure/50188
+		if tlsValidator != nil {
+			go http.ListenAndServe(":80", tlsValidator)
+		}
+
 		s.listen(s.Config.TLS.ListenAddr, tls)
 	}
 
