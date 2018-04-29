@@ -74,7 +74,7 @@ func (c *VaultClient) WriteSecret(secretName string, value string) error {
 func (c *VaultClient) get(url string) (output *vaultSecret, err error) {
 	var headers []httpHeader
 	if c.IsAuthenticated() {
-		headers = append(headers, newHttpHeader("X-Vault-Token", c.token))
+		headers = append(headers, newHTTPHeader("X-Vault-Token", c.token))
 	}
 
 	// Issue the HTTP Get
@@ -87,7 +87,7 @@ func (c *VaultClient) get(url string) (output *vaultSecret, err error) {
 func (c *VaultClient) post(url string, body interface{}) (output *vaultSecret, err error) {
 	var headers []httpHeader
 	if c.IsAuthenticated() {
-		headers = append(headers, newHttpHeader("X-Vault-Token", c.token))
+		headers = append(headers, newHTTPHeader("X-Vault-Token", c.token))
 	}
 
 	// Issue the HTTP Post

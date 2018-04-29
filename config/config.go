@@ -17,6 +17,7 @@ package config
 import (
 	"crypto/tls"
 	"net"
+	"net/http"
 	"strings"
 
 	cfg "github.com/emitter-io/config"
@@ -76,17 +77,18 @@ func (c *Config) Vault() *cfg.VaultConfig {
 }
 
 // Certificate returns TLS configuration.
-func (c *Config) Certificate() (tls *tls.Config, ok bool) {
+func (c *Config) Certificate() (tls *tls.Config, tlsValidator http.Handler, ok bool) {
 	if c.TLS != nil {
 
 		// Attempt to use Vault cache
 		cache, err := cfg.NewVaultCache(VaultUser, c)
 		if err != nil {
+			logging.LogError("tls", "vault cache init", err)
 			logging.LogAction("tls", "unable to setup Vault certificate cache, using disk")
 		}
 
 		// Load from TLS
-		tls, err = c.TLS.Load(cache)
+		tls, tlsValidator, err = c.TLS.Load(cache)
 		ok = err == nil
 	}
 	return

@@ -22,8 +22,8 @@ type httpHeader struct {
 	Value  string
 }
 
-// newHttpHeader builds an HTTP header with a value.
-func newHttpHeader(header, value string) httpHeader {
+// newHTTPHeader builds an HTTP header with a value.
+func newHTTPHeader(header, value string) httpHeader {
 	return httpHeader{Header: header, Value: value}
 }
 

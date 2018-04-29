@@ -33,10 +33,10 @@
 			"revisionTime": "2018-01-09T04:46:35Z"
 		},
 		{
-			"checksumSHA1": "uklnMmbUWxbceGp/kvP05EBB3sM=",
+			"checksumSHA1": "jkjbcxHX/oYhxjuvXeyDRbtcnKw=",
 			"path": "github.com/emitter-io/config",
-			"revision": "1f1b29144d9b254306a5b835f831c3ceb3c85e65",
-			"revisionTime": "2018-03-22T08:18:05Z"
+			"revision": "9b25be538a7645678a4a686bc7347a9d86c2d772",
+			"revisionTime": "2018-04-29T05:37:05Z"
 		},
 		{
 			"checksumSHA1": "lcZg+zxtHdtRgQCdjnjvY5CKRg0=",
@@ -51,10 +51,10 @@
 			"revisionTime": "2017-02-15T23:32:05Z"
 		},
 		{
-			"checksumSHA1": "tvVmLXS0w9aMKlZkVyiECxtbZXI=",
+			"checksumSHA1": "YDBzGZ2PAI6cQYpHWI01YlhYo/Y=",
 			"path": "github.com/gorilla/websocket",
-			"revision": "eb925808374e5ca90c83401a40d711dc08c0c0f6",
-			"revisionTime": "2018-03-06T18:15:48Z"
+			"revision": "21ab95fa12b9bdd8fecf5fa3586aad941cc98785",
+			"revisionTime": "2018-04-20T17:16:12Z"
 		},
 		{
 			"checksumSHA1": "pP0b9eRHl4ZFD4zTcWxTZH4CPq0=",
@@ -205,10 +205,10 @@
 			"revisionTime": "2017-07-03T20:58:27Z"
 		},
 		{
-			"checksumSHA1": "+IkucM/8+JlB9p9Ezp55ftFLo6w=",
+			"checksumSHA1": "OGMbdNqR/culumwwltR88pImhqA=",
 			"path": "github.com/stretchr/objx",
-			"revision": "8a3f7159479fbc75b30357fbc48f380b7320f08e",
-			"revisionTime": "2018-01-29T17:20:03Z"
+			"revision": "a5cfa15c000af5f09784e5355969ba7eb66ef0de",
+			"revisionTime": "2018-04-26T10:50:06Z"
 		},
 		{
 			"checksumSHA1": "8DKPX27DIn9aJlrtK2SBdxlynno=",
@@ -247,58 +247,58 @@
 			"revisionTime": "2017-12-07T12:09:41Z"
 		},
 		{
-			"checksumSHA1": "uetYCka74i1t9X24WCO6RD/hQhI=",
+			"checksumSHA1": "2smroOa3YuIO9amCR6MS4F2NanA=",
 			"path": "github.com/weaveworks/mesh",
-			"revision": "0c91e692ee9e89b956b9c4dfc5feb59a0ff87699",
-			"revisionTime": "2018-03-23T17:05:17Z"
+			"revision": "61ba45522f8a5ac096d36674144357341b8ccea9",
+			"revisionTime": "2018-04-16T11:32:25Z"
 		},
 		{
 			"checksumSHA1": "zHLlCNnnX/KNVue2tHr+FWxbszA=",
 			"path": "golang.org/x/crypto/acme",
-			"revision": "d6449816ce06963d9d136eee5a56fca5b0616e7e",
-			"revisionTime": "2018-04-11T15:42:50Z"
+			"revision": "b49d69b5da943f7ef3c9cf91c8777c1f78a0cc3c",
+			"revisionTime": "2018-04-25T14:55:48Z"
 		},
 		{
 			"checksumSHA1": "6NdRp9OYL38e71vEtcQtSkN/ZbA=",
 			"path": "golang.org/x/crypto/acme/autocert",
-			"revision": "d6449816ce06963d9d136eee5a56fca5b0616e7e",
-			"revisionTime": "2018-04-11T15:42:50Z"
+			"revision": "b49d69b5da943f7ef3c9cf91c8777c1f78a0cc3c",
+			"revisionTime": "2018-04-25T14:55:48Z"
 		},
 		{
 			"checksumSHA1": "IQkUIOnvlf0tYloFx9mLaXSvXWQ=",
 			"path": "golang.org/x/crypto/curve25519",
-			"revision": "d6449816ce06963d9d136eee5a56fca5b0616e7e",
-			"revisionTime": "2018-04-11T15:42:50Z"
+			"revision": "b49d69b5da943f7ef3c9cf91c8777c1f78a0cc3c",
+			"revisionTime": "2018-04-25T14:55:48Z"
 		},
 		{
 			"checksumSHA1": "Fy1wkWVRMRkq0/AEzFWwRCib8jU=",
 			"path": "golang.org/x/crypto/nacl/box",
-			"revision": "d6449816ce06963d9d136eee5a56fca5b0616e7e",
-			"revisionTime": "2018-04-11T15:42:50Z"
+			"revision": "b49d69b5da943f7ef3c9cf91c8777c1f78a0cc3c",
+			"revisionTime": "2018-04-25T14:55:48Z"
 		},
 		{
 			"checksumSHA1": "TwxAhBcGuCzWA6H3FvJE1XVZsxo=",
 			"path": "golang.org/x/crypto/nacl/secretbox",
-			"revision": "d6449816ce06963d9d136eee5a56fca5b0616e7e",
-			"revisionTime": "2018-04-11T15:42:50Z"
+			"revision": "b49d69b5da943f7ef3c9cf91c8777c1f78a0cc3c",
+			"revisionTime": "2018-04-25T14:55:48Z"
 		},
 		{
 			"checksumSHA1": "1MGpGDQqnUoRpv7VEcQrXOBydXE=",
 			"path": "golang.org/x/crypto/pbkdf2",
-			"revision": "d6449816ce06963d9d136eee5a56fca5b0616e7e",
-			"revisionTime": "2018-04-11T15:42:50Z"
+			"revision": "b49d69b5da943f7ef3c9cf91c8777c1f78a0cc3c",
+			"revisionTime": "2018-04-25T14:55:48Z"
 		},
 		{
 			"checksumSHA1": "kVKE0OX1Xdw5mG7XKT86DLLKE2I=",
 			"path": "golang.org/x/crypto/poly1305",
-			"revision": "d6449816ce06963d9d136eee5a56fca5b0616e7e",
-			"revisionTime": "2018-04-11T15:42:50Z"
+			"revision": "b49d69b5da943f7ef3c9cf91c8777c1f78a0cc3c",
+			"revisionTime": "2018-04-25T14:55:48Z"
 		},
 		{
 			"checksumSHA1": "cRCpfAgTnlIDpdcfjivbiv+9YJU=",
 			"path": "golang.org/x/crypto/salsa20/salsa",
-			"revision": "d6449816ce06963d9d136eee5a56fca5b0616e7e",
-			"revisionTime": "2018-04-11T15:42:50Z"
+			"revision": "b49d69b5da943f7ef3c9cf91c8777c1f78a0cc3c",
+			"revisionTime": "2018-04-25T14:55:48Z"
 		},
 		{
 			"checksumSHA1": "AcLbnKmNzH/154S1zpun71QiQIc=",
