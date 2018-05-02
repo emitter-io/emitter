@@ -175,9 +175,44 @@ func TestLWWESetMerge(t *testing.T) {
 }
 
 func TestLWWESetAll(t *testing.T) {
+	defer restoreClock(Now)
+
+	setClock(0)
 	lww := NewLWWSet()
-	lww.Add("ABC")
+	lww.Add("A")
+	lww.Add("B")
+	lww.Add("C")
 
 	all := lww.All()
-	assert.Equal(t, 1, len(all))
+	assert.Equal(t, 3, len(all))
+}
+
+func TestLWWESetGC(t *testing.T) {
+	defer restoreClock(Now)
+
+	setClock(0)
+	lww := NewLWWSet()
+	lww.Add("A")
+	lww.Add("B")
+	lww.Add("C")
+
+	setClock(1)
+	lww.Remove("B")
+	lww.Remove("C")
+
+	setClock(gcCutoff + 2)
+
+	lww.GC()
+	assert.Equal(t, 1, len(lww.Set))
+}
+
+// RestoreClock restores the clock time
+func restoreClock(clk clock) {
+	Now = clk
+}
+
+// SetClock sets the clock time for testing
+func setClock(t int64) {
+	Now = func() int64 { return t }
+	println("clock set to", Now())
 }
