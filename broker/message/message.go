@@ -32,6 +32,11 @@ type Message struct {
 	TTL     uint32 `json:"ttl,omitempty"`  // The time-to-live of the message
 }
 
+// NewFrame creates a new frame with the specified capacity
+func NewFrame(capacity int) Frame {
+	return make(Frame, 0, capacity)
+}
+
 // Size returns the byte size of the message.
 func (m *Message) Size() int64 {
 	return int64(len(m.Payload))

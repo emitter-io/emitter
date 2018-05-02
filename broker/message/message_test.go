@@ -31,6 +31,12 @@ func TestMessageSize(t *testing.T) {
 	assert.Equal(t, int64(9), m.Size())
 }
 
+func TestNewFrame(t *testing.T) {
+	f := NewFrame(64)
+	assert.Len(t, f, 0)
+	assert.Equal(t, 64, cap(f))
+}
+
 func BenchmarkEncode(b *testing.B) {
 	m := Frame{{
 		Time:    1234,
