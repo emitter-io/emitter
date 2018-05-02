@@ -28,6 +28,9 @@ import (
 // Peer implements subscription.Subscriber
 var _ message.Subscriber = &Peer{}
 
+// Default message frame size to use
+const defaultFrameSize = 128
+
 // Peer represents a remote peer.
 type Peer struct {
 	sync.Mutex
@@ -44,7 +47,7 @@ func (s *Swarm) newPeer(name mesh.PeerName) *Peer {
 	peer := &Peer{
 		sender:   s.gossip,
 		name:     name,
-		frame:    make(message.Frame, 0, 64),
+		frame:    message.NewFrame(defaultFrameSize),
 		subs:     message.NewCounters(),
 		activity: time.Now().Unix(),
 		closing:  make(chan bool),
@@ -101,6 +104,16 @@ func (p *Peer) Send(m *message.Message) error {
 	return nil
 }
 
+// swap swaps the frame and returns the frame we can encode.
+func (p *Peer) swap() (swapped message.Frame) {
+	p.Lock()
+	defer p.Unlock()
+
+	swapped = p.frame
+	p.frame = message.NewFrame(defaultFrameSize)
+	return
+}
+
 // Touch updates the activity time of the peer.
 func (p *Peer) touch() {
 	atomic.StoreInt64(&p.activity, time.Now().Unix())
@@ -110,11 +123,9 @@ func (p *Peer) touch() {
 func (p *Peer) processSendQueue() {
 	if len(p.frame) > 0 {
 
-		// Encode the current frame
-		p.Lock()
-		buffer, err := p.frame.Encode()
-		p.frame = p.frame[:0]
-		p.Unlock()
+		// Swap the frame and encode it
+		frame := p.swap()
+		buffer, err := frame.Encode()
 
 		// Log the error
 		if err != nil {
