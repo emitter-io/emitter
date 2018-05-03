@@ -22,6 +22,9 @@ import (
 // LWWState represents the internal state
 type LWWState = map[string]LWWTime
 
+// The expiration cutoff time for GCs
+var gcCutoff = (6 * time.Hour).Nanoseconds()
+
 // LWWTime represents a time pair.
 type LWWTime struct {
 	AddTime int64
@@ -30,7 +33,7 @@ type LWWTime struct {
 
 // IsZero checks if the time is zero
 func (t LWWTime) IsZero() bool {
-	return t.AddTime == 0 && t.DelTime == 0
+	return (t.AddTime == 0 && t.DelTime == 0)
 }
 
 // IsAdded checks if add time is larger than remove time.
@@ -41,6 +44,11 @@ func (t LWWTime) IsAdded() bool {
 // IsRemoved checks if remove time is larger than add time.
 func (t LWWTime) IsRemoved() bool {
 	return t.AddTime < t.DelTime
+}
+
+// IsExpired checks if the element was removed long time ago and can be safely garbage collected.
+func (t LWWTime) isExpired() bool {
+	return t.IsRemoved() && (t.DelTime+gcCutoff < Now())
 }
 
 // LWWSet represents a last-write-wins CRDT set.
@@ -62,7 +70,7 @@ func (s *LWWSet) Add(value string) {
 	defer s.Unlock()
 
 	v, _ := s.Set[value]
-	s.Set[value] = LWWTime{AddTime: time.Now().UnixNano(), DelTime: v.DelTime}
+	s.Set[value] = LWWTime{AddTime: Now(), DelTime: v.DelTime}
 }
 
 // Remove removes the value from the set.
@@ -71,7 +79,7 @@ func (s *LWWSet) Remove(value string) {
 	defer s.Unlock()
 
 	v, _ := s.Set[value]
-	s.Set[value] = LWWTime{AddTime: v.AddTime, DelTime: time.Now().UnixNano()}
+	s.Set[value] = LWWTime{AddTime: v.AddTime, DelTime: Now()}
 }
 
 // Contains checks if a value is present in the set.
@@ -123,4 +131,26 @@ func (s *LWWSet) All() LWWState {
 		items[key] = val
 	}
 	return items
+}
+
+// GC collects all the garbage in the set by simply removing it. This currently uses a very
+// simplistic strategy with a static cutoff and expects all of the nodes in the cluster to
+// have a relatively synchronized time, in absense of which this would cause inconsistency.
+func (s *LWWSet) GC() {
+	s.Lock()
+	defer s.Unlock()
+
+	for key, val := range s.Set {
+		if val.isExpired() {
+			delete(s.Set, key)
+		}
+	}
+}
+
+// The clock for unit-testing
+type clock func() int64
+
+// Now gets the current time in Unix nanoseconds
+var Now clock = func() int64 {
+	return time.Now().UnixNano()
 }

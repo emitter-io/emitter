@@ -101,6 +101,7 @@ func decodeSubscriptionState(buf []byte) (*subscriptionState, error) {
 // Encode serializes our complete state to a slice of byte-slices.
 func (st *subscriptionState) Encode() [][]byte {
 	lww := (*collection.LWWSet)(st)
+	lww.GC()
 	lww.Lock()
 	defer lww.Unlock()
 
