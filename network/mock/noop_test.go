@@ -15,19 +15,14 @@
 package mock
 
 import (
-	"io"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEnd(t *testing.T) {
-	r, w := io.Pipe()
-	end := End{
-		Reader: r,
-		Writer: w,
-	}
+func TestNoop(t *testing.T) {
+	end := NewNoop()
 
 	assert.Equal(t, "127.0.0.1", end.LocalAddr().String())
 	assert.Equal(t, "127.0.0.1", end.RemoteAddr().String())
@@ -36,4 +31,11 @@ func TestEnd(t *testing.T) {
 	assert.NoError(t, end.SetReadDeadline(time.Now()))
 	assert.NoError(t, end.SetWriteDeadline(time.Now()))
 
+	n, err := end.Read(nil)
+	assert.Equal(t, 0, n)
+	assert.NoError(t, err)
+
+	n, err = end.Write([]byte{1, 2, 3})
+	assert.Equal(t, 3, n)
+	assert.NoError(t, err)
 }

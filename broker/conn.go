@@ -184,7 +184,7 @@ func (c *Conn) Process() error {
 }
 
 // Send forwards the message to the underlying client.
-func (c *Conn) Send(m *message.Message) error {
+func (c *Conn) Send(m *message.Message) (err error) {
 	packet := mqtt.Publish{
 		Header: &mqtt.StaticHeader{
 			QOS: 0, // TODO when we'll support more QoS
@@ -195,13 +195,8 @@ func (c *Conn) Send(m *message.Message) error {
 	}
 
 	// Acknowledge the publication
-	_, err := packet.EncodeTo(c.socket)
-	if err != nil {
-		logging.LogError("conn", "message send", err)
-		return err
-	}
-
-	return nil
+	_, err = packet.EncodeTo(c.socket)
+	return
 }
 
 // Subscribe subscribes to a particular channel.
@@ -238,7 +233,9 @@ func (c *Conn) Unsubscribe(ssid message.Ssid, channel []byte) {
 
 // Close terminates the connection.
 func (c *Conn) Close() error {
-	logging.LogTarget("conn", "closed", c.guid)
+	if r := recover(); r != nil {
+		logging.LogAction("closing", fmt.Sprintf("pancic recovered: %s \n %s", r, debug.Stack()))
+	}
 
 	// Unsubscribe from everything, no need to lock since each Unsubscribe is
 	// already locked. Locking the 'Close()' would result in a deadlock.
@@ -247,12 +244,8 @@ func (c *Conn) Close() error {
 		c.service.notifyUnsubscribe(c, counter.Ssid, counter.Channel)
 	}
 
-	// Attempt to recover a panic
-	if r := recover(); r != nil {
-		logging.LogAction("closing", fmt.Sprintf("pancic recovered: %s \n %s", r, debug.Stack()))
-	}
-
 	// Close the transport and decrement the connection counter
 	atomic.AddInt64(&c.service.connections, -1)
+	logging.LogTarget("conn", "closed", c.guid)
 	return c.socket.Close()
 }
