@@ -70,6 +70,44 @@ type ContractProvider interface {
 	Get(id uint32) (Contract, bool)
 }
 
+// ------------------------------------------------------------------------------------
+
+// Assert interface compliance
+var _ ContractProvider = new(HTTPContractProvider)
+
+// NoopContractProvider does not provide a contract.
+type NoopContractProvider struct{}
+
+// NewNoopContractProvider creates a new no-op contract provider.
+func NewNoopContractProvider() *NoopContractProvider {
+	return new(NoopContractProvider)
+}
+
+// Name returns the name of the provider.
+func (p *NoopContractProvider) Name() string {
+	return "noop"
+}
+
+// Configure configures the provider.
+func (p *NoopContractProvider) Configure(config map[string]interface{}) error {
+	return nil
+}
+
+// Create creates a contract, the SingleContractProvider way.
+func (p *NoopContractProvider) Create() (Contract, error) {
+	return nil, errors.New("Noop contract provider can not create contracts")
+}
+
+// Get returns a ContractData fetched by its id.
+func (p *NoopContractProvider) Get(id uint32) (Contract, bool) {
+	return nil, false
+}
+
+// ------------------------------------------------------------------------------------
+
+// Assert interface compliance
+var _ ContractProvider = new(SingleContractProvider)
+
 // SingleContractProvider provides contracts on premise.
 type SingleContractProvider struct {
 	owner *contract      // The owner contract.
@@ -112,6 +150,11 @@ func (p *SingleContractProvider) Get(id uint32) (Contract, bool) {
 
 	return p.owner, true
 }
+
+// ------------------------------------------------------------------------------------
+
+// Assert interface compliance
+var _ ContractProvider = new(HTTPContractProvider)
 
 // HTTPContractProvider provides contracts over http.
 type HTTPContractProvider struct {

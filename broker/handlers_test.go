@@ -8,6 +8,7 @@ import (
 	"github.com/emitter-io/emitter/security"
 	secmock "github.com/emitter-io/emitter/security/mock"
 	"github.com/emitter-io/emitter/security/usage"
+	"github.com/emitter-io/emitter/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -436,15 +437,7 @@ func TestHandlers_onKeygen(t *testing.T) {
 			contract := new(secmock.Contract)
 			contract.On("Validate", mock.Anything).Return(tc.contractValid)
 			contract.On("Stats").Return(usage.NewMeter(0))
-
 			provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
-			/*
-				if tc.contractFound {
-					provider.On("Get", mock.Anything).Return(contract).Once()
-				} else {
-					provider.On("Get", mock.Anything).Return(nil).Once()
-				}*/
-
 			s := &Service{
 				contracts:     provider,
 				subscriptions: message.NewTrie(),
@@ -470,4 +463,104 @@ func TestHandlers_onKeygen(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHandlers_onEmitterRequest(t *testing.T) {
+	tests := []struct {
+		channel string
+		payload string
+		query   []uint32
+		success bool
+	}{
+		{
+			channel: "wrong",
+			success: false,
+		},
+		{
+			channel: "wrong",
+			query:   []uint32{1, 2, 3},
+			success: false,
+		},
+		{
+			channel: "keygen",
+			query:   []uint32{requestKeygen},
+			success: false,
+		},
+		{
+			channel: "presence",
+			query:   []uint32{requestPresence},
+			success: false,
+		},
+		{
+			channel: "me",
+			query:   []uint32{requestMe},
+			success: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.channel, func(*testing.T) {
+			channel := &security.Channel{
+				Key:     []byte("emitter"),
+				Channel: []byte(tc.channel),
+				Query:   tc.query,
+			}
+
+			s := &Service{
+				contracts:     security.NewNoopContractProvider(),
+				subscriptions: message.NewTrie(),
+			}
+
+			nc := s.newConn(netmock.NewNoop())
+			ok := nc.onEmitterRequest(channel, []byte(tc.payload))
+			assert.Equal(t, tc.success, ok, tc.channel)
+		})
+	}
+}
+
+func TestHandlers_onPresenceQuery(t *testing.T) {
+	encode := func(ssid ...uint32) []byte { b, _ := utils.Encode(ssid); return b }
+	tests := []struct {
+		queryType string
+		payload   []byte
+		success   bool
+	}{
+		{
+			queryType: "wrong",
+			success:   false,
+		},
+		{
+			queryType: "presence",
+			payload:   []byte("hi"),
+			success:   false,
+		},
+		{
+			queryType: "presence",
+			payload:   encode(1, 2, 3),
+			success:   true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.queryType, func(*testing.T) {
+			s := &Service{
+				contracts:     security.NewNoopContractProvider(),
+				subscriptions: message.NewTrie(),
+			}
+
+			_, ok := s.onPresenceQuery(tc.queryType, tc.payload)
+			assert.Equal(t, tc.success, ok, tc.queryType)
+		})
+	}
+}
+
+func TestHandlers_lookupPresence(t *testing.T) {
+	s := &Service{
+		contracts:     security.NewNoopContractProvider(),
+		subscriptions: message.NewTrie(),
+	}
+
+	s.subscriptions.Subscribe(message.Ssid{1, 2, 3}, s.newConn(netmock.NewNoop()))
+	presence := s.lookupPresence(message.Ssid{1, 2, 3})
+	assert.NotEmpty(t, presence)
 }

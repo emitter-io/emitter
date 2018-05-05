@@ -36,8 +36,11 @@ func TestNewSingleContractProvider(t *testing.T) {
 
 func TestSingleContractProvider_Create(t *testing.T) {
 	p, _ := testNewSingleContractProvider()
-	contract, err := p.Create()
 
+	err := p.Configure(nil)
+	assert.NoError(t, err)
+
+	contract, err := p.Create()
 	assert.Nil(t, contract)
 	assert.Error(t, err)
 }
@@ -150,4 +153,21 @@ func TestHTTPContractPovider_refresh(t *testing.T) {
 	assert.True(t, ok)
 	assert.NotNil(t, c)
 	assert.Equal(t, uint8(2), c.(*contract).State)
+}
+
+func TestNoopContractPovider(t *testing.T) {
+	p := NewNoopContractProvider()
+
+	err := p.Configure(nil)
+	assert.NoError(t, err)
+
+	c, err := p.Create()
+	assert.Nil(t, c)
+	assert.Equal(t, false, err == nil)
+
+	_, ok := p.Get(10)
+	assert.False(t, ok)
+
+	n := p.Name()
+	assert.Equal(t, "noop", n)
 }

@@ -325,10 +325,8 @@ func (s *Service) onPresenceQuery(queryType string, payload []byte) ([]byte, boo
 	logging.LogTarget("query", queryType+" query received", target)
 
 	// Send back the response
-	if b, err := utils.Encode(s.lookupPresence(target)); err == nil {
-		return b, true
-	}
-	return nil, false
+	presence, err := utils.Encode(s.lookupPresence(target))
+	return presence, err == nil
 }
 
 // lookupPresence performs a subscriptions lookup and returns a presence information.
