@@ -15,6 +15,8 @@
 package storage
 
 import (
+	netHttp "net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/emitter-io/emitter/broker/message"
@@ -58,13 +60,13 @@ func TestHTTP_Configure(t *testing.T) {
 func TestHTTP_format(t *testing.T) {
 	s := NewHTTP()
 
-	assert.Equal(t, "msg/append", s.buildAppendURL())
-	assert.Equal(t, "msg/last?ssid=[1,2,3]&n=100", s.buildLastURL([]uint32{1, 2, 3}, 100))
+	assert.Equal(t, "v1/add/", s.buildAppendURL())
+	assert.Equal(t, "v1/get/?ssid=[1,2,3]&limit=100", s.buildLastURL([]uint32{1, 2, 3}, 100))
 }
 
 func TestHTTP_Store(t *testing.T) {
 	h := http.NewMockClient()
-	h.On("Post", "msg/append", mock.Anything, nil, mock.Anything).Return([]byte{}, nil).Once()
+	h.On("Post", "v1/add/", mock.Anything, nil, mock.Anything).Return([]byte{}, nil).Once()
 
 	s := NewHTTP()
 	s.http = h
@@ -85,7 +87,7 @@ func TestHTTP_QueryLast(t *testing.T) {
 	encoded, _ := frame.Encode()
 
 	h := http.NewMockClient()
-	h.On("Get", "msg/last?ssid=[1,2,3]&n=10", nil, mock.Anything).Return(encoded, nil).Once()
+	h.On("Get", "v1/get/?ssid=[1,2,3]&limit=10", nil, mock.Anything).Return(encoded, nil).Once()
 
 	s := NewHTTP()
 	s.http = h
@@ -99,4 +101,52 @@ func TestHTTP_QueryLast(t *testing.T) {
 	}
 
 	assert.Equal(t, 2, count)
+}
+
+type handler1 struct {
+	url string
+}
+
+func (h *handler1) ServeHTTP(w netHttp.ResponseWriter, r *netHttp.Request) {
+	w.Header().Set("Location", h.url+r.URL.String())
+	w.WriteHeader(308)
+}
+
+type handler2 struct{}
+
+func (h *handler2) ServeHTTP(w netHttp.ResponseWriter, r *netHttp.Request) {
+	frame := message.Frame{
+		*testMessage(1, 2, 3),
+		*testMessage(1, 2, 3),
+		*testMessage(1, 2, 3),
+	}
+
+	encoded, _ := frame.Encode()
+	w.Write(encoded)
+	w.WriteHeader(200)
+}
+
+func TestHTTP_Redirect(t *testing.T) {
+	handler1 := new(handler1)
+	server1 := httptest.NewServer(handler1)
+	server2 := httptest.NewServer(new(handler2))
+	handler1.url = server2.URL
+	defer server1.Close()
+	defer server2.Close()
+
+	s := NewHTTP()
+	s.Configure(map[string]interface{}{
+		"interval": float64(1),
+		"url":      server1.URL,
+	})
+
+	out, err := s.QueryLast([]uint32{1, 2, 3}, 10)
+	assert.NoError(t, err)
+	count := 0
+
+	for range out {
+		count++
+	}
+
+	assert.Equal(t, 3, count)
 }
