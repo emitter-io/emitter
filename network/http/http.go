@@ -25,6 +25,10 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
+type caller interface {
+	Do(req *fasthttp.Request, resp *fasthttp.Response) error
+}
+
 // HeaderValue represents a header with a value attached.
 type HeaderValue struct {
 	Header string
@@ -44,9 +48,10 @@ type Client interface {
 
 // Client implementation.
 type client struct {
-	host string               // The host name of the client.
-	http *fasthttp.HostClient // The underlying client.
-	head []HeaderValue        // The default headers to add on each request.
+	host     string               // The host name of the client.
+	balanced *fasthttp.HostClient // The underlying client.
+	redirect *fasthttp.Client     // The client used for redirect
+	head     []HeaderValue        // The default headers to add on each request.
 }
 
 // NewClient creates a new HTTP Client for the provided host. This will use round-robin
@@ -74,8 +79,12 @@ func NewClient(host string, timeout time.Duration, defaultHeaders ...HeaderValue
 	c := new(client)
 	c.host = host
 	c.head = defaultHeaders
-	c.http = &fasthttp.HostClient{
+	c.balanced = &fasthttp.HostClient{
 		Addr:         strings.Join(addr, ","),
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
+	}
+	c.redirect = &fasthttp.Client{
 		ReadTimeout:  timeout,
 		WriteTimeout: timeout,
 	}
@@ -84,16 +93,16 @@ func NewClient(host string, timeout time.Duration, defaultHeaders ...HeaderValue
 
 // Get issues an HTTP Get on a specified URL and decodes the payload as JSON.
 func (c *client) Get(url string, output interface{}, headers ...HeaderValue) ([]byte, error) {
-	return c.do(url, "GET", nil, output, headers)
+	return c.do(c.balanced, url, "GET", nil, output, headers)
 }
 
 // Post is a utility function which marshals and issues an HTTP post on a specified URL.
 func (c *client) Post(url string, body []byte, output interface{}, headers ...HeaderValue) ([]byte, error) {
-	return c.do(url, "POST", body, output, headers)
+	return c.do(c.balanced, url, "POST", body, output, headers)
 }
 
 // This performs a request
-func (c *client) do(url, method string, body []byte, output interface{}, headers []HeaderValue) (responseBody []byte, err error) {
+func (c *client) do(client caller, url, method string, body []byte, output interface{}, headers []HeaderValue) (responseBody []byte, err error) {
 
 	// Prepare the request
 	req := fasthttp.AcquireRequest()
@@ -122,8 +131,16 @@ func (c *client) do(url, method string, body []byte, output interface{}, headers
 	defer fasthttp.ReleaseResponse(res)
 
 	// Issue the request
-	err = c.http.Do(req, res)
+	err = client.Do(req, res)
 	if err == nil {
+
+		// Handle the redirect, use a different client which does not do any
+		// of load-balancing, so we can directly ask the requested location.
+		if res.StatusCode() == 308 {
+			location := string(res.Header.Peek("Location"))
+			return c.do(c.redirect, location, method, body, output, headers)
+		}
+
 		// Set the response body
 		responseBody = res.Body()
 

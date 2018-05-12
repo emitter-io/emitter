@@ -89,3 +89,42 @@ func TestPostGet(t *testing.T) {
 	}
 
 }
+
+type handler1 struct {
+	url string
+}
+
+func (h *handler1) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Location", h.url)
+	w.WriteHeader(308)
+}
+
+type handler2 struct{}
+
+func (h *handler2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var response []byte
+	w.Header().Set("Content-Type", "application/binary")
+	response, _ = utils.Encode(&testObject{
+		Field: "response",
+	})
+	w.Write(response)
+	w.WriteHeader(200)
+}
+
+func TestHTTP_Redirect(t *testing.T) {
+	handler1 := new(handler1)
+	server1 := httptest.NewServer(handler1)
+	server2 := httptest.NewServer(new(handler2))
+	handler1.url = server2.URL
+	defer server1.Close()
+	defer server2.Close()
+
+	// New client
+	c, err := NewClient(server1.URL, time.Second)
+	assert.NoError(t, err)
+
+	// Get something from server1
+	output := new(testObject)
+	_, err = c.Get(server1.URL, output, NewHeader("X-Test-Header", "123"))
+	assert.NoError(t, err)
+}

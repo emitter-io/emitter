@@ -159,11 +159,11 @@ func (s *HTTP) store() {
 
 // Builds an append URL
 func (s *HTTP) buildAppendURL() string {
-	return s.base + "msg/append"
+	return s.base + "v1/add/"
 }
 
 // Builds last query URL
 func (s *HTTP) buildLastURL(ssid []uint32, limit int) string {
 	enc, _ := json.Marshal(ssid)
-	return s.base + fmt.Sprintf("msg/last?ssid=%s&n=%d", string(enc), limit)
+	return s.base + fmt.Sprintf("v1/get/?ssid=%s&limit=%d", string(enc), limit)
 }
