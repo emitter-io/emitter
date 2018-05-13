@@ -15,6 +15,7 @@
 package storage
 
 import (
+	"errors"
 	netHttp "net/http"
 	"net/http/httptest"
 	"testing"
@@ -78,13 +79,28 @@ func TestHTTP_Store(t *testing.T) {
 	assert.Equal(t, 0, len(s.frame))
 }
 
+func TestHTTP_StoreError(t *testing.T) {
+	h := http.NewMockClient()
+	h.On("Post", "v1/add/", mock.Anything, nil, mock.Anything).Return([]byte{}, errors.New("boom")).Once()
+
+	s := NewHTTP()
+	s.http = h
+
+	s.Store(&message.Message{})
+	assert.Equal(t, 1, len(s.frame))
+
+	// We should have pushed the frame back
+	s.store()
+	assert.Equal(t, 1, len(s.frame))
+}
+
 func TestHTTP_QueryLast(t *testing.T) {
 	frame := message.Frame{
 		*testMessage(1, 2, 3),
 		*testMessage(1, 2, 3),
 	}
 
-	encoded, _ := frame.Encode()
+	encoded := frame.Encode()
 
 	h := http.NewMockClient()
 	h.On("Get", "v1/get/?ssid=[1,2,3]&limit=10", nil, mock.Anything).Return(encoded, nil).Once()
@@ -101,6 +117,11 @@ func TestHTTP_QueryLast(t *testing.T) {
 	}
 
 	assert.Equal(t, 2, count)
+
+	h.On("Get", "v1/get/?ssid=[1,2,3]&limit=10", nil, mock.Anything).Return(encoded, errors.New("boom")).Once()
+	_, err = s.QueryLast([]uint32{1, 2, 3}, 10)
+	assert.Error(t, err)
+
 }
 
 type handler1 struct {
@@ -121,7 +142,7 @@ func (h *handler2) ServeHTTP(w netHttp.ResponseWriter, r *netHttp.Request) {
 		*testMessage(1, 2, 3),
 	}
 
-	encoded, _ := frame.Encode()
+	encoded := frame.Encode()
 	w.Write(encoded)
 	w.WriteHeader(200)
 }

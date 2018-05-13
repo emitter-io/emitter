@@ -43,13 +43,14 @@ func (m *Message) Size() int64 {
 }
 
 // Encode encodes the message frame
-func (f *Frame) Encode() (out []byte, err error) {
-	// TODO: optimize
+func (f *Frame) Encode() (out []byte) {
 	var enc []byte
-	if enc, err = utils.Encode(f); err == nil {
-		out = snappy.Encode(out, enc)
+	enc, err := utils.Encode(f)
+	if err != nil {
+		panic(err) // This should never happen unless there's some terrible bug in the encoder
 	}
-	return
+
+	return snappy.Encode(out, enc)
 }
 
 // Append appends the message to a frame.

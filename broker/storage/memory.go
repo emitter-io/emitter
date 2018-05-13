@@ -162,8 +162,8 @@ func (s *InMemory) OnRequest(queryType string, payload []byte) ([]byte, bool) {
 
 	// Send back the response
 	f := s.lookup(query)
-	b, err := f.Encode()
-	return b, err == nil
+	b := f.Encode()
+	return b, true
 }
 
 // Lookup performs a against the cache.

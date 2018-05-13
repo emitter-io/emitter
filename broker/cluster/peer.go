@@ -121,21 +121,16 @@ func (p *Peer) touch() {
 
 // processSendQueue flushes the current frame to the remote server
 func (p *Peer) processSendQueue() {
-	if len(p.frame) > 0 {
+	if len(p.frame) == 0 {
+		return
+	}
 
-		// Swap the frame and encode it
-		frame := p.swap()
-		buffer, err := frame.Encode()
+	// Swap the frame and encode it
+	frame := p.swap()
+	buffer := frame.Encode()
 
-		// Log the error
-		if err != nil {
-			logging.LogError("peer", "encoding frame", err)
-			return
-		}
-
-		// Send the frame directly to the peer.
-		if err := p.sender.GossipUnicast(p.name, buffer); err != nil {
-			logging.LogError("peer", "gossip unicast", err)
-		}
+	// Send the frame directly to the peer.
+	if err := p.sender.GossipUnicast(p.name, buffer); err != nil {
+		logging.LogError("peer", "gossip unicast", err)
 	}
 }
