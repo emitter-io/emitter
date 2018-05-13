@@ -17,8 +17,8 @@ func TestDecodeFrame(t *testing.T) {
 	frame.Append(0, Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"))
 
 	// Encode
-	buffer, err := frame.Encode()
-	assert.NoError(t, err)
+	buffer := frame.Encode()
+	assert.Len(t, buffer, 41)
 
 	// Decode
 	output, err := DecodeFrame(buffer)

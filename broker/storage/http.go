@@ -30,6 +30,9 @@ import (
 // Noop implements Storage contract.
 var _ Storage = new(HTTP)
 
+// Default message frame size to use
+const defaultFrameSize = 128
+
 // HTTP represents a storage which uses HTTP requests to store/retrieve messages.
 type HTTP struct {
 	sync.Mutex
@@ -98,8 +101,22 @@ func (s *HTTP) Store(m *message.Message) error {
 	s.Lock()
 	defer s.Unlock()
 
+	// If no time was set, add it
+	if m.Time == 0 {
+		m.Time = time.Now().UnixNano()
+	}
+
+	// Append to the frame
 	s.frame = append(s.frame, *m)
 	return nil
+}
+
+// storeMany stores an entire message frame without changing it
+func (s *HTTP) storeMany(frame message.Frame) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.frame = append(s.frame, frame...)
 }
 
 // QueryLast performs a query and attempts to fetch last n messages where
@@ -140,21 +157,29 @@ func (s *HTTP) Close() error {
 
 // Store periodically flushes the pending queue.
 func (s *HTTP) store() {
-	s.Lock()
 	if len(s.frame) == 0 {
-		s.Unlock()
 		return
 	}
 
-	// Encode the frame
-	buffer, _ := s.frame.Encode()
-	s.frame = s.frame[:0]
-	s.Unlock()
+	// Swap the frame and encode it
+	frame := s.swap()
+	buffer := frame.Encode()
 
-	// TODO: Make sure we don't lose messages if something happens
+	// Write messages through HTTP Post and append them back on error
 	if _, err := s.http.Post(s.buildAppendURL(), buffer, nil, s.head...); err != nil {
 		logging.LogError("http storage", "storing messages", err)
+		s.storeMany(frame)
 	}
+}
+
+// swap swaps the frame and returns the frame we can encode.
+func (s *HTTP) swap() (swapped message.Frame) {
+	s.Lock()
+	defer s.Unlock()
+
+	swapped = s.frame
+	s.frame = message.NewFrame(defaultFrameSize)
+	return
 }
 
 // Builds an append URL

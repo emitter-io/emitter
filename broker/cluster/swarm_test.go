@@ -17,8 +17,7 @@ func TestOnGossipUnicast(t *testing.T) {
 	}
 
 	// Encode using binary + snappy
-	encoded, err := frame.Encode()
-	assert.NoError(t, err)
+	encoded := frame.Encode()
 
 	// Create a dummy swarm
 	var count int
@@ -30,7 +29,7 @@ func TestOnGossipUnicast(t *testing.T) {
 	}
 
 	// Test the unicast receive
-	err = swarm.OnGossipUnicast(1, encoded)
+	err := swarm.OnGossipUnicast(1, encoded)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, count)
 }
