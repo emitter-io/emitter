@@ -83,9 +83,7 @@ func (m *Monitor) SnapshotSink(ctx context.Context, interval time.Duration, sink
 				return
 			case <-timer.C:
 				m.MeasureRuntime()
-				snap := m.Snapshot()
-				println("snapshot size", len(snap))
-				sink.Write(snap)
+				sink.Write(m.Snapshot())
 			}
 		}
 	}()
