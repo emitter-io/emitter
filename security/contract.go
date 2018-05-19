@@ -15,16 +15,17 @@
 package security
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/emitter-io/config"
+	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/http"
 	"github.com/emitter-io/emitter/security/usage"
-	"github.com/emitter-io/emitter/utils"
 )
 
 // The contract's state possible values.
@@ -158,13 +159,13 @@ var _ ContractProvider = new(HTTPContractProvider)
 
 // HTTPContractProvider provides contracts over http.
 type HTTPContractProvider struct {
-	url   string             // The url to hit for the provider.
-	owner *contract          // The owner contract.
-	cache *sync.Map          // The cache for the contracts.
-	usage usage.Metering     // The usage stats container.
-	http  http.Client        // The http client to use.
-	head  []http.HeaderValue // The http headers to add with each request.
-	done  chan bool          // The closing channel.
+	url    string             // The url to hit for the provider.
+	owner  *contract          // The owner contract.
+	cache  *sync.Map          // The cache for the contracts.
+	usage  usage.Metering     // The usage stats container.
+	http   http.Client        // The http client to use.
+	head   []http.HeaderValue // The http headers to add with each request.
+	cancel context.CancelFunc // The cancellation function.
 }
 
 // NewHTTPContractProvider creates a new single contract provider.
@@ -176,7 +177,6 @@ func NewHTTPContractProvider(license *License, metering usage.Metering) *HTTPCon
 	p.owner.Signature = license.Signature
 	p.cache = new(sync.Map)
 	p.usage = metering
-	p.done = make(chan bool)
 	return &p
 }
 
@@ -216,7 +216,7 @@ func (p *HTTPContractProvider) Configure(config map[string]interface{}) (err err
 		p.head = headers
 
 		// Periodically refresh contracts
-		utils.Repeat(p.refresh, interval, p.done) // TODO: closing chan
+		p.cancel = async.Repeat(context.Background(), interval, p.refresh)
 		return
 	}
 
@@ -241,6 +241,15 @@ func (p *HTTPContractProvider) Get(id uint32) (Contract, bool) {
 	}
 
 	return nil, false
+}
+
+// Close closes the provider.
+func (p *HTTPContractProvider) Close() error {
+	if p.cancel != nil {
+		p.cancel()
+	}
+
+	return nil
 }
 
 // Fetches a single contract from the underlying contract provider.

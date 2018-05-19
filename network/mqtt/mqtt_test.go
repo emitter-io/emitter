@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/emitter-io/emitter/config"
+	"github.com/stretchr/testify/assert"
 )
 
 type devNull struct{}
@@ -181,6 +182,8 @@ func Test_Connect(t *testing.T) {
 		Username:       []byte("Username"),
 		Password:       []byte("Password is my password"),
 	}
+
+	assert.Equal(t, "connect", testPkt.String())
 	if !encodeTestHelper(testPkt) {
 		t.Error("encode/decode connect failed")
 	}
@@ -188,9 +191,10 @@ func Test_Connect(t *testing.T) {
 
 func Test_Connack(t *testing.T) {
 	testPkt := &Connack{
-
 		ReturnCode: 0x04,
 	}
+
+	assert.Equal(t, "connack", testPkt.String())
 	if !encodeTestHelper(testPkt) {
 		t.Error("encode/decode connack failed")
 	}
@@ -207,6 +211,8 @@ func Test_Publish(t *testing.T) {
 		Topic:     []byte("a/b/c"),
 		MessageID: 69,
 	}
+
+	assert.Equal(t, "pub", testPkt.String())
 	if !encodeTestHelper(testPkt) {
 		t.Error("encode/decode publish failed")
 	}
@@ -257,6 +263,7 @@ func Test_Publish_WithUnicodeDecoding(t *testing.T) {
 	if msg.(*Publish).Header.QOS != testPkt.Header.QOS {
 		t.Error("Encode/decode failed on test publish 2")
 	}
+
 	if !bytes.Equal(msg.(*Publish).Payload, pay) {
 		log.Println(pay)
 		log.Println(msg.(*Publish).Payload)
@@ -272,6 +279,8 @@ func Test_Puback(t *testing.T) {
 	testPkt := &Puback{
 		MessageID: 0xbeef,
 	}
+
+	assert.Equal(t, "puback", testPkt.String())
 	if !encodeTestHelper(testPkt) {
 		t.Error("encode/decode puback failed")
 	}
@@ -281,6 +290,8 @@ func Test_Pubrec(t *testing.T) {
 	testPkt := &Pubrec{
 		MessageID: 0xbeef,
 	}
+
+	assert.Equal(t, "pubrec", testPkt.String())
 	if !encodeTestHelper(testPkt) {
 		t.Error("encode/decode pubrec failed")
 	}
@@ -295,6 +306,8 @@ func Test_Pubrel(t *testing.T) {
 			DUP:    false,
 		},
 	}
+
+	assert.Equal(t, "pubrel", testPkt.String())
 	if !encodeTestHelper(testPkt) {
 		t.Error("encode/decode pubrel failed")
 	}
@@ -304,8 +317,9 @@ func Test_Pubcomp(t *testing.T) {
 	testPkt := &Pubcomp{
 		MessageID: 0xbeef,
 	}
-	if !encodeTestHelper(testPkt) {
 
+	assert.Equal(t, "pubcomp", testPkt.String())
+	if !encodeTestHelper(testPkt) {
 		t.Error("encode/decode pubcomp failed")
 	}
 }
@@ -325,6 +339,8 @@ func Test_Subscribe(t *testing.T) {
 			},
 		},
 	}
+
+	assert.Equal(t, "sub", testPkt.String())
 	if !encodeTestHelper(testPkt) {
 		t.Error("encode/decode subscribe failed")
 	}
@@ -335,6 +351,8 @@ func Test_Suback(t *testing.T) {
 		MessageID: 0xbeef,
 		Qos:       []uint8{0, 0, 1},
 	}
+
+	assert.Equal(t, "suback", testPkt.String())
 	if !encodeTestHelper(testPkt) {
 		t.Error("encode/decode suback failed")
 	}
@@ -355,6 +373,8 @@ func Test_UnSubscribe(t *testing.T) {
 			},
 		},
 	}
+
+	assert.Equal(t, "unsub", testPkt.String())
 	if !encodeTestHelper(testPkt) {
 		t.Error("encode/decode unsubscribe failed")
 	}
@@ -364,32 +384,33 @@ func Test_Unsuback(t *testing.T) {
 	testPkt := &Unsuback{
 		MessageID: 0xbeef,
 	}
-	if !encodeTestHelper(testPkt) {
 
+	assert.Equal(t, "unsuback", testPkt.String())
+	if !encodeTestHelper(testPkt) {
 		t.Error("encode/decode unsuback failed")
 	}
 }
 
 func Test_PingReq(t *testing.T) {
 	testPkt := &Pingreq{}
+	assert.Equal(t, "pingreq", testPkt.String())
 	if !encodeTestHelper(testPkt) {
-
 		t.Error("encode/decode pingreq failed")
 	}
 }
 
 func Test_PingResp(t *testing.T) {
 	testPkt := &Pingresp{}
+	assert.Equal(t, "pingresp", testPkt.String())
 	if !encodeTestHelper(testPkt) {
-
 		t.Error("encode/decode pingresp failed")
 	}
 }
 
 func Test_Disconnect(t *testing.T) {
 	testPkt := &Disconnect{}
+	assert.Equal(t, "disconnect", testPkt.String())
 	if !encodeTestHelper(testPkt) {
-
 		t.Error("encode/decode disconnect failed")
 	}
 }

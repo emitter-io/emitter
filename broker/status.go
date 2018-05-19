@@ -16,6 +16,7 @@ package broker
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/emitter-io/emitter/network/address"
@@ -61,4 +62,25 @@ func (s *Service) reportStatus() {
 			s.selfPublish("cluster/"+status.Addr+"/", b)
 		}
 	}
+}
+
+// statsWriter represents a writer of stats for a particular service.
+type statsWriter struct {
+	service *Service
+}
+
+// Write writes the stats and publishes it
+func (w *statsWriter) Write(snapshot []byte) (int, error) {
+
+	w.service.reportStatus()
+
+	m := w.service.measurer
+	m.MeasureValue("node.peers", int64(w.service.NumPeers()))
+	m.MeasureValue("node.conns", int64(w.service.connections))
+
+	// Publish to the stats channel
+	w.service.selfPublish(
+		fmt.Sprintf("stats/%s/", address.External().String()),
+		snapshot)
+	return len(snapshot), nil
 }

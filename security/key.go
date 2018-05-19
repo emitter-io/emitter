@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emitter-io/emitter/utils"
+	"github.com/emitter-io/emitter/security/hash"
 )
 
 // Access types for a security key.
@@ -162,7 +162,7 @@ func (k Key) ValidateChannel(ch *Channel) bool {
 
 	newChannel := strings.Join(parts[0:maxDepth], "/")
 
-	h := utils.GetHash([]byte(newChannel))
+	h := hash.Of([]byte(newChannel))
 	return h == target
 }
 
@@ -198,7 +198,7 @@ func (k Key) SetTarget(channel string) error {
 
 	// Create a new channel and get the hash for this channel
 	newChannel := strings.Join(parts, "/")
-	value := utils.GetHash([]byte(newChannel))
+	value := hash.Of([]byte(newChannel))
 
 	// Set the bit path
 	k[12] = byte(bitPath >> 16)

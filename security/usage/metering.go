@@ -1,14 +1,16 @@
 package usage
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
 
 	"github.com/emitter-io/config"
+	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/http"
-	"github.com/emitter-io/emitter/utils"
+	"github.com/kelindar/binary"
 )
 
 // Metering represents a contract for a usage metering
@@ -57,15 +59,14 @@ type HTTPStorage struct {
 	counters *sync.Map          // The counters map.
 	url      string             // The url to post to.
 	http     http.Client        // The http client to use.
-	done     chan bool          // The closing channel.
 	head     []http.HeaderValue // The http headers to add with each request.
+	cancel   context.CancelFunc // The cancellation function.
 }
 
 // NewHTTP creates a new HTTP storage
 func NewHTTP() *HTTPStorage {
 	return &HTTPStorage{
 		counters: new(sync.Map),
-		done:     make(chan bool),
 	}
 }
 
@@ -102,8 +103,7 @@ func (s *HTTPStorage) Configure(config map[string]interface{}) (err error) {
 	if url, ok := config["url"]; ok {
 		s.url = url.(string)
 		s.http, err = http.NewClient(s.url, 30*time.Second)
-
-		utils.Repeat(s.store, interval, s.done) // TODO: closing chan
+		s.cancel = async.Repeat(context.Background(), interval, s.store)
 		return
 	}
 
@@ -116,6 +116,15 @@ func (s *HTTPStorage) Get(id uint32) Meter {
 	return meter.(Meter)
 }
 
+// Close closes the storage.
+func (s *HTTPStorage) Close() error {
+	if s.cancel != nil {
+		s.cancel()
+	}
+
+	return nil
+}
+
 // Store periodically stores the counters by sending them through HTTP.
 func (s *HTTPStorage) store() {
 	counters := make([]encodedUsage, 0)
@@ -125,7 +134,7 @@ func (s *HTTPStorage) store() {
 	})
 
 	// Encode as binary and post without waiting for the body
-	if encoded, err := utils.Encode(counters); err == nil {
+	if encoded, err := binary.Marshal(counters); err == nil {
 		if _, err := s.http.Post(s.url, encoded, nil, s.head...); err != nil {
 			logging.LogError("http metering", "reporting counters", err)
 		}

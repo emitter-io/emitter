@@ -24,8 +24,8 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/message"
-	"github.com/emitter-io/emitter/utils"
 	"github.com/karlseguin/ccache"
+	"github.com/kelindar/binary"
 )
 
 var (
@@ -108,7 +108,7 @@ func (s *InMemory) QueryLast(ssid []uint32, limit int) (<-chan []byte, error) {
 	match := s.lookup(query)
 
 	// Issue the presence query to the cluster
-	if req, err := utils.Encode(query); err == nil && s.Query != nil {
+	if req, err := binary.Marshal(query); err == nil && s.Query != nil {
 		if awaiter, err := s.Query("memstore", req); err == nil {
 
 			// Wait for all presence updates to come back (or a deadline)
@@ -149,7 +149,7 @@ func (s *InMemory) OnRequest(queryType string, payload []byte) ([]byte, bool) {
 
 	// Decode the request
 	var query lookupQuery
-	if err := utils.Decode(payload, &query); err != nil {
+	if err := binary.Unmarshal(payload, &query); err != nil {
 		return nil, false
 	}
 

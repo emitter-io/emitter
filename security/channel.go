@@ -19,7 +19,7 @@ import (
 	"unsafe"
 
 	"github.com/emitter-io/emitter/config"
-	"github.com/emitter-io/emitter/utils"
+	"github.com/emitter-io/emitter/security/hash"
 )
 
 // Channel types
@@ -137,7 +137,7 @@ func (c *Channel) parseChannel(text []byte) (i int) {
 				c.ChannelType = ChannelInvalid
 				return i
 			}
-			c.Query = append(c.Query, utils.GetHash(text[offset:i]))
+			c.Query = append(c.Query, hash.Of(text[offset:i]))
 
 			if i+1 == length { // The end flag
 				c.Channel = text[:i+1]

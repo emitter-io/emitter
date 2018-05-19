@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emitter-io/emitter/utils"
+	"github.com/kelindar/binary"
 	"github.com/valyala/fasthttp"
 )
 
@@ -150,7 +150,7 @@ func (c *client) do(client caller, url, method string, body []byte, output inter
 			mime := string(res.Header.ContentType())
 			switch mime {
 			case "application/binary":
-				err = utils.Decode(res.Body(), output)
+				err = binary.Unmarshal(res.Body(), output)
 
 			default:
 				// Always default to JSON here

@@ -3,7 +3,7 @@ package message
 import (
 	"testing"
 
-	"github.com/emitter-io/emitter/utils"
+	"github.com/kelindar/binary"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -48,7 +48,7 @@ func BenchmarkEncode(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		utils.Encode(&m)
+		binary.Marshal(&m)
 	}
 }
 

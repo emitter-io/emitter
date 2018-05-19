@@ -4,11 +4,12 @@ import (
 	"testing"
 
 	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/monitor"
 	netmock "github.com/emitter-io/emitter/network/mock"
 	"github.com/emitter-io/emitter/security"
 	secmock "github.com/emitter-io/emitter/security/mock"
 	"github.com/emitter-io/emitter/security/usage"
-	"github.com/emitter-io/emitter/utils"
+	"github.com/kelindar/binary"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -509,6 +510,7 @@ func TestHandlers_onEmitterRequest(t *testing.T) {
 			s := &Service{
 				contracts:     security.NewNoopContractProvider(),
 				subscriptions: message.NewTrie(),
+				measurer:      monitor.NewNoop(),
 			}
 
 			nc := s.newConn(netmock.NewNoop())
@@ -519,7 +521,7 @@ func TestHandlers_onEmitterRequest(t *testing.T) {
 }
 
 func TestHandlers_onPresenceQuery(t *testing.T) {
-	encode := func(ssid ...uint32) []byte { b, _ := utils.Encode(ssid); return b }
+	encode := func(ssid ...uint32) []byte { b, _ := binary.Marshal(ssid); return b }
 	tests := []struct {
 		queryType string
 		payload   []byte
@@ -558,6 +560,7 @@ func TestHandlers_lookupPresence(t *testing.T) {
 	s := &Service{
 		contracts:     security.NewNoopContractProvider(),
 		subscriptions: message.NewTrie(),
+		measurer:      monitor.NewNoop(),
 	}
 
 	s.subscriptions.Subscribe(message.Ssid{1, 2, 3}, s.newConn(netmock.NewNoop()))

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/message"
-	"github.com/emitter-io/emitter/utils"
+	"github.com/kelindar/binary"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -155,7 +155,7 @@ func TestInMemory_OnRequest(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		q, _ := utils.Encode(tc.query)
+		q, _ := binary.Marshal(tc.query)
 		resp, ok := s.OnRequest(tc.name, q)
 		assert.Equal(t, tc.expectOk, ok)
 		if tc.expectOk && ok {

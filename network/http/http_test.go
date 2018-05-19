@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/emitter-io/emitter/utils"
+	"github.com/kelindar/binary"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,7 +43,7 @@ func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var response []byte
 	if r.Header.Get("Content-Type") == "application/binary" {
 		w.Header().Set("Content-Type", "application/binary")
-		response, _ = utils.Encode(&testObject{
+		response, _ = binary.Marshal(&testObject{
 			Field: "response",
 		})
 	} else {
@@ -104,7 +104,7 @@ type handler2 struct{}
 func (h *handler2) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var response []byte
 	w.Header().Set("Content-Type", "application/binary")
-	response, _ = utils.Encode(&testObject{
+	response, _ = binary.Marshal(&testObject{
 		Field: "response",
 	})
 	w.Write(response)

@@ -16,12 +16,12 @@ package cluster
 
 import (
 	"bytes"
-	"encoding/binary"
+	bin "encoding/binary"
 
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/collection"
 	"github.com/emitter-io/emitter/security"
-	"github.com/emitter-io/emitter/utils"
+	"github.com/kelindar/binary"
 	"github.com/weaveworks/mesh"
 )
 
@@ -40,10 +40,10 @@ func (e *SubscriptionEvent) Encode() string {
 	offset := 0
 
 	// Encode everything as variable-size unsigned integers to save space
-	offset += binary.PutUvarint(buf[offset:], uint64(e.Peer))
-	offset += binary.PutUvarint(buf[offset:], uint64(e.Conn))
+	offset += bin.PutUvarint(buf[offset:], uint64(e.Peer))
+	offset += bin.PutUvarint(buf[offset:], uint64(e.Conn))
 	for _, ssidPart := range e.Ssid {
-		offset += binary.PutUvarint(buf[offset:], uint64(ssidPart))
+		offset += bin.PutUvarint(buf[offset:], uint64(ssidPart))
 	}
 
 	return string(buf[:offset])
@@ -57,14 +57,14 @@ func decodeSubscriptionEvent(encoded string) (SubscriptionEvent, error) {
 	reader := bytes.NewReader(buf)
 
 	// Read the peer name
-	peer, err := binary.ReadUvarint(reader)
+	peer, err := bin.ReadUvarint(reader)
 	out.Peer = mesh.PeerName(peer)
 	if err != nil {
 		return out, err
 	}
 
 	// Read the connection identifier
-	conn, err := binary.ReadUvarint(reader)
+	conn, err := bin.ReadUvarint(reader)
 	out.Conn = security.ID(conn)
 	if err != nil {
 		return out, err
@@ -73,7 +73,7 @@ func decodeSubscriptionEvent(encoded string) (SubscriptionEvent, error) {
 	// Read the SSID until we're finished
 	out.Ssid = make([]uint32, 0, 2)
 	for reader.Len() > 0 {
-		ssidPart, err := binary.ReadUvarint(reader)
+		ssidPart, err := bin.ReadUvarint(reader)
 		out.Ssid = append(out.Ssid, uint32(ssidPart))
 		if err != nil {
 			return out, err
@@ -94,7 +94,7 @@ func newSubscriptionState() *subscriptionState {
 // decodeSubscriptionState decodes the state
 func decodeSubscriptionState(buf []byte) (*subscriptionState, error) {
 	var out collection.LWWState
-	err := utils.Decode(buf, &out)
+	err := binary.Unmarshal(buf, &out)
 	return &subscriptionState{Set: out}, err
 }
 
@@ -105,7 +105,7 @@ func (st *subscriptionState) Encode() [][]byte {
 	lww.Lock()
 	defer lww.Unlock()
 
-	buf, err := utils.Encode(lww.Set)
+	buf, err := binary.Marshal(lww.Set)
 	if err != nil {
 		panic(err)
 	}

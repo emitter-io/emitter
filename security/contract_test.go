@@ -133,6 +133,7 @@ func TestHTTPContractPovider_Configure(t *testing.T) {
 			"interval":      600000.0,
 		})
 		assert.NoError(t, err)
+		assert.NoError(t, p.Close())
 	}
 }
 

@@ -15,8 +15,8 @@
 package message
 
 import (
-	"github.com/emitter-io/emitter/utils"
 	"github.com/golang/snappy"
+	"github.com/kelindar/binary"
 )
 
 // Frame represents a message frame which is sent through the wire to the
@@ -45,7 +45,7 @@ func (m *Message) Size() int64 {
 // Encode encodes the message frame
 func (f *Frame) Encode() (out []byte) {
 	var enc []byte
-	enc, err := utils.Encode(f)
+	enc, err := binary.Marshal(f)
 	if err != nil {
 		panic(err) // This should never happen unless there's some terrible bug in the encoder
 	}
@@ -64,7 +64,7 @@ func DecodeFrame(buf []byte) (out Frame, err error) {
 	var buffer []byte
 	if buf, err = snappy.Decode(buffer, buf); err == nil {
 		out = make(Frame, 0, 64)
-		err = utils.Decode(buf, &out)
+		err = binary.Unmarshal(buf, &out)
 	}
 	return
 }
