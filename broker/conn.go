@@ -25,6 +25,7 @@ import (
 
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/logging"
+	"github.com/emitter-io/emitter/monitor"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/security"
@@ -40,16 +41,18 @@ type Conn struct {
 	guid     string            // The globally unique id of the connection.
 	service  *Service          // The service for this connection.
 	subs     *message.Counters // The subscriptions for this connection.
+	measurer monitor.Measurer  // The measurer to use for monitoring.
 }
 
 // NewConn creates a new connection.
 func (s *Service) newConn(t net.Conn) *Conn {
 	c := &Conn{
-		tracked: 0,
-		luid:    security.NewID(),
-		service: s,
-		socket:  t,
-		subs:    message.NewCounters(),
+		tracked:  0,
+		luid:     security.NewID(),
+		service:  s,
+		socket:   t,
+		subs:     message.NewCounters(),
+		measurer: s.measurer,
 	}
 
 	// Generate a globally unique id as well
@@ -69,6 +72,11 @@ func (c *Conn) ID() string {
 // Type returns the type of the subscriber
 func (c *Conn) Type() message.SubscriberType {
 	return message.SubscriberDirect
+}
+
+// MeasureElapsed measures elapsed time since
+func (c *Conn) MeasureElapsed(name string, since time.Time) {
+	c.measurer.MeasureElapsed(name, time.Now())
 }
 
 // track tracks the connection by adding it to the metering.
@@ -102,89 +110,101 @@ func (c *Conn) Process() error {
 			return err
 		}
 
-		switch msg.Type() {
-
-		// We got an attempt to connect to MQTT.
-		case mqtt.TypeOfConnect:
-			packet := msg.(*mqtt.Connect)
-			c.username = string(packet.Username)
-
-			// Write the ack
-			ack := mqtt.Connack{ReturnCode: 0x00}
-			if _, err := ack.EncodeTo(c.socket); err != nil {
-				return err
-			}
-
-		// We got an attempt to subscribe to a channel.
-		case mqtt.TypeOfSubscribe:
-			packet := msg.(*mqtt.Subscribe)
-			ack := mqtt.Suback{
-				MessageID: packet.MessageID,
-				Qos:       make([]uint8, 0, len(packet.Subscriptions)),
-			}
-
-			// Subscribe for each subscription
-			for _, sub := range packet.Subscriptions {
-				if err := c.onSubscribe(sub.Topic); err != nil {
-					logging.LogError("conn", "subscribe received", err)
-					ack.Qos = append(ack.Qos, 0x80) // 0x80 indicate subscription failure
-				} else {
-					// Append the QoS
-					ack.Qos = append(ack.Qos, sub.Qos)
-				}
-			}
-
-			// Acknowledge the subscription
-			if _, err := ack.EncodeTo(c.socket); err != nil {
-				return err
-			}
-
-		// We got an attempt to unsubscribe from a channel.
-		case mqtt.TypeOfUnsubscribe:
-			packet := msg.(*mqtt.Unsubscribe)
-			ack := mqtt.Unsuback{MessageID: packet.MessageID}
-
-			// Unsubscribe from each subscription
-			for _, sub := range packet.Topics {
-				c.onUnsubscribe(sub.Topic) // TODO: Handle error or just ignore?
-			}
-
-			// Acknowledge the unsubscription
-			if _, err := ack.EncodeTo(c.socket); err != nil {
-				return err
-			}
-
-		// We got an MQTT ping response, respond appropriately.
-		case mqtt.TypeOfPingreq:
-			ack := mqtt.Pingresp{}
-			if _, err := ack.EncodeTo(c.socket); err != nil {
-				return err
-			}
-
-		case mqtt.TypeOfDisconnect:
-			return nil
-
-		case mqtt.TypeOfPublish:
-			packet := msg.(*mqtt.Publish)
-
-			if err := c.onPublish(packet.Topic, packet.Payload); err != nil {
-				logging.LogError("conn", "publish received", err)
-				// TODO: Handle Error
-			}
-
-			// Acknowledge the publication
-			if packet.Header.QOS > 0 {
-				ack := mqtt.Puback{MessageID: packet.MessageID}
-				if _, err := ack.EncodeTo(c.socket); err != nil {
-					return err
-				}
-			}
+		// Handle the receive
+		if err := c.onReceive(msg); err != nil {
+			return err
 		}
 	}
 }
 
+// onReceive handles an MQTT receive.
+func (c *Conn) onReceive(msg mqtt.Message) error {
+	defer c.MeasureElapsed("rcv."+msg.String(), time.Now())
+	switch msg.Type() {
+
+	// We got an attempt to connect to MQTT.
+	case mqtt.TypeOfConnect:
+		packet := msg.(*mqtt.Connect)
+		c.username = string(packet.Username)
+
+		// Write the ack
+		ack := mqtt.Connack{ReturnCode: 0x00}
+		if _, err := ack.EncodeTo(c.socket); err != nil {
+			return err
+		}
+
+	// We got an attempt to subscribe to a channel.
+	case mqtt.TypeOfSubscribe:
+		packet := msg.(*mqtt.Subscribe)
+		ack := mqtt.Suback{
+			MessageID: packet.MessageID,
+			Qos:       make([]uint8, 0, len(packet.Subscriptions)),
+		}
+
+		// Subscribe for each subscription
+		for _, sub := range packet.Subscriptions {
+			if err := c.onSubscribe(sub.Topic); err != nil {
+				logging.LogError("conn", "subscribe received", err)
+				ack.Qos = append(ack.Qos, 0x80) // 0x80 indicate subscription failure
+			} else {
+				// Append the QoS
+				ack.Qos = append(ack.Qos, sub.Qos)
+			}
+		}
+
+		// Acknowledge the subscription
+		if _, err := ack.EncodeTo(c.socket); err != nil {
+			return err
+		}
+
+	// We got an attempt to unsubscribe from a channel.
+	case mqtt.TypeOfUnsubscribe:
+		packet := msg.(*mqtt.Unsubscribe)
+		ack := mqtt.Unsuback{MessageID: packet.MessageID}
+
+		// Unsubscribe from each subscription
+		for _, sub := range packet.Topics {
+			c.onUnsubscribe(sub.Topic) // TODO: Handle error or just ignore?
+		}
+
+		// Acknowledge the unsubscription
+		if _, err := ack.EncodeTo(c.socket); err != nil {
+			return err
+		}
+
+	// We got an MQTT ping response, respond appropriately.
+	case mqtt.TypeOfPingreq:
+		ack := mqtt.Pingresp{}
+		if _, err := ack.EncodeTo(c.socket); err != nil {
+			return err
+		}
+
+	case mqtt.TypeOfDisconnect:
+		return nil
+
+	case mqtt.TypeOfPublish:
+		packet := msg.(*mqtt.Publish)
+
+		if err := c.onPublish(packet.Topic, packet.Payload); err != nil {
+			logging.LogError("conn", "publish received", err)
+			// TODO: Handle Error
+		}
+
+		// Acknowledge the publication
+		if packet.Header.QOS > 0 {
+			ack := mqtt.Puback{MessageID: packet.MessageID}
+			if _, err := ack.EncodeTo(c.socket); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // Send forwards the message to the underlying client.
 func (c *Conn) Send(m *message.Message) (err error) {
+	defer c.MeasureElapsed("send.pub", time.Now())
 	packet := mqtt.Publish{
 		Header: &mqtt.StaticHeader{
 			QOS: 0, // TODO when we'll support more QoS

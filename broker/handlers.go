@@ -22,7 +22,7 @@ import (
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/security"
-	"github.com/emitter-io/emitter/utils"
+	"github.com/kelindar/binary"
 )
 
 const (
@@ -318,14 +318,14 @@ func (s *Service) onPresenceQuery(queryType string, payload []byte) ([]byte, boo
 
 	// Decode the request
 	var target message.Ssid
-	if err := utils.Decode(payload, &target); err != nil {
+	if err := binary.Unmarshal(payload, &target); err != nil {
 		return nil, false
 	}
 
 	logging.LogTarget("query", queryType+" query received", target)
 
 	// Send back the response
-	presence, err := utils.Encode(s.lookupPresence(target))
+	presence, err := binary.Marshal(s.lookupPresence(target))
 	return presence, err == nil
 }
 
@@ -347,13 +347,13 @@ func (s *Service) lookupPresence(ssid message.Ssid) []presenceInfo {
 
 func getClusterPresence(s *Service, ssid message.Ssid) []presenceInfo {
 	who := make([]presenceInfo, 0, 4)
-	if req, err := utils.Encode(ssid); err == nil {
+	if req, err := binary.Marshal(ssid); err == nil {
 		if awaiter, err := s.Query("presence", req); err == nil {
 
 			// Wait for all presence updates to come back (or a deadline)
 			for _, resp := range awaiter.Gather(1000 * time.Millisecond) {
 				info := []presenceInfo{}
-				if err := utils.Decode(resp, &info); err == nil {
+				if err := binary.Unmarshal(resp, &info); err == nil {
 					//logging.LogTarget("query", "response gathered", info)
 					who = append(who, info...)
 				}

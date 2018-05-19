@@ -15,16 +15,17 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/http"
-	"github.com/emitter-io/emitter/utils"
 )
 
 // Noop implements Storage contract.
@@ -36,18 +37,17 @@ const defaultFrameSize = 128
 // HTTP represents a storage which uses HTTP requests to store/retrieve messages.
 type HTTP struct {
 	sync.Mutex
-	frame message.Frame      // The pending message frame.
-	base  string             // The base url to use for the storage.
-	http  http.Client        // The http client to use.
-	head  []http.HeaderValue // The http headers to add with each request.
-	done  chan bool          // The closing channel.
+	frame  message.Frame      // The pending message frame.
+	base   string             // The base url to use for the storage.
+	http   http.Client        // The http client to use.
+	head   []http.HeaderValue // The http headers to add with each request.
+	cancel context.CancelFunc // The cancellation function.
 }
 
 // NewHTTP creates a new HTTP storage.
 func NewHTTP() *HTTP {
 	return &HTTP{
 		frame: make(message.Frame, 0, 64),
-		done:  make(chan bool),
 	}
 }
 
@@ -65,7 +65,7 @@ func (s *HTTP) Configure(config map[string]interface{}) (err error) {
 	}
 
 	// Get the interval from the provider configuration
-	interval := 10 * time.Millisecond
+	interval := 25 * time.Millisecond
 	if v, ok := config["interval"]; ok {
 		if i, ok := v.(float64); ok {
 			interval = time.Duration(i) * time.Millisecond
@@ -86,7 +86,7 @@ func (s *HTTP) Configure(config map[string]interface{}) (err error) {
 		s.http, err = http.NewClient(s.base, 30*time.Second)
 		s.head = headers
 
-		utils.Repeat(s.store, interval, s.done) // TODO: closing chan
+		s.cancel = async.Repeat(context.Background(), interval, s.store)
 		return
 	}
 
@@ -151,7 +151,10 @@ func (s *HTTP) QueryLast(ssid []uint32, limit int) (ch <-chan []byte, err error)
 // Close gracefully terminates the storage and ensures that every related
 // resource is properly disposed.
 func (s *HTTP) Close() error {
-	close(s.done)
+	if s.cancel != nil {
+		s.cancel()
+	}
+
 	return nil
 }
 

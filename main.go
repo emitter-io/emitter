@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -56,5 +57,5 @@ func main() {
 	}
 
 	// Listen and serve
-	svc.Listen()
+	svc.Listen(context.Background())
 }

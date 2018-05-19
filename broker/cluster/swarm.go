@@ -15,16 +15,17 @@
 package cluster
 
 import (
+	"context"
 	"net"
 	"sync"
 	"time"
 
+	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/security"
-	"github.com/emitter-io/emitter/utils"
 	"github.com/weaveworks/mesh"
 )
 
@@ -33,7 +34,7 @@ type Swarm struct {
 	sync.Mutex
 	name    mesh.PeerName         // The name of ourselves.
 	actions chan func()           // The action queue for the peer.
-	closing chan bool             // The closing channel.
+	cancel  context.CancelFunc    // The cancellation function.
 	config  *config.ClusterConfig // The configuration for the cluster.
 	state   *subscriptionState    // The state to synchronise.
 	router  *mesh.Router          // The mesh router.
@@ -53,7 +54,6 @@ func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
 	swarm := &Swarm{
 		name:    getLocalPeerName(cfg),
 		actions: make(chan func()),
-		closing: closing,
 		config:  cfg,
 		state:   newSubscriptionState(),
 	}
@@ -138,7 +138,7 @@ func (s *Swarm) Listen() {
 
 	// Every few seconds, attempt to reinforce our cluster structure by
 	// initiating connections with all of our peers.
-	utils.Repeat(s.update, 5*time.Second, s.closing)
+	s.cancel = async.Repeat(context.Background(), 5*time.Second, s.update)
 
 	// Start the router
 	s.router.Start()
@@ -341,6 +341,10 @@ func (s *Swarm) NotifyUnsubscribe(conn security.ID, ssid message.Ssid) {
 
 // Close terminates the connection.
 func (s *Swarm) Close() error {
+	if s.cancel != nil {
+		s.cancel()
+	}
+
 	return s.router.Stop()
 }
 

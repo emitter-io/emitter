@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"context"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -143,7 +144,7 @@ func TestPubsub(t *testing.T) {
 	broker.contracts = security.NewSingleContractProvider(broker.License, new(usage.NoopStorage))
 	assert.NoError(t, svcErr)
 	defer close(broker.Closing)
-	go broker.Listen()
+	go broker.Listen(context.Background())
 
 	// Create a client
 	cli, dialErr := net.Dial("tcp", ":9998")

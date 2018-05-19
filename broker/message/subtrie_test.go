@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emitter-io/emitter/utils"
+	"github.com/emitter-io/emitter/security/hash"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -142,7 +142,7 @@ func testSub(topic string) []uint32 {
 	ssid := make([]uint32, 0)
 	for _, p := range strings.Split(topic, "/") {
 		if len(p) > 0 {
-			ssid = append(ssid, utils.GetHash([]byte(p)))
+			ssid = append(ssid, hash.Of([]byte(p)))
 		}
 	}
 	return ssid

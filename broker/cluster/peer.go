@@ -15,13 +15,14 @@
 package cluster
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/logging"
-	"github.com/emitter-io/emitter/utils"
 	"github.com/weaveworks/mesh"
 )
 
@@ -34,12 +35,12 @@ const defaultFrameSize = 128
 // Peer represents a remote peer.
 type Peer struct {
 	sync.Mutex
-	sender   mesh.Gossip       // The gossip interface to use for sending.
-	name     mesh.PeerName     // The peer name for communicating.
-	frame    message.Frame     // The current message frame.
-	subs     *message.Counters // The SSIDs of active subscriptions for this peer.
-	activity int64             // The time of last activity of the peer.
-	closing  chan bool         // The closing channel for the peer.
+	sender   mesh.Gossip        // The gossip interface to use for sending.
+	name     mesh.PeerName      // The peer name for communicating.
+	frame    message.Frame      // The current message frame.
+	subs     *message.Counters  // The SSIDs of active subscriptions for this peer.
+	activity int64              // The time of last activity of the peer.
+	cancel   context.CancelFunc // The cancellation function.
 }
 
 // NewPeer creates a new peer for the connection.
@@ -50,11 +51,10 @@ func (s *Swarm) newPeer(name mesh.PeerName) *Peer {
 		frame:    message.NewFrame(defaultFrameSize),
 		subs:     message.NewCounters(),
 		activity: time.Now().Unix(),
-		closing:  make(chan bool),
 	}
 
 	// Spawn the send queue processor
-	utils.Repeat(peer.processSendQueue, 5*time.Millisecond, peer.closing)
+	peer.cancel = async.Repeat(context.Background(), 5*time.Millisecond, peer.processSendQueue)
 	return peer
 }
 
@@ -69,11 +69,15 @@ func (p *Peer) onUnsubscribe(encodedEvent string, ssid message.Ssid) bool {
 }
 
 // Close termintes the peer and stops everything associated with this peer.
-func (p *Peer) Close() {
+func (p *Peer) Close() error {
 	p.Lock()
 	defer p.Unlock()
 
-	close(p.closing)
+	if p.cancel != nil {
+		p.cancel()
+	}
+
+	return nil
 }
 
 // ID returns the unique identifier of the subsriber.

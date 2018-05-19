@@ -43,7 +43,6 @@ func TestHTTP_Name(t *testing.T) {
 
 func TestHTTP_ConfigureErr(t *testing.T) {
 	s := NewHTTP()
-	close(s.done)
 
 	err := s.Configure(nil)
 	assert.Error(t, errors.New("Configuration was not provided for HTTP metering provider"), err)
@@ -54,7 +53,6 @@ func TestHTTP_ConfigureErr(t *testing.T) {
 
 func TestHTTP_Configure(t *testing.T) {
 	s := NewHTTP()
-	close(s.done)
 
 	err := s.Configure(map[string]interface{}{
 		"interval":      1000.0,
@@ -64,6 +62,7 @@ func TestHTTP_Configure(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "http://localhost/test", s.url)
 	assert.NotNil(t, s.http)
+	assert.NoError(t, s.Close())
 }
 
 func TestHTTP_Store(t *testing.T) {
@@ -74,7 +73,7 @@ func TestHTTP_Store(t *testing.T) {
 
 	s := NewHTTP()
 	s.url = "http://127.0.0.1"
-	defer close(s.done)
+	defer s.Close()
 	s.http = h
 
 	c := s.Get(1).(*usage)

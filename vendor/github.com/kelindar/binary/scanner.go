@@ -1,3 +1,6 @@
+// Copyright (c) Roman Atachiants and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
 package binary
 
 import (
@@ -33,7 +36,12 @@ func scan(t reflect.Type) (c codec, err error) {
 	return
 }
 
+// ScanType scans the type
 func scanType(t reflect.Type) (codec, error) {
+	if custom, ok := scanCustomCodec(t); ok {
+		return custom, nil
+	}
+
 	switch t.Kind() {
 	case reflect.Array:
 		elemCodec, err := scanType(t.Elem())
@@ -85,15 +93,6 @@ func scanType(t reflect.Type) (codec, error) {
 
 	case reflect.Struct:
 		s := scanStruct(t)
-		if s.IsCustom() {
-			return &customMarshalCodec{
-				marshaler:      s.marshaler,
-				unmarshaler:    s.unmarshaler,
-				ptrMarshaler:   s.ptrMarshaler,
-				ptrUnmarshaler: s.ptrUnmarshaler,
-			}, nil
-		}
-
 		var v reflectStructCodec
 		for _, i := range s.fields {
 			if c, err := scanType(t.Field(i).Type); err == nil {
@@ -166,15 +165,7 @@ func scanType(t reflect.Type) (codec, error) {
 }
 
 type scannedStruct struct {
-	fields         []int
-	marshaler      *reflect.Method
-	unmarshaler    *reflect.Method
-	ptrMarshaler   *reflect.Method
-	ptrUnmarshaler *reflect.Method
-}
-
-func (s *scannedStruct) IsCustom() bool {
-	return (s.marshaler != nil || s.ptrMarshaler != nil) && (s.unmarshaler != nil || s.ptrUnmarshaler != nil)
+	fields []int
 }
 
 func scanStruct(t reflect.Type) (meta *scannedStruct) {
@@ -185,18 +176,28 @@ func scanStruct(t reflect.Type) (meta *scannedStruct) {
 			meta.fields = append(meta.fields, i)
 		}
 	}
+	return
+}
 
+// ScanCustom scans whether a type has a custom marshaling implemented.
+func scanCustomCodec(t reflect.Type) (out *customCodec, ok bool) {
+	out = new(customCodec)
 	if m, ok := t.MethodByName("MarshalBinary"); ok {
-		meta.marshaler = &m
+		out.marshaler = &m
 	} else if m, ok := reflect.PtrTo(t).MethodByName("MarshalBinary"); ok {
-		meta.ptrMarshaler = &m
+		out.ptrMarshaler = &m
 	}
 
 	if m, ok := t.MethodByName("UnmarshalBinary"); ok {
-		meta.unmarshaler = &m
+		out.unmarshaler = &m
 	} else if m, ok := reflect.PtrTo(t).MethodByName("UnmarshalBinary"); ok {
-		meta.ptrUnmarshaler = &m
+		out.ptrUnmarshaler = &m
 	}
 
-	return
+	// Checks whether we have both marshaler and unmarshaler attached
+	if (out.marshaler != nil || out.ptrMarshaler != nil) && (out.unmarshaler != nil || out.ptrUnmarshaler != nil) {
+		return out, true
+	}
+
+	return nil, false
 }

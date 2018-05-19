@@ -23,7 +23,7 @@ func TestPeer_Multiple(t *testing.T) {
 	// Make sure we have a peer
 	assert.NotNil(t, p)
 	assert.Empty(t, p.frame)
-	assert.NotNil(t, p.closing)
+	assert.NotNil(t, p.cancel)
 	assert.Equal(t, "00:00:00:00:00:7b", p.ID())
 	assert.Equal(t, message.SubscriberRemote, p.Type())
 	assert.True(t, p.IsActive())

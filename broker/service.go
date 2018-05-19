@@ -15,6 +15,7 @@
 package broker
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -34,12 +35,12 @@ import (
 	"github.com/emitter-io/emitter/broker/storage"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/logging"
+	"github.com/emitter-io/emitter/monitor"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/listener"
 	"github.com/emitter-io/emitter/network/websocket"
 	"github.com/emitter-io/emitter/security"
 	"github.com/emitter-io/emitter/security/usage"
-	"github.com/emitter-io/emitter/utils"
 	"github.com/kelindar/tcp"
 )
 
@@ -58,6 +59,7 @@ type Service struct {
 	querier       *QueryManager             // The generic query manager.
 	contracts     security.ContractProvider // The contract provider for the service.
 	storage       storage.Storage           // The storage provider for the service.
+	measurer      monitor.Measurer          // The monitoring registry for the service.
 	metering      usage.Metering            // The usage storage for metering contracts.
 	connections   int64                     // The number of currently open connections.
 }
@@ -72,6 +74,7 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 		tcp:           new(tcp.Server),
 		presence:      make(chan *presenceNotify, 100),
 		storage:       new(storage.Noop),
+		measurer:      monitor.New(),
 	}
 
 	// Create a new HTTP request multiplexer
@@ -157,7 +160,7 @@ func (s *Service) NumPeers() int {
 }
 
 // Listen starts the service.
-func (s *Service) Listen() (err error) {
+func (s *Service) Listen(ctx context.Context) (err error) {
 	defer s.Close()
 	s.hookSignals()
 	s.notifyPresenceChange()
@@ -190,8 +193,12 @@ func (s *Service) Listen() (err error) {
 
 	// Set the start time and report status
 	s.startTime = time.Now().UTC()
-	utils.Repeat(s.reportStatus, 100*time.Millisecond, s.Closing)
 	logging.LogAction("service", "service started")
+
+	// If it's a monitor, start it
+	if m, ok := s.measurer.(monitor.Snapshotter); ok {
+		m.SnapshotSink(ctx, 5*time.Second, &statsWriter{service: s})
+	}
 
 	// Block
 	select {}
@@ -356,11 +363,8 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 
 	// Create the ssid for the presence
 	ssid := message.NewSsid(key.Contract(), channel)
-
 	now := time.Now().UTC().Unix()
-
 	who := getAllPresence(s, ssid)
-
 	resp, err := json.Marshal(&presenceResponse{
 		Time:    now,
 		Event:   presenceStatusEvent,

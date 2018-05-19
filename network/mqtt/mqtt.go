@@ -31,6 +31,8 @@ var reserveForHeader = []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
 
 //Message is the interface all our packets will be implementing
 type Message interface {
+	fmt.Stringer
+
 	Type() uint8
 	EncodeTo(w io.Writer) (int, error)
 }
@@ -303,6 +305,11 @@ func (c *Connect) Type() uint8 {
 	return TypeOfConnect
 }
 
+// String returns the name of mqtt operation.
+func (c *Connect) String() string {
+	return "connect"
+}
+
 // EncodeTo writes the encoded message to the underlying writer.
 func (c *Connack) EncodeTo(w io.Writer) (int, error) {
 	buf := buffers.Get()
@@ -320,6 +327,11 @@ func (c *Connack) EncodeTo(w io.Writer) (int, error) {
 // Type returns the MQTT message type.
 func (c *Connack) Type() uint8 {
 	return TypeOfConnack
+}
+
+// String returns the name of mqtt operation.
+func (c *Connack) String() string {
+	return "connack"
 }
 
 // EncodeTo writes the encoded message to the underlying writer.
@@ -343,6 +355,11 @@ func (p *Publish) Type() uint8 {
 	return TypeOfPublish
 }
 
+// String returns the name of mqtt operation.
+func (p *Publish) String() string {
+	return "pub"
+}
+
 // EncodeTo writes the encoded message to the underlying writer.
 func (p *Puback) EncodeTo(w io.Writer) (int, error) {
 	buf := buffers.Get()
@@ -358,6 +375,11 @@ func (p *Puback) EncodeTo(w io.Writer) (int, error) {
 // Type returns the MQTT message type.
 func (p *Puback) Type() uint8 {
 	return TypeOfPuback
+}
+
+// String returns the name of mqtt operation.
+func (p *Puback) String() string {
+	return "puback"
 }
 
 // EncodeTo writes the encoded message to the underlying writer.
@@ -377,6 +399,11 @@ func (p *Pubrec) Type() uint8 {
 	return TypeOfPubrec
 }
 
+// String returns the name of mqtt operation.
+func (p *Pubrec) String() string {
+	return "pubrec"
+}
+
 // EncodeTo writes the encoded message to the underlying writer.
 func (p *Pubrel) EncodeTo(w io.Writer) (int, error) {
 	buf := buffers.Get()
@@ -394,6 +421,11 @@ func (p *Pubrel) Type() uint8 {
 	return TypeOfPubrel
 }
 
+// String returns the name of mqtt operation.
+func (p *Pubrel) String() string {
+	return "pubrel"
+}
+
 // EncodeTo writes the encoded message to the underlying writer.
 func (p *Pubcomp) EncodeTo(w io.Writer) (int, error) {
 	buf := buffers.Get()
@@ -409,6 +441,11 @@ func (p *Pubcomp) EncodeTo(w io.Writer) (int, error) {
 // Type returns the MQTT message type.
 func (p *Pubcomp) Type() uint8 {
 	return TypeOfPubcomp
+}
+
+// String returns the name of mqtt operation.
+func (p *Pubcomp) String() string {
+	return "pubcomp"
 }
 
 // EncodeTo writes the encoded message to the underlying writer.
@@ -432,6 +469,11 @@ func (s *Subscribe) Type() uint8 {
 	return TypeOfSubscribe
 }
 
+// String returns the name of mqtt operation.
+func (s *Subscribe) String() string {
+	return "sub"
+}
+
 // EncodeTo writes the encoded message to the underlying writer.
 func (s *Suback) EncodeTo(w io.Writer) (int, error) {
 	buf := buffers.Get()
@@ -450,6 +492,11 @@ func (s *Suback) EncodeTo(w io.Writer) (int, error) {
 // Type returns the MQTT message type.
 func (s *Suback) Type() uint8 {
 	return TypeOfSuback
+}
+
+// String returns the name of mqtt operation.
+func (s *Suback) String() string {
+	return "suback"
 }
 
 // EncodeTo writes the encoded message to the underlying writer.
@@ -472,6 +519,11 @@ func (u *Unsubscribe) Type() uint8 {
 	return TypeOfUnsubscribe
 }
 
+// String returns the name of mqtt operation.
+func (u *Unsubscribe) String() string {
+	return "unsub"
+}
+
 // EncodeTo writes the encoded message to the underlying writer.
 func (u *Unsuback) EncodeTo(w io.Writer) (int, error) {
 	buf := buffers.Get()
@@ -489,6 +541,11 @@ func (u *Unsuback) Type() uint8 {
 	return TypeOfUnsuback
 }
 
+// String returns the name of mqtt operation.
+func (u *Unsuback) String() string {
+	return "unsuback"
+}
+
 // EncodeTo writes the encoded message to the underlying writer.
 func (p *Pingreq) EncodeTo(w io.Writer) (int, error) {
 	return w.Write([]byte{0xc0, 0x0})
@@ -497,6 +554,11 @@ func (p *Pingreq) EncodeTo(w io.Writer) (int, error) {
 // Type returns the MQTT message type.
 func (p *Pingreq) Type() uint8 {
 	return TypeOfPingreq
+}
+
+// String returns the name of mqtt operation.
+func (p *Pingreq) String() string {
+	return "pingreq"
 }
 
 // EncodeTo writes the encoded message to the underlying writer.
@@ -509,6 +571,11 @@ func (p *Pingresp) Type() uint8 {
 	return TypeOfPingresp
 }
 
+// String returns the name of mqtt operation.
+func (p *Pingresp) String() string {
+	return "pingresp"
+}
+
 // EncodeTo writes the encoded message to the underlying writer.
 func (d *Disconnect) EncodeTo(w io.Writer) (int, error) {
 	return w.Write([]byte{0xe0, 0x0})
@@ -517,6 +584,11 @@ func (d *Disconnect) EncodeTo(w io.Writer) (int, error) {
 // Type returns the MQTT message type.
 func (d *Disconnect) Type() uint8 {
 	return TypeOfDisconnect
+}
+
+// String returns the name of mqtt operation.
+func (d *Disconnect) String() string {
+	return "disconnect"
 }
 
 // decodeStaticHeader decodes the header

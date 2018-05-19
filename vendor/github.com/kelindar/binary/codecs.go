@@ -1,3 +1,6 @@
+// Copyright (c) Roman Atachiants and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
 package binary
 
 import (
@@ -201,7 +204,8 @@ func (c *reflectStructCodec) DecodeTo(d *Decoder, rv reflect.Value) (err error) 
 
 // ------------------------------------------------------------------------------
 
-type customMarshalCodec struct {
+// customCodec represents a custom binary marshaling.
+type customCodec struct {
 	marshaler      *reflect.Method
 	unmarshaler    *reflect.Method
 	ptrMarshaler   *reflect.Method
@@ -209,7 +213,7 @@ type customMarshalCodec struct {
 }
 
 // Encode encodes a value into the encoder.
-func (c *customMarshalCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) {
+func (c *customCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) {
 	m := c.GetMarshalBinary(rv)
 	if m == nil {
 		return errors.New("MarshalBinary not found on " + rv.Type().String())
@@ -229,7 +233,7 @@ func (c *customMarshalCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) 
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *customMarshalCodec) DecodeTo(d *Decoder, rv reflect.Value) (err error) {
+func (c *customCodec) DecodeTo(d *Decoder, rv reflect.Value) (err error) {
 	m := c.GetUnmarshalBinary(rv)
 
 	var l uint64
@@ -245,7 +249,7 @@ func (c *customMarshalCodec) DecodeTo(d *Decoder, rv reflect.Value) (err error) 
 	return
 }
 
-func (c *customMarshalCodec) GetMarshalBinary(rv reflect.Value) *reflect.Value {
+func (c *customCodec) GetMarshalBinary(rv reflect.Value) *reflect.Value {
 	if c.marshaler != nil {
 		m := rv.Method(c.marshaler.Index)
 		return &m
@@ -259,7 +263,7 @@ func (c *customMarshalCodec) GetMarshalBinary(rv reflect.Value) *reflect.Value {
 	return nil
 }
 
-func (c *customMarshalCodec) GetUnmarshalBinary(rv reflect.Value) *reflect.Value {
+func (c *customCodec) GetUnmarshalBinary(rv reflect.Value) *reflect.Value {
 	if c.unmarshaler != nil {
 		m := rv.Method(c.unmarshaler.Index)
 		return &m
