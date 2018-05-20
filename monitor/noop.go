@@ -29,8 +29,17 @@ func NewNoop() *Noop {
 // Assert contract compliance
 var _ Measurer = NewNoop()
 
-// MeasureValue records a value in the queue
-func (m *Noop) MeasureValue(name string, value int64) {}
+// Measure records a value in the queue
+func (m *Noop) Measure(name string, value int64) {}
 
 // MeasureElapsed measures elapsed time since the start
 func (m *Noop) MeasureElapsed(name string, start time.Time) {}
+
+// MeasureRuntime measures the runtime information
+func (m *Noop) MeasureRuntime() {}
+
+// Tag updates a tag.
+func (m *Noop) Tag(name, tag string) {}
+
+// Snapshot creates a snapshot
+func (m *Noop) Snapshot() []byte { return []byte{} }

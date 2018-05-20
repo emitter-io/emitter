@@ -15,9 +15,9 @@
 package monitor
 
 import (
-	"math"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,14 +25,12 @@ import (
 // of the values from a stream. This is essentially a combination of a histogram, gauge
 // and a counter.
 type Metric struct {
-	sync.RWMutex
+	sync.Mutex
 	sample sample // The sample used to build a histogram
 	count  int32  // The number of samples observed
-	min    int64  // The minimum value observed
-	max    int64  // The maximum value observed
-	update int64  // The last updated time
 	create int64  // The first updated time
 	name   string // The name of the metric
+	tag    string // The tag of the metric (e.g.: IP Address)
 }
 
 const (
@@ -45,7 +43,6 @@ func NewMetric(name string) *Metric {
 		name:   name,
 		sample: make([]int64, 0, reservoirSize),
 		create: time.Now().Unix(),
-		min:    math.MaxInt64,
 	}
 }
 
@@ -55,8 +52,6 @@ func (m *Metric) Reset() {
 	defer m.Unlock()
 
 	m.count = 0
-	m.min = math.MaxInt64
-	m.max = 0
 	m.sample = m.sample[:0]
 }
 
@@ -65,67 +60,77 @@ func (m *Metric) Name() string {
 	return m.name
 }
 
+// Tag returns the associated tag of the metric.
+func (m *Metric) Tag() string {
+	m.Lock()
+	defer m.Unlock()
+	return m.tag
+}
+
 // Window returns start and end time of the histogram.
 func (m *Metric) Window() (time.Time, time.Time) {
-	return time.Unix(m.create, 0), time.Unix(m.update, 0)
+	return time.Unix(m.create, 0), time.Now()
 }
 
 // Count returns the number of samples recorded, which may exceed the
 // reservoir size.
 func (m *Metric) Count() int {
-	m.RLock()
-	defer m.RUnlock()
-
+	m.Lock()
+	defer m.Unlock()
 	return int(m.count)
 }
 
 // Max returns the maximum value in the sample, which may not be the maximum
 // value ever to be part of the sample.
 func (m *Metric) Max() int64 {
-	m.RLock()
-	defer m.RUnlock()
-
+	m.Lock()
+	defer m.Unlock()
 	return m.sample.Max()
 }
 
 // Mean returns the mean of the values in the sample.
 func (m *Metric) Mean() float64 {
-	m.RLock()
-	defer m.RUnlock()
-
+	m.Lock()
+	defer m.Unlock()
 	return m.sample.Mean()
 }
 
 // Min returns the minimum value in the sample, which may not be the minimum
 // value ever to be part of the sample.
 func (m *Metric) Min() int64 {
-	m.RLock()
-	defer m.RUnlock()
-
+	m.Lock()
+	defer m.Unlock()
 	return m.sample.Min()
 }
 
 // Quantile returns a slice of arbitrary quantiles of the sample.
 func (m *Metric) Quantile(quantiles ...float64) []float64 {
-	m.RLock()
-	defer m.RUnlock()
-
+	m.Lock()
+	defer m.Unlock()
 	return m.sample.Quantile(quantiles...)
 }
 
 // Snapshot returns a read-only copy of the sample.
 func (m *Metric) Snapshot() *Snapshot {
-	m.RLock()
-	defer m.RUnlock()
+	m.Lock()
+	defer m.Unlock()
 
-	return newSnapshot(m)
+	dest := make([]int64, len(m.sample))
+	copy(dest, m.sample)
+	return &Snapshot{
+		Metric: m.name,
+		Label:  m.tag,
+		Create: m.create,
+		Update: time.Now().Unix(),
+		Amount: m.count,
+		Sample: dest,
+	}
 }
 
 // StdDev returns the standard deviation of the values in the sample.
 func (m *Metric) StdDev() float64 {
-	m.RLock()
-	defer m.RUnlock()
-
+	m.Lock()
+	defer m.Unlock()
 	return m.sample.StdDev()
 }
 
@@ -133,28 +138,30 @@ func (m *Metric) StdDev() float64 {
 func (m *Metric) Variance() float64 {
 	m.Lock()
 	defer m.Unlock()
-
 	return m.sample.Variance()
 }
 
 // Update samples a new value into the metric.
 func (m *Metric) Update(v int64) {
-	now := time.Now().Unix()
-	m.Lock()
-	m.count++
-	m.update = now
+	atomic.AddInt32(&m.count, 1)
 	if len(m.sample) < reservoirSize {
+		m.Lock()
 		m.sample = append(m.sample, v)
-	} else if r := rand.Int31n(m.count); r < int32(len(m.sample)) {
+		m.Unlock()
+		return
+	}
+
+	if r := rand.Int31n(m.count); r < int32(len(m.sample)) {
+		m.Lock()
 		m.sample[int(r)] = v
+		m.Unlock()
+		return
 	}
+}
 
-	if m.min > v {
-		m.min = v
-	}
-
-	if m.max < v {
-		m.max = v
-	}
+// UpdateTag updates the associated metric tag.
+func (m *Metric) UpdateTag(tag string) {
+	m.Lock()
+	m.tag = tag
 	m.Unlock()
 }

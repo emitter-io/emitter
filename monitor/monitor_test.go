@@ -15,7 +15,6 @@
 package monitor
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -30,7 +29,7 @@ func BenchmarkMeasure(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.MeasureValue("abc", 15423)
+		m.Measure("abc", 15423)
 	}
 }
 
@@ -38,7 +37,7 @@ func BenchmarkEncode(b *testing.B) {
 	m := New()
 	for i := 0; i < 50; i++ {
 		for j := 0; j < 100; j++ {
-			m.MeasureValue(fmt.Sprintf("%d", j), int64(i))
+			m.Measure(fmt.Sprintf("%d", j), int64(i))
 		}
 	}
 
@@ -59,6 +58,26 @@ func BenchmarkRuntime(b *testing.B) {
 	}
 }
 
+func TestMeasureElapsed(t *testing.T) {
+	m := New()
+
+	measureDelay(m)
+	elapsed := m.Get("a").Max()
+	assert.NotZero(t, elapsed)
+}
+
+func measureDelay(m *Monitor) {
+	defer m.MeasureElapsed("a", time.Now())
+	time.Sleep(1 * time.Millisecond)
+}
+
+func TestMonitorTag(t *testing.T) {
+	m := New()
+	m.Tag("a", "roman")
+
+	assert.Equal(t, "roman", m.Get("a").Tag())
+}
+
 func TestMeasureRuntime(t *testing.T) {
 	m := New()
 	m.MeasureRuntime()
@@ -71,7 +90,7 @@ func TestHistogramEncodeMany(t *testing.T) {
 
 	for i := 0; i < 1000; i++ {
 		for j := 0; j < 100; j++ {
-			m.MeasureValue(fmt.Sprintf("%d", j), rand.Int63n(10000))
+			m.Measure(fmt.Sprintf("%d", j), rand.Int63n(10000))
 		}
 	}
 
@@ -84,7 +103,7 @@ func TestHistogram(t *testing.T) {
 
 	for i := 0; i < 5000; i++ {
 		m.MeasureElapsed("b", time.Unix(0, 0))
-		m.MeasureValue("a", int64(i))
+		m.Measure("a", int64(i))
 	}
 
 	// Snapshot
@@ -97,25 +116,4 @@ func TestHistogram(t *testing.T) {
 	assert.Len(t, h, 2)
 	assert.Equal(t, 5000, h[0].Count())
 	assert.Equal(t, 5000, h[1].Count())
-}
-
-func TestSnapshotSink(t *testing.T) {
-	m := New()
-	ctx, cancel := context.WithCancel(context.Background())
-	dst := &sink{
-		out: make(chan []byte),
-	}
-
-	m.SnapshotSink(ctx, time.Nanosecond*10, dst)
-	<-dst.out
-	cancel()
-}
-
-type sink struct {
-	out chan []byte
-}
-
-func (s *sink) Write(b []byte) (int, error) {
-	s.out <- b
-	return 0, nil
 }

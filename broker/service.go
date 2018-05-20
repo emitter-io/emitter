@@ -54,7 +54,6 @@ type Service struct {
 	http          *http.Server              // The underlying HTTP server.
 	tcp           *tcp.Server               // The underlying TCP server.
 	cluster       *cluster.Swarm            // The gossip-based cluster mechanism.
-	startTime     time.Time                 // The start time of the service.
 	presence      chan *presenceNotify      // The channel for presence notifications.
 	querier       *QueryManager             // The generic query manager.
 	contracts     security.ContractProvider // The contract provider for the service.
@@ -191,16 +190,8 @@ func (s *Service) Listen(ctx context.Context) (err error) {
 		s.listen(s.Config.TLS.ListenAddr, tls)
 	}
 
-	// Set the start time and report status
-	s.startTime = time.Now().UTC()
-	logging.LogAction("service", "service started")
-
-	// If it's a monitor, start it
-	if m, ok := s.measurer.(monitor.Snapshotter); ok {
-		m.SnapshotSink(ctx, 5*time.Second, &statsWriter{service: s})
-	}
-
 	// Block
+	logging.LogAction("service", "service started")
 	select {}
 }
 

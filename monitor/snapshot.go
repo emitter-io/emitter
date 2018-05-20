@@ -21,32 +21,21 @@ import (
 // Snapshot is a read-only copy of another Sample.
 type Snapshot struct {
 	Metric string
+	Label  string
 	Sample sample
-	VCount int32
-	VMin   int64
-	VMax   int64
+	Amount int32
 	Create int64
 	Update int64
-}
-
-// newSnapshot creates a new snapshot from a metric.
-func newSnapshot(metric *Metric) *Snapshot {
-	sample := make([]int64, len(metric.sample))
-	copy(sample, metric.sample)
-	return &Snapshot{
-		Metric: metric.name,
-		Create: metric.create,
-		Update: metric.update,
-		VCount: metric.count,
-		VMin:   metric.min,
-		VMax:   metric.max,
-		Sample: sample,
-	}
 }
 
 // Name returns the name of the metric.
 func (s *Snapshot) Name() string {
 	return s.Metric
+}
+
+// Tag returns the associated tag of the metric.
+func (s *Snapshot) Tag() string {
+	return s.Label
 }
 
 // Window returns start and end time of the metric.
@@ -56,12 +45,12 @@ func (s *Snapshot) Window() (time.Time, time.Time) {
 
 // Count returns the count of inputs at the time the snapshot was taken.
 func (s *Snapshot) Count() int {
-	return int(s.VCount)
+	return int(s.Amount)
 }
 
 // Max returns the maximal value at the time the snapshot was taken.
 func (s *Snapshot) Max() int64 {
-	return s.VMax
+	return s.Sample.Max()
 }
 
 // Mean returns the mean value at the time the snapshot was taken.
@@ -71,7 +60,7 @@ func (s *Snapshot) Mean() float64 {
 
 // Min returns the minimal value at the time the snapshot was taken.
 func (s *Snapshot) Min() int64 {
-	return s.VMin
+	return s.Sample.Min()
 }
 
 // Quantile returns a slice of arbitrary quantiles of the sample.

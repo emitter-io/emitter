@@ -23,7 +23,12 @@ import (
 
 func TestNoop(t *testing.T) {
 	m := NewNoop()
-	m.MeasureValue("a", 1)
+	m.Measure("a", 1)
 	m.MeasureElapsed("b", time.Now())
+	m.MeasureRuntime()
+	m.Tag("a", "b")
 	assert.NotNil(t, m)
+
+	b := m.Snapshot()
+	assert.Empty(t, b)
 }
