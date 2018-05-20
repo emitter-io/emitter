@@ -15,31 +15,33 @@
 package monitor
 
 import (
-	"context"
-	"io"
 	"runtime"
 	"sync"
 	"time"
 
 	"github.com/golang/snappy"
 	"github.com/kelindar/binary"
+	"github.com/kelindar/process"
 )
 
 // Measurer represents a monitoring contract.
 type Measurer interface {
-	MeasureValue(name string, value int64)
+	Snapshotter
+	Measure(name string, value int64)
 	MeasureElapsed(name string, start time.Time)
+	MeasureRuntime()
+	Tag(name, tag string)
 }
 
 // Snapshotter represents a snapshotting contract.
 type Snapshotter interface {
-	SnapshotSink(ctx context.Context, interval time.Duration, sink io.Writer)
 	Snapshot() []byte
 }
 
 // Monitor represents a monitoring registry
 type Monitor struct {
-	registry sync.Map
+	registry sync.Map  // The registry used for keeping various metrics.
+	created  time.Time // The start time for uptime calculation.
 }
 
 // Assert contract compliance
@@ -48,7 +50,9 @@ var _ Snapshotter = New()
 
 // New creates a new monitor.
 func New() *Monitor {
-	return new(Monitor)
+	return &Monitor{
+		created: time.Now(),
+	}
 }
 
 // Get retrieves a metric by its name. If the metric does not exist yet, it will
@@ -62,31 +66,66 @@ func (m *Monitor) Get(name string) *Metric {
 	return v.(*Metric)
 }
 
-// MeasureValue retrieves the metric and updates it.
-func (m *Monitor) MeasureValue(name string, value int64) {
+// Measure retrieves the metric and updates it.
+func (m *Monitor) Measure(name string, value int64) {
 	m.Get(name).Update(value)
 }
 
 // MeasureElapsed measures elapsed time since the start
 func (m *Monitor) MeasureElapsed(name string, start time.Time) {
-	m.MeasureValue(name, int64(time.Since(start)/time.Millisecond))
+	m.Measure(name, int64(time.Since(start)/time.Microsecond))
 }
 
-// SnapshotSink performs snapshots asynchronously and keeps pushing it into the writer.
-func (m *Monitor) SnapshotSink(ctx context.Context, interval time.Duration, sink io.Writer) {
-	timer := time.NewTicker(interval)
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				timer.Stop()
-				return
-			case <-timer.C:
-				m.MeasureRuntime()
-				sink.Write(m.Snapshot())
-			}
-		}
-	}()
+// Tag updates a tag of a particular metric.
+func (m *Monitor) Tag(name, tag string) {
+	m.Get(name).UpdateTag(tag)
+}
+
+// MeasureRuntime captures the runtime metrics, this is a relatively slow process
+// and code is largely inspired by go-metrics.
+func (m *Monitor) MeasureRuntime() {
+	defer recover()
+
+	// Collect stats
+	var memory runtime.MemStats
+	var memoryPriv, memoryVirtual int64
+	var cpu float64
+	runtime.ReadMemStats(&memory)
+	process.ProcUsage(&cpu, &memoryPriv, &memoryVirtual)
+
+	// Measure process information
+	m.Measure("proc.cpu", int64(cpu*10000))
+	m.Measure("proc.priv", memoryPriv)
+	m.Measure("proc.virt", memoryVirtual)
+	m.Measure("proc.uptime", int64(time.Now().Sub(m.created).Seconds()))
+
+	// Measure heap information
+	m.Measure("heap.alloc", int64(memory.HeapAlloc))
+	m.Measure("heap.idle", int64(memory.HeapIdle))
+	m.Measure("heap.inuse", int64(memory.HeapInuse))
+	m.Measure("heap.objects", int64(memory.HeapObjects))
+	m.Measure("heap.released", int64(memory.HeapReleased))
+	m.Measure("heap.sys", int64(memory.HeapSys))
+
+	// Measure off heap memory
+	m.Measure("mcache.inuse", int64(memory.MCacheInuse))
+	m.Measure("mcache.sys", int64(memory.MCacheSys))
+	m.Measure("mspan.inuse", int64(memory.MSpanInuse))
+	m.Measure("mspan.sys", int64(memory.MSpanSys))
+
+	// Measure GC
+	m.Measure("gc.cpu", int64(memory.GCCPUFraction*10000))
+	m.Measure("gc.sys", int64(memory.GCSys))
+
+	// Measure memory
+	m.Measure("stack.inuse", int64(memory.StackInuse))
+	m.Measure("stack.sys", int64(memory.StackSys))
+
+	// Measure goroutines and threads and total memory
+	m.Measure("go.count", int64(runtime.NumGoroutine()))
+	m.Measure("go.procs", int64(runtime.NumCPU()))
+	m.Measure("go.sys", int64(memory.Sys))
+	m.Measure("go.alloc", int64(memory.TotalAlloc))
 }
 
 // Snapshot encodes the metrics into a binary representation
@@ -104,41 +143,6 @@ func (m *Monitor) Snapshot() (out []byte) {
 		out = snappy.Encode(out, enc)
 	}
 	return
-}
-
-// MeasureRuntime captures the runtime metrics, this is a relatively slow process
-// and code is largely inspired by go-metrics.
-func (m *Monitor) MeasureRuntime() {
-	memStats := new(runtime.MemStats)
-	runtime.ReadMemStats(memStats)
-
-	// Measure heap information
-	m.MeasureValue("heap.alloc", int64(memStats.HeapAlloc))
-	m.MeasureValue("heap.idle", int64(memStats.HeapIdle))
-	m.MeasureValue("heap.inuse", int64(memStats.HeapInuse))
-	m.MeasureValue("heap.objects", int64(memStats.HeapObjects))
-	m.MeasureValue("heap.released", int64(memStats.HeapReleased))
-	m.MeasureValue("heap.sys", int64(memStats.HeapSys))
-
-	// Measure off heap memory
-	m.MeasureValue("mcache.inuse", int64(memStats.MCacheInuse))
-	m.MeasureValue("mcache.sys", int64(memStats.MCacheSys))
-	m.MeasureValue("mspan.inuse", int64(memStats.MSpanInuse))
-	m.MeasureValue("mspan.sys", int64(memStats.MSpanSys))
-
-	// Measure GC
-	m.MeasureValue("gc.cpu", int64(memStats.GCCPUFraction*10000))
-	m.MeasureValue("gc.sys", int64(memStats.GCSys))
-
-	// Measure memory
-	m.MeasureValue("stack.inuse", int64(memStats.StackInuse))
-	m.MeasureValue("stack.sys", int64(memStats.StackSys))
-	m.MeasureValue("mem.sys", int64(memStats.Sys))
-	m.MeasureValue("mem.alloc", int64(memStats.TotalAlloc))
-
-	// Measure goroutines and threads
-	m.MeasureValue("go.count", int64(runtime.NumGoroutine()))
-	m.MeasureValue("go.procs", int64(runtime.NumCPU()))
 }
 
 // Restore restores a snapshot into a read-only histogram format.

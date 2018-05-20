@@ -15,72 +15,33 @@
 package broker
 
 import (
-	"encoding/json"
 	"fmt"
-	"time"
 
+	"github.com/emitter-io/emitter/monitor"
 	"github.com/emitter-io/emitter/network/address"
-	"github.com/kelindar/process"
 )
 
-// StatusInfo represents the status payload.
-type StatusInfo struct {
-	Node          string    `json:"node"`
-	Addr          string    `json:"addr"`
-	Subscriptions int       `json:"subs"`
-	Connections   int64     `json:"conns"`
-	CPU           float64   `json:"cpu"`
-	MemoryPrivate int64     `json:"priv"`
-	MemoryVirtual int64     `json:"virt"`
-	Time          time.Time `json:"time"`
-	NumPeers      int       `json:"peers"`
-	Uptime        float64   `json:"uptime"`
-}
+// sendStats writes the stats and publishes it
+func (s *Service) sendStats() {
+	node := address.Fingerprint(s.LocalName())
+	addr := address.External().String()
+	stat := s.measurer
 
-// getStatus retrieves the status of the service.
-func (s *Service) getStatus() (*StatusInfo, error) {
-	stats := new(StatusInfo)
+	// Track runtime information
+	stat.MeasureRuntime()
 
-	// Fill the identity
-	t := time.Now().UTC()
-	stats.Node = address.Fingerprint(s.LocalName()).String()
-	stats.Addr = address.External().String()
-	stats.Subscriptions = 0 // TODO: Set subscriptions
-	stats.Connections = s.connections
-	stats.Time = t
-	stats.Uptime = t.Sub(s.startTime).Seconds()
-	stats.NumPeers = s.NumPeers()
+	// Track node specific information
+	stat.Measure("node.id", int64(node))
+	stat.Measure("node.peers", int64(s.NumPeers()))
+	stat.Measure("node.conns", int64(s.connections))
+	//stat.Measure("node.subs", TODO)
 
-	// Collect CPU and Memory stats
-	return stats, process.ProcUsage(&stats.CPU, &stats.MemoryPrivate, &stats.MemoryVirtual)
-}
+	// Add node tags
+	stat.Tag("node.id", node.String())
+	stat.Tag("node.addr", addr)
 
-// Reports the status periodically.
-func (s *Service) reportStatus() {
-	if status, err := s.getStatus(); err == nil {
-		if b, err := json.Marshal(status); err == nil {
-			s.selfPublish("cluster/"+status.Addr+"/", b)
-		}
+	// Create a snaphshot of all stats and publish the stats
+	if m, ok := stat.(monitor.Snapshotter); ok {
+		s.selfPublish(fmt.Sprintf("stats/%s/", addr), m.Snapshot())
 	}
-}
-
-// statsWriter represents a writer of stats for a particular service.
-type statsWriter struct {
-	service *Service
-}
-
-// Write writes the stats and publishes it
-func (w *statsWriter) Write(snapshot []byte) (int, error) {
-
-	w.service.reportStatus()
-
-	m := w.service.measurer
-	m.MeasureValue("node.peers", int64(w.service.NumPeers()))
-	m.MeasureValue("node.conns", int64(w.service.connections))
-
-	// Publish to the stats channel
-	w.service.selfPublish(
-		fmt.Sprintf("stats/%s/", address.External().String()),
-		snapshot)
-	return len(snapshot), nil
 }

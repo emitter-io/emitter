@@ -16,6 +16,7 @@ package async
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -32,6 +33,32 @@ func TestRepeat(t *testing.T) {
 		<-out
 		v := <-out
 		assert.True(t, v)
+		cancel()
+	})
+}
+
+func TestRepeatFirstActionPanic(t *testing.T) {
+	assert.NotPanics(t, func() {
+		cancel := Repeat(context.TODO(), time.Nanosecond*10, func() {
+			panic("test")
+		})
+
+		cancel()
+	})
+}
+
+func TestRepeatPanic(t *testing.T) {
+	assert.NotPanics(t, func() {
+		var counter int32
+
+		cancel := Repeat(context.TODO(), time.Nanosecond*10, func() {
+			atomic.AddInt32(&counter, 1)
+			panic("test")
+		})
+
+		for atomic.LoadInt32(&counter) <= 10 {
+		}
+
 		cancel()
 	})
 }

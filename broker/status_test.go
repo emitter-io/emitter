@@ -3,13 +3,23 @@ package broker
 import (
 	"testing"
 
+	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/monitor"
+	"github.com/emitter-io/emitter/security"
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_getStatus(t *testing.T) {
-	s := &Service{}
+func Test_sendStats(t *testing.T) {
+	license, _ := security.ParseLicense(testLicense)
 
-	status, err := s.getStatus()
-	assert.NoError(t, err)
-	assert.NotEqual(t, 0, status.MemoryPrivate)
+	assert.NotPanics(t, func() {
+		s := &Service{
+			Closing:       make(chan bool),
+			measurer:      monitor.NewNoop(),
+			subscriptions: message.NewTrie(),
+			License:       license,
+		}
+		defer s.Close()
+		s.sendStats()
+	})
 }
