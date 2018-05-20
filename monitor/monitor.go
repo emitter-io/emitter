@@ -1,3 +1,5 @@
+// +build !js
+
 /**********************************************************************************
 * Copyright (c) 2009-2018 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
@@ -24,20 +26,6 @@ import (
 	"github.com/kelindar/process"
 )
 
-// Measurer represents a monitoring contract.
-type Measurer interface {
-	Snapshotter
-	Measure(name string, value int64)
-	MeasureElapsed(name string, start time.Time)
-	MeasureRuntime()
-	Tag(name, tag string)
-}
-
-// Snapshotter represents a snapshotting contract.
-type Snapshotter interface {
-	Snapshot() []byte
-}
-
 // Monitor represents a monitoring registry
 type Monitor struct {
 	registry sync.Map  // The registry used for keeping various metrics.
@@ -46,7 +34,6 @@ type Monitor struct {
 
 // Assert contract compliance
 var _ Measurer = New()
-var _ Snapshotter = New()
 
 // New creates a new monitor.
 func New() *Monitor {
@@ -67,65 +54,18 @@ func (m *Monitor) Get(name string) *Metric {
 }
 
 // Measure retrieves the metric and updates it.
-func (m *Monitor) Measure(name string, value int64) {
+func (m *Monitor) Measure(name string, value int32) {
 	m.Get(name).Update(value)
 }
 
 // MeasureElapsed measures elapsed time since the start
 func (m *Monitor) MeasureElapsed(name string, start time.Time) {
-	m.Measure(name, int64(time.Since(start)/time.Microsecond))
+	m.Measure(name, int32(time.Since(start)/time.Microsecond))
 }
 
 // Tag updates a tag of a particular metric.
 func (m *Monitor) Tag(name, tag string) {
 	m.Get(name).UpdateTag(tag)
-}
-
-// MeasureRuntime captures the runtime metrics, this is a relatively slow process
-// and code is largely inspired by go-metrics.
-func (m *Monitor) MeasureRuntime() {
-	defer recover()
-
-	// Collect stats
-	var memory runtime.MemStats
-	var memoryPriv, memoryVirtual int64
-	var cpu float64
-	runtime.ReadMemStats(&memory)
-	process.ProcUsage(&cpu, &memoryPriv, &memoryVirtual)
-
-	// Measure process information
-	m.Measure("proc.cpu", int64(cpu*10000))
-	m.Measure("proc.priv", memoryPriv)
-	m.Measure("proc.virt", memoryVirtual)
-	m.Measure("proc.uptime", int64(time.Now().Sub(m.created).Seconds()))
-
-	// Measure heap information
-	m.Measure("heap.alloc", int64(memory.HeapAlloc))
-	m.Measure("heap.idle", int64(memory.HeapIdle))
-	m.Measure("heap.inuse", int64(memory.HeapInuse))
-	m.Measure("heap.objects", int64(memory.HeapObjects))
-	m.Measure("heap.released", int64(memory.HeapReleased))
-	m.Measure("heap.sys", int64(memory.HeapSys))
-
-	// Measure off heap memory
-	m.Measure("mcache.inuse", int64(memory.MCacheInuse))
-	m.Measure("mcache.sys", int64(memory.MCacheSys))
-	m.Measure("mspan.inuse", int64(memory.MSpanInuse))
-	m.Measure("mspan.sys", int64(memory.MSpanSys))
-
-	// Measure GC
-	m.Measure("gc.cpu", int64(memory.GCCPUFraction*10000))
-	m.Measure("gc.sys", int64(memory.GCSys))
-
-	// Measure memory
-	m.Measure("stack.inuse", int64(memory.StackInuse))
-	m.Measure("stack.sys", int64(memory.StackSys))
-
-	// Measure goroutines and threads and total memory
-	m.Measure("go.count", int64(runtime.NumGoroutine()))
-	m.Measure("go.procs", int64(runtime.NumCPU()))
-	m.Measure("go.sys", int64(memory.Sys))
-	m.Measure("go.alloc", int64(memory.TotalAlloc))
 }
 
 // Snapshot encodes the metrics into a binary representation
@@ -145,11 +85,49 @@ func (m *Monitor) Snapshot() (out []byte) {
 	return
 }
 
-// Restore restores a snapshot into a read-only histogram format.
-func Restore(encoded []byte) (snapshots []Snapshot, err error) {
-	var decoded []byte
-	if decoded, err = snappy.Decode(decoded, encoded); err == nil {
-		err = binary.Unmarshal(decoded, &snapshots)
-	}
-	return
+// MeasureRuntime captures the runtime metrics, this is a relatively slow process
+// and code is largely inspired by go-metrics.
+func (m *Monitor) MeasureRuntime() {
+	defer recover()
+
+	// Collect stats
+	var memory runtime.MemStats
+	var memoryPriv, memoryVirtual int64
+	var cpu float64
+	runtime.ReadMemStats(&memory)
+	process.ProcUsage(&cpu, &memoryPriv, &memoryVirtual)
+
+	// Measure process information
+	m.Measure("proc.cpu", int32(cpu*10000))
+	m.Measure("proc.priv", int32(memoryPriv))
+	m.Measure("proc.virt", int32(memoryVirtual))
+	m.Measure("proc.uptime", int32(time.Now().Sub(m.created).Seconds()))
+
+	// Measure heap information
+	m.Measure("heap.alloc", int32(memory.HeapAlloc))
+	m.Measure("heap.idle", int32(memory.HeapIdle))
+	m.Measure("heap.inuse", int32(memory.HeapInuse))
+	m.Measure("heap.objects", int32(memory.HeapObjects))
+	m.Measure("heap.released", int32(memory.HeapReleased))
+	m.Measure("heap.sys", int32(memory.HeapSys))
+
+	// Measure off heap memory
+	m.Measure("mcache.inuse", int32(memory.MCacheInuse))
+	m.Measure("mcache.sys", int32(memory.MCacheSys))
+	m.Measure("mspan.inuse", int32(memory.MSpanInuse))
+	m.Measure("mspan.sys", int32(memory.MSpanSys))
+
+	// Measure GC
+	m.Measure("gc.cpu", int32(memory.GCCPUFraction*10000))
+	m.Measure("gc.sys", int32(memory.GCSys))
+
+	// Measure memory
+	m.Measure("stack.inuse", int32(memory.StackInuse))
+	m.Measure("stack.sys", int32(memory.StackSys))
+
+	// Measure goroutines and threads and total memory
+	m.Measure("go.count", int32(runtime.NumGoroutine()))
+	m.Measure("go.procs", int32(runtime.NumCPU()))
+	m.Measure("go.sys", int32(memory.Sys))
+	m.Measure("go.alloc", int32(memory.TotalAlloc))
 }

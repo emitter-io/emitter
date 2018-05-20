@@ -15,8 +15,23 @@
 package monitor
 
 import (
-	"time"
+	"github.com/golang/snappy"
+	"github.com/kelindar/binary"
 )
+
+// Snapshotter represents a snapshotting contract.
+type Snapshotter interface {
+	Snapshot() []byte
+}
+
+// Restore restores a snapshot into a read-only histogram format.
+func Restore(encoded []byte) (snapshots []Snapshot, err error) {
+	var decoded []byte
+	if decoded, err = snappy.Decode(decoded, encoded); err == nil {
+		err = binary.Unmarshal(decoded, &snapshots)
+	}
+	return
+}
 
 // Snapshot is a read-only copy of another Sample.
 type Snapshot struct {
@@ -39,8 +54,8 @@ func (s *Snapshot) Tag() string {
 }
 
 // Window returns start and end time of the metric.
-func (s *Snapshot) Window() (time.Time, time.Time) {
-	return time.Unix(s.Create, 0), time.Unix(s.Update, 0)
+func (s *Snapshot) Window() (int64, int64) {
+	return s.Create, s.Update
 }
 
 // Count returns the count of inputs at the time the snapshot was taken.
@@ -49,7 +64,7 @@ func (s *Snapshot) Count() int {
 }
 
 // Max returns the maximal value at the time the snapshot was taken.
-func (s *Snapshot) Max() int64 {
+func (s *Snapshot) Max() int {
 	return s.Sample.Max()
 }
 
@@ -59,7 +74,7 @@ func (s *Snapshot) Mean() float64 {
 }
 
 // Min returns the minimal value at the time the snapshot was taken.
-func (s *Snapshot) Min() int64 {
+func (s *Snapshot) Min() int {
 	return s.Sample.Min()
 }
 

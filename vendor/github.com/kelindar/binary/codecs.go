@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"reflect"
-	"unsafe"
 )
 
 // Constants
@@ -344,8 +343,7 @@ func (c *stringCodec) DecodeTo(d *Decoder, rv reflect.Value) (err error) {
 	if l, err = binary.ReadUvarint(d.r); err == nil {
 		buf := make([]byte, l)
 		_, err = d.r.Read(buf)
-
-		rv.SetString(*(*string)(unsafe.Pointer(&buf)))
+		rv.SetString(convertToString(&buf))
 	}
 	return
 }
