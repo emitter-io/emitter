@@ -30,6 +30,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/broker/storage"
@@ -191,6 +192,7 @@ func (s *Service) Listen(ctx context.Context) (err error) {
 	}
 
 	// Block
+	async.Repeat(ctx, 5*time.Second, s.sendStats)
 	logging.LogAction("service", "service started")
 	select {}
 }
