@@ -155,17 +155,17 @@ func (m *Metric) Variance() float64 {
 
 // Update samples a new value into the metric.
 func (m *Metric) Update(v int32) {
-	atomic.AddInt32(&m.count, 1)
-	if len(m.sample) < reservoirSize {
+	count := atomic.AddInt32(&m.count, 1)
+	if count < reservoirSize {
 		m.Lock()
 		m.sample = append(m.sample, v)
 		m.Unlock()
 		return
 	}
 
-	if r := rand.Int31n(m.count); r < int32(len(m.sample)) {
+	if r := int(rand.Int31n(count)); r < (reservoirSize - 1) {
 		m.Lock()
-		m.sample[int(r)] = v
+		m.sample[r] = v
 		m.Unlock()
 		return
 	}
