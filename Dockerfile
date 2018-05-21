@@ -1,4 +1,4 @@
-FROM golang:1.10.2-alpine
+FROM golang:1.9.6-alpine
 MAINTAINER Roman Atachiants "roman@misakai.com"
 
 # Copy the directory into the container.
