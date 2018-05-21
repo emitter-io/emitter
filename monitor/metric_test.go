@@ -1,3 +1,5 @@
+// +build !js
+
 /**********************************************************************************
 * Copyright (c) 2009-2018 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
@@ -23,7 +25,7 @@ import (
 
 func BenchmarkMetricSnapshot(b *testing.B) {
 	h := NewMetric("x")
-	for i := int64(0); i < 50000; i++ {
+	for i := int32(0); i < 50000; i++ {
 		h.Update(i)
 	}
 
@@ -46,7 +48,7 @@ func BenchmarkMetricUpdate(b *testing.B) {
 
 func TestMetric(t *testing.T) {
 	h := NewMetric("x")
-	for i := int64(0); i < 100; i++ {
+	for i := int32(0); i < 100; i++ {
 		h.Update(i)
 	}
 
@@ -55,8 +57,8 @@ func TestMetric(t *testing.T) {
 
 	// Create a snapshot
 	assert.Equal(t, 100, h.Count())
-	assert.Equal(t, int64(99), h.Max())
-	assert.Equal(t, int64(0), h.Min())
+	assert.Equal(t, 99, h.Max())
+	assert.Equal(t, 0, h.Min())
 	assert.True(t, h.Mean() > 49)
 	assert.True(t, h.StdDev() > 28)
 	assert.Equal(t, "x", h.Name())
@@ -69,5 +71,5 @@ func TestMetric(t *testing.T) {
 
 	h.Reset()
 	assert.Equal(t, 0, h.Count())
-	assert.Equal(t, int64(0), h.Max())
+	assert.Equal(t, 0, h.Max())
 }

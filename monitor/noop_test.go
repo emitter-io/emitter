@@ -1,3 +1,5 @@
+// +build !js
+
 /**********************************************************************************
 * Copyright (c) 2009-2018 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the

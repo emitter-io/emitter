@@ -1,3 +1,5 @@
+// +build !js
+
 /**********************************************************************************
 * Copyright (c) 2009-2018 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
@@ -30,7 +32,7 @@ func NewNoop() *Noop {
 var _ Measurer = NewNoop()
 
 // Measure records a value in the queue
-func (m *Noop) Measure(name string, value int64) {}
+func (m *Noop) Measure(name string, value int32) {}
 
 // MeasureElapsed measures elapsed time since the start
 func (m *Noop) MeasureElapsed(name string, start time.Time) {}

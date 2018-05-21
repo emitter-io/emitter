@@ -1,3 +1,5 @@
+// +build !js
+
 /**********************************************************************************
 * Copyright (c) 2009-2018 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
@@ -21,6 +23,15 @@ import (
 	"time"
 )
 
+// Measurer represents a monitoring contract.
+type Measurer interface {
+	Snapshotter
+	Measure(name string, value int32)
+	MeasureElapsed(name string, start time.Time)
+	MeasureRuntime()
+	Tag(name, tag string)
+}
+
 // Metric maintains a combination of a gauge and a statistically-significant selection
 // of the values from a stream. This is essentially a combination of a histogram, gauge
 // and a counter.
@@ -41,7 +52,7 @@ const (
 func NewMetric(name string) *Metric {
 	return &Metric{
 		name:   name,
-		sample: make([]int64, 0, reservoirSize),
+		sample: make([]int32, 0, reservoirSize),
 		create: time.Now().Unix(),
 	}
 }
@@ -53,6 +64,7 @@ func (m *Metric) Reset() {
 
 	m.count = 0
 	m.sample = m.sample[:0]
+	m.create = time.Now().Unix()
 }
 
 // Name returns the name of the histogram.
@@ -82,7 +94,7 @@ func (m *Metric) Count() int {
 
 // Max returns the maximum value in the sample, which may not be the maximum
 // value ever to be part of the sample.
-func (m *Metric) Max() int64 {
+func (m *Metric) Max() int {
 	m.Lock()
 	defer m.Unlock()
 	return m.sample.Max()
@@ -97,7 +109,7 @@ func (m *Metric) Mean() float64 {
 
 // Min returns the minimum value in the sample, which may not be the minimum
 // value ever to be part of the sample.
-func (m *Metric) Min() int64 {
+func (m *Metric) Min() int {
 	m.Lock()
 	defer m.Unlock()
 	return m.sample.Min()
@@ -115,13 +127,13 @@ func (m *Metric) Snapshot() *Snapshot {
 	m.Lock()
 	defer m.Unlock()
 
-	dest := make([]int64, len(m.sample))
+	dest := make([]int32, len(m.sample))
 	copy(dest, m.sample)
 	return &Snapshot{
 		Metric: m.name,
 		Label:  m.tag,
-		Create: m.create,
-		Update: time.Now().Unix(),
+		T0:     m.create,
+		T1:     time.Now().Unix(),
 		Amount: m.count,
 		Sample: dest,
 	}
@@ -142,18 +154,18 @@ func (m *Metric) Variance() float64 {
 }
 
 // Update samples a new value into the metric.
-func (m *Metric) Update(v int64) {
-	atomic.AddInt32(&m.count, 1)
-	if len(m.sample) < reservoirSize {
+func (m *Metric) Update(v int32) {
+	count := atomic.AddInt32(&m.count, 1)
+	if count < reservoirSize {
 		m.Lock()
 		m.sample = append(m.sample, v)
 		m.Unlock()
 		return
 	}
 
-	if r := rand.Int31n(m.count); r < int32(len(m.sample)) {
+	if r := int(rand.Int31n(count)); r < (reservoirSize - 1) {
 		m.Lock()
-		m.sample[int(r)] = v
+		m.sample[r] = v
 		m.Unlock()
 		return
 	}

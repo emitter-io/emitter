@@ -31,9 +31,9 @@ func (s *Service) sendStats() {
 	stat.MeasureRuntime()
 
 	// Track node specific information
-	stat.Measure("node.id", int64(node))
-	stat.Measure("node.peers", int64(s.NumPeers()))
-	stat.Measure("node.conns", int64(s.connections))
+	stat.Measure("node.id", int32(node))
+	stat.Measure("node.peers", int32(s.NumPeers()))
+	stat.Measure("node.conns", int32(s.connections))
 	//stat.Measure("node.subs", TODO)
 
 	// Add node tags

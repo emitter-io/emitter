@@ -42,7 +42,7 @@ func TestQuantileZero(t *testing.T) {
 
 func TestQuantiles(t *testing.T) {
 	var s sample
-	for i := int64(0); i < 10000; i++ {
+	for i := int32(0); i < 10000; i++ {
 		s = append(s, i/100)
 	}
 

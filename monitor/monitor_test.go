@@ -1,3 +1,5 @@
+// +build !js
+
 /**********************************************************************************
 * Copyright (c) 2009-2018 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
@@ -37,7 +39,7 @@ func BenchmarkEncode(b *testing.B) {
 	m := New()
 	for i := 0; i < 50; i++ {
 		for j := 0; j < 100; j++ {
-			m.Measure(fmt.Sprintf("%d", j), int64(i))
+			m.Measure(fmt.Sprintf("%d", j), int32(i))
 		}
 	}
 
@@ -90,7 +92,7 @@ func TestHistogramEncodeMany(t *testing.T) {
 
 	for i := 0; i < 1000; i++ {
 		for j := 0; j < 100; j++ {
-			m.Measure(fmt.Sprintf("%d", j), rand.Int63n(10000))
+			m.Measure(fmt.Sprintf("%d", j), rand.Int31n(10000))
 		}
 	}
 
@@ -103,7 +105,7 @@ func TestHistogram(t *testing.T) {
 
 	for i := 0; i < 5000; i++ {
 		m.MeasureElapsed("b", time.Unix(0, 0))
-		m.Measure("a", int64(i))
+		m.Measure("a", int32(i))
 	}
 
 	// Snapshot

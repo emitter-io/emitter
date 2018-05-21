@@ -22,7 +22,7 @@ import (
 )
 
 // Sample represents a sample window
-type sample binary.SortedInt64s
+type sample binary.SortedInt32s
 
 func (s sample) Len() int           { return len(s) }
 func (s sample) Less(i, j int) bool { return s[i] < s[j] }
@@ -30,12 +30,12 @@ func (s sample) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 // MarshalBinary implements a special purpose sortable binary encoding.
 func (s sample) MarshalBinary() (bytes []byte, err error) {
-	return binary.SortedInt64s(s).MarshalBinary()
+	return binary.SortedInt32s(s).MarshalBinary()
 }
 
 // UnmarshalBinary implements a special purpose binary decoding.
 func (s *sample) UnmarshalBinary(data []byte) error {
-	return (*binary.SortedInt64s)(s).UnmarshalBinary(data)
+	return (*binary.SortedInt32s)(s).UnmarshalBinary(data)
 }
 
 // StdDev returns the standard deviation of the sample.
@@ -46,7 +46,7 @@ func (s sample) StdDev() float64 {
 // Sum returns the sum of the sample.
 func (s sample) Sum() (sum int64) {
 	for _, v := range s {
-		sum += v
+		sum += int64(v)
 	}
 	return
 }
@@ -76,33 +76,33 @@ func (s sample) Mean() float64 {
 }
 
 // Min returns the minimum value of the sample.
-func (s sample) Min() int64 {
+func (s sample) Min() int {
 	if 0 == len(s) {
 		return 0
 	}
 
-	var min int64 = math.MaxInt64
+	var min int32 = math.MaxInt32
 	for _, v := range s {
 		if min > v {
 			min = v
 		}
 	}
-	return min
+	return int(min)
 }
 
 // Max returns the maximum value of the sample.
-func (s sample) Max() int64 {
+func (s sample) Max() int {
 	if 0 == len(s) {
 		return 0
 	}
 
-	var max int64 = math.MinInt64
+	var max int32 = math.MinInt32
 	for _, v := range s {
 		if max < v {
 			max = v
 		}
 	}
-	return max
+	return int(max)
 }
 
 // Quantiles returns a slice of arbitrary quantiles of the sample.

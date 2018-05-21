@@ -9,7 +9,6 @@ import (
 	"io"
 	"reflect"
 	"sync"
-	"unsafe"
 )
 
 // Reusable long-lived encoder pool.
@@ -113,15 +112,5 @@ func (e *Encoder) writeFloat(v float64) {
 // Writes a string
 func (e *Encoder) writeString(v string) {
 	e.writeUint64(uint64(len(v)))
-
-	strHeader := (*reflect.StringHeader)(unsafe.Pointer(&v))
-
-	var b []byte
-	byteHeader := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	byteHeader.Data = strHeader.Data
-
-	l := len(v)
-	byteHeader.Len = l
-	byteHeader.Cap = l
-	e.write(b)
+	e.write(convertToBytes(v))
 }
