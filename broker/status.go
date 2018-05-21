@@ -17,8 +17,8 @@ package broker
 import (
 	"fmt"
 
-	"github.com/emitter-io/emitter/monitor"
 	"github.com/emitter-io/emitter/network/address"
+	"github.com/emitter-io/stats"
 )
 
 // sendStats writes the stats and publishes it
@@ -41,7 +41,7 @@ func (s *Service) sendStats() {
 	stat.Tag("node.addr", addr)
 
 	// Create a snaphshot of all stats and publish the stats
-	if m, ok := stat.(monitor.Snapshotter); ok {
+	if m, ok := stat.(stats.Snapshotter); ok {
 		s.selfPublish(fmt.Sprintf("stats/%s/", addr), m.Snapshot())
 	}
 }

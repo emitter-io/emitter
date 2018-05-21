@@ -39,16 +39,22 @@
 			"revisionTime": "2018-04-29T05:37:05Z"
 		},
 		{
+			"checksumSHA1": "qdlY/c9Bw4mT4Nxz5Hj+kwq/WX8=",
+			"path": "github.com/emitter-io/stats",
+			"revision": "feabaf5fbb25218e0f05fb4504973d70e5e35a79",
+			"revisionTime": "2018-05-21T15:33:47Z"
+		},
+		{
 			"checksumSHA1": "lcZg+zxtHdtRgQCdjnjvY5CKRg0=",
 			"path": "github.com/fatih/color",
 			"revision": "507f6050b8568533fb3f5504de8e5205fa62a114",
 			"revisionTime": "2018-02-13T13:34:03Z"
 		},
 		{
-			"checksumSHA1": "OV+/R43DDDJ/Gxrx9oQob/K7sL0=",
+			"checksumSHA1": "iDAyJMnswBRktzVlZSg7qdI5+A8=",
 			"path": "github.com/golang/snappy",
-			"revision": "553a641470496b2327abcac10b36396bd98e45c9",
-			"revisionTime": "2017-02-15T23:32:05Z"
+			"revision": "2e65f85255dbc3072edf28d6b5b8efc472979f5a",
+			"revisionTime": "2018-05-18T05:39:59Z"
 		},
 		{
 			"checksumSHA1": "YDBzGZ2PAI6cQYpHWI01YlhYo/Y=",
