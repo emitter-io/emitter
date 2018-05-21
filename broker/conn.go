@@ -25,10 +25,10 @@ import (
 
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/logging"
-	"github.com/emitter-io/emitter/monitor"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/security"
+	"github.com/emitter-io/stats"
 )
 
 // Conn represents an incoming connection.
@@ -41,7 +41,7 @@ type Conn struct {
 	guid     string            // The globally unique id of the connection.
 	service  *Service          // The service for this connection.
 	subs     *message.Counters // The subscriptions for this connection.
-	measurer monitor.Measurer  // The measurer to use for monitoring.
+	measurer stats.Measurer    // The measurer to use for monitoring.
 }
 
 // NewConn creates a new connection.
