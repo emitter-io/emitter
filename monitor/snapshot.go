@@ -39,8 +39,8 @@ type Snapshot struct {
 	Label  string
 	Sample sample
 	Amount int32
-	Create int64
-	Update int64
+	T0     int64
+	T1     int64
 }
 
 // Name returns the name of the metric.
@@ -55,7 +55,7 @@ func (s *Snapshot) Tag() string {
 
 // Window returns start and end time of the metric.
 func (s *Snapshot) Window() (int64, int64) {
-	return s.Create, s.Update
+	return s.T0, s.T1
 }
 
 // Count returns the count of inputs at the time the snapshot was taken.
@@ -92,4 +92,9 @@ func (s *Snapshot) StdDev() float64 {
 // Variance returns the variance of values at the time the snapshot was taken.
 func (s *Snapshot) Variance() float64 {
 	return s.Sample.Variance()
+}
+
+// Rate returns a operation per second rate over the time window.
+func (s *Snapshot) Rate() float64 {
+	return float64(s.Amount) / float64(s.T1-s.T0)
 }

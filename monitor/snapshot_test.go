@@ -39,6 +39,10 @@ func TestMetricSnaphsot(t *testing.T) {
 	assert.Equal(t, 833.25, h.Variance())
 	assert.Equal(t, "test", h.Tag())
 
+	h.T0 = 0
+	h.T1 = 10
+	assert.Equal(t, float64(10), h.Rate())
+
 	t0, t1 := h.Window()
 	assert.NotEqual(t, 0, t0)
 	assert.NotEqual(t, 0, t1)

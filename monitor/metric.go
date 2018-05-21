@@ -132,8 +132,8 @@ func (m *Metric) Snapshot() *Snapshot {
 	return &Snapshot{
 		Metric: m.name,
 		Label:  m.tag,
-		Create: m.create,
-		Update: time.Now().Unix(),
+		T0:     m.create,
+		T1:     time.Now().Unix(),
 		Amount: m.count,
 		Sample: dest,
 	}
