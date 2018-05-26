@@ -13,9 +13,10 @@ import (
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/network/mqtt"
+	"github.com/emitter-io/emitter/provider/contract"
+	secmock "github.com/emitter-io/emitter/provider/contract/mock"
+	"github.com/emitter-io/emitter/provider/usage"
 	"github.com/emitter-io/emitter/security"
-	secmock "github.com/emitter-io/emitter/security/mock"
-	"github.com/emitter-io/emitter/security/usage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -141,7 +142,7 @@ func TestPubsub(t *testing.T) {
 
 	// Start the broker asynchronously
 	broker, svcErr := NewService(cfg)
-	broker.contracts = security.NewSingleContractProvider(broker.License, new(usage.NoopStorage))
+	broker.contracts = contract.NewSingleContractProvider(broker.License, usage.NewNoop())
 	assert.NoError(t, svcErr)
 	defer close(broker.Closing)
 	go broker.Listen(context.Background())

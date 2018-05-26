@@ -15,11 +15,16 @@ func Test_sendStats(t *testing.T) {
 	assert.NotPanics(t, func() {
 		s := &Service{
 			Closing:       make(chan bool),
-			measurer:      stats.NewNoop(),
 			subscriptions: message.NewTrie(),
+			measurer:      stats.NewNoop(),
 			License:       license,
 		}
 		defer s.Close()
-		s.sendStats()
+
+		var out []byte
+		sampler := newSampler(s, s.measurer)
+		n, err := sampler.Read(out)
+		assert.Equal(t, 0, n)
+		assert.Equal(t, "EOF", err.Error())
 	})
 }

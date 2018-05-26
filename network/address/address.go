@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emitter-io/emitter/logging"
+	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/hashicorp/go-sockaddr"
 )
 

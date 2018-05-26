@@ -24,9 +24,10 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/message"
-	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/mqtt"
+	"github.com/emitter-io/emitter/provider/contract"
+	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/emitter-io/emitter/security"
 	"github.com/emitter-io/stats"
 )
@@ -80,7 +81,7 @@ func (c *Conn) MeasureElapsed(name string, since time.Time) {
 }
 
 // track tracks the connection by adding it to the metering.
-func (c *Conn) track(contract security.Contract) {
+func (c *Conn) track(contract contract.Contract) {
 	if atomic.LoadUint32(&c.tracked) == 0 {
 
 		// We keep only the IP address for fair tracking

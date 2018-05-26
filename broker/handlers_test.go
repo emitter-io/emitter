@@ -5,9 +5,10 @@ import (
 
 	"github.com/emitter-io/emitter/broker/message"
 	netmock "github.com/emitter-io/emitter/network/mock"
+	"github.com/emitter-io/emitter/provider/contract"
+	secmock "github.com/emitter-io/emitter/provider/contract/mock"
+	"github.com/emitter-io/emitter/provider/usage"
 	"github.com/emitter-io/emitter/security"
-	secmock "github.com/emitter-io/emitter/security/mock"
-	"github.com/emitter-io/emitter/security/usage"
 	"github.com/emitter-io/stats"
 	"github.com/kelindar/binary"
 	"github.com/stretchr/testify/assert"
@@ -508,7 +509,7 @@ func TestHandlers_onEmitterRequest(t *testing.T) {
 			}
 
 			s := &Service{
-				contracts:     security.NewNoopContractProvider(),
+				contracts:     contract.NewNoopContractProvider(),
 				subscriptions: message.NewTrie(),
 				measurer:      stats.NewNoop(),
 			}
@@ -546,7 +547,7 @@ func TestHandlers_onPresenceQuery(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.queryType, func(*testing.T) {
 			s := &Service{
-				contracts:     security.NewNoopContractProvider(),
+				contracts:     contract.NewNoopContractProvider(),
 				subscriptions: message.NewTrie(),
 			}
 
@@ -558,7 +559,7 @@ func TestHandlers_onPresenceQuery(t *testing.T) {
 
 func TestHandlers_lookupPresence(t *testing.T) {
 	s := &Service{
-		contracts:     security.NewNoopContractProvider(),
+		contracts:     contract.NewNoopContractProvider(),
 		subscriptions: message.NewTrie(),
 		measurer:      stats.NewNoop(),
 	}

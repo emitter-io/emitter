@@ -206,7 +206,9 @@ func (c *ProviderConfig) Load(builtins ...Provider) (Provider, error) {
 // provider as a default value.
 func LoadProvider(config *ProviderConfig, providers ...Provider) Provider {
 	if config == nil || config.Provider == "" {
-		return providers[0]
+		config = &ProviderConfig{
+			Provider: providers[0].Name(),
+		}
 	}
 
 	// Load the provider according to the configuration

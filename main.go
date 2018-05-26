@@ -10,7 +10,7 @@ import (
 	cfg "github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/broker"
 	"github.com/emitter-io/emitter/config"
-	"github.com/emitter-io/emitter/logging"
+	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/emitter-io/emitter/security"
 )
 

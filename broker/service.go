@@ -30,38 +30,40 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/broker/message"
-	"github.com/emitter-io/emitter/broker/storage"
 	"github.com/emitter-io/emitter/config"
-	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/listener"
 	"github.com/emitter-io/emitter/network/websocket"
+	"github.com/emitter-io/emitter/provider/contract"
+	"github.com/emitter-io/emitter/provider/logging"
+	"github.com/emitter-io/emitter/provider/monitor"
+	"github.com/emitter-io/emitter/provider/storage"
+	"github.com/emitter-io/emitter/provider/usage"
 	"github.com/emitter-io/emitter/security"
-	"github.com/emitter-io/emitter/security/usage"
 	"github.com/emitter-io/stats"
 	"github.com/kelindar/tcp"
 )
 
 // Service represents the main structure.
 type Service struct {
-	Closing       chan bool                 // The channel for closing signal.
-	Cipher        *security.Cipher          // The cipher to use for decoding and encoding keys.
-	License       *security.License         // The licence for this emitter server.
-	Config        *config.Config            // The configuration for the service.
-	subscriptions *message.Trie             // The subscription matching trie.
-	http          *http.Server              // The underlying HTTP server.
-	tcp           *tcp.Server               // The underlying TCP server.
-	cluster       *cluster.Swarm            // The gossip-based cluster mechanism.
-	presence      chan *presenceNotify      // The channel for presence notifications.
-	querier       *QueryManager             // The generic query manager.
-	contracts     security.ContractProvider // The contract provider for the service.
-	storage       storage.Storage           // The storage provider for the service.
-	measurer      stats.Measurer            // The monitoring registry for the service.
-	metering      usage.Metering            // The usage storage for metering contracts.
-	connections   int64                     // The number of currently open connections.
+	Closing       chan bool            // The channel for closing signal.
+	Cipher        *security.Cipher     // The cipher to use for decoding and encoding keys.
+	License       *security.License    // The licence for this emitter server.
+	Config        *config.Config       // The configuration for the service.
+	subscriptions *message.Trie        // The subscription matching trie.
+	http          *http.Server         // The underlying HTTP server.
+	tcp           *tcp.Server          // The underlying TCP server.
+	cluster       *cluster.Swarm       // The gossip-based cluster mechanism.
+	presence      chan *presenceNotify // The channel for presence notifications.
+	querier       *QueryManager        // The generic query manager.
+	contracts     contract.Provider    // The contract provider for the service.
+	storage       storage.Storage      // The storage provider for the service.
+	monitor       monitor.Storage      // The storage provider for stats.
+	measurer      stats.Measurer       // The monitoring registry for the service.
+	metering      usage.Metering       // The usage storage for metering contracts.
+	connections   int64                // The number of currently open connections.
 }
 
 // NewService creates a new service.
@@ -123,17 +125,22 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	memstore := storage.NewInMemory(s.Query)
 	s.querier.HandleFunc(memstore.OnRequest)
 	s.storage = config.LoadProvider(cfg.Storage, storage.NewNoop(), storage.NewHTTP(), memstore).(storage.Storage)
-	logging.LogTarget("service", "configured storage provider", s.storage.Name())
+	logging.LogTarget("service", "configured message storage", s.storage.Name())
 
 	// Load the metering provider
 	s.metering = config.LoadProvider(cfg.Metering, usage.NewNoop(), usage.NewHTTP()).(usage.Metering)
-	logging.LogTarget("service", "configured metering provider", s.metering.Name())
+	logging.LogTarget("service", "configured usage metering", s.metering.Name())
 
 	// Load the contract provider
 	s.contracts = config.LoadProvider(cfg.Contract,
-		security.NewSingleContractProvider(s.License, s.metering),
-		security.NewHTTPContractProvider(s.License, s.metering)).(security.ContractProvider)
+		contract.NewSingleContractProvider(s.License, s.metering),
+		contract.NewHTTPContractProvider(s.License, s.metering)).(contract.Provider)
 	logging.LogTarget("service", "configured contracts provider", s.contracts.Name())
+
+	// Load the monitor storage provider
+	sampler := newSampler(s, s.measurer)
+	s.monitor = config.LoadProvider(cfg.Monitor, monitor.NewSelf(sampler, s.selfPublish), monitor.NewNoop(), monitor.NewHTTP(sampler)).(monitor.Storage)
+	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
 
 	// Addresses and things
 	logging.LogTarget("service", "configured external address", address.External())
@@ -192,7 +199,6 @@ func (s *Service) Listen(ctx context.Context) (err error) {
 	}
 
 	// Block
-	async.Repeat(ctx, 5*time.Second, s.sendStats)
 	logging.LogAction("service", "service started")
 	select {}
 }

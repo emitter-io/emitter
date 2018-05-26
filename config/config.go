@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	cfg "github.com/emitter-io/config"
-	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
+	"github.com/emitter-io/emitter/provider/logging"
 )
 
 // Constants used throughout the service.
@@ -69,6 +69,7 @@ type Config struct {
 	Contract   *cfg.ProviderConfig `json:"contract,omitempty"` // The configuration for the contract provider.
 	Metering   *cfg.ProviderConfig `json:"metering,omitempty"` // The configuration for the usage storage for metering.
 	Logging    *cfg.ProviderConfig `json:"logging,omitempty"`  // The configuration for the logger.
+	Monitor    *cfg.ProviderConfig `json:"monitor,omitempty"`  // The configuration for the monitoring storage.
 }
 
 // Vault returns a vault configuration.

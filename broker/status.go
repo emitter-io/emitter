@@ -15,33 +15,53 @@
 package broker
 
 import (
-	"fmt"
+	"io"
 
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/stats"
 )
 
-// sendStats writes the stats and publishes it
-func (s *Service) sendStats() {
-	node := address.Fingerprint(s.LocalName())
+// sampler reads statistics of the service and creates a snapshot
+type sampler struct {
+	service  *Service       // The service to use for stats collection.
+	measurer stats.Measurer // The measurer to use for snapshotting.
+}
+
+// newSampler creates a stats sampler.
+func newSampler(s *Service, m stats.Measurer) io.Reader {
+	return &sampler{
+		service:  s,
+		measurer: m,
+	}
+}
+
+// Read reads the stats snapshot and writes it to the output buffer.
+func (s *sampler) Read(p []byte) (n int, err error) {
+	stat := s.service.measurer
+	serv := s.service
+	node := address.Fingerprint(serv.LocalName())
 	addr := address.External().String()
-	stat := s.measurer
 
 	// Track runtime information
 	stat.MeasureRuntime()
 
 	// Track node specific information
 	stat.Measure("node.id", int32(node))
-	stat.Measure("node.peers", int32(s.NumPeers()))
-	stat.Measure("node.conns", int32(s.connections))
+	stat.Measure("node.peers", int32(serv.NumPeers()))
+	stat.Measure("node.conns", int32(serv.connections))
 	//stat.Measure("node.subs", TODO)
 
 	// Add node tags
 	stat.Tag("node.id", node.String())
 	stat.Tag("node.addr", addr)
 
-	// Create a snaphshot of all stats and publish the stats
+	// Create a snaphshot of all stats and write it
 	if m, ok := stat.(stats.Snapshotter); ok {
-		s.selfPublish(fmt.Sprintf("stats/%s/", addr), m.Snapshot())
+		snapshot := m.Snapshot()
+		copy(p, snapshot)
+		n = len(snapshot)
 	}
+
+	err = io.EOF
+	return
 }
