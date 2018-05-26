@@ -23,8 +23,8 @@ import (
 	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
-	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/address"
+	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/emitter-io/emitter/security"
 	"github.com/weaveworks/mesh"
 )

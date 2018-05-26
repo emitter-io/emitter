@@ -12,49 +12,31 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package async
+package monitor
 
 import (
-	"context"
-	"fmt"
-	"time"
+	"strings"
+	"testing"
 
-	"github.com/emitter-io/emitter/provider/logging"
+	"github.com/stretchr/testify/assert"
 )
 
-
-// Repeat performs an action asynchronously on a predetermined interval.
-func Repeat(ctx context.Context, interval time.Duration, action func()) context.CancelFunc {
-
-	// Create cancellation context first
-	ctx, cancel := context.WithCancel(ctx)
-	safeAction := func() {
-		defer handlePanic()
-		action()
+func TestSelf(t *testing.T) {
+	r := strings.NewReader("test")
+	cfg := map[string]interface{}{
+		"interval": float64(100),
+		"channel":  "chan",
 	}
 
-	// Perform the action for the first time, syncrhonously
-	safeAction()
-	timer := time.NewTicker(interval)
-	go func() {
+	s := NewSelf(r, func(c string, v []byte) {
+		assert.True(t, strings.HasPrefix(c, "chan/"))
+		assert.Equal(t, "test", string(v))
+	})
 
-		for {
-			select {
-			case <-ctx.Done():
-				timer.Stop()
-				return
-			case <-timer.C:
-				safeAction()
-			}
-		}
-	}()
+	err := s.Configure(cfg)
+	assert.NoError(t, err)
+	assert.Equal(t, "self", s.Name())
 
-	return cancel
-}
-
-// handlePanic handles the panic and logs it out.
-func handlePanic() {
-	if r := recover(); r != nil {
-		logging.LogAction("async", fmt.Sprintf("panic recovered: %s", r))
-	}
+	errClose := s.Close()
+	assert.NoError(t, errClose)
 }

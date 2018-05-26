@@ -16,6 +16,7 @@ package http
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/url"
 	"strings"
@@ -131,14 +132,24 @@ func (c *client) do(client caller, url, method string, body []byte, output inter
 	defer fasthttp.ReleaseResponse(res)
 
 	// Issue the request
-	err = client.Do(req, res)
-	if err == nil {
+	if err = client.Do(req, res); err == nil {
+
+		code := res.StatusCode()
+		switch {
 
 		// Handle the redirect, use a different client which does not do any
 		// of load-balancing, so we can directly ask the requested location.
-		if res.StatusCode() == 308 {
+		case code == 308:
 			location := string(res.Header.Peek("Location"))
 			return c.do(c.redirect, location, method, body, output, headers)
+
+		// Handle an HTTP error.
+		case code >= 400 && code <= 599:
+			return nil, fmt.Errorf("http status code %v received", res.StatusCode())
+
+		// No content expected, we can safely return here.
+		case code == 204:
+			return nil, nil
 		}
 
 		// Set the response body

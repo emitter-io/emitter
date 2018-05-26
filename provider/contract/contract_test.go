@@ -1,22 +1,37 @@
-package security
+/**********************************************************************************
+* Copyright (c) 2009-2018 Misakai Ltd.
+* This program is free software: you can redistribute it and/or modify it under the
+* terms of the GNU Affero General Public License as published by the  Free Software
+* Foundation, either version 3 of the License, or(at your option) any later version.
+*
+* This program is distributed  in the hope that it  will be useful, but WITHOUT ANY
+* WARRANTY;  without even  the implied warranty of MERCHANTABILITY or FITNESS FOR A
+* PARTICULAR PURPOSE.  See the GNU Affero General Public License  for  more details.
+*
+* You should have  received a copy  of the  GNU Affero General Public License along
+* with this program. If not, see<http://www.gnu.org/licenses/>.
+************************************************************************************/
+
+package contract
 
 import (
 	"encoding/json"
 	"testing"
 
 	"github.com/emitter-io/emitter/network/http"
-	"github.com/emitter-io/emitter/security/usage"
+	"github.com/emitter-io/emitter/provider/usage"
+	"github.com/emitter-io/emitter/security"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-func testNewSingleContractProvider() (*SingleContractProvider, *License) {
-	license, _ := ParseLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
+func testNewSingleContractProvider() (*SingleContractProvider, *security.License) {
+	license, _ := security.ParseLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
 	return NewSingleContractProvider(license, new(usage.NoopStorage)), license
 }
 
-func testNewHTTPContractProvider() (*HTTPContractProvider, *License) {
-	license, _ := ParseLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
+func testNewHTTPContractProvider() (*HTTPContractProvider, *security.License) {
+	license, _ := security.ParseLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
 	return NewHTTPContractProvider(license, new(usage.NoopStorage)), license
 }
 
@@ -61,7 +76,7 @@ func TestSingleContractProvider_Validate(t *testing.T) {
 	contract, ok := p.Get(license.Contract)
 	assert.True(t, ok)
 
-	key := Key(make([]byte, 24))
+	key := security.Key(make([]byte, 24))
 	key.SetMaster(1)
 	key.SetContract(license.Contract)
 	key.SetSignature(license.Signature)

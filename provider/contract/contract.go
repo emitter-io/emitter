@@ -1,5 +1,5 @@
 /**********************************************************************************
-* Copyright (c) 2009-2017 Misakai Ltd.
+* Copyright (c) 2009-2018 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
 * terms of the GNU Affero General Public License as published by the  Free Software
 * Foundation, either version 3 of the License, or(at your option) any later version.
@@ -12,7 +12,7 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package security
+package contract
 
 import (
 	"context"
@@ -23,9 +23,10 @@ import (
 
 	"github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/async"
-	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/http"
-	"github.com/emitter-io/emitter/security/usage"
+	"github.com/emitter-io/emitter/provider/logging"
+	"github.com/emitter-io/emitter/provider/usage"
+	"github.com/emitter-io/emitter/security"
 )
 
 // The contract's state possible values.
@@ -37,8 +38,8 @@ const (
 
 // Contract represents an interface for a contract.
 type Contract interface {
-	Validate(key Key) bool // Validate checks the security key with the contract.
-	Stats() usage.Meter    // Gets the usage statistics.
+	Validate(key security.Key) bool // Validate checks the security key with the contract.
+	Stats() usage.Meter             // Gets the usage statistics.
 }
 
 // contract represents a contract (user account).
@@ -51,7 +52,7 @@ type contract struct {
 }
 
 // Validate validates the contract data against a key.
-func (c *contract) Validate(key Key) bool {
+func (c *contract) Validate(key security.Key) bool {
 	return c.MasterID == key.Master() &&
 		c.Signature == key.Signature() &&
 		c.ID == key.Contract() &&
@@ -63,8 +64,8 @@ func (c *contract) Stats() usage.Meter {
 	return c.stats
 }
 
-// ContractProvider represents an interface for a contract provider.
-type ContractProvider interface {
+// Provider represents an interface for a contract provider.
+type Provider interface {
 	config.Provider
 
 	Create() (Contract, error)
@@ -74,7 +75,7 @@ type ContractProvider interface {
 // ------------------------------------------------------------------------------------
 
 // Assert interface compliance
-var _ ContractProvider = new(HTTPContractProvider)
+var _ Provider = new(HTTPContractProvider)
 
 // NoopContractProvider does not provide a contract.
 type NoopContractProvider struct{}
@@ -107,7 +108,7 @@ func (p *NoopContractProvider) Get(id uint32) (Contract, bool) {
 // ------------------------------------------------------------------------------------
 
 // Assert interface compliance
-var _ ContractProvider = new(SingleContractProvider)
+var _ Provider = new(SingleContractProvider)
 
 // SingleContractProvider provides contracts on premise.
 type SingleContractProvider struct {
@@ -116,7 +117,7 @@ type SingleContractProvider struct {
 }
 
 // NewSingleContractProvider creates a new single contract provider.
-func NewSingleContractProvider(license *License, metering usage.Metering) *SingleContractProvider {
+func NewSingleContractProvider(license *security.License, metering usage.Metering) *SingleContractProvider {
 	p := new(SingleContractProvider)
 	p.owner = new(contract)
 	p.owner.MasterID = 1
@@ -155,7 +156,7 @@ func (p *SingleContractProvider) Get(id uint32) (Contract, bool) {
 // ------------------------------------------------------------------------------------
 
 // Assert interface compliance
-var _ ContractProvider = new(HTTPContractProvider)
+var _ Provider = new(HTTPContractProvider)
 
 // HTTPContractProvider provides contracts over http.
 type HTTPContractProvider struct {
@@ -169,7 +170,7 @@ type HTTPContractProvider struct {
 }
 
 // NewHTTPContractProvider creates a new single contract provider.
-func NewHTTPContractProvider(license *License, metering usage.Metering) *HTTPContractProvider {
+func NewHTTPContractProvider(license *security.License, metering usage.Metering) *HTTPContractProvider {
 	p := HTTPContractProvider{}
 	p.owner = new(contract)
 	p.owner.MasterID = 1

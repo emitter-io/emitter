@@ -11,6 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type handler func(http.ResponseWriter, *http.Request)
+
+func (f handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f(w, r)
+}
+
 type testHandler struct{}
 
 type testObject struct {
@@ -127,4 +133,30 @@ func TestHTTP_Redirect(t *testing.T) {
 	output := new(testObject)
 	_, err = c.Get(server1.URL, output, NewHeader("X-Test-Header", "123"))
 	assert.NoError(t, err)
+}
+
+func TestHTTP_204(t *testing.T) {
+	server := httptest.NewServer(handler(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(204)
+	}))
+	defer server.Close()
+
+	// New client
+	c, err := NewClient(server.URL, time.Second)
+	b, err := c.Get(server.URL, nil)
+	assert.NoError(t, err)
+	assert.Nil(t, b)
+}
+
+func TestHTTP_500(t *testing.T) {
+	server := httptest.NewServer(handler(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer server.Close()
+
+	// New client
+	c, err := NewClient(server.URL, time.Second)
+	b, err := c.Get(server.URL, nil)
+	assert.Error(t, err)
+	assert.Nil(t, b)
 }

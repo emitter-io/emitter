@@ -12,49 +12,41 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package async
+package mock
 
 import (
-	"context"
-	"fmt"
-	"time"
+	"testing"
 
-	"github.com/emitter-io/emitter/provider/logging"
+	"github.com/emitter-io/emitter/provider/usage"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
+func TestMock(t *testing.T) {
 
-// Repeat performs an action asynchronously on a predetermined interval.
-func Repeat(ctx context.Context, interval time.Duration, action func()) context.CancelFunc {
+	id := uint32(1)
 
-	// Create cancellation context first
-	ctx, cancel := context.WithCancel(ctx)
-	safeAction := func() {
-		defer handlePanic()
-		action()
-	}
+	c := new(Contract)
+	c.On("Validate", mock.Anything).Return(true)
+	c.On("Stats").Return(usage.NewMeter(id))
 
-	// Perform the action for the first time, syncrhonously
-	safeAction()
-	timer := time.NewTicker(interval)
-	go func() {
+	m := NewContractProvider()
+	cfg := make(map[string]interface{})
 
-		for {
-			select {
-			case <-ctx.Done():
-				timer.Stop()
-				return
-			case <-timer.C:
-				safeAction()
-			}
-		}
-	}()
+	assert.Equal(t, "mock", m.Name())
 
-	return cancel
-}
+	m.On("Configure", cfg).Return(nil)
+	assert.NoError(t, m.Configure(cfg))
 
-// handlePanic handles the panic and logs it out.
-func handlePanic() {
-	if r := recover(); r != nil {
-		logging.LogAction("async", fmt.Sprintf("panic recovered: %s", r))
-	}
+	m.On("Get", id).Return(c, true)
+	c1, o1 := m.Get(id)
+	assert.True(t, o1)
+	assert.Equal(t, c, c1)
+	assert.True(t, c1.Validate(nil), true)
+	assert.Equal(t, usage.NewMeter(id), c1.Stats())
+
+	m.On("Create").Return(c, nil)
+	contract, err := m.Create()
+	assert.Equal(t, c, contract)
+	assert.NoError(t, err)
 }

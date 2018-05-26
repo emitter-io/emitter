@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/message"
-	"github.com/emitter-io/emitter/logging"
+	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/emitter-io/emitter/security"
 )
 

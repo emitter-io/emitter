@@ -8,8 +8,8 @@ import (
 
 	"github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/async"
-	"github.com/emitter-io/emitter/logging"
 	"github.com/emitter-io/emitter/network/http"
+	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/kelindar/binary"
 )
 
