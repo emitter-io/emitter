@@ -49,10 +49,10 @@ type Client interface {
 
 // Client implementation.
 type client struct {
-	host     string               // The host name of the client.
-	balanced *fasthttp.HostClient // The underlying client.
-	redirect *fasthttp.Client     // The client used for redirect
-	head     []HeaderValue        // The default headers to add on each request.
+	host     string        // The host name of the client.
+	regular  caller        // The client used for regular calls and redirects.
+	balanced caller        // The underlying client.
+	head     []HeaderValue // The default headers to add on each request.
 }
 
 // NewClient creates a new HTTP Client for the provided host. This will use round-robin
@@ -80,15 +80,23 @@ func NewClient(host string, timeout time.Duration, defaultHeaders ...HeaderValue
 	c := new(client)
 	c.host = host
 	c.head = defaultHeaders
-	c.balanced = &fasthttp.HostClient{
-		Addr:         strings.Join(addr, ","),
+
+	// Setup a simple http client
+	c.regular = &fasthttp.Client{
 		ReadTimeout:  timeout,
 		WriteTimeout: timeout,
 	}
-	c.redirect = &fasthttp.Client{
-		ReadTimeout:  timeout,
-		WriteTimeout: timeout,
+
+	// If there's more than one address, setup a load-balanced client
+	c.balanced = c.regular
+	if len(addr) > 1 {
+		c.balanced = &fasthttp.HostClient{
+			Addr:         strings.Join(addr, ","),
+			ReadTimeout:  timeout,
+			WriteTimeout: timeout,
+		}
 	}
+
 	return c, nil
 }
 
@@ -141,7 +149,7 @@ func (c *client) do(client caller, url, method string, body []byte, output inter
 		// of load-balancing, so we can directly ask the requested location.
 		case code == 308:
 			location := string(res.Header.Peek("Location"))
-			return c.do(c.redirect, location, method, body, output, headers)
+			return c.do(c.regular, location, method, body, output, headers)
 
 		// Handle an HTTP error.
 		case code >= 400 && code <= 599:
