@@ -50,14 +50,31 @@ type Client interface {
 // Client implementation.
 type client struct {
 	host     string        // The host name of the client.
-	regular  caller        // The client used for regular calls and redirects.
-	balanced caller        // The underlying client.
+	regular  caller        // The client used for regular calls.
+	redirect caller        // The client used for handling redirects.
 	head     []HeaderValue // The default headers to add on each request.
 }
 
-// NewClient creates a new HTTP Client for the provided host. This will use round-robin
+// NewClient creates a new HTTP Client which does not perform any load balancing.
+func NewClient(timeout time.Duration, defaultHeaders ...HeaderValue) (Client, error) {
+
+	// Construct a new client
+	c := new(client)
+	c.head = defaultHeaders
+
+	// Setup a simple http client
+	c.regular = &fasthttp.Client{
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
+	}
+
+	c.redirect = c.regular
+	return c, nil
+}
+
+// NewHostClient creates a new HTTP Client for the provided host. This will use round-robin
 // to load-balance the requests to the addresses resolved by the host.
-func NewClient(host string, timeout time.Duration, defaultHeaders ...HeaderValue) (Client, error) {
+func NewHostClient(host string, timeout time.Duration, defaultHeaders ...HeaderValue) (Client, error) {
 
 	// Parse the URL
 	u, err := url.Parse(host)
@@ -81,20 +98,17 @@ func NewClient(host string, timeout time.Duration, defaultHeaders ...HeaderValue
 	c.host = host
 	c.head = defaultHeaders
 
-	// Setup a simple http client
-	c.regular = &fasthttp.Client{
+	// Setup a load-balanced client
+	c.regular = &fasthttp.HostClient{
+		Addr:         strings.Join(addr, ","),
 		ReadTimeout:  timeout,
 		WriteTimeout: timeout,
 	}
 
-	// If there's more than one address, setup a load-balanced client
-	c.balanced = c.regular
-	if len(addr) > 1 {
-		c.balanced = &fasthttp.HostClient{
-			Addr:         strings.Join(addr, ","),
-			ReadTimeout:  timeout,
-			WriteTimeout: timeout,
-		}
+	// Setup a simple http client foor redirects
+	c.redirect = &fasthttp.Client{
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
 	}
 
 	return c, nil
@@ -102,12 +116,12 @@ func NewClient(host string, timeout time.Duration, defaultHeaders ...HeaderValue
 
 // Get issues an HTTP Get on a specified URL and decodes the payload as JSON.
 func (c *client) Get(url string, output interface{}, headers ...HeaderValue) ([]byte, error) {
-	return c.do(c.balanced, url, "GET", nil, output, headers)
+	return c.do(c.regular, url, "GET", nil, output, headers)
 }
 
 // Post is a utility function which marshals and issues an HTTP post on a specified URL.
 func (c *client) Post(url string, body []byte, output interface{}, headers ...HeaderValue) ([]byte, error) {
-	return c.do(c.balanced, url, "POST", body, output, headers)
+	return c.do(c.regular, url, "POST", body, output, headers)
 }
 
 // This performs a request
@@ -149,7 +163,7 @@ func (c *client) do(client caller, url, method string, body []byte, output inter
 		// of load-balancing, so we can directly ask the requested location.
 		case code == 308:
 			location := string(res.Header.Peek("Location"))
-			return c.do(c.regular, location, method, body, output, headers)
+			return c.do(c.redirect, location, method, body, output, headers)
 
 		// Handle an HTTP error.
 		case code >= 400 && code <= 599:

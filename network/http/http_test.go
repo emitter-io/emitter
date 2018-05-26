@@ -35,7 +35,7 @@ func TestNewClient(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		c, err := NewClient(tc.url, time.Second)
+		c, err := NewHostClient(tc.url, time.Second)
 		if tc.ok {
 			assert.NotNil(t, c)
 			assert.NoError(t, err)
@@ -71,7 +71,7 @@ func TestPostGet(t *testing.T) {
 	jsonBody, _ := json.Marshal(body)
 
 	// Reuse the client
-	c, err := NewClient(s.URL, time.Second, NewHeader("Authorization", "123"))
+	c, err := NewHostClient(s.URL, time.Second, NewHeader("Authorization", "123"))
 	assert.NoError(t, err)
 
 	{
@@ -126,7 +126,7 @@ func TestHTTP_Redirect(t *testing.T) {
 	defer server2.Close()
 
 	// New client
-	c, err := NewClient(server1.URL, time.Second)
+	c, err := NewHostClient(server1.URL, time.Second)
 	assert.NoError(t, err)
 
 	// Get something from server1
@@ -142,7 +142,7 @@ func TestHTTP_204(t *testing.T) {
 	defer server.Close()
 
 	// New client
-	c, err := NewClient(server.URL, time.Second)
+	c, err := NewClient(time.Second)
 	b, err := c.Get(server.URL, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, b)
@@ -155,7 +155,7 @@ func TestHTTP_500(t *testing.T) {
 	defer server.Close()
 
 	// New client
-	c, err := NewClient(server.URL, time.Second)
+	c, err := NewClient(time.Second)
 	b, err := c.Get(server.URL, nil)
 	assert.Error(t, err)
 	assert.Nil(t, b)
