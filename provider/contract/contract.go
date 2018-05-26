@@ -213,7 +213,7 @@ func (p *HTTPContractProvider) Configure(config map[string]interface{}) (err err
 		p.url = url.(string)
 
 		// Create a new HTTP client to use
-		p.http, err = http.NewClient(p.url, 10*time.Second)
+		p.http, err = http.NewClient(10 * time.Second)
 		p.head = headers
 
 		// Periodically refresh contracts

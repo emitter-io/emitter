@@ -83,7 +83,7 @@ func (s *HTTP) Configure(config map[string]interface{}) (err error) {
 	// Get the url from the provider configuration
 	if url, ok := config["url"]; ok {
 		s.base = url.(string)
-		s.http, err = http.NewClient(s.base, 30*time.Second)
+		s.http, err = http.NewHostClient(s.base, 30*time.Second)
 		s.head = headers
 
 		s.cancel = async.Repeat(context.Background(), interval, s.store)
