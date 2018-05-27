@@ -1,7 +1,6 @@
 package broker
 
 import (
-	"io/ioutil"
 	"testing"
 
 	"github.com/emitter-io/emitter/broker/message"
@@ -23,11 +22,8 @@ func Test_sendStats(t *testing.T) {
 		defer s.Close()
 
 		sampler := newSampler(s, s.measurer)
-
-		// Read everything
-		b, err := ioutil.ReadAll(sampler)
+		b := sampler.Snapshot()
 		assert.NotZero(t, len(b))
-		assert.NoError(t, err)
 
 	})
 }

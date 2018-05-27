@@ -17,13 +17,12 @@ package monitor
 import (
 	"context"
 	"errors"
-	"io"
-	"io/ioutil"
 	"time"
 
 	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/network/http"
 	"github.com/emitter-io/emitter/provider/logging"
+	"github.com/emitter-io/stats"
 )
 
 // Noop implements Storage contract.
@@ -31,7 +30,7 @@ var _ Storage = new(Self)
 
 // HTTP represents a storage which publishes stats over HTTP.
 type HTTP struct {
-	reader io.Reader          // The reader which reads the snapshot of stats.
+	reader stats.Snapshotter  // The reader which reads the snapshot of stats.
 	url    string             // The base url to use for the storage.
 	http   http.Client        // The http client to use.
 	head   []http.HeaderValue // The http headers to add with each request.
@@ -39,9 +38,9 @@ type HTTP struct {
 }
 
 // NewHTTP creates a new HTTP stats sink.
-func NewHTTP(statReader io.Reader) *HTTP {
+func NewHTTP(snapshotter stats.Snapshotter) *HTTP {
 	return &HTTP{
-		reader: statReader,
+		reader: snapshotter,
 	}
 }
 
@@ -88,7 +87,7 @@ func (s *HTTP) Configure(config map[string]interface{}) (err error) {
 
 // Flush reads and writes stats into this stats sink.
 func (s *HTTP) write() {
-	if snapshot, err := ioutil.ReadAll(s.reader); err == nil {
+	if snapshot := s.reader.Snapshot(); len(snapshot) > 0 {
 		if _, err := s.http.Post(s.url, snapshot, nil, s.head...); err != nil {
 			logging.LogError("http stats", "sending stats", err)
 		}

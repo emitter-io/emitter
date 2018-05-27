@@ -21,8 +21,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type snapshot string
+
+func (s snapshot) Snapshot() []byte {
+	return []byte(s)
+}
+
 func TestSelf(t *testing.T) {
-	r := strings.NewReader("test")
+	r := snapshot("test")
 	cfg := map[string]interface{}{
 		"interval": float64(100),
 		"channel":  "chan",
