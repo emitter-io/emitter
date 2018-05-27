@@ -17,11 +17,11 @@ package async
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"time"
 
 	"github.com/emitter-io/emitter/provider/logging"
 )
-
 
 // Repeat performs an action asynchronously on a predetermined interval.
 func Repeat(ctx context.Context, interval time.Duration, action func()) context.CancelFunc {
@@ -55,6 +55,6 @@ func Repeat(ctx context.Context, interval time.Duration, action func()) context.
 // handlePanic handles the panic and logs it out.
 func handlePanic() {
 	if r := recover(); r != nil {
-		logging.LogAction("async", fmt.Sprintf("panic recovered: %s", r))
+		logging.LogAction("async", fmt.Sprintf("panic recovered: %ss \n %s", r, debug.Stack()))
 	}
 }
