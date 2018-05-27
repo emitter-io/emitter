@@ -58,8 +58,9 @@ func (s *sampler) Read(p []byte) (n int, err error) {
 	// Create a snaphshot of all stats and write it
 	if m, ok := stat.(stats.Snapshotter); ok {
 		snapshot := m.Snapshot()
-		copy(p, snapshot)
-		n = len(snapshot)
+		if n = len(snapshot); n > 0 {
+			copy(p, snapshot)
+		}
 	}
 
 	err = io.EOF
