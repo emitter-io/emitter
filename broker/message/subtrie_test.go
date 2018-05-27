@@ -76,6 +76,7 @@ func TestTrieMatch(t *testing.T) {
 		{topic: "x/y/c/e/", n: 2},
 	}
 
+	assert.Equal(t, 8, m.Count())
 	for _, tc := range tests {
 		result := m.Lookup(testSub(tc.topic))
 		assert.Equal(t, tc.n, len(result))

@@ -49,7 +49,7 @@ func (s *sampler) Read(p []byte) (n int, err error) {
 	stat.Measure("node.id", int32(node))
 	stat.Measure("node.peers", int32(serv.NumPeers()))
 	stat.Measure("node.conns", int32(serv.connections))
-	//stat.Measure("node.subs", TODO)
+	stat.Measure("node.subs", int32(serv.subscriptions.Count()))
 
 	// Add node tags
 	stat.Tag("node.id", node.String())

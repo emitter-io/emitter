@@ -39,7 +39,8 @@ func (n *node) orphan() {
 // Trie represents an efficient collection of subscriptions with lookup capability.
 type Trie struct {
 	sync.RWMutex
-	root *node
+	root  *node // The root node of the tree.
+	count int   // Number of subscriptions in the trie.
 }
 
 // NewTrie creates a new matcher for the subscriptions.
@@ -50,6 +51,13 @@ func NewTrie() *Trie {
 			children: make(map[uint32]*node),
 		},
 	}
+}
+
+// Count returns the number of subscriptions.
+func (t *Trie) Count() int {
+	t.RLock()
+	defer t.RUnlock()
+	return t.count
 }
 
 // Subscribe adds the Subscriber to the topic and returns a Subscription.
@@ -70,7 +78,11 @@ func (t *Trie) Subscribe(ssid Ssid, sub Subscriber) (*Subscription, error) {
 		curr = child
 	}
 
-	curr.subs.AddUnique(sub)
+	// Add unique and count
+	if ok := curr.subs.AddUnique(sub); ok {
+		t.count++
+	}
+
 	t.Unlock()
 	return &Subscription{Ssid: ssid, Subscriber: sub}, nil
 }
@@ -88,7 +100,13 @@ func (t *Trie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 		}
 		curr = child
 	}
-	curr.subs.Remove(subscriber)
+
+	// Remove the subscriber and decrement the counter
+	if ok := curr.subs.Remove(subscriber); ok {
+		t.count--
+	}
+
+	// Remove orphans
 	if len(curr.subs) == 0 && len(curr.children) == 0 {
 		curr.orphan()
 	}
