@@ -402,6 +402,8 @@ func (s *Service) onUnsubscribe(ssid message.Ssid, sub message.Subscriber) (ok b
 
 // Occurs when a message is received from a peer.
 func (s *Service) onPeerMessage(m *message.Message) {
+	defer s.measurer.MeasureElapsed("peer.msg", time.Now())
+
 	// Get the contract
 	contract, contractFound := s.contracts.Get(m.Ssid.Contract())
 

@@ -85,6 +85,27 @@ func TestSub_getOrCreate(t *testing.T) {
 	assert.Equal(t, counter.Ssid, Ssid(ssid))
 }
 
+func TestSubscribers(t *testing.T) {
+	var subs Subscribers
+
+	{
+		added := subs.AddUnique(nil)
+		assert.True(t, added)
+	}
+	{
+		added := subs.AddUnique(nil)
+		assert.False(t, added)
+	}
+	{
+		removed := subs.Remove(nil)
+		assert.True(t, removed)
+	}
+	{
+		removed := subs.Remove(nil)
+		assert.False(t, removed)
+	}
+}
+
 func TestSub_All(t *testing.T) {
 	// Preparation.
 	counters := NewCounters()

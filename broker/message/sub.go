@@ -129,14 +129,16 @@ type Subscriber interface {
 type Subscribers []Subscriber
 
 // AddUnique adds a subscriber to the set.
-func (s *Subscribers) AddUnique(value Subscriber) {
+func (s *Subscribers) AddUnique(value Subscriber) (added bool) {
 	if s.Contains(value) == false {
 		*s = append(*s, value)
+		added = true
 	}
+	return
 }
 
 // Remove removes a subscriber from the set.
-func (s *Subscribers) Remove(value Subscriber) {
+func (s *Subscribers) Remove(value Subscriber) (removed bool) {
 	for i, v := range *s {
 		if v == value {
 			a := *s
@@ -144,9 +146,11 @@ func (s *Subscribers) Remove(value Subscriber) {
 			a[len(a)-1] = nil
 			a = a[:len(a)-1]
 			*s = a
+			removed = true
 			return
 		}
 	}
+	return
 }
 
 // Contains checks whether a subscriber is in the set.
