@@ -17,12 +17,11 @@ package monitor
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"time"
 
 	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/network/address"
+	"github.com/emitter-io/stats"
 )
 
 // Noop implements Storage contract.
@@ -30,18 +29,18 @@ var _ Storage = new(Self)
 
 // Self represents a storage which self-publishes stats.
 type Self struct {
-	reader  io.Reader            // The reader which reads the snapshot of stats.
+	reader  stats.Snapshotter    // The reader which reads the snapshot of stats.
 	channel string               // The channel name to publish into.
 	publish func(string, []byte) // The publish function to use.
 	cancel  context.CancelFunc   // The cancellation function.
 }
 
 // NewSelf creates a new self-publishing stats sink.
-func NewSelf(statReader io.Reader, selfPublish func(string, []byte)) *Self {
+func NewSelf(snapshotter stats.Snapshotter, selfPublish func(string, []byte)) *Self {
 	return &Self{
 		publish: selfPublish,
 		channel: "stats",
-		reader:  statReader,
+		reader:  snapshotter,
 	}
 }
 
@@ -78,7 +77,7 @@ func (s *Self) Configure(config map[string]interface{}) error {
 
 // Flush reads and writes stats into this stats sink.
 func (s *Self) write() {
-	if snapshot, err := ioutil.ReadAll(s.reader); err == nil {
+	if snapshot := s.reader.Snapshot(); len(snapshot) > 0 {
 		s.publish(s.channel, snapshot)
 	}
 }

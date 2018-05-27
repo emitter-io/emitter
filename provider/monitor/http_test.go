@@ -18,7 +18,6 @@ import (
 	"io/ioutil"
 	netHttp "net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,7 +30,7 @@ func (f handler) ServeHTTP(w netHttp.ResponseWriter, r *netHttp.Request) {
 }
 
 func TestHTTP_HappyPath(t *testing.T) {
-	r := strings.NewReader("test")
+	r := snapshot("test")
 	server := httptest.NewServer(handler(func(w netHttp.ResponseWriter, r *netHttp.Request) {
 		b, err := ioutil.ReadAll(r.Body)
 		assert.Equal(t, "test", string(b))
@@ -55,7 +54,7 @@ func TestHTTP_HappyPath(t *testing.T) {
 }
 
 func TestHTTP_ErrorPost(t *testing.T) {
-	r := strings.NewReader("test")
+	r := snapshot("test")
 	server := httptest.NewServer(handler(func(w netHttp.ResponseWriter, r *netHttp.Request) {
 		w.WriteHeader(500)
 	}))

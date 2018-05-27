@@ -15,8 +15,6 @@
 package broker
 
 import (
-	"io"
-
 	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/stats"
 )
@@ -28,15 +26,15 @@ type sampler struct {
 }
 
 // newSampler creates a stats sampler.
-func newSampler(s *Service, m stats.Measurer) io.Reader {
+func newSampler(s *Service, m stats.Measurer) stats.Snapshotter {
 	return &sampler{
 		service:  s,
 		measurer: m,
 	}
 }
 
-// Read reads the stats snapshot and writes it to the output buffer.
-func (s *sampler) Read(p []byte) (n int, err error) {
+// Snapshot creates the stats snapshot.
+func (s *sampler) Snapshot() (snapshot []byte) {
 	stat := s.service.measurer
 	serv := s.service
 	node := address.Fingerprint(serv.LocalName())
@@ -55,13 +53,9 @@ func (s *sampler) Read(p []byte) (n int, err error) {
 	stat.Tag("node.id", node.String())
 	stat.Tag("node.addr", addr)
 
-	// Create a snaphshot of all stats and write it
+	// Create a snaphshot of all stats
 	if m, ok := stat.(stats.Snapshotter); ok {
-		snapshot := m.Snapshot()
-		copy(p, snapshot)
-		n = len(snapshot)
+		snapshot = m.Snapshot()
 	}
-
-	err = io.EOF
 	return
 }
