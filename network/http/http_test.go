@@ -29,9 +29,9 @@ func TestNewClient(t *testing.T) {
 		ok  bool
 	}{
 		{url: "http://google.com/123", ok: true},
-		{url: "google.com/123", ok: false},
+		{url: "google.com/123", ok: true},
 		{url: "235235", ok: false},
-		{url: "::", ok: false},
+		{url: ":::", ok: false},
 	}
 
 	for _, tc := range tests {
