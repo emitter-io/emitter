@@ -48,7 +48,12 @@ func Select(nfd int, r *FdSet, w *FdSet, e *FdSet, timeout *Timeval) (n int, err
 //sysnb	Setreuid(ruid int, euid int) (err error)
 //sys	Shutdown(fd int, how int) (err error)
 //sys	Splice(rfd int, roff *int64, wfd int, woff *int64, len int, flags int) (n int64, err error)
-//sys	Stat(path string, stat *Stat_t) (err error)
+
+func Stat(path string, stat *Stat_t) (err error) {
+	// Use fstatat, because Android's seccomp policy blocks stat.
+	return Fstatat(AT_FDCWD, path, stat, 0)
+}
+
 //sys	Statfs(path string, buf *Statfs_t) (err error)
 //sys	SyncFileRange(fd int, off int64, n int64, flags int) (err error)
 //sys	Truncate(path string, length int64) (err error)
