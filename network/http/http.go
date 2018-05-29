@@ -17,11 +17,10 @@ package http
 import (
 	"encoding/json"
 	"fmt"
-	"net"
-	"net/url"
 	"strings"
 	"time"
 
+	"github.com/emitter-io/address"
 	"github.com/kelindar/binary"
 	"github.com/valyala/fasthttp"
 )
@@ -76,21 +75,16 @@ func NewClient(timeout time.Duration, defaultHeaders ...HeaderValue) (Client, er
 // to load-balance the requests to the addresses resolved by the host.
 func NewHostClient(host string, timeout time.Duration, defaultHeaders ...HeaderValue) (Client, error) {
 
-	// Parse the URL
-	u, err := url.Parse(host)
+	// Resolve the domain name and get all addresses behind it
+	addrs, err := address.Resolve(host, 80)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get the addresses by performing a DNS lookup, this should not fail
-	addr, err := net.LookupHost(u.Hostname())
-	if err != nil {
-		return nil, err
-	}
-
-	// Add port to each address
-	for i, a := range addr {
-		addr[i] = a + ":" + u.Port()
+	// Project to strings
+	var addr []string
+	for _, a := range addrs {
+		addr = append(addr, a.String())
 	}
 
 	// Construct a new client
