@@ -15,8 +15,6 @@
 package broker
 
 import (
-	"io"
-
 	"github.com/emitter-io/address"
 	"github.com/emitter-io/stats"
 )
