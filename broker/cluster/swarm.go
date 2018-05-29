@@ -20,10 +20,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/emitter-io/address"
 	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
-	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/emitter-io/emitter/security"
 	"github.com/weaveworks/mesh"
@@ -350,7 +350,7 @@ func (s *Swarm) Close() error {
 
 // getLocalPeerName retrieves or generates a local node name.
 func getLocalPeerName(cfg *config.ClusterConfig) mesh.PeerName {
-	peerName := mesh.PeerName(address.Hardware())
+	peerName := mesh.PeerName(address.GetHardware())
 	if cfg.NodeName != "" {
 		if name, err := mesh.PeerNameFromString(cfg.NodeName); err != nil {
 			logging.LogError("swarm", "getting node name", err)

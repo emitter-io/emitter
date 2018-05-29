@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,4 +15,20 @@ func Test_NewDefaut(t *testing.T) {
 	tls, _, ok := c.Certificate()
 	assert.Nil(t, tls)
 	assert.False(t, ok)
+}
+
+func Test_Addr(t *testing.T) {
+	c := &Config{
+		ListenAddr: "private",
+	}
+
+	addr := c.Addr()
+	assert.True(t, strings.HasSuffix(addr.String(), ":8080"))
+}
+
+func Test_AddrInvalid(t *testing.T) {
+	assert.Panics(t, func() {
+		c := &Config{ListenAddr: "g3ew235wgs"}
+		c.Addr()
+	})
 }

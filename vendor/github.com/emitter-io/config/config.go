@@ -302,7 +302,9 @@ func declassifyRecursive(prefix string, provider SecretStore, value reflect.Valu
 	case reflect.Struct:
 		for i := 0; i < value.NumField(); i++ {
 			name := getFieldName(value.Type().Field(i))
-			declassifyRecursive(prefix+"/"+name, provider, value.Field(i))
+			if name != "" { // If there's no JSON tag, ignore it
+				declassifyRecursive(prefix+"/"+name, provider, value.Field(i))
+			}
 		}
 
 	// This is a integer, we need to fetch the secret

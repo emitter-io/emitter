@@ -15,7 +15,9 @@
 package broker
 
 import (
-	"github.com/emitter-io/emitter/network/address"
+	"io"
+
+	"github.com/emitter-io/address"
 	"github.com/emitter-io/stats"
 )
 
@@ -38,7 +40,7 @@ func (s *sampler) Snapshot() (snapshot []byte) {
 	stat := s.service.measurer
 	serv := s.service
 	node := address.Fingerprint(serv.LocalName())
-	addr := address.External().String()
+	addr := serv.Config.Addr()
 
 	// Track runtime information
 	stat.MeasureRuntime()
@@ -51,7 +53,7 @@ func (s *sampler) Snapshot() (snapshot []byte) {
 
 	// Add node tags
 	stat.Tag("node.id", node.String())
-	stat.Tag("node.addr", addr)
+	stat.Tag("node.addr", addr.String())
 
 	// Create a snaphshot of all stats
 	if m, ok := stat.(stats.Snapshotter); ok {
