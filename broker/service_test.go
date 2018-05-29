@@ -136,7 +136,7 @@ func Test_onHTTPPresence(t *testing.T) {
 func TestPubsub(t *testing.T) {
 	cfg := config.NewDefault().(*config.Config)
 	cfg.License = testLicense
-	cfg.ListenAddr = ":9998"
+	cfg.ListenAddr = "127.0.0.1:9998"
 	cfg.Cluster = nil
 	cfg.TLS = &conf.TLSConfig{}
 
@@ -148,7 +148,7 @@ func TestPubsub(t *testing.T) {
 	go broker.Listen(context.Background())
 
 	// Create a client
-	cli, dialErr := net.Dial("tcp", ":9998")
+	cli, dialErr := net.Dial("tcp", "127.0.0.1:9998")
 	assert.NoError(t, dialErr)
 	defer cli.Close()
 
@@ -163,6 +163,19 @@ func TestPubsub(t *testing.T) {
 		pkt, err := mqtt.DecodePacket(cli)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfConnack, pkt.Type())
+	}
+
+	{ // Ping the broker
+		ping := mqtt.Pingreq{}
+		n, err := ping.EncodeTo(cli)
+		assert.Equal(t, 2, n)
+		assert.NoError(t, err)
+	}
+
+	{ // Read pong
+		pkt, err := mqtt.DecodePacket(cli)
+		assert.NoError(t, err)
+		assert.Equal(t, mqtt.TypeOfPingresp, pkt.Type())
 	}
 
 	{ // Subscribe to a topic
@@ -202,4 +215,29 @@ func TestPubsub(t *testing.T) {
 			Payload: []byte("hello world"),
 		}, pkt)
 	}
+
+	{ // Unsubscribe from the topic
+		sub := mqtt.Unsubscribe{
+			Header: &mqtt.StaticHeader{QOS: 0},
+			Topics: []mqtt.TopicQOSTuple{
+				{Topic: []byte("0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/"), Qos: 0},
+			},
+		}
+		_, err := sub.EncodeTo(cli)
+		assert.NoError(t, err)
+	}
+
+	{ // Read unsuback
+		pkt, err := mqtt.DecodePacket(cli)
+		assert.NoError(t, err)
+		assert.Equal(t, mqtt.TypeOfUnsuback, pkt.Type())
+	}
+
+	{ // Disconnect from the broker
+		disconnect := mqtt.Disconnect{}
+		n, err := disconnect.EncodeTo(cli)
+		assert.Equal(t, 2, n)
+		assert.NoError(t, err)
+	}
+
 }

@@ -20,8 +20,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/emitter-io/address"
 	cfg "github.com/emitter-io/config"
-	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/provider/logging"
 )
 
@@ -32,12 +32,12 @@ const (
 )
 
 // VaultUser is the vault user to use for authentication
-var VaultUser = toUsername(address.External())
+var VaultUser = toUsername(address.GetExternalOrDefault(address.Loopback))
 
 // toUsername converts an ip address to a username for Vault.
-func toUsername(a net.IP) string {
+func toUsername(a net.IPAddr) string {
 	return strings.Replace(
-		strings.Replace(a.String(), ".", "-", -1),
+		strings.Replace(a.IP.String(), ".", "-", -1),
 		":", "-", -1)
 }
 
@@ -50,7 +50,7 @@ func NewDefault() cfg.Config {
 		},
 		Cluster: &ClusterConfig{
 			ListenAddr:    ":4000",
-			AdvertiseAddr: "public:4000",
+			AdvertiseAddr: "external:4000",
 		},
 		Storage: &cfg.ProviderConfig{
 			Provider: "inmemory",
@@ -60,6 +60,7 @@ func NewDefault() cfg.Config {
 
 // Config represents main configuration.
 type Config struct {
+	listenAddr *net.TCPAddr        // The listen address, parsed.
 	ListenAddr string              `json:"listen"`             // The API port used for TCP & Websocket communication.
 	License    string              `json:"license"`            // The license file to use for the broker.
 	TLS        *cfg.TLSConfig      `json:"tls,omitempty"`      // The API port used for Secure TCP & Websocket communication.
@@ -70,6 +71,17 @@ type Config struct {
 	Metering   *cfg.ProviderConfig `json:"metering,omitempty"` // The configuration for the usage storage for metering.
 	Logging    *cfg.ProviderConfig `json:"logging,omitempty"`  // The configuration for the logger.
 	Monitor    *cfg.ProviderConfig `json:"monitor,omitempty"`  // The configuration for the monitoring storage.
+}
+
+// Addr returns the listen address configured.
+func (c *Config) Addr() *net.TCPAddr {
+	if c.listenAddr == nil {
+		var err error
+		if c.listenAddr, err = address.Parse(c.ListenAddr, 8080); err != nil {
+			panic(err)
+		}
+	}
+	return c.listenAddr
 }
 
 // Vault returns a vault configuration.

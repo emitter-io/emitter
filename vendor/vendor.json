@@ -33,10 +33,16 @@
 			"revisionTime": "2018-01-09T04:46:35Z"
 		},
 		{
-			"checksumSHA1": "XpnWzTBazgMMctMFt+xaAC7mJsQ=",
+			"checksumSHA1": "8ZCZ5ek252foPAG2IkxedMLJQ7g=",
+			"path": "github.com/emitter-io/address",
+			"revision": "703addd7d2c029f258229a42dec5918a69752717",
+			"revisionTime": "2018-05-29T05:36:54Z"
+		},
+		{
+			"checksumSHA1": "eg7oR5Gdd3abFE7vH7MO0BOdr6k=",
 			"path": "github.com/emitter-io/config",
-			"revision": "726f135d000c04c95285ae984fa2fdd568415227",
-			"revisionTime": "2018-05-26T04:28:16Z"
+			"revision": "b152cdb8e7cc8be9080c7b995815174169711ab0",
+			"revisionTime": "2018-05-29T06:39:08Z"
 		},
 		{
 			"checksumSHA1": "qdlY/c9Bw4mT4Nxz5Hj+kwq/WX8=",

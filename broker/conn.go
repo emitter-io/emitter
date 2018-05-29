@@ -23,8 +23,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/emitter-io/address"
 	"github.com/emitter-io/emitter/broker/message"
-	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/provider/contract"
 	"github.com/emitter-io/emitter/provider/logging"
@@ -57,7 +57,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 	}
 
 	// Generate a globally unique id as well
-	c.guid = c.luid.Unique(uint64(address.Hardware()), "emitter")
+	c.guid = c.luid.Unique(uint64(address.GetHardware()), "emitter")
 	logging.LogTarget("conn", "created", c.guid)
 
 	// Increment the connection counter

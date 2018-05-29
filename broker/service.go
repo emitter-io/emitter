@@ -30,10 +30,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/emitter-io/address"
 	"github.com/emitter-io/emitter/broker/cluster"
 	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
-	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/emitter/network/listener"
 	"github.com/emitter-io/emitter/network/websocket"
 	"github.com/emitter-io/emitter/provider/contract"
@@ -143,7 +143,6 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
 
 	// Addresses and things
-	logging.LogTarget("service", "configured external address", address.External())
 	logging.LogTarget("service", "configured node name", address.Fingerprint(s.LocalName()).String())
 	return s, nil
 }
@@ -154,7 +153,7 @@ func (s *Service) LocalName() uint64 {
 		return s.cluster.ID()
 	}
 
-	return uint64(address.Hardware())
+	return uint64(address.GetHardware())
 }
 
 // NumPeers returns the number of peers of this service.
@@ -186,7 +185,7 @@ func (s *Service) Listen(ctx context.Context) (err error) {
 	}
 
 	// Setup the listeners on both default and a secure addresses
-	s.listen(s.Config.ListenAddr, nil)
+	s.listen(s.Config.Addr(), nil)
 	if tls, tlsValidator, ok := s.Config.Certificate(); ok {
 
 		// If we need to validate certificate, spin up a listener on port 80
@@ -195,7 +194,9 @@ func (s *Service) Listen(ctx context.Context) (err error) {
 			go http.ListenAndServe(":80", tlsValidator)
 		}
 
-		s.listen(s.Config.TLS.ListenAddr, tls)
+		if tlsAddr, err := address.Parse(s.Config.TLS.ListenAddr, 443); err == nil {
+			s.listen(tlsAddr, tls)
+		}
 	}
 
 	// Block
@@ -204,17 +205,11 @@ func (s *Service) Listen(ctx context.Context) (err error) {
 }
 
 // listen configures an main listener on a specified address.
-func (s *Service) listen(addr string, conf *tls.Config) {
-
-	// Parse the listen address
-	listenAddr, err := address.Parse(addr, 0)
-	if err != nil {
-		panic(err)
-	}
+func (s *Service) listen(addr *net.TCPAddr, conf *tls.Config) {
 
 	// Create new listener
-	logging.LogTarget("service", "starting the listener", listenAddr)
-	l, err := listener.New(listenAddr.String(), conf)
+	logging.LogTarget("service", "starting the listener", addr)
+	l, err := listener.New(addr.String(), conf)
 	if err != nil {
 		panic(err)
 	}

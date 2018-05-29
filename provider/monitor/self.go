@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/emitter-io/address"
 	"github.com/emitter-io/emitter/async"
-	"github.com/emitter-io/emitter/network/address"
 	"github.com/emitter-io/stats"
 )
 
@@ -68,7 +68,7 @@ func (s *Self) Configure(config map[string]interface{}) error {
 	}
 
 	// Set channel name
-	s.channel = fmt.Sprintf("%s/%s/", s.channel, address.External().String())
+	s.channel = fmt.Sprintf("%s/%s/", s.channel, address.GetHardware().Hex())
 
 	// Setup a repeat flush
 	s.cancel = async.Repeat(context.Background(), interval, s.write)
