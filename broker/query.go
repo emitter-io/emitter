@@ -85,18 +85,19 @@ func (c *QueryManager) Type() message.SubscriberType {
 
 // Send occurs when we have received a message.
 func (c *QueryManager) Send(m *message.Message) error {
-	if len(m.Ssid) != 3 {
+	ssid := m.Ssid()
+	if len(ssid) != 3 {
 		return errors.New("Invalid query received")
 	}
 
 	switch string(m.Channel) {
 	case "response":
 		// We received a response, find the awaiter and forward a message to it
-		return c.onResponse(m.Ssid[2], m.Payload)
+		return c.onResponse(ssid[2], m.Payload)
 
 	default:
 		// We received a request, need to handle that by calling the appropriate handler
-		return c.onRequest(m.Ssid, string(m.Channel), m.Payload)
+		return c.onRequest(ssid, string(m.Channel), m.Payload)
 	}
 }
 
@@ -131,7 +132,7 @@ func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []by
 	for _, surveyee := range c.handlers {
 		if response, ok := surveyee.OnSurvey(query, payload); ok {
 			return peer.Send(&message.Message{
-				Ssid:    ssid,
+				ID:      message.NewDefaultID(ssid),
 				Channel: []byte("response"),
 				Payload: response,
 			})
@@ -161,7 +162,7 @@ func (c *QueryManager) Query(query string, payload []byte) (message.Awaiter, err
 
 	// Publish the query as a message
 	c.service.publish(&message.Message{
-		Ssid:    message.Ssid{idSystem, idQuery, awaiter.id},
+		ID:      message.NewDefaultID(message.Ssid{idSystem, idQuery, awaiter.id}),
 		Channel: []byte(channel),
 		Payload: payload,
 	})

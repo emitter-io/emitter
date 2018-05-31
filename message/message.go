@@ -1,5 +1,5 @@
 /**********************************************************************************
-* Copyright (c) 2009-2017 Misakai Ltd.
+* Copyright (c) 2009-2018 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
 * terms of the GNU Affero General Public License as published by the  Free Software
 * Foundation, either version 3 of the License, or(at your option) any later version.
@@ -16,18 +16,59 @@ package message
 
 import (
 	"sort"
+	"time"
 
 	"github.com/golang/snappy"
 	"github.com/kelindar/binary"
 )
 
+// Message represents a message which has to be forwarded or stored.
+type Message struct {
+	ID      ID     `json:id,omitempty`     // The ID of the message
+	Channel []byte `json:"chan,omitempty"` // The channel of the message
+	Payload []byte `json:"data,omitempty"` // The payload of the message
+	TTL     uint32 `json:"ttl,omitempty"`  // The time-to-live of the message
+}
+
+// Size returns the byte size of the message.
+func (m *Message) Size() int64 {
+	return int64(len(m.Payload))
+}
+
+// Time gets the time of the key, adjusted.
+func (m *Message) Time() int64 {
+	return m.ID.Time()
+}
+
+// Ssid retrieves the SSID from the message ID.
+func (m *Message) Ssid() Ssid {
+	return m.ID.Ssid()
+}
+
+// Contract retrieves the contract from the message ID.
+func (m *Message) Contract() uint32 {
+	return m.ID.Contract()
+}
+
+// Expires calculates the expiration time.
+func (m *Message) Expires() time.Time {
+	return time.Unix(0, m.Time()).Add(time.Second * time.Duration(m.TTL))
+}
+
+// ------------------------------------------------------------------------------------
+
 // Frame represents a message frame which is sent through the wire to the
 // remote server and contains a set of messages.
 type Frame []Message
 
+// NewFrame creates a new frame with the specified capacity
+func NewFrame(capacity int) Frame {
+	return make(Frame, 0, capacity)
+}
+
 // Sort sorts the frame
 func (f Frame) Sort() {
-	sort.Slice(f, func(i, j int) bool { return f[i].Time < f[j].Time })
+	sort.Slice(f, func(i, j int) bool { return f[i].Time() < f[j].Time() })
 }
 
 // Limit limits the frame to a specific number of elements
@@ -35,25 +76,6 @@ func (f *Frame) Limit(n int) {
 	if len(*f) > n {
 		*f = (*f)[:n]
 	}
-}
-
-// Message represents a message which has to be forwarded or stored.
-type Message struct {
-	Time    int64  `json:"ts,omitempty"`   // The timestamp of the message
-	Ssid    Ssid   `json:"ssid,omitempty"` // The Ssid of the message
-	Channel []byte `json:"chan,omitempty"` // The channel of the message
-	Payload []byte `json:"data,omitempty"` // The payload of the message
-	TTL     uint32 `json:"ttl,omitempty"`  // The time-to-live of the message
-}
-
-// NewFrame creates a new frame with the specified capacity
-func NewFrame(capacity int) Frame {
-	return make(Frame, 0, capacity)
-}
-
-// Size returns the byte size of the message.
-func (m *Message) Size() int64 {
-	return int64(len(m.Payload))
 }
 
 // Encode encodes the message frame
@@ -68,9 +90,9 @@ func (f *Frame) Encode() (out []byte) {
 }
 
 // Append appends the message to a frame.
-func (f *Frame) Append(time int64, ssid Ssid, channel, payload []byte) {
+/*func (f *Frame) Append(time int64, ssid Ssid, channel, payload []byte) {
 	*f = append(*f, Message{Time: time, Ssid: ssid, Channel: channel, Payload: payload})
-}
+}*/
 
 // DecodeFrame decodes the message frame from the decoder.
 func DecodeFrame(buf []byte) (out Frame, err error) {

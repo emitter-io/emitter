@@ -32,9 +32,10 @@ import (
 func getNTestMessages(count int) (frame message.Frame) {
 	time := time.Now().UnixNano()
 	for i := 0; i < count; i++ {
+		id := message.NewDefaultID(message.Ssid{0, uint32(i / 2), 2, uint32(i)})
+		id.SetTime(time + int64(i))
 		frame = append(frame, message.Message{
-			Time:    time + int64(i),
-			Ssid:    []uint32{0, uint32(i / 2), 2, uint32(i)},
+			ID:      id,
 			Channel: []byte("test/channel/"),
 			Payload: []byte(fmt.Sprintf("%v,%v,%v", 1, 2, i)),
 			TTL:     100000,
@@ -90,7 +91,7 @@ func TestQueryLast(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Len(t, f, 1)
-		assert.Equal(t, message.Ssid{0, 3, 2, 7}, f[0].Ssid)
+		assert.Equal(t, message.Ssid{0, 3, 2, 7}, f[0].Ssid())
 
 	})
 }

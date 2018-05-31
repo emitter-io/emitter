@@ -67,17 +67,12 @@ func (s *InMemory) Configure(config map[string]interface{}) error {
 func (s *InMemory) Store(m *message.Message) error {
 
 	// Get the string version of the SSID trunk
-	key := message.Ssid(m.Ssid).Encode()
+	key := m.Ssid().Encode()
 	trunk := key[:16]
 
 	// Get and increment the last message cursor
 	cur, _ := s.cur.LoadOrStore(trunk, new(uint64))
 	idx := atomic.AddUint64(cur.(*uint64), 1)
-
-	// If no time was set, add it
-	if m.Time == 0 {
-		m.Time = time.Now().UnixNano()
-	}
 
 	// Set the key in form of (ssid:index) so we can retrieve
 	s.mem.Set(fmt.Sprintf("%v:%v", trunk, idx), *m, time.Duration(m.TTL)*time.Second)
@@ -162,7 +157,7 @@ func (s *InMemory) lookup(q lookupQuery) (matches message.Frame) {
 				msg := item.Value().(message.Message)
 
 				// Match using regular expression
-				if query.MatchString(msg.Ssid.Encode()) {
+				if query.MatchString(msg.Ssid().Encode()) {
 					matchCount++
 					matches = append(matches, msg)
 				}

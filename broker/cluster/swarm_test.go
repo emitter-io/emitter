@@ -10,10 +10,18 @@ import (
 	"github.com/weaveworks/mesh"
 )
 
+func newTestMessage(ssid message.Ssid, channel, payload string) message.Message {
+	return message.Message{
+		ID:      message.NewID(ssid, 0),
+		Channel: []byte(channel),
+		Payload: []byte(payload),
+	}
+}
+
 func TestOnGossipUnicast(t *testing.T) {
 	frame := message.Frame{
-		{Ssid: message.Ssid{1, 2, 3}, Channel: []byte("a/b/c/"), Payload: []byte("hello abc")},
-		{Ssid: message.Ssid{1, 2, 3}, Channel: []byte("a/b/"), Payload: []byte("hello ab")},
+		newTestMessage(message.Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
+		newTestMessage(message.Ssid{1, 2, 3}, "a/b/", "hello ab"),
 	}
 
 	// Encode using binary + snappy
