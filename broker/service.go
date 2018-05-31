@@ -245,7 +245,7 @@ func (s *Service) notifyPresenceChange() {
 			case notif := <-s.presence:
 				if encoded, ok := notif.Encode(); ok {
 					s.publish(&message.Message{
-						Ssid:    notif.Ssid,
+						ID:      message.NewDefaultID(notif.Ssid),
 						Channel: channel,
 						Payload: encoded,
 					})
@@ -406,10 +406,10 @@ func (s *Service) onPeerMessage(m *message.Message) {
 	defer s.measurer.MeasureElapsed("peer.msg", time.Now())
 
 	// Get the contract
-	contract, contractFound := s.contracts.Get(m.Ssid.Contract())
+	contract, contractFound := s.contracts.Get(m.Contract())
 
 	// Iterate through all subscribers and send them the message
-	for _, subscriber := range s.subscriptions.Lookup(m.Ssid) {
+	for _, subscriber := range s.subscriptions.Lookup(m.Ssid()) {
 		if subscriber.Type() == message.SubscriberDirect {
 
 			// Send to the local subscriber
@@ -436,7 +436,7 @@ func (s *Service) Survey(query string, payload []byte) (message.Awaiter, error) 
 // Publish publishes a message to everyone and returns the number of outgoing bytes written.
 func (s *Service) publish(m *message.Message) (n int64) {
 	size := m.Size()
-	for _, subscriber := range s.subscriptions.Lookup(m.Ssid) {
+	for _, subscriber := range s.subscriptions.Lookup(m.Ssid()) {
 		subscriber.Send(m)
 
 		// Increment the egress size only for direct subscribers
@@ -452,8 +452,9 @@ func (s *Service) publish(m *message.Message) (n int64) {
 func (s *Service) selfPublish(channelName string, payload []byte) {
 	channel := security.ParseChannel([]byte("emitter/" + channelName))
 	if channel.ChannelType == security.ChannelStatic {
+		ssid := message.NewSsid(s.License.Contract, channel)
 		s.publish(&message.Message{
-			Ssid:    message.NewSsid(s.License.Contract, channel),
+			ID:      message.NewDefaultID(ssid),
 			Channel: channel.Channel,
 			Payload: payload,
 		})

@@ -75,7 +75,7 @@ func TestInMemory_Store(t *testing.T) {
 	s.Configure(nil)
 
 	msg := testMessage(1, 2, 3)
-	msg.Time = 0
+	//msg.Time = 0
 	err := s.Store(msg)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("1,2,3"), s.mem.Get("0000000000000001:1").Value().(message.Message).Payload)

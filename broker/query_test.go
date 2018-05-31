@@ -23,7 +23,9 @@ func Test_newQueryManager(t *testing.T) {
 func TestQuerySend_noSSID(t *testing.T) {
 	q := newQueryManager(nil)
 
-	err := q.Send(&message.Message{})
+	err := q.Send(&message.Message{
+		ID: message.NewDefaultID(message.Ssid{0, 0}),
+	})
 	assert.Error(t, errors.New("Invalid query received"), err)
 }
 
@@ -31,8 +33,8 @@ func TestQuerySend_Response(t *testing.T) {
 	q := newQueryManager(nil)
 
 	err := q.Send(&message.Message{
+		ID:      message.NewDefaultID(message.Ssid{0, 1, 2}),
 		Channel: []byte("response"),
-		Ssid:    []uint32{0, 1, 2},
 	})
 
 	// There should be no awaiter, hence this should just pass
@@ -45,8 +47,8 @@ func TestQuerySend_Request(t *testing.T) {
 	})
 
 	err := q.Send(&message.Message{
+		ID:      message.NewDefaultID(message.Ssid{0, 1, 2}),
 		Channel: []byte("request/12345/"),
-		Ssid:    []uint32{0, 1, 2},
 	})
 
 	assert.Equal(t, "No query handler found for request/12345/", err.Error())

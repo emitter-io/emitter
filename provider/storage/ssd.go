@@ -105,9 +105,9 @@ func encodeFrame(msgs message.Frame) []*badger.Entry {
 	for _, m := range msgs {
 		if val, err := binary.Marshal(m); err == nil {
 			entries = append(entries, &badger.Entry{
-				Key:       m.Key(),
+				Key:       m.ID,
 				Value:     val,
-				ExpiresAt: uint64(time.Unix(0, m.Time).Add(time.Second * time.Duration(m.TTL)).Unix()),
+				ExpiresAt: uint64(m.Expires().Unix()),
 			})
 		}
 	}
@@ -180,9 +180,9 @@ func (s *SSD) lookup(q lookupQuery) (matches message.Frame) {
 		prefix := message.NewPrefix(q.Ssid, q.Until)
 
 		// Seek the prefix and check the key so we can quickly exit the iteration.
-		for it.Seek(prefix); it.Valid() && message.Key(it.Item().Key()).HasPrefix(q.Ssid, q.From) &&
+		for it.Seek(prefix); it.Valid() && message.ID(it.Item().Key()).HasPrefix(q.Ssid, q.From) &&
 			len(matches) < q.Limit; it.Next() {
-			if message.Key(it.Item().Key()).Match(q.Ssid, q.From, q.Until) {
+			if message.ID(it.Item().Key()).Match(q.Ssid, q.From, q.Until) {
 				if msg, err := loadMessage(it.Item()); err == nil {
 					matches = append(matches, msg)
 				}

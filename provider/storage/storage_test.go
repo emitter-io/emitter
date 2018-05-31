@@ -30,11 +30,10 @@ func (s survey) Survey(q string, b []byte) (message.Awaiter, error) {
 
 func testMessage(a, b, c uint32) *message.Message {
 	return &message.Message{
-		Time:    1354678,
-		Ssid:    []uint32{0, a, b, c},
+		ID:      message.NewDefaultID(message.Ssid{0, a, b, c}),
 		Channel: []byte("test/channel/"),
 		Payload: []byte(fmt.Sprintf("%v,%v,%v", a, b, c)),
-		TTL:     10,
+		TTL:     100,
 	}
 }
 
@@ -47,7 +46,7 @@ func TestNoop_Store(t *testing.T) {
 func TestNoop_Query(t *testing.T) {
 	s := new(Noop)
 	zero := time.Unix(0, 0)
-	r, err := s.Query(testMessage(1, 2, 3).Ssid, zero, zero, 10)
+	r, err := s.Query(testMessage(1, 2, 3).Ssid(), zero, zero, 10)
 	assert.NoError(t, err)
 	for range r {
 		t.Errorf("Should be empty")
