@@ -15,6 +15,7 @@
 package storage
 
 import (
+	"context"
 	enc "encoding/binary"
 	"io"
 	"os"
@@ -23,6 +24,7 @@ import (
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/protos"
 	"github.com/dgraph-io/badger/y"
+	"github.com/emitter-io/emitter/async"
 	"github.com/emitter-io/emitter/message"
 	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/kelindar/binary"
@@ -32,8 +34,9 @@ import (
 
 // SSD represents an SSD-optimized storage storage.
 type SSD struct {
-	cluster Surveyor   // The cluster surveyor.
-	db      *badger.DB // The underlying database to use for messages.
+	cluster Surveyor           // The cluster surveyor.
+	db      *badger.DB         // The underlying database to use for messages.
+	cancel  context.CancelFunc // The cancellation function.
 }
 
 // NewSSD creates a new SSD-optimized storage storage.
@@ -76,7 +79,9 @@ func (s *SSD) Configure(config map[string]interface{}) error {
 		return err
 	}
 
+	// Setup the database and start GC
 	s.db = db
+	s.cancel = async.Repeat(context.Background(), 30*time.Minute, s.GC)
 	return nil
 }
 
@@ -198,6 +203,10 @@ func (s *SSD) lookup(q lookupQuery) (matches message.Frame) {
 
 // Close is used to gracefully close the connection.
 func (s *SSD) Close() error {
+	if s.cancel != nil {
+		s.cancel()
+	}
+
 	return s.db.Close()
 }
 
@@ -216,11 +225,16 @@ func (s *SSD) Restore(reader io.Reader) error {
 	return s.db.Load(reader)
 }
 
+// GC runs the garbage collection on the storage
+func (s *SSD) GC() {
+	s.db.RunValueLogGC(0.50)
+}
+
 // Backup creates a snaphshot of the store.
 func (s *SSD) Backup(writer io.Writer) error {
 
 	// Run GC before backing up
-	s.db.RunValueLogGC(0.50)
+	s.GC()
 
 	// This is a copy of badger backup except it doesn't write any
 	// deleted or expired items in the snapshot.
