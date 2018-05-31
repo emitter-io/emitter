@@ -66,3 +66,32 @@ func BenchmarkEncodeWithSnappy(b *testing.B) {
 		m.Encode()
 	}
 }
+
+func TestFrameSort(t *testing.T) {
+	f := Frame{
+		Message{Time: 2},
+		Message{Time: 1},
+		Message{Time: 4},
+		Message{Time: 3},
+	}
+
+	f.Sort()
+	assert.Equal(t, int64(1), f[0].Time)
+	assert.Equal(t, int64(2), f[1].Time)
+	assert.Equal(t, int64(3), f[2].Time)
+	assert.Equal(t, int64(4), f[3].Time)
+}
+
+func TestFrameLimit(t *testing.T) {
+	f := Frame{
+		Message{Time: 2},
+		Message{Time: 4},
+		Message{Time: 1},
+		Message{Time: 3},
+	}
+
+	f.Limit(2)
+	assert.Equal(t, int64(2), f[0].Time)
+	assert.Equal(t, int64(4), f[1].Time)
+	assert.Len(t, f, 2)
+}

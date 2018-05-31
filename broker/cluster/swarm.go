@@ -22,8 +22,8 @@ import (
 
 	"github.com/emitter-io/address"
 	"github.com/emitter-io/emitter/async"
-	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
+	"github.com/emitter-io/emitter/message"
 	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/emitter-io/emitter/security"
 	"github.com/weaveworks/mesh"
@@ -50,7 +50,7 @@ type Swarm struct {
 var _ mesh.Gossiper = &Swarm{}
 
 // NewSwarm creates a new swarm messaging layer.
-func NewSwarm(cfg *config.ClusterConfig, closing chan bool) *Swarm {
+func NewSwarm(cfg *config.ClusterConfig) *Swarm {
 	swarm := &Swarm{
 		name:    getLocalPeerName(cfg),
 		actions: make(chan func()),
@@ -134,11 +134,11 @@ func (s *Swarm) ID() uint64 {
 }
 
 // Listen creates the listener and serves the cluster.
-func (s *Swarm) Listen() {
+func (s *Swarm) Listen(ctx context.Context) {
 
 	// Every few seconds, attempt to reinforce our cluster structure by
 	// initiating connections with all of our peers.
-	s.cancel = async.Repeat(context.Background(), 5*time.Second, s.update)
+	s.cancel = async.Repeat(ctx, 5*time.Second, s.update)
 
 	// Start the router
 	s.router.Start()

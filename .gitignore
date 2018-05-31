@@ -14,9 +14,9 @@
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 debug
-cluster.log
-coverage.html
-status.html
+*.log
+*.sst
+*.html
 build/*
 *.log
 *.bat
@@ -25,4 +25,4 @@ build/*
 creds.json
 *.crt
 *.key
-status-prd.html
+data

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/message"
 	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/emitter-io/emitter/security"
 )

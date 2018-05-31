@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/message"
 	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/emitter-io/emitter/security"
 	"github.com/kelindar/binary"
@@ -73,22 +73,28 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 	ssid := message.NewSsid(key.Contract(), channel)
 	c.Subscribe(ssid, channel.Channel)
 
+	// TODO: add from & until options
+	t0 := time.Unix(0, 0)
+	t1 := time.Unix(0, 0)
+
 	// In case of ttl, check the key provides the permission to store (soft permission)
 	if limit, ok := channel.Last(); ok && key.HasPermission(security.AllowLoad) {
-		msgs, err := c.service.storage.QueryLast(ssid, int(limit))
+		msgs, err := c.service.storage.Query(ssid, t0, t1, int(limit))
 		if err != nil {
 			logging.LogError("conn", "query last messages", err)
 			return ErrServerError
 		}
 
 		// Range over the messages in the channel and forward them
-		for msg := range msgs {
-			c.Send(&message.Message{
+		for _, m := range msgs {
+			msg := m // Copy message
+			c.Send(&msg)
+			/*c.Send(&message.Message{
 				// TODO: time?
 				Ssid:    ssid,
 				Channel: channel.Channel,
 				Payload: msg,
-			})
+			})*/
 		}
 	}
 
@@ -310,8 +316,8 @@ func (c *Conn) onKeyGen(payload []byte) (interface{}, bool) {
 
 // ------------------------------------------------------------------------------------
 
-// onPresenceQuery handles an incoming presence query.
-func (s *Service) onPresenceQuery(queryType string, payload []byte) ([]byte, bool) {
+// OnSurvey handles an incoming presence query.
+func (s *Service) OnSurvey(queryType string, payload []byte) ([]byte, bool) {
 	if queryType != "presence" {
 		return nil, false
 	}
@@ -348,7 +354,7 @@ func (s *Service) lookupPresence(ssid message.Ssid) []presenceInfo {
 func getClusterPresence(s *Service, ssid message.Ssid) []presenceInfo {
 	who := make([]presenceInfo, 0, 4)
 	if req, err := binary.Marshal(ssid); err == nil {
-		if awaiter, err := s.Query("presence", req); err == nil {
+		if awaiter, err := s.Survey("presence", req); err == nil {
 
 			// Wait for all presence updates to come back (or a deadline)
 			for _, resp := range awaiter.Gather(1000 * time.Millisecond) {

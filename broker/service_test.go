@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	conf "github.com/emitter-io/config"
-	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
+	"github.com/emitter-io/emitter/message"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/provider/contract"
 	secmock "github.com/emitter-io/emitter/provider/contract/mock"
@@ -141,11 +141,11 @@ func TestPubsub(t *testing.T) {
 	cfg.TLS = &conf.TLSConfig{}
 
 	// Start the broker asynchronously
-	broker, svcErr := NewService(cfg)
+	broker, svcErr := NewService(context.Background(), cfg)
 	broker.contracts = contract.NewSingleContractProvider(broker.License, usage.NewNoop())
 	assert.NoError(t, svcErr)
-	defer close(broker.Closing)
-	go broker.Listen(context.Background())
+	defer broker.Close()
+	go broker.Listen()
 
 	// Create a client
 	cli, dialErr := net.Dial("tcp", "127.0.0.1:9998")

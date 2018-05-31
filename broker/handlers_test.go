@@ -3,7 +3,7 @@ package broker
 import (
 	"testing"
 
-	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/message"
 	netmock "github.com/emitter-io/emitter/network/mock"
 	"github.com/emitter-io/emitter/provider/contract"
 	secmock "github.com/emitter-io/emitter/provider/contract/mock"
@@ -521,7 +521,7 @@ func TestHandlers_onEmitterRequest(t *testing.T) {
 	}
 }
 
-func TestHandlers_onPresenceQuery(t *testing.T) {
+func TestHandlers_OnSurvey(t *testing.T) {
 	encode := func(ssid ...uint32) []byte { b, _ := binary.Marshal(ssid); return b }
 	tests := []struct {
 		queryType string
@@ -551,7 +551,7 @@ func TestHandlers_onPresenceQuery(t *testing.T) {
 				subscriptions: message.NewTrie(),
 			}
 
-			_, ok := s.onPresenceQuery(tc.queryType, tc.payload)
+			_, ok := s.OnSurvey(tc.queryType, tc.payload)
 			assert.Equal(t, tc.success, ok, tc.queryType)
 		})
 	}

@@ -1,5 +1,5 @@
 /**********************************************************************************
-* Copyright (c) 2009-2017 Misakai Ltd.
+* Copyright (c) 2009-2018 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
 * terms of the GNU Affero General Public License as published by the  Free Software
 * Foundation, either version 3 of the License, or(at your option) any later version.
@@ -15,43 +15,31 @@
 package storage
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/message"
 	"github.com/karlseguin/ccache"
 	"github.com/kelindar/binary"
 )
-
-var (
-	errNotFound = errors.New("No messages were found")
-)
-
-// The lookup query to send out to the cluster.
-type lookupQuery struct {
-	Ssid  []uint32 // The ssid to match.
-	Limit int      // The maximum number of elements to return.
-}
 
 // InMemory implements Storage contract.
 var _ Storage = new(InMemory)
 
 // InMemory represents a storage which does nothing.
 type InMemory struct {
-	cur   *sync.Map                                     // The cursor map which stores the last written offset.
-	mem   *ccache.Cache                                 // The LRU cache with TTL.
-	Query func(string, []byte) (message.Awaiter, error) // The cluster request function.
+	cluster Surveyor      // The cluster surveyor.
+	cur     *sync.Map     // The cursor map which stores the last written offset.
+	mem     *ccache.Cache // The LRU cache with TTL.
 }
 
 // NewInMemory creates a new in-memory storage.
-func NewInMemory(q func(string, []byte) (message.Awaiter, error)) *InMemory {
+func NewInMemory(cluster Surveyor) *InMemory {
 	return &InMemory{
-		Query: q,
+		cluster: cluster,
 	}
 }
 
@@ -98,18 +86,18 @@ func (s *InMemory) Store(m *message.Message) error {
 	return nil
 }
 
-// QueryLast performs a query and attempts to fetch last n messages where
-// n is specified by limit argument. It returns a channel which will be
-// ranged over to retrieve messages asynchronously.
-func (s *InMemory) QueryLast(ssid []uint32, limit int) (<-chan []byte, error) {
+// Query performs a query and attempts to fetch last n messages where
+// n is specified by limit argument. From and until times can also be specified
+// for time-series retrieval.
+func (s *InMemory) Query(ssid message.Ssid, from, until time.Time, limit int) (message.Frame, error) {
 
 	// Construct a query and lookup locally first
-	query := lookupQuery{Ssid: ssid, Limit: limit}
+	query := newLookupQuery(ssid, from, until, limit)
 	match := s.lookup(query)
 
-	// Issue the presence query to the cluster
-	if req, err := binary.Marshal(query); err == nil && s.Query != nil {
-		if awaiter, err := s.Query("memstore", req); err == nil {
+	// Issue the message survey to the cluster
+	if req, err := binary.Marshal(query); err == nil && s.cluster != nil {
+		if awaiter, err := s.cluster.Survey("memstore", req); err == nil {
 
 			// Wait for all presence updates to come back (or a deadline)
 			for _, resp := range awaiter.Gather(2000 * time.Millisecond) {
@@ -120,30 +108,14 @@ func (s *InMemory) QueryLast(ssid []uint32, limit int) (<-chan []byte, error) {
 		}
 	}
 
-	// Sort the matches by time
-	sort.Slice(match, func(i, j int) bool { return match[i].Time < match[j].Time })
-
-	// Set the offset
-	i := len(match) - limit
-	if i < 0 {
-		i = 0
-	}
-
-	// Project to return only payloads
-	ch := make(chan []byte, limit)
-	match = match[i:]
-	for _, msg := range match {
-		ch <- msg.Payload
-	}
-
-	// Close and return the channel
-	close(ch)
-	return ch, nil
+	match.Sort()
+	match.Limit(limit)
+	return match, nil
 }
 
-// OnRequest handles an incoming cluster lookup request.
-func (s *InMemory) OnRequest(queryType string, payload []byte) ([]byte, bool) {
-	if queryType != "memstore" {
+// OnSurvey handles an incoming cluster lookup request.
+func (s *InMemory) OnSurvey(surveyType string, payload []byte) ([]byte, bool) {
+	if surveyType != "memstore" {
 		return nil, false
 	}
 
@@ -158,7 +130,7 @@ func (s *InMemory) OnRequest(queryType string, payload []byte) ([]byte, bool) {
 		return nil, false
 	}
 
-	//logging.LogTarget("memstore", queryType+" query received", query)
+	//logging.LogTarget("memstore", surveyType+" survey received", query)
 
 	// Send back the response
 	f := s.lookup(query)

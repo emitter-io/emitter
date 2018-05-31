@@ -153,6 +153,12 @@ func (m *Metric) Variance() float64 {
 	return m.sample.Variance()
 }
 
+// Rate returns a operation per second rate since the creation of the metric.
+func (m *Metric) Rate() float64 {
+	t0, t1 := m.Window()
+	return float64(m.Count()) / float64(t1.Sub(t0).Seconds())
+}
+
 // Update samples a new value into the metric.
 func (m *Metric) Update(v int32) {
 	count := atomic.AddInt32(&m.count, 1)

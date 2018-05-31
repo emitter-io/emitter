@@ -4,8 +4,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
+	"github.com/emitter-io/emitter/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/weaveworks/mesh"
 )
@@ -42,7 +42,7 @@ func TestNewSwarm_Scenario(t *testing.T) {
 	}
 
 	// Create a new swarm and check if it was constructed well
-	s := NewSwarm(&cfg, make(chan bool))
+	s := NewSwarm(&cfg)
 	assert.Equal(t, 0, s.NumPeers())
 	assert.Equal(t, uint64(1), s.ID())
 	assert.NotNil(t, s.Gossip())
@@ -88,7 +88,7 @@ func TestNotify(t *testing.T) {
 	}
 
 	// Create a new swarm and check if it was constructed well
-	s := NewSwarm(&cfg, make(chan bool))
+	s := NewSwarm(&cfg)
 	defer s.Close()
 
 	// TODO: Test actual correctness as well
@@ -118,7 +118,7 @@ func Test_merge(t *testing.T) {
 	var subscribed bool
 
 	// Create a new swarm and check if it was constructed well
-	s := NewSwarm(&cfg, make(chan bool))
+	s := NewSwarm(&cfg)
 	s.OnSubscribe = func(message.Ssid, message.Subscriber) bool {
 		subscribed = true
 		return true
