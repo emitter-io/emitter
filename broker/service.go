@@ -20,20 +20,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"os/signal"
+	"reflect"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/emitter-io/address"
 	"github.com/emitter-io/emitter/broker/cluster"
-	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
+	"github.com/emitter-io/emitter/message"
 	"github.com/emitter-io/emitter/network/listener"
 	"github.com/emitter-io/emitter/network/websocket"
 	"github.com/emitter-io/emitter/provider/contract"
@@ -48,7 +50,8 @@ import (
 
 // Service represents the main structure.
 type Service struct {
-	Closing       chan bool            // The channel for closing signal.
+	context       context.Context      // The context for the service.
+	cancel        context.CancelFunc   // The cancellation function.
 	Cipher        *security.Cipher     // The cipher to use for decoding and encoding keys.
 	License       *security.License    // The licence for this emitter server.
 	Config        *config.Config       // The configuration for the service.
@@ -67,9 +70,11 @@ type Service struct {
 }
 
 // NewService creates a new service.
-func NewService(cfg *config.Config) (s *Service, err error) {
+func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	s = &Service{
-		Closing:       make(chan bool),
+		context:       ctx,
+		cancel:        cancel,
 		Config:        cfg,
 		subscriptions: message.NewTrie(),
 		http:          new(http.Server),
@@ -108,13 +113,13 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 
 	// Create a new cluster if we have this configured
 	if cfg.Cluster != nil {
-		s.cluster = cluster.NewSwarm(cfg.Cluster, s.Closing)
+		s.cluster = cluster.NewSwarm(cfg.Cluster)
 		s.cluster.OnMessage = s.onPeerMessage
 		s.cluster.OnSubscribe = s.onSubscribe
 		s.cluster.OnUnsubscribe = s.onUnsubscribe
 
 		// Attach query handlers
-		s.querier.HandleFunc(s.onPresenceQuery)
+		s.querier.HandleFunc(s)
 	}
 
 	// Load the logging provider
@@ -122,9 +127,10 @@ func NewService(cfg *config.Config) (s *Service, err error) {
 	logging.LogTarget("service", "configured logging provider", logging.Logger.Name())
 
 	// Load the storage provider
-	memstore := storage.NewInMemory(s.Query)
-	s.querier.HandleFunc(memstore.OnRequest)
-	s.storage = config.LoadProvider(cfg.Storage, storage.NewNoop(), storage.NewHTTP(), memstore).(storage.Storage)
+	ssdstore := storage.NewSSD()
+	memstore := storage.NewInMemory(s)
+	s.querier.HandleFunc(ssdstore, memstore)
+	s.storage = config.LoadProvider(cfg.Storage, storage.NewNoop(), memstore, ssdstore).(storage.Storage)
 	logging.LogTarget("service", "configured message storage", s.storage.Name())
 
 	// Load the metering provider
@@ -166,14 +172,14 @@ func (s *Service) NumPeers() int {
 }
 
 // Listen starts the service.
-func (s *Service) Listen(ctx context.Context) (err error) {
+func (s *Service) Listen() (err error) {
 	defer s.Close()
 	s.hookSignals()
 	s.notifyPresenceChange()
 
 	// Create the cluster if required
 	if s.cluster != nil {
-		if s.cluster.Listen(); err != nil {
+		if s.cluster.Listen(s.context); err != nil {
 			panic(err)
 		}
 
@@ -234,7 +240,7 @@ func (s *Service) notifyPresenceChange() {
 		channel := []byte("emitter/presence/")
 		for {
 			select {
-			case <-s.Closing:
+			case <-s.context.Done():
 				return
 			case notif := <-s.presence:
 				if encoded, ok := notif.Encode(); ok {
@@ -417,8 +423,9 @@ func (s *Service) onPeerMessage(m *message.Message) {
 	}
 }
 
-// Query sends out a query to all the peers.
-func (s *Service) Query(query string, payload []byte) (message.Awaiter, error) {
+// Survey is a mechanism where a message from one node is broadcasted to the
+// entire cluster and each node in the group responds to the message.
+func (s *Service) Survey(query string, payload []byte) (message.Awaiter, error) {
 	if s.querier != nil {
 		return s.querier.Query(query, payload)
 	}
@@ -478,12 +485,21 @@ func (s *Service) hookSignals() {
 
 // Close closes gracefully the service.,
 func (s *Service) Close() {
-
-	// Gracefully leave the cluster and shutdown the listener.
-	if s.cluster != nil {
-		_ = s.cluster.Close()
+	if s.cancel != nil {
+		s.cancel()
 	}
 
-	// Notify we're closed
-	close(s.Closing)
+	// Gracefully dispose all of our resources
+	dispose(s.cluster)
+	dispose(s.storage)
+
+}
+
+func dispose(resource io.Closer) {
+	closable := !(resource == nil || (reflect.ValueOf(resource).Kind() == reflect.Ptr && reflect.ValueOf(resource).IsNil()))
+	if closable {
+		if err := resource.Close(); err != nil {
+			logging.LogError("service", "error during close", err)
+		}
+	}
 }

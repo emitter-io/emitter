@@ -15,6 +15,8 @@
 package message
 
 import (
+	"sort"
+
 	"github.com/golang/snappy"
 	"github.com/kelindar/binary"
 )
@@ -22,6 +24,18 @@ import (
 // Frame represents a message frame which is sent through the wire to the
 // remote server and contains a set of messages.
 type Frame []Message
+
+// Sort sorts the frame
+func (f Frame) Sort() {
+	sort.Slice(f, func(i, j int) bool { return f[i].Time < f[j].Time })
+}
+
+// Limit limits the frame to a specific number of elements
+func (f *Frame) Limit(n int) {
+	if len(*f) > n {
+		*f = (*f)[:n]
+	}
+}
 
 // Message represents a message which has to be forwarded or stored.
 type Message struct {

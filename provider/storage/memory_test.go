@@ -1,3 +1,17 @@
+/**********************************************************************************
+* Copyright (c) 2009-2018 Misakai Ltd.
+* This program is free software: you can redistribute it and/or modify it under the
+* terms of the GNU Affero General Public License as published by the  Free Software
+* Foundation, either version 3 of the License, or(at your option) any later version.
+*
+* This program is distributed  in the hope that it  will be useful, but WITHOUT ANY
+* WARRANTY;  without even  the implied warranty of MERCHANTABILITY or FITNESS FOR A
+* PARTICULAR PURPOSE.  See the GNU Affero General Public License  for  more details.
+*
+* You should have  received a copy  of the  GNU Affero General Public License along
+* with this program. If not, see<http://www.gnu.org/licenses/>.
+************************************************************************************/
+
 package storage
 
 import (
@@ -5,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/message"
 	"github.com/kelindar/binary"
 	"github.com/stretchr/testify/assert"
 )
@@ -70,6 +84,7 @@ func TestInMemory_Store(t *testing.T) {
 func TestInMemory_QueryLast(t *testing.T) {
 	s := newTestMemStore()
 	const wildcard = uint32(1815237614)
+	zero := time.Unix(0, 0)
 	tests := []struct {
 		query    []uint32
 		limit    int
@@ -89,14 +104,14 @@ func TestInMemory_QueryLast(t *testing.T) {
 	for _, tc := range tests {
 
 		if tc.gathered == nil {
-			s.Query = nil
+			s.cluster = nil
 		} else {
-			s.Query = func(string, []byte) (message.Awaiter, error) {
+			s.cluster = survey(func(string, []byte) (message.Awaiter, error) {
 				return &mockAwaiter{f: func(_ time.Duration) [][]byte { return [][]byte{tc.gathered} }}, nil
-			}
+			})
 		}
 
-		out, err := s.QueryLast(tc.query, tc.limit)
+		out, err := s.Query(tc.query, zero, zero, tc.limit)
 		assert.NoError(t, err)
 
 		count := 0
@@ -130,7 +145,7 @@ func TestInMemory_lookup(t *testing.T) {
 	}
 }
 
-func TestInMemory_OnRequest(t *testing.T) {
+func TestInMemory_OnSurvey(t *testing.T) {
 	s := newTestMemStore()
 	tests := []struct {
 		name        string
@@ -156,7 +171,7 @@ func TestInMemory_OnRequest(t *testing.T) {
 
 	for _, tc := range tests {
 		q, _ := binary.Marshal(tc.query)
-		resp, ok := s.OnRequest(tc.name, q)
+		resp, ok := s.OnSurvey(tc.name, q)
 		assert.Equal(t, tc.expectOk, ok)
 		if tc.expectOk && ok {
 			msgs, err := message.DecodeFrame(resp)
@@ -166,7 +181,7 @@ func TestInMemory_OnRequest(t *testing.T) {
 	}
 
 	// Special, wrong payload case
-	_, ok := s.OnRequest("memstore", []byte{})
+	_, ok := s.OnSurvey("memstore", []byte{})
 	assert.Equal(t, false, ok)
 
 }

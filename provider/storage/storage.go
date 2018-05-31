@@ -1,5 +1,5 @@
 /**********************************************************************************
-* Copyright (c) 2009-2017 Misakai Ltd.
+* Copyright (c) 2009-2018 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
 * terms of the GNU Affero General Public License as published by the  Free Software
 * Foundation, either version 3 of the License, or(at your option) any later version.
@@ -15,10 +15,17 @@
 package storage
 
 import (
+	"errors"
 	"io"
+	"math"
+	"time"
 
 	"github.com/emitter-io/config"
-	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/message"
+)
+
+var (
+	errNotFound = errors.New("no messages were found")
 )
 
 // Storage represents a message storage contract that message storage provides
@@ -33,10 +40,48 @@ type Storage interface {
 	// it returns an error if some error was encountered during storage.
 	Store(m *message.Message) error
 
-	// QueryLast performs a query and attempts to fetch last n messages where
-	// n is specified by limit argument. It returns a channel which will be
-	// ranged over to retrieve messages asynchronously.
-	QueryLast(ssid []uint32, limit int) (<-chan []byte, error)
+	// Query performs a query and attempts to fetch last n messages where
+	// n is specified by limit argument. From and until times can also be specified
+	// for time-series retrieval.
+	Query(ssid message.Ssid, from, until time.Time, limit int) (message.Frame, error)
+}
+
+// Surveyor provides a mechanism where a message from one node is broadcasted to the
+// entire group, but where it differs is that each node in the group responds to the message.
+type Surveyor interface {
+	Survey(string, []byte) (message.Awaiter, error)
+}
+
+// ------------------------------------------------------------------------------------
+
+// window constructs a time window
+func window(from, until time.Time) (int64, int64) {
+	t0 := from.UnixNano()
+	t1 := until.UnixNano()
+	if t1 == 0 {
+		t1 = math.MaxInt64
+	}
+
+	return t0, t1
+}
+
+// The lookup query to send out to the cluster.
+type lookupQuery struct {
+	Ssid  message.Ssid // The ssid to match.
+	From  int64        // The beginning of the time window.
+	Until int64        // The end of the time window.
+	Limit int          // The maximum number of elements to return.
+}
+
+// newLookupQuery creates a new lookup query
+func newLookupQuery(ssid message.Ssid, from, until time.Time, limit int) lookupQuery {
+	t0, t1 := window(from, until)
+	return lookupQuery{
+		Ssid:  ssid,
+		From:  t0,
+		Until: t1,
+		Limit: limit,
+	}
 }
 
 // ------------------------------------------------------------------------------------
@@ -72,13 +117,11 @@ func (s *Noop) Store(m *message.Message) error {
 	return nil
 }
 
-// QueryLast performs a query and attempts to fetch last n messages where
-// n is specified by limit argument. It returns a channel which will be
-// ranged over to retrieve messages asynchronously.
-func (s *Noop) QueryLast(ssid []uint32, limit int) (<-chan []byte, error) {
-	ch := make(chan []byte)
-	close(ch) // Close the channel so we can return a closed one.
-	return ch, nil
+// Query performs a query and attempts to fetch last n messages where
+// n is specified by limit argument. From and until times can also be specified
+// for time-series retrieval.
+func (s *Noop) Query(ssid message.Ssid, from, until time.Time, limit int) (message.Frame, error) {
+	return nil, nil
 }
 
 // Close gracefully terminates the storage and ensures that every related

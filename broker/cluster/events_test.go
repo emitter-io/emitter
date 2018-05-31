@@ -17,8 +17,8 @@ package cluster
 import (
 	"testing"
 
-	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/collection"
+	"github.com/emitter-io/emitter/message"
 	"github.com/stretchr/testify/assert"
 )
 

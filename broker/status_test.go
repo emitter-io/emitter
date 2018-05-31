@@ -3,8 +3,8 @@ package broker
 import (
 	"testing"
 
-	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/config"
+	"github.com/emitter-io/emitter/message"
 	"github.com/emitter-io/emitter/security"
 	"github.com/emitter-io/stats"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +15,6 @@ func Test_sendStats(t *testing.T) {
 
 	assert.NotPanics(t, func() {
 		s := &Service{
-			Closing:       make(chan bool),
 			subscriptions: message.NewTrie(),
 			measurer:      stats.New(),
 			License:       license,

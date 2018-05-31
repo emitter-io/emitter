@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/address"
-	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/message"
 	"github.com/emitter-io/emitter/network/mqtt"
 	"github.com/emitter-io/emitter/provider/contract"
 	"github.com/emitter-io/emitter/provider/logging"
@@ -255,7 +255,7 @@ func (c *Conn) Unsubscribe(ssid message.Ssid, channel []byte) {
 // Close terminates the connection.
 func (c *Conn) Close() error {
 	if r := recover(); r != nil {
-		logging.LogAction("closing", fmt.Sprintf("pancic recovered: %s \n %s", r, debug.Stack()))
+		logging.LogAction("closing", fmt.Sprintf("panic recovered: %s \n %s", r, debug.Stack()))
 	}
 
 	// Unsubscribe from everything, no need to lock since each Unsubscribe is

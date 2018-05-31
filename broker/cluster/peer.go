@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/async"
-	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/message"
 	"github.com/emitter-io/emitter/provider/logging"
 	"github.com/weaveworks/mesh"
 )

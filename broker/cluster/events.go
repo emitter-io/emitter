@@ -18,8 +18,8 @@ import (
 	"bytes"
 	bin "encoding/binary"
 
-	"github.com/emitter-io/emitter/broker/message"
 	"github.com/emitter-io/emitter/collection"
+	"github.com/emitter-io/emitter/message"
 	"github.com/emitter-io/emitter/security"
 	"github.com/kelindar/binary"
 	"github.com/weaveworks/mesh"

@@ -23,7 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/message"
 	"github.com/emitter-io/emitter/security"
 	"github.com/weaveworks/mesh"
 )
@@ -33,16 +33,18 @@ const (
 	idQuery  = uint32(3939663052)
 )
 
-// QueryHandler represents a query handler.
-type QueryHandler func(queryType string, request []byte) (response []byte, ok bool)
+// Surveyee handles the surveys.
+type Surveyee interface {
+	OnSurvey(queryType string, request []byte) (response []byte, ok bool)
+}
 
 // QueryManager represents a request-response manager.
 type QueryManager struct {
-	service  *Service       // The service to use.
-	luid     security.ID    // The locally unique id of the manager.
-	next     uint32         // The next available query identifier.
-	awaiters *sync.Map      // The map of the awaiters.
-	handlers []QueryHandler // The handlers array.
+	service  *Service    // The service to use.
+	luid     security.ID // The locally unique id of the manager.
+	next     uint32      // The next available query identifier.
+	awaiters *sync.Map   // The map of the awaiters.
+	handlers []Surveyee  // The handlers array.
 }
 
 // newQueryManager creates a new request-response manager.
@@ -52,7 +54,7 @@ func newQueryManager(s *Service) *QueryManager {
 		luid:     security.NewID(),
 		next:     0,
 		awaiters: new(sync.Map),
-		handlers: make([]QueryHandler, 0),
+		handlers: make([]Surveyee, 0),
 	}
 }
 
@@ -65,8 +67,10 @@ func (c *QueryManager) Start() {
 }
 
 // HandleFunc adds a handler for a query.
-func (c *QueryManager) HandleFunc(handler QueryHandler) {
-	c.handlers = append(c.handlers, handler)
+func (c *QueryManager) HandleFunc(surveyees ...Surveyee) {
+	for _, h := range surveyees {
+		c.handlers = append(c.handlers, h)
+	}
 }
 
 // ID returns the unique identifier of the subsriber.
@@ -124,8 +128,8 @@ func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []by
 	peer := c.service.cluster.FindPeer(replyAddr)
 
 	// Go through all the handlers and execute the first matching one
-	for _, handle := range c.handlers {
-		if response, ok := handle(query, payload); ok {
+	for _, surveyee := range c.handlers {
+		if response, ok := surveyee.OnSurvey(query, payload); ok {
 			return peer.Send(&message.Message{
 				Ssid:    ssid,
 				Channel: []byte("response"),

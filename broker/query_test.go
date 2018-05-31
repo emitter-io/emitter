@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/broker/cluster"
-	"github.com/emitter-io/emitter/broker/message"
+	"github.com/emitter-io/emitter/message"
 	"github.com/stretchr/testify/assert"
 )
 

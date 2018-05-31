@@ -50,12 +50,12 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Setup the new service
-	svc, err := broker.NewService(cfg)
+	// Start new service
+	svc, err := broker.NewService(context.Background(), cfg)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	// Listen and serve
-	svc.Listen(context.Background())
+	svc.Listen()
 }
