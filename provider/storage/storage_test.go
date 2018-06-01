@@ -30,7 +30,7 @@ func (s survey) Survey(q string, b []byte) (message.Awaiter, error) {
 
 func testMessage(a, b, c uint32) *message.Message {
 	return &message.Message{
-		ID:      message.NewDefaultID(message.Ssid{0, a, b, c}),
+		ID:      message.NewID(message.Ssid{0, a, b, c}),
 		Channel: []byte("test/channel/"),
 		Payload: []byte(fmt.Sprintf("%v,%v,%v", a, b, c)),
 		TTL:     100,

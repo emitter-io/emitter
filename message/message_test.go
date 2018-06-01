@@ -23,7 +23,7 @@ import (
 
 func newTestMessage(ssid Ssid, channel, payload string) Message {
 	return Message{
-		ID:      NewID(ssid, 0),
+		ID:      NewID(ssid),
 		Channel: []byte(channel),
 		Payload: []byte(payload),
 	}
@@ -85,21 +85,6 @@ func BenchmarkEncodeWithSnappy(b *testing.B) {
 	}
 }
 
-func TestFrameSort(t *testing.T) {
-	f := Frame{
-		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
-		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
-		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
-		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
-	}
-
-	f.Sort()
-	/*assert.Equal(t, int64(1), f[0].Time)
-	assert.Equal(t, int64(2), f[1].Time)
-	assert.Equal(t, int64(3), f[2].Time)
-	assert.Equal(t, int64(4), f[3].Time)*/
-}
-
 func TestFrameLimit(t *testing.T) {
 	f := Frame{
 		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
@@ -108,6 +93,7 @@ func TestFrameLimit(t *testing.T) {
 		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
 	}
 
+	f.Sort()
 	f.Limit(2)
 	assert.Len(t, f, 2)
 }

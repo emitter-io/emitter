@@ -245,7 +245,7 @@ func (s *Service) notifyPresenceChange() {
 			case notif := <-s.presence:
 				if encoded, ok := notif.Encode(); ok {
 					s.publish(&message.Message{
-						ID:      message.NewDefaultID(notif.Ssid),
+						ID:      message.NewID(notif.Ssid),
 						Channel: channel,
 						Payload: encoded,
 					})
@@ -454,7 +454,7 @@ func (s *Service) selfPublish(channelName string, payload []byte) {
 	if channel.ChannelType == security.ChannelStatic {
 		ssid := message.NewSsid(s.License.Contract, channel)
 		s.publish(&message.Message{
-			ID:      message.NewDefaultID(ssid),
+			ID:      message.NewID(ssid),
 			Channel: channel.Channel,
 			Payload: payload,
 		})

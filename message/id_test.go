@@ -21,36 +21,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestID_NewDefaultID(t *testing.T) {
-	next = math.MaxUint32
-	SetDefaultUnique(123)
-	id := NewDefaultID(Ssid{1, 2, 3})
-
-	assert.Zero(t, next)
-	assert.True(t, id.Time() > 1527784701635600500)
-}
-
 func TestID_NewID(t *testing.T) {
 	next = math.MaxUint32
-	id := NewID(Ssid{1, 2, 3}, 999)
+	id := NewID(Ssid{1, 2, 3})
 
 	assert.Zero(t, next)
-	assert.True(t, id.Time() > 1527784701635600500)
+	assert.True(t, id.Time() > 1527819700)
 
-	id.SetTime(1)
-	assert.Equal(t, int64(1), id.Time())
+	id.SetTime(offset + 1)
+	assert.Equal(t, int64(offset+1), id.Time())
 }
 
 func TestID_NewPrefix(t *testing.T) {
-	id1 := NewID(Ssid{1, 2, 3}, 999)
+	id1 := NewID(Ssid{1, 2, 3})
 	id2 := NewPrefix(Ssid{1, 2, 3}, 123)
 
-	assert.Equal(t, id1[:8], id2[:8])
+	assert.Equal(t, id1[:4], id2[:4])
 }
 
 func TestID_HasPrefix(t *testing.T) {
 	next = 0
-	id := NewID(Ssid{1, 2, 3}, 999)
+	id := NewID(Ssid{1, 2, 3})
 
 	assert.True(t, id.HasPrefix(Ssid{1, 2}, 0))
 	assert.False(t, id.HasPrefix(Ssid{1, 2}, 2527784701635600500)) // After Sunday, February 6, 2050 6:25:01.636 PM this test will fail :-)
@@ -58,7 +49,7 @@ func TestID_HasPrefix(t *testing.T) {
 }
 
 func TestID_Match(t *testing.T) {
-	id := NewID(Ssid{1, 2, 3, 4}, 999)
+	id := NewID(Ssid{1, 2, 3, 4})
 
 	assert.NotEmpty(t, id)
 	assert.True(t, id.Match(Ssid{1, 2, 3, 4}, 0, math.MaxInt64))
@@ -69,11 +60,12 @@ func TestID_Match(t *testing.T) {
 	assert.False(t, id.Match(Ssid{1, 5}, 0, math.MaxInt64))
 	assert.True(t, id.Match(Ssid{1, 2}, 0, 2527784701635600500))
 	assert.False(t, id.Match(Ssid{1, 2}, 2527784701635600500, math.MaxInt64))
+	assert.False(t, id.Match(Ssid{2, 2, 3, 4}, 0, math.MaxInt64))
 }
 
 func TestID_Ssid(t *testing.T) {
 	in := Ssid{1, 2, 3, 4, 5, 6}
-	id := NewID(in, 999)
+	id := NewID(in)
 
 	assert.Equal(t, in[0], id.Contract())
 	assert.Equal(t, in, id.Ssid())
@@ -85,12 +77,12 @@ func BenchmarkID_New(b *testing.B) {
 
 	ssid := Ssid{1, 2}
 	for n := 0; n < b.N; n++ {
-		NewID(ssid, 999)
+		NewID(ssid)
 	}
 }
 
 func BenchmarkID_Match(b *testing.B) {
-	id := NewID(Ssid{1, 2, 3, 4}, 999)
+	id := NewID(Ssid{1, 2, 3, 4})
 	ssid := Ssid{1, 2, 3, 4}
 
 	b.ReportAllocs()

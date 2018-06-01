@@ -132,7 +132,7 @@ func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []by
 	for _, surveyee := range c.handlers {
 		if response, ok := surveyee.OnSurvey(query, payload); ok {
 			return peer.Send(&message.Message{
-				ID:      message.NewDefaultID(ssid),
+				ID:      message.NewID(ssid),
 				Channel: []byte("response"),
 				Payload: response,
 			})
@@ -162,7 +162,7 @@ func (c *QueryManager) Query(query string, payload []byte) (message.Awaiter, err
 
 	// Publish the query as a message
 	c.service.publish(&message.Message{
-		ID:      message.NewDefaultID(message.Ssid{idSystem, idQuery, awaiter.id}),
+		ID:      message.NewID(message.Ssid{idSystem, idQuery, awaiter.id}),
 		Channel: []byte(channel),
 		Payload: payload,
 	})
