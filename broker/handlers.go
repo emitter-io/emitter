@@ -89,12 +89,6 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 		for _, m := range msgs {
 			msg := m // Copy message
 			c.Send(&msg)
-			/*c.Send(&message.Message{
-				// TODO: time?
-				Ssid:    ssid,
-				Channel: channel.Channel,
-				Payload: msg,
-			})*/
 		}
 	}
 
@@ -198,11 +192,11 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	}
 
 	// Create a new message
-	msg := &message.Message{
-		ID:      message.NewID(message.NewSsid(key.Contract(), channel)),
-		Channel: channel.Channel,
-		Payload: payload,
-	}
+	msg := message.New(
+		message.NewSsid(key.Contract(), channel),
+		channel.Channel,
+		payload,
+	)
 
 	// In case of ttl, check the key provides the permission to store (soft permission)
 	if ttl, ok := channel.TTL(); ok && key.HasPermission(security.AllowStore) {
