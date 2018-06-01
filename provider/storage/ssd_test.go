@@ -30,10 +30,10 @@ import (
 )
 
 func getNTestMessages(count int) (frame message.Frame) {
-	time := time.Now().UnixNano()
+	//time := time.Now().Unix()
 	for i := 0; i < count; i++ {
-		id := message.NewDefaultID(message.Ssid{0, uint32(i / 2), 2, uint32(i)})
-		id.SetTime(time + int64(i))
+		id := message.NewID(message.Ssid{0, uint32(i / 2), 2, uint32(i)})
+		//id.SetTime(time + int64(i))
 		frame = append(frame, message.Message{
 			ID:      id,
 			Channel: []byte("test/channel/"),
@@ -43,6 +43,7 @@ func getNTestMessages(count int) (frame message.Frame) {
 	}
 	return
 }
+
 
 // Opens an NewSSD and runs a a test on it.
 func runSSDTest(test func(store *SSD)) {
@@ -213,18 +214,18 @@ func benchmarkQueryParallel(b *testing.B, store *SSD, last int, proceses int) {
 		}()
 	}
 	wg.Wait()
-	fmt.Printf("last=%v  \tquery/s=%.0f\tmsg/s=%.0f \n", last, m.Rate(), m.Rate()*float64(last))
+	fmt.Printf("last=%v  \tquery/s=%.0f \n", last, m.Rate())
 }
 
 func benchmarkQuerySingle(b *testing.B, store *SSD, last int) {
 	m := stats.NewMetric("elapsed")
 	benchmarkQuery(b, store, last, m)
-	fmt.Printf("last=%v  \tquery/s=%.0f\tmsg/s=%.0f \n", last, m.Rate(), m.Rate()*float64(last))
+	fmt.Printf("last=%v  \tquery/s=%.0f \n", last, m.Rate())
 }
 
 func benchmarkQuery(b *testing.B, store *SSD, last int, m *stats.Metric) {
 	t0 := time.Unix(0, 0)
-	t1 := time.Unix(0, time.Now().UnixNano())
+	t1 := time.Unix(time.Now().Unix(), 0)
 
 	ssid := []uint32{0, 3, 2, 6}
 	ctx, cancel := context.WithCancel(context.Background())

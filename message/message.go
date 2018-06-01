@@ -24,7 +24,7 @@ import (
 
 // Message represents a message which has to be forwarded or stored.
 type Message struct {
-	ID      ID     `json:id,omitempty`     // The ID of the message
+	ID      ID     `json:"id,omitempty"`   // The ID of the message
 	Channel []byte `json:"chan,omitempty"` // The channel of the message
 	Payload []byte `json:"data,omitempty"` // The payload of the message
 	TTL     uint32 `json:"ttl,omitempty"`  // The time-to-live of the message
@@ -52,7 +52,7 @@ func (m *Message) Contract() uint32 {
 
 // Expires calculates the expiration time.
 func (m *Message) Expires() time.Time {
-	return time.Unix(0, m.Time()).Add(time.Second * time.Duration(m.TTL))
+	return time.Unix(m.Time(), 0).Add(time.Second * time.Duration(m.TTL))
 }
 
 // ------------------------------------------------------------------------------------
@@ -88,11 +88,6 @@ func (f *Frame) Encode() (out []byte) {
 
 	return snappy.Encode(out, enc)
 }
-
-// Append appends the message to a frame.
-/*func (f *Frame) Append(time int64, ssid Ssid, channel, payload []byte) {
-	*f = append(*f, Message{Time: time, Ssid: ssid, Channel: channel, Payload: payload})
-}*/
 
 // DecodeFrame decodes the message frame from the decoder.
 func DecodeFrame(buf []byte) (out Frame, err error) {

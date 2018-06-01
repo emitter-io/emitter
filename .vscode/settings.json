@@ -14,14 +14,5 @@
     "go.formatTool": "gofmt",
     "go.formatFlags": [
         "-s"
-    ],
-    "go.coverOnSave": true,
-    "go.coverageOptions":"showUncoveredCodeOnly",
-
-      
-    "TodoParser":
-    {
-        "folderExclude": ["vendor"]
-    }
-
+    ]
 }

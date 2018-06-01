@@ -199,7 +199,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 
 	// Create a new message
 	msg := &message.Message{
-		ID:      message.NewDefaultID(message.NewSsid(key.Contract(), channel)),
+		ID:      message.NewID(message.NewSsid(key.Contract(), channel)),
 		Channel: channel.Channel,
 		Payload: payload,
 	}

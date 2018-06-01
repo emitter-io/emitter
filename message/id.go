@@ -23,12 +23,13 @@ import (
 )
 
 const (
-	fixed = 14
+	fixed = 16
 )
 
 var (
 	next   uint32
 	unique = newUnique()
+	offset = time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
 )
 
 func newUnique() uint32 {
@@ -38,80 +39,65 @@ func newUnique() uint32 {
 }
 
 // SetDefaultUnique sets the unique number to use when the machine ID is not set.
-func SetDefaultUnique(unique uint32) {
-	unique = unique
+func SetDefaultUnique(u uint32) {
+	unique = u
 }
 
 // ID represents a message ID encoded at 128bit and lexigraphically sortable
 type ID []byte
 
-// NewDefaultID creates a new message identifier for the current time and default
-// unique component.
-func NewDefaultID(ssid Ssid) ID {
-	return NewID(ssid, unique)
-}
-
 // NewID creates a new message identifier for the current time.
-func NewID(ssid Ssid, unique uint32) ID {
+func NewID(ssid Ssid) ID {
 	id := make(ID, len(ssid)*4+fixed)
-	binary.BigEndian.PutUint32(id[0:4], ssid[0])
-	binary.BigEndian.PutUint32(id[4:8], ssid[1])
-	binary.BigEndian.PutUint64(id[8:16], uint64(math.MaxInt64-time.Now().UnixNano()))
-	binary.BigEndian.PutUint16(id[16:18], uint16(atomic.AddUint32(&next, 1)))
-	binary.BigEndian.PutUint32(id[18:22], unique)
-	for i, v := range ssid[2:] {
-		binary.BigEndian.PutUint32(id[22+i*4:26+i*4], v)
+	now := uint32(time.Now().Unix() - offset)
+
+	binary.BigEndian.PutUint32(id[0:4], ssid[0]^ssid[1])
+	binary.BigEndian.PutUint32(id[4:8], math.MaxUint32-now)
+	binary.BigEndian.PutUint32(id[8:12], math.MaxUint32-atomic.AddUint32(&next, 1)) // Reverse order
+	binary.BigEndian.PutUint32(id[12:16], unique)
+	for i, v := range ssid {
+		binary.BigEndian.PutUint32(id[fixed+i*4:fixed+4+i*4], v)
 	}
+
 	return id
 }
 
 // NewPrefix creates a new message identifier only containing the prefix.
 func NewPrefix(ssid Ssid, from int64) ID {
-	id := make(ID, 16)
-	binary.BigEndian.PutUint32(id[0:4], ssid[0])
-	binary.BigEndian.PutUint32(id[4:8], ssid[1])
-	binary.BigEndian.PutUint64(id[8:16], uint64(math.MaxInt64-from))
+	id := make(ID, 8)
+
+	binary.BigEndian.PutUint32(id[0:4], ssid[0]^ssid[1])
+	binary.BigEndian.PutUint32(id[4:8], math.MaxUint32-uint32(from-offset))
 	return id
 }
 
 // SetTime sets the time on the ID, useful for testing.
 func (id ID) SetTime(t int64) {
-	binary.BigEndian.PutUint64(id[8:16], uint64(math.MaxInt64-t))
+	binary.BigEndian.PutUint32(id[4:8], math.MaxUint32-uint32(t-offset))
 }
 
 // Time gets the time of the key, adjusted.
 func (id ID) Time() int64 {
-	return math.MaxInt64 - int64(binary.BigEndian.Uint64(id[8:16]))
+	return int64(math.MaxUint32-binary.BigEndian.Uint32(id[4:8])) + offset
 }
 
 // Contract retrieves the contract from the message ID.
 func (id ID) Contract() uint32 {
-	return binary.BigEndian.Uint32(id[0:4])
+	return binary.BigEndian.Uint32(id[fixed : fixed+4])
 }
 
 // Ssid retrieves the SSID from the message ID.
 func (id ID) Ssid() Ssid {
 	ssid := make(Ssid, (len(id)-fixed)/4)
-	ssid[0] = binary.BigEndian.Uint32(id[0:4])
-	ssid[1] = binary.BigEndian.Uint32(id[4:8])
-	for i := 2; i < len(ssid); i++ {
-		ssid[i] = binary.BigEndian.Uint32(id[14+i*4 : 18+i*4])
+	for i := 0; i < len(ssid); i++ {
+		ssid[i] = binary.BigEndian.Uint32(id[fixed+i*4 : fixed+4+i*4])
 	}
 	return ssid
 }
 
 // HasPrefix matches the prefix with the cutoff time.
 func (id ID) HasPrefix(ssid Ssid, cutoff int64) bool {
-
-	// We need the prefix to match, but we swap the channel and contract as
-	// the channel has a higher probability to differ.
-	if binary.BigEndian.Uint32(id[4:8]) != ssid[1] ||
-		binary.BigEndian.Uint32(id[0:4]) != ssid[0] {
-		return false
-	}
-
-	// Match the cutoff time, but keep in mind that the time is reversed
-	return id.Time() >= cutoff
+	return (binary.BigEndian.Uint32(id[0:4]) == ssid[0]^ssid[1]) && id.Time() >= cutoff
 }
 
 // Match matches the mesage ID with SSID and time bounds.
@@ -122,19 +108,24 @@ func (id ID) Match(query Ssid, from, until int64) bool {
 	// prefix to match, but we swap the channel and contract as channel
 	// has a higher probability to differ.
 	if (len(query)*4) > len(id)-fixed ||
-		binary.BigEndian.Uint32(id[4:8]) != query[1] ||
-		binary.BigEndian.Uint32(id[0:4]) != query[0] {
+		binary.BigEndian.Uint32(id[0:4]) != query[0]^query[1] {
 		return false
+	}
+
+	for i := 0; i < len(query); i++ {
+		if query[i] != binary.BigEndian.Uint32(id[fixed+i*4:fixed+4+i*4]) && query[i] != wildcard {
+			return false
+		}
 	}
 
 	// Same thing here, we iterate backwards as per assumption that the
 	// likelihood of having last element of SSID matching decreases with
 	// the depth of the SSID.
-	for i := len(query) - 1; i > 1; i-- {
+	/*for i := len(query) - 1; i >= 0; i-- {
 		if query[i] != binary.BigEndian.Uint32(id[fixed+i*4:fixed+4+i*4]) && query[i] != wildcard {
 			return false
 		}
-	}
+	}*/
 
 	// Match time bounds at the end, as we assume that the storage starts seeking
 	// at the appropriate end and HasPrefix is called and will stop at the cutoff.

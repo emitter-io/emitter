@@ -17,7 +17,6 @@ package storage
 import (
 	"errors"
 	"io"
-	"math"
 	"time"
 
 	"github.com/emitter-io/config"
@@ -56,10 +55,10 @@ type Surveyor interface {
 
 // window constructs a time window
 func window(from, until time.Time) (int64, int64) {
-	t0 := from.UnixNano()
-	t1 := until.UnixNano()
+	t0 := from.Unix()
+	t1 := until.Unix()
 	if t1 == 0 {
-		t1 = math.MaxInt64
+		t1 = time.Now().Unix() + 3600 // Lookup a bit further
 	}
 
 	return t0, t1

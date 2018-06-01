@@ -12,7 +12,7 @@ import (
 
 func newTestMessage(ssid message.Ssid, channel, payload string) message.Message {
 	return message.Message{
-		ID:      message.NewID(ssid, 0),
+		ID:      message.NewID(ssid),
 		Channel: []byte(channel),
 		Payload: []byte(payload),
 	}
