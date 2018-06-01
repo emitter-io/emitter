@@ -1,0 +1,9 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+  name: fast
+provisioner: kubernetes.io/azure-disk
+parameters:
+  skuName: Premium_LRS
+  location: <location>
+  storageAccount: <azure_storage_account_name>

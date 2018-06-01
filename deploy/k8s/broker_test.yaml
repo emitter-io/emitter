@@ -1,0 +1,73 @@
+#**********************************************************************************
+# Copyright (c) 2009-2018 Misakai Ltd.
+# This program is free software: you can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the  Free Software
+# Foundation, either version 3 of the License, or(at your option) any later version.
+#
+# This program is distributed  in the hope that it  will be useful, but WITHOUT ANY
+# WARRANTY;  without even  the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License  for  more details.
+#
+# You should have  received a copy  of the  GNU Affero General Public License along
+# with this program. If not, see<http://www.gnu.org/licenses/>.
+#***********************************************************************************
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: broker
+  labels:
+    app: broker
+spec:
+  clusterIP: None
+  ports:
+  - port: 4000
+    targetPort: 4000
+  selector:
+    app: broker
+---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: broker
+spec:
+  serviceName: "broker"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: broker
+        role: broker
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - env:
+        - name: EMITTER_LICENSE
+          value: "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI" # This is a test license, DO NOT USE IN PRODUCTION!
+        - name: EMITTER_CLUSTER_SEED
+          value: "broker"
+        - name: EMITTER_CLUSTER_ADVERTISE
+          value: "private:4000"
+        - name: EMITTER_STORAGE_PROVIDER
+          value: "ssd"
+        name: broker
+        image: emitter/server:latest
+        ports:
+          - containerPort: 8080
+          - containerPort: 443
+          - containerPort: 4000
+        volumeMounts:
+          - name: broker-volume
+            mountPath: /data
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+  volumeClaimTemplates:
+  - metadata:
+      name: broker-volume
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "fast"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 5Gi
