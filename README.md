@@ -129,6 +129,9 @@ The structure of the configuration is described below:
 
 
 
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Femitter-io%2Femitter.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Femitter-io%2Femitter?ref=badge_large)
+
 ## Building and Testing
 
 The server requires [Golang 1.9](https://golang.org/dl/) to be installed. Once you have this installed, simply `go get` this repository and run the following commands to download the package and run the server.
@@ -147,6 +150,7 @@ go test ./...
 
 [![Docker Automated build](https://img.shields.io/docker/automated/emitter/server.svg)](https://hub.docker.com/r/emitter/server/)
 [![Docker Pulls](https://img.shields.io/docker/pulls/emitter/server.svg)](https://hub.docker.com/r/emitter/server/)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Femitter-io%2Femitter.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Femitter-io%2Femitter?ref=badge_shield)
 
 Emitter is conveniently packaged as a docker container. To run the emitter service on a single server, use the command below. Once the server is started, it will generate a new security configuration, you can then re-run the same command with an additional environment variable -e EMITTER_LICENSE set to the provided value.
 
