@@ -48,9 +48,12 @@ func TestDecodeFrame(t *testing.T) {
 	assert.Equal(t, frame, output)
 }
 
-func TestMessageSize(t *testing.T) {
-	m := Message{Payload: []byte("hello abc")}
+func TestNewMessage(t *testing.T) {
+	m := New(Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"))
 	assert.Equal(t, int64(9), m.Size())
+	assert.Equal(t, Ssid{1, 2, 3}, m.Ssid())
+	assert.Equal(t, uint32(1), m.Contract())
+	assert.NotNil(t, m.Expires().String())
 }
 
 func TestNewFrame(t *testing.T) {

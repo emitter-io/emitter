@@ -30,6 +30,15 @@ type Message struct {
 	TTL     uint32 `json:"ttl,omitempty"`  // The time-to-live of the message
 }
 
+// New creates a new message structure from the provided SSID, channel and payload.
+func New(ssid Ssid, channel, payload []byte) *Message {
+	return &Message{
+		ID:      NewID(ssid),
+		Channel: channel,
+		Payload: payload,
+	}
+}
+
 // Size returns the byte size of the message.
 func (m *Message) Size() int64 {
 	return int64(len(m.Payload))
