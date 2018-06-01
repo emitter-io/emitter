@@ -102,30 +102,18 @@ func (id ID) HasPrefix(ssid Ssid, cutoff int64) bool {
 
 // Match matches the mesage ID with SSID and time bounds.
 func (id ID) Match(query Ssid, from, until int64) bool {
-
-	// We need to make sure the query is smaller than the actual encoded
-	// SSID of the message, otherwise we can just skip. We also need the
-	// prefix to match, but we swap the channel and contract as channel
-	// has a higher probability to differ.
-	if (len(query)*4) > len(id)-fixed ||
-		binary.BigEndian.Uint32(id[0:4]) != query[0]^query[1] {
+	if (len(query) * 4) > len(id)-fixed {
 		return false
-	}
-
-	for i := 0; i < len(query); i++ {
-		if query[i] != binary.BigEndian.Uint32(id[fixed+i*4:fixed+4+i*4]) && query[i] != wildcard {
-			return false
-		}
 	}
 
 	// Same thing here, we iterate backwards as per assumption that the
 	// likelihood of having last element of SSID matching decreases with
 	// the depth of the SSID.
-	/*for i := len(query) - 1; i >= 0; i-- {
+	for i := len(query) - 1; i >= 0; i-- {
 		if query[i] != binary.BigEndian.Uint32(id[fixed+i*4:fixed+4+i*4]) && query[i] != wildcard {
 			return false
 		}
-	}*/
+	}
 
 	// Match time bounds at the end, as we assume that the storage starts seeking
 	// at the appropriate end and HasPrefix is called and will stop at the cutoff.

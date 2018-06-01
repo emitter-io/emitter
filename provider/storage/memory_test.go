@@ -81,7 +81,7 @@ func TestInMemory_Store(t *testing.T) {
 	assert.Equal(t, []byte("1,2,3"), s.mem.Get("0000000000000001:1").Value().(message.Message).Payload)
 }
 
-func TestInMemory_QueryLast(t *testing.T) {
+func TestInMemory_Query(t *testing.T) {
 	s := newTestMemStore()
 	const wildcard = uint32(1815237614)
 	zero := time.Unix(0, 0)
