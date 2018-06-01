@@ -165,7 +165,7 @@ func (s *SSD) OnSurvey(surveyType string, payload []byte) ([]byte, bool) {
 		return nil, false
 	}
 
-	logging.LogTarget("ssd", surveyType+" survey received", query)
+	//logging.LogTarget("ssd", surveyType+" survey received", query)
 
 	// Send back the response
 	f := s.lookup(query)
