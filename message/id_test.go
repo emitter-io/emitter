@@ -61,6 +61,7 @@ func TestID_Match(t *testing.T) {
 	assert.True(t, id.Match(Ssid{1, 2}, 0, 2527784701635600500))
 	assert.False(t, id.Match(Ssid{1, 2}, 2527784701635600500, math.MaxInt64))
 	assert.False(t, id.Match(Ssid{2, 2, 3, 4}, 0, math.MaxInt64))
+	assert.False(t, id.Match(Ssid{2, 2, 3, 4, 5}, 0, math.MaxInt64))
 }
 
 func TestID_Ssid(t *testing.T) {

@@ -40,8 +40,10 @@ type SSD struct {
 }
 
 // NewSSD creates a new SSD-optimized storage storage.
-func NewSSD() *SSD {
-	return &SSD{}
+func NewSSD(cluster Surveyor) *SSD {
+	return &SSD{
+		cluster: cluster,
+	}
 }
 
 // Name returns the name of the provider.

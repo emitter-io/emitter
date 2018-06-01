@@ -127,7 +127,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	logging.LogTarget("service", "configured logging provider", logging.Logger.Name())
 
 	// Load the storage provider
-	ssdstore := storage.NewSSD()
+	ssdstore := storage.NewSSD(s)
 	memstore := storage.NewInMemory(s)
 	s.querier.HandleFunc(ssdstore, memstore)
 	s.storage = config.LoadProvider(cfg.Storage, storage.NewNoop(), memstore, ssdstore).(storage.Storage)
