@@ -20,6 +20,8 @@ import (
 	"math"
 	"sync/atomic"
 	"time"
+
+	"github.com/emitter-io/emitter/security"
 )
 
 const (
@@ -29,18 +31,13 @@ const (
 var (
 	next   uint32
 	unique = newUnique()
-	offset = time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+	offset = int64(security.MinTime) // From 2018 until 2066
 )
 
 func newUnique() uint32 {
 	b := make([]byte, 4)
 	rand.Read(b)
 	return binary.BigEndian.Uint32(b)
-}
-
-// SetDefaultUnique sets the unique number to use when the machine ID is not set.
-func SetDefaultUnique(u uint32) {
-	unique = u
 }
 
 // ID represents a message ID encoded at 128bit and lexigraphically sortable

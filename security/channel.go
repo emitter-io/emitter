@@ -16,6 +16,7 @@ package security
 
 import (
 	"strconv"
+	"time"
 	"unsafe"
 
 	"github.com/emitter-io/emitter/config"
@@ -27,6 +28,12 @@ const (
 	ChannelInvalid = uint8(iota)
 	ChannelStatic
 	ChannelWildcard
+)
+
+// Minimum and maximum unix time stamp we can handle for options
+const (
+	MinTime = 1514764800 // 2018
+	MaxTime = 3029529600 // 2066
 )
 
 // ChannelOption represents a key/value pair option.
@@ -49,22 +56,52 @@ func (c *Channel) Target() uint32 {
 	return c.Query[0]
 }
 
-// TTL returns a Time-To-Live option
-func (c *Channel) TTL() (uint32, bool) {
-	return c.getOptUint("ttl")
+// TTL returns a Time-To-Live option.
+func (c *Channel) TTL() (int64, bool) {
+	return c.getOption("ttl")
 }
 
-// Last returns the 'last' option
-func (c *Channel) Last() (uint32, bool) {
-	return c.getOptUint("last")
+// Last returns the 'last' option, which is a number of messages to retrieve.
+func (c *Channel) Last() (int64, bool) {
+	return c.getOption("last")
+}
+
+// Window returns the from-until options which should be a UTC unix timestamp in seconds.
+func (c *Channel) Window() (time.Time, time.Time) {
+	u0, _ := c.getOption("from")
+	u1, _ := c.getOption("until")
+	t0 := toUnix(u0, MinTime)
+	t1 := toUnix(u1, MaxTime)
+	if t1.Unix() < t0.Unix() {
+		t1 = t0
+	}
+
+	return t0, t1
+}
+
+// Converts the time to Unix Time with validation.
+func toUnix(t, defaultValue int64) time.Time {
+	if t == 0 {
+		return time.Unix(defaultValue, 0)
+	}
+
+	if t < MinTime {
+		t = MinTime
+	}
+
+	if t > MaxTime {
+		t = MaxTime
+	}
+
+	return time.Unix(t, 0)
 }
 
 // getOptUint retrieves a Uint option
-func (c *Channel) getOptUint(name string) (uint32, bool) {
+func (c *Channel) getOption(name string) (int64, bool) {
 	for i := 0; i < len(c.Options); i++ {
 		if c.Options[i].Key == name {
-			if val, err := strconv.ParseUint(c.Options[i].Value, 10, 32); err == nil {
-				return uint32(val), true
+			if val, err := strconv.ParseInt(c.Options[i].Value, 10, 64); err == nil {
+				return int64(val), true
 			}
 			return 0, false
 		}

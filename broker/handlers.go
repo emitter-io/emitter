@@ -73,12 +73,9 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 	ssid := message.NewSsid(key.Contract(), channel)
 	c.Subscribe(ssid, channel.Channel)
 
-	// TODO: add from & until options
-	t0 := time.Unix(0, 0)
-	t1 := time.Unix(0, 0)
-
 	// In case of ttl, check the key provides the permission to store (soft permission)
 	if limit, ok := channel.Last(); ok && key.HasPermission(security.AllowLoad) {
+		t0, t1 := channel.Window() // Get the window
 		msgs, err := c.service.storage.Query(ssid, t0, t1, int(limit))
 		if err != nil {
 			logging.LogError("conn", "query last messages", err)
@@ -200,7 +197,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 
 	// In case of ttl, check the key provides the permission to store (soft permission)
 	if ttl, ok := channel.TTL(); ok && key.HasPermission(security.AllowStore) {
-		msg.TTL = ttl // Add the TTL to the message
+		msg.TTL = uint32(ttl) // Add the TTL to the message
 		c.service.storage.Store(msg)
 	}
 
