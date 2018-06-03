@@ -99,35 +99,40 @@ func (m *Monitor) MeasureRuntime() {
 
 	// Measure process information
 	m.Measure("proc.cpu", int32(cpu*10000))
-	m.Measure("proc.priv", int32(memoryPriv))
-	m.Measure("proc.virt", int32(memoryVirtual))
+	m.Measure("proc.priv", toKB(uint64(memoryPriv)))
+	m.Measure("proc.virt", toKB(uint64(memoryVirtual)))
 	m.Measure("proc.uptime", int32(time.Now().Sub(m.created).Seconds()))
 
 	// Measure heap information
-	m.Measure("heap.alloc", int32(memory.HeapAlloc))
-	m.Measure("heap.idle", int32(memory.HeapIdle))
-	m.Measure("heap.inuse", int32(memory.HeapInuse))
+	m.Measure("heap.alloc", toKB(memory.HeapAlloc))
+	m.Measure("heap.idle", toKB(memory.HeapIdle))
+	m.Measure("heap.inuse", toKB(memory.HeapInuse))
 	m.Measure("heap.objects", int32(memory.HeapObjects))
-	m.Measure("heap.released", int32(memory.HeapReleased))
-	m.Measure("heap.sys", int32(memory.HeapSys))
+	m.Measure("heap.released", toKB(memory.HeapReleased))
+	m.Measure("heap.sys", toKB(memory.HeapSys))
 
 	// Measure off heap memory
-	m.Measure("mcache.inuse", int32(memory.MCacheInuse))
-	m.Measure("mcache.sys", int32(memory.MCacheSys))
-	m.Measure("mspan.inuse", int32(memory.MSpanInuse))
-	m.Measure("mspan.sys", int32(memory.MSpanSys))
+	m.Measure("mcache.inuse", toKB(memory.MCacheInuse))
+	m.Measure("mcache.sys", toKB(memory.MCacheSys))
+	m.Measure("mspan.inuse", toKB(memory.MSpanInuse))
+	m.Measure("mspan.sys", toKB(memory.MSpanSys))
 
 	// Measure GC
 	m.Measure("gc.cpu", int32(memory.GCCPUFraction*10000))
-	m.Measure("gc.sys", int32(memory.GCSys))
+	m.Measure("gc.sys", toKB(memory.GCSys))
 
 	// Measure memory
-	m.Measure("stack.inuse", int32(memory.StackInuse))
-	m.Measure("stack.sys", int32(memory.StackSys))
+	m.Measure("stack.inuse", toKB(memory.StackInuse))
+	m.Measure("stack.sys", toKB(memory.StackSys))
 
 	// Measure goroutines and threads and total memory
 	m.Measure("go.count", int32(runtime.NumGoroutine()))
 	m.Measure("go.procs", int32(runtime.NumCPU()))
-	m.Measure("go.sys", int32(memory.Sys))
-	m.Measure("go.alloc", int32(memory.TotalAlloc))
+	m.Measure("go.sys", toKB(memory.Sys))
+	m.Measure("go.alloc", toKB(memory.TotalAlloc))
+}
+
+// Converts the memory in bytes to KBs, otherwise it would overflow our int32
+func toKB(v uint64) int32 {
+	return int32(v / 1024)
 }
