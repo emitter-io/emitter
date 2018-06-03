@@ -36,6 +36,8 @@ const (
 	MaxTime = 3029529600 // 2066
 )
 
+var zeroTime = time.Unix(0, 0)
+
 // ChannelOption represents a key/value pair option.
 type ChannelOption struct {
 	Key   string
@@ -70,27 +72,13 @@ func (c *Channel) Last() (int64, bool) {
 func (c *Channel) Window() (time.Time, time.Time) {
 	u0, _ := c.getOption("from")
 	u1, _ := c.getOption("until")
-	t0 := toUnix(u0, MinTime)
-	t1 := toUnix(u1, MaxTime)
-	if t1.Unix() < t0.Unix() {
-		t1 = t0
-	}
-
-	return t0, t1
+	return toUnix(u0), toUnix(u1)
 }
 
 // Converts the time to Unix Time with validation.
-func toUnix(t, defaultValue int64) time.Time {
-	if t == 0 {
-		return time.Unix(defaultValue, 0)
-	}
-
-	if t < MinTime {
-		t = MinTime
-	}
-
-	if t > MaxTime {
-		t = MaxTime
+func toUnix(t int64) time.Time {
+	if t == 0 || t < MinTime || t > MaxTime {
+		return zeroTime
 	}
 
 	return time.Unix(t, 0)

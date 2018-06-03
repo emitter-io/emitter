@@ -159,16 +159,16 @@ func TestGetChannelWindow(t *testing.T) {
 		t0      int64
 		t1      int64
 	}{
-		{channel: "emitter/a/?from=42&abc=9", t0: MinTime, t1: MaxTime},
-		{channel: "emitter/a/?from=1200", t0: MinTime, t1: MaxTime},
-		{channel: "emitter/a/?from=1200&until=2550", t0: MinTime, t1: MinTime},
-		{channel: "emitter/a/?from=1200a", t0: MinTime, t1: MaxTime},
-		{channel: "emitter/a/", t0: MinTime, t1: MaxTime},
+		{channel: "emitter/a/?from=42&abc=9", t0: 0, t1: 0},
+		{channel: "emitter/a/?from=1200", t0: 0, t1: 0},
+		{channel: "emitter/a/?from=1200&until=2550", t0: 0, t1: 0},
+		{channel: "emitter/a/?from=1200a", t0: 0, t1: 0},
+		{channel: "emitter/a/", t0: 0, t1: 0},
 		{channel: "emitter/a/?from=1514764800&until=1514764900", t0: 1514764800, t1: 1514764900},
-		{channel: "emitter/a/?from=1514764800", t0: 1514764800, t1: MaxTime},
-		{channel: "emitter/a/?until=1514764900", t0: MinTime, t1: 1514764900},
-		{channel: "emitter/a/?from=1514764800&until=3029529610", t0: 1514764800, t1: MaxTime},
-		{channel: "emitter/a/?from=1514764900&until=1514764800", t0: 1514764900, t1: 1514764900},
+		{channel: "emitter/a/?from=1514764800", t0: 1514764800, t1: 0},
+		{channel: "emitter/a/?until=1514764900", t0: 0, t1: 1514764900},
+		{channel: "emitter/a/?from=1514764800&until=3029529610", t0: 1514764800, t1: 0},
+		{channel: "emitter/a/?from=1514764900&until=1514764800", t0: 1514764900, t1: 1514764800},
 	}
 
 	for _, tc := range tests {
