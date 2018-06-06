@@ -100,8 +100,16 @@ func (c *Config) Certificate() (tls *tls.Config, tlsValidator http.Handler, ok b
 			logging.LogAction("tls", "unable to setup Vault certificate cache, using disk")
 		}
 
+		//var tls *tls.Config
+		//var tlsValidator http.Handler
+		//var err error
 		// Load from TLS
-		tls, tlsValidator, err = c.TLS.Load(cache)
+		if cache == nil {
+			tls, tlsValidator, err = c.TLS.Load(nil)
+		} else {
+			tls, tlsValidator, err = c.TLS.Load(cache)
+		}
+
 		ok = err == nil
 	}
 	return
