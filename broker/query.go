@@ -126,7 +126,10 @@ func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []by
 	}
 
 	// Get the peer to reply to
-	peer := c.service.cluster.FindPeer(replyAddr)
+	peer, ok := c.service.cluster.FindPeer(replyAddr)
+	if !ok {
+		return errors.New("unable to reply to a request, peer does not exist")
+	}
 
 	// Go through all the handlers and execute the first matching one
 	for _, surveyee := range c.handlers {
@@ -135,7 +138,7 @@ func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []by
 		}
 	}
 
-	return errors.New("No query handler found for " + channel)
+	return errors.New("no query handler found for " + channel)
 }
 
 // Query issues a cluster-wide request.

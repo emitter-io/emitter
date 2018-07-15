@@ -72,15 +72,13 @@ func TestNewSwarm_Scenario(t *testing.T) {
 	assert.Equal(t, io.EOF, err)
 
 	// Find peer
-	peer := s.FindPeer(123)
-	assert.NotNil(t, peer)
-	assert.Equal(t, "00:00:00:00:00:7b", peer.ID())
-	_, ok := s.members.Load(mesh.PeerName(123))
-	assert.True(t, ok)
+	peer, hasPeer := s.FindPeer(123)
+	assert.False(t, hasPeer)
+	assert.Nil(t, peer)
 
-	// Remove that peer, it should not be there anymore
+	// Remove that peer, it should not be there
 	s.onPeerOffline(123)
-	_, ok = s.members.Load(mesh.PeerName(123))
+	_, ok := s.members.Load(mesh.PeerName(123))
 	assert.False(t, ok)
 
 	// Close the swarm
@@ -135,7 +133,7 @@ func Test_merge(t *testing.T) {
 
 	_, err := s.merge(in.Encode()[0])
 	assert.NoError(t, err)
-	assert.True(t, subscribed)
+	assert.False(t, subscribed)
 }
 
 func TestJoin(t *testing.T) {

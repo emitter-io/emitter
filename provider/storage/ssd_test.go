@@ -16,6 +16,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -48,7 +49,11 @@ func getNTestMessages(count int) (frame message.Frame) {
 func runSSDTest(test func(store *SSD)) {
 
 	// Prepare a store
-	dir, _ := ioutil.TempDir("", "emitter")
+	dir, err := ioutil.TempDir("", "emitter")
+	if err != nil {
+		println(err.Error())
+	}
+
 	store := NewSSD(nil)
 	store.Configure(map[string]interface{}{
 		"dir": dir,
@@ -83,24 +88,49 @@ func TestSSD_Query(t *testing.T) {
 func TestSSD_QueryOrdered(t *testing.T) {
 	runSSDTest(func(store *SSD) {
 		for i := int64(0); i < 100; i++ {
-			msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), []byte(strconv.FormatInt(i, 10)))
-			msg.ID.SetTime(msg.ID.Time() + (i * 10))
+			msg := message.New(message.Ssid{0, 1, uint32(i / 10), 3}, []byte("a/b/c/"), []byte(strconv.FormatInt(i, 10)))
+			msg.TTL = 100000
+			//binary.BigEndian.PutUint32(msg.ID[12:16], newUnique())
 			err := store.Store(msg)
 			assert.NoError(t, err)
 		}
 
 		zero := time.Unix(0, 0)
-		f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 5)
+		f, err := store.Query([]uint32{0, 1, 2, 3}, zero, zero, 5)
 		assert.NoError(t, err)
 
 		assert.Len(t, f, 5)
-		assert.Equal(t, message.Ssid{0, 1, 2}, f[0].Ssid())
-		assert.Equal(t, "95", string(f[0].Payload))
-		assert.Equal(t, "96", string(f[1].Payload))
-		assert.Equal(t, "97", string(f[2].Payload))
-		assert.Equal(t, "98", string(f[3].Payload))
-		assert.Equal(t, "99", string(f[4].Payload))
+		assert.Equal(t, "25", string(f[0].Payload))
+		assert.Equal(t, "26", string(f[1].Payload))
+		assert.Equal(t, "27", string(f[2].Payload))
+		assert.Equal(t, "28", string(f[3].Payload))
+		assert.Equal(t, "29", string(f[4].Payload))
+	})
+}
 
+func TestSSD_QueryOrdered2(t *testing.T) {
+	s0 := newUnique()
+	s1 := newUnique()
+	runSSDTest(func(store *SSD) {
+		for i := int64(0); i < 100; i++ {
+			msg := message.New(message.Ssid{s0, s1, newUnique(), uint32(i / 10), uint32(i / 10)}, []byte("a/b/c/"), []byte(strconv.FormatInt(i, 10)))
+			msg.ID.SetTime(msg.Time() + i)
+			msg.TTL = 100000
+			//binary.BigEndian.PutUint32(msg.ID[12:16], newUnique())
+			err := store.Store(msg)
+			assert.NoError(t, err)
+		}
+
+		zero := time.Unix(0, 0)
+		f, err := store.Query([]uint32{s0, s1, uint32(1815237614), 2, 2}, zero, zero, 5)
+		assert.NoError(t, err)
+
+		assert.Len(t, f, 5)
+		assert.Equal(t, "25", string(f[0].Payload))
+		assert.Equal(t, "26", string(f[1].Payload))
+		assert.Equal(t, "27", string(f[2].Payload))
+		assert.Equal(t, "28", string(f[3].Payload))
+		assert.Equal(t, "29", string(f[4].Payload))
 	})
 }
 
@@ -349,4 +379,10 @@ func TestBackup(t *testing.T) {
 		err = store.Restore(reader)
 		assert.NoError(t, err)
 	})
+}
+
+func newUnique() uint32 {
+	b := make([]byte, 4)
+	rand.Read(b)
+	return binary.BigEndian.Uint32(b)
 }

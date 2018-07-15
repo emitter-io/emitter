@@ -66,7 +66,7 @@ func (s *SSD) Configure(config map[string]interface{}) error {
 
 	// Make sure we have a directory
 	if err := os.MkdirAll(dir, 0777); err != nil {
-		panic(err)
+		return err
 	}
 
 	// Create the options
@@ -74,6 +74,8 @@ func (s *SSD) Configure(config map[string]interface{}) error {
 	opts.Dir = dir
 	opts.ValueDir = opts.Dir
 	opts.SyncWrites = false
+
+	//opts.ValueLogLoadingMode = options.FileIO
 
 	// Attempt to open the database
 	db, err := badger.Open(opts)

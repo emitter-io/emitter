@@ -84,6 +84,11 @@ func NewSwarm(cfg *config.ClusterConfig) *Swarm {
 		panic(err)
 	}
 
+	// Handle when peer is removed
+	router.Peers.OnGC(func(peer *mesh.Peer) {
+		swarm.onPeerOffline(peer.Name)
+	})
+
 	// Create a new gossip layer
 	gossip, err := router.NewGossip("swarm", swarm)
 	if err != nil {
@@ -100,7 +105,7 @@ func NewSwarm(cfg *config.ClusterConfig) *Swarm {
 func (s *Swarm) onPeerOffline(name mesh.PeerName) {
 	if v, ok := s.members.Load(name); ok {
 		peer := v.(*Peer)
-		logging.LogTarget("swarm", "peer removed", peer.name)
+		logging.LogTarget("swarm", "unreachable peer removed", peer.name)
 		peer.Close() // Close the peer on our end
 
 		// We also need to remove the peer from our set, so next time a new peer can be created.
@@ -114,9 +119,14 @@ func (s *Swarm) onPeerOffline(name mesh.PeerName) {
 }
 
 // FindPeer retrieves a peer.
-func (s *Swarm) FindPeer(name mesh.PeerName) *Peer {
+func (s *Swarm) FindPeer(name mesh.PeerName) (*Peer, bool) {
 	if p, ok := s.members.Load(name); ok {
-		return p.(*Peer)
+		return p.(*Peer), true
+	}
+
+	// Only add a peer if such exists
+	if exists := s.router.Peers.Fetch(name); exists == nil {
+		return nil, false
 	}
 
 	// Create new peer and store it
@@ -125,7 +135,7 @@ func (s *Swarm) FindPeer(name mesh.PeerName) *Peer {
 	if !ok {
 		logging.LogTarget("swarm", "peer created", peer.name)
 	}
-	return v.(*Peer)
+	return v.(*Peer), true
 }
 
 // ID returns the local node ID.
@@ -152,7 +162,9 @@ func (s *Swarm) update() {
 		if !peer.Self {
 			// Mark the peer as active, so even if there's no messages being exchanged
 			// we still keep the peer, since we know that the peer is live.
-			s.FindPeer(peer.Name).touch()
+			if p, ok := s.FindPeer(peer.Name); ok {
+				p.touch()
+			}
 
 			// reinforce structure
 			if peer.NumConnections < (len(desc) - 1) {
@@ -160,14 +172,6 @@ func (s *Swarm) update() {
 			}
 		}
 	}
-
-	// Mark a peer as offline
-	s.members.Range(func(k, v interface{}) bool {
-		if p, ok := v.(*Peer); ok && !p.IsActive() {
-			s.onPeerOffline(p.name)
-		}
-		return true
-	})
 }
 
 // Join attempts to join a set of existing peers.
@@ -224,16 +228,17 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 		}
 
 		// Get the peer to use
-		peer := s.FindPeer(ev.Peer)
+		if peer, ok := s.FindPeer(ev.Peer); ok {
 
-		// If the subscription is added, notify (TODO: use channels)
-		if v.IsAdded() && peer.onSubscribe(k, ev.Ssid) {
-			s.OnSubscribe(ev.Ssid, peer)
-		}
+			// If the subscription is added, notify (TODO: use channels)
+			if v.IsAdded() && peer.onSubscribe(k, ev.Ssid) {
+				s.OnSubscribe(ev.Ssid, peer)
+			}
 
-		// If the subscription is removed, notify (TODO: use channels)
-		if v.IsRemoved() && peer.onUnsubscribe(k, ev.Ssid) {
-			s.OnUnsubscribe(ev.Ssid, peer)
+			// If the subscription is removed, notify (TODO: use channels)
+			if v.IsRemoved() && peer.onUnsubscribe(k, ev.Ssid) {
+				s.OnUnsubscribe(ev.Ssid, peer)
+			}
 		}
 	}
 

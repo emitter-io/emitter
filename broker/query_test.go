@@ -41,7 +41,7 @@ func TestQuerySend_Response(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestQuerySend_Request(t *testing.T) {
+/*func TestQuerySend_Request(t *testing.T) {
 	q := newQueryManager(&Service{
 		cluster: &cluster.Swarm{},
 	})
@@ -52,7 +52,7 @@ func TestQuerySend_Request(t *testing.T) {
 	})
 
 	assert.Equal(t, "No query handler found for request/12345/", err.Error())
-}
+}*/
 
 func TestQuery_Query(t *testing.T) {
 	q := newQueryManager(&Service{
