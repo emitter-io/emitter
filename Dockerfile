@@ -13,6 +13,7 @@ RUN apk add --no-cache g++ \
 
 # Base image for runtime
 FROM alpine:latest
+RUN apk --no-cache add ca-certificates
 
 WORKDIR /root/
 # Get the executable binary from build-img declared previously
