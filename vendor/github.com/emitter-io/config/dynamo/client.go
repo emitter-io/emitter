@@ -12,6 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 )
 
+var errKeyNotFound = errors.New("key was not found in dynamodb")
+
 // client represents a dynamodb client for secret storage
 type client struct {
 	dynamo    dynamodbiface.DynamoDBAPI
@@ -66,7 +68,7 @@ func (c *client) Get(key string) (string, error) {
 		return *v.S, nil
 	}
 
-	return "", errors.New("key was not found in dynamodb")
+	return "", errKeyNotFound
 }
 
 // Delete removes a value.
