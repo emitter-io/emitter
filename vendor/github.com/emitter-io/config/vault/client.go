@@ -1,4 +1,7 @@
-package config
+// Copyright (c) Roman Atachiants and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
+package vault
 
 import (
 	"errors"
@@ -7,30 +10,30 @@ import (
 	"time"
 )
 
-// VaultClient represents a lightweight vault client.
-type VaultClient struct {
+// client represents a lightweight vault client.
+type client struct {
 	address string // The vault address.
 	token   string // The vault token provided by auth.
 }
 
-// NewVaultClient creates a new vault client.
-func NewVaultClient(address string) *VaultClient {
+// newClient creates a new vault client.
+func newClient(address string) *client {
 	if ip := net.ParseIP(address); ip != nil {
 		address = fmt.Sprintf("http://%v:8200", ip.String())
 	}
 
-	return &VaultClient{
+	return &client{
 		address: address,
 	}
 }
 
 // IsAuthenticated checks whether we are authenticated or not.
-func (c *VaultClient) IsAuthenticated() bool {
+func (c *client) IsAuthenticated() bool {
 	return c.token != ""
 }
 
 // Authenticate performs vault authentication.
-func (c *VaultClient) Authenticate(app string, user string) error {
+func (c *client) Authenticate(app string, user string) error {
 	output, err := c.post("/auth/app-id/login", &vaultAuthRequest{
 		App:  app,
 		User: user,
@@ -46,7 +49,7 @@ func (c *VaultClient) Authenticate(app string, user string) error {
 }
 
 // ReadSecret reads a secret from the vault.
-func (c *VaultClient) ReadSecret(secretName string) (string, error) {
+func (c *client) ReadSecret(secretName string) (string, error) {
 	output, err := c.get("/secret/" + secretName)
 	if err != nil {
 		return "", err
@@ -63,7 +66,7 @@ func (c *VaultClient) ReadSecret(secretName string) (string, error) {
 }
 
 // WriteSecret writes a secret to the vault.
-func (c *VaultClient) WriteSecret(secretName string, value string) error {
+func (c *client) WriteSecret(secretName string, value string) error {
 	_, err := c.post("/secret/"+secretName, map[string]string{
 		"value": value,
 	})
@@ -71,7 +74,7 @@ func (c *VaultClient) WriteSecret(secretName string, value string) error {
 }
 
 // Get issues an HTTP GET to a vault server.
-func (c *VaultClient) get(url string) (output *vaultSecret, err error) {
+func (c *client) get(url string) (output *vaultSecret, err error) {
 	var headers []httpHeader
 	if c.IsAuthenticated() {
 		headers = append(headers, newHTTPHeader("X-Vault-Token", c.token))
@@ -84,7 +87,7 @@ func (c *VaultClient) get(url string) (output *vaultSecret, err error) {
 }
 
 // Post issues an HTTP POST to a vault server.
-func (c *VaultClient) post(url string, body interface{}) (output *vaultSecret, err error) {
+func (c *client) post(url string, body interface{}) (output *vaultSecret, err error) {
 	var headers []httpHeader
 	if c.IsAuthenticated() {
 		headers = append(headers, newHTTPHeader("X-Vault-Token", c.token))
@@ -130,13 +133,4 @@ type vaultSecretAuth struct {
 	Metadata      map[string]string `json:"metadata"`
 	LeaseDuration int               `json:"lease_duration"`
 	Renewable     bool              `json:"renewable"`
-}
-
-// AwsCredentials represents Amazon Web Services credentials.
-type AwsCredentials struct {
-	AccessKey string        `json:"access_key"`     // The access key.
-	SecretKey string        `json:"secret_key"`     // The secret key.
-	Token     string        `json:"security_token"` // The token.
-	Duration  time.Duration `json:"-"`              // The duration of the credentials.
-	Expires   time.Time     `json:"-"`              // The expiration date of the credentials.
 }

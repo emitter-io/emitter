@@ -7,7 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	cfg "github.com/emitter-io/config"
+	"github.com/emitter-io/config/dynamo"
+	"github.com/emitter-io/config/vault"
 	"github.com/emitter-io/emitter/broker"
 	"github.com/emitter-io/emitter/config"
 	"github.com/emitter-io/emitter/provider/logging"
@@ -22,7 +23,6 @@ func main() {
 	}
 
 	// Process command-line arguments
-	logging.LogTarget("service", "configured vault username", config.VaultUser)
 	argConfig := flag.String("config", filepath.Join(filepath.Dir(exe), "emitter.conf"), "The configuration file to use for the broker.")
 	argHelp := flag.Bool("help", false, "Shows the help and usage instead of running the broker.")
 	flag.Parse()
@@ -31,16 +31,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Parse the configuration
-	c, err := cfg.ReadOrCreate("emitter", *argConfig, config.NewDefault,
-		cfg.NewEnvironmentProvider(),
-		cfg.NewVaultProvider(config.VaultUser))
-	if err != nil {
-		panic("Unable to parse configuration, due to " + err.Error())
-	}
+	// Read the configuration
+	cfg := config.New(*argConfig,
+		dynamo.NewProvider(),
+		vault.NewProvider(config.VaultUser),
+	)
 
 	// Generate a new license if none was provided
-	cfg := c.(*config.Config)
 	if cfg.License == "" {
 		license, secret := security.NewLicenseAndMaster()
 		logging.LogAction("service", "unable to find a license, make sure 'license' "+

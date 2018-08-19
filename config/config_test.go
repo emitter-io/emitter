@@ -1,16 +1,18 @@
 package config
 
 import (
+	"os"
 	"strings"
 	"testing"
 
+	"github.com/emitter-io/config/dynamo"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_NewDefaut(t *testing.T) {
 	c := NewDefault().(*Config)
 	assert.Equal(t, ":8080", c.ListenAddr)
-	assert.Nil(t, c.Vault())
+	//assert.Nil(t, c.Vault())
 
 	tls, _, ok := c.Certificate()
 	assert.Nil(t, tls)
@@ -31,4 +33,11 @@ func Test_AddrInvalid(t *testing.T) {
 		c := &Config{ListenAddr: "g3ew235wgs"}
 		c.Addr()
 	})
+}
+
+func Test_New(t *testing.T) {
+	c := New("test.conf", dynamo.NewProvider())
+	defer os.Remove("test.conf")
+
+	assert.NotNil(t, c)
 }

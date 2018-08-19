@@ -34,6 +34,9 @@ const (
 // VaultUser is the vault user to use for authentication
 var VaultUser = toUsername(address.GetExternalOrDefault(address.Loopback))
 
+// Type alias for a raw config
+type secretStoreConfig = map[string]interface{}
+
 // toUsername converts an ip address to a username for Vault.
 func toUsername(a net.IPAddr) string {
 	return strings.Replace(
@@ -58,19 +61,41 @@ func NewDefault() cfg.Config {
 	}
 }
 
+// New reads or creates a configuration.
+func New(filename string, stores ...cfg.SecretStore) *Config {
+	readers := []cfg.SecretReader{cfg.NewEnvironmentProvider()}
+	caches := []cfg.CertCacher{}
+	for _, store := range stores {
+		readers = append(readers, store)
+		caches = append(caches, store)
+	}
+
+	c, err := cfg.ReadOrCreate("emitter", filename, NewDefault, readers...)
+	if err != nil {
+		panic("Unable to parse configuration, due to " + err.Error())
+	}
+
+	conf := c.(*Config)
+	conf.certCaches = caches
+	return conf
+}
+
 // Config represents main configuration.
 type Config struct {
-	listenAddr *net.TCPAddr        // The listen address, parsed.
 	ListenAddr string              `json:"listen"`             // The API port used for TCP & Websocket communication.
 	License    string              `json:"license"`            // The license file to use for the broker.
 	TLS        *cfg.TLSConfig      `json:"tls,omitempty"`      // The API port used for Secure TCP & Websocket communication.
-	Secrets    *cfg.VaultConfig    `json:"vault,omitempty"`    // The configuration for the Hashicorp Vault.
 	Cluster    *ClusterConfig      `json:"cluster,omitempty"`  // The configuration for the clustering.
 	Storage    *cfg.ProviderConfig `json:"storage,omitempty"`  // The configuration for the storage provider.
 	Contract   *cfg.ProviderConfig `json:"contract,omitempty"` // The configuration for the contract provider.
 	Metering   *cfg.ProviderConfig `json:"metering,omitempty"` // The configuration for the usage storage for metering.
 	Logging    *cfg.ProviderConfig `json:"logging,omitempty"`  // The configuration for the logger.
 	Monitor    *cfg.ProviderConfig `json:"monitor,omitempty"`  // The configuration for the monitoring storage.
+	Vault      secretStoreConfig   `json:"vault,omitempty"`    // The configuration for the Hashicorp Vault Secret Store.
+	Dynamo     secretStoreConfig   `json:"dynamodb,omitempty"` // The configuration for the AWS DynamoDB Secret Store.
+
+	listenAddr *net.TCPAddr     // The listen address, parsed.
+	certCaches []cfg.CertCacher // The certificate caches configured.
 }
 
 // Addr returns the listen address configured.
@@ -84,32 +109,20 @@ func (c *Config) Addr() *net.TCPAddr {
 	return c.listenAddr
 }
 
-// Vault returns a vault configuration.
-func (c *Config) Vault() *cfg.VaultConfig {
-	return c.Secrets
-}
-
 // Certificate returns TLS configuration.
-func (c *Config) Certificate() (tls *tls.Config, tlsValidator http.Handler, ok bool) {
-	if c.TLS != nil {
-
-		// Attempt to use Vault cache
-		cache, err := cfg.NewVaultCache(VaultUser, c)
-		if err != nil {
-			logging.LogError("tls", "vault cache init", err)
-			logging.LogAction("tls", "unable to setup Vault certificate cache, using disk")
-		}
-
-		// Load from TLS
-		if cache == nil {
-			tls, tlsValidator, err = c.TLS.Load(nil)
-		} else {
-			tls, tlsValidator, err = c.TLS.Load(cache)
-		}
-
-		ok = err == nil
+func (c *Config) Certificate() (*tls.Config, http.Handler, bool) {
+	if c.TLS == nil {
+		return nil, nil, false
 	}
-	return
+
+	// Attempt to configure
+	if tls, validator, cache := cfg.TLS(c.TLS, c.certCaches...); cache != nil {
+		logging.LogAction("tls", "setting up certificates with "+cache.Name()+" cache")
+		return tls, validator, true
+	}
+
+	logging.LogAction("tls", "unable to configure certificates, make sure a valid cache or certificate is configured")
+	return nil, nil, false
 }
 
 // ClusterConfig represents the configuration for the cluster.
