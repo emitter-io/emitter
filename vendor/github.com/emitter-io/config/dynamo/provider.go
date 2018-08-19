@@ -47,8 +47,13 @@ func (p *Provider) Configure(config map[string]interface{}) (err error) {
 	keyColumn := get(config, "keyColumn", "key")
 	valColumn := get(config, "valueColumn", "value")
 
-	// Create a new client
-	p.client, err = newClient(region, table, keyColumn, valColumn)
+	// Create a new client and test the connection
+	if p.client, err = newClient(region, table, keyColumn, valColumn); err == nil {
+		if _, err := p.client.Get("testkey"); err == nil && err == errKeyNotFound {
+			return nil
+		}
+	}
+
 	return err
 }
 

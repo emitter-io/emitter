@@ -273,22 +273,22 @@
 			"revisionTime": "2018-05-29T12:44:32Z"
 		},
 		{
-			"checksumSHA1": "b7ZzYjlY9cGhws6F39jsvl9flZk=",
+			"checksumSHA1": "LQjh68IaCI6pyILhhss8OlaU6b8=",
 			"path": "github.com/emitter-io/config",
-			"revision": "ab62a8a79d9d2178e1f0b534ad0b36510d2b5276",
-			"revisionTime": "2018-08-19T06:53:22Z"
+			"revision": "d98871f7d1dcb77a94572a0d7de7ed738e5da46c",
+			"revisionTime": "2018-08-19T09:52:13Z"
 		},
 		{
-			"checksumSHA1": "5eCbUQy/HQpbp7kY/3IfoXyKzRU=",
+			"checksumSHA1": "co80WpBOHNxF6D5aYxXxuEeUJp4=",
 			"path": "github.com/emitter-io/config/dynamo",
-			"revision": "ab62a8a79d9d2178e1f0b534ad0b36510d2b5276",
-			"revisionTime": "2018-08-19T06:53:22Z"
+			"revision": "d98871f7d1dcb77a94572a0d7de7ed738e5da46c",
+			"revisionTime": "2018-08-19T09:52:13Z"
 		},
 		{
 			"checksumSHA1": "Nj8D5HfTvfqDM3ihZ8dRjISQZdg=",
 			"path": "github.com/emitter-io/config/vault",
-			"revision": "ab62a8a79d9d2178e1f0b534ad0b36510d2b5276",
-			"revisionTime": "2018-08-19T06:53:22Z"
+			"revision": "d98871f7d1dcb77a94572a0d7de7ed738e5da46c",
+			"revisionTime": "2018-08-19T09:52:13Z"
 		},
 		{
 			"checksumSHA1": "RjYQwBSq3mAepZtyuSxDmtE7TAI=",

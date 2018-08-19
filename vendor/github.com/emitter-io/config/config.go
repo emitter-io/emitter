@@ -182,19 +182,21 @@ func ReadOrCreate(prefix string, path string, newDefault func() Config, stores .
 
 	// Apply all the store overrides, in order
 	for _, store := range stores {
-		sc, err := getSecretReaderConfig(cfg, store.Name())
-		if err != nil {
-			return nil, err
-		}
+		if store.Name() != "environment" {
+			sc, err := getSecretReaderConfig(cfg, store.Name())
+			if err != nil {
+				return nil, err
+			}
 
-		// Skip empty configurations
-		if sc == nil {
-			continue
-		}
+			// Skip empty configurations
+			if sc == nil {
+				continue
+			}
 
-		// Configure the store
-		if err := store.Configure(sc); err != nil {
-			return nil, err
+			// Configure the store
+			if err := store.Configure(sc); err != nil {
+				return nil, err
+			}
 		}
 
 		declassify(cfg, prefix, store)
