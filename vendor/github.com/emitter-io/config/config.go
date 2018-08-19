@@ -1,13 +1,15 @@
+// Copyright (c) Roman Atachiants and contributors. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for details.
+
 package config
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"plugin"
@@ -18,118 +20,27 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
-// SecretStore represents a contract for a store capable of resolving secrets.
-type SecretStore interface {
-	Configure(config Config) error
-	GetSecret(secretName string) (string, bool)
-}
-
-// CertificateStore represents a secret store which can be used for certificates.
-type CertificateStore interface {
-	autocert.Cache
-}
-
 // Provider represents a configurable provider.
 type Provider interface {
 	Name() string
 	Configure(config map[string]interface{}) error
 }
 
+// SecretReader represents a contract for a store capable of resolving secrets.
+type SecretReader interface {
+	Provider
+	GetSecret(secretName string) (string, bool)
+}
+
+// SecretStore represents a contract for a store capable of resolving secrets. On top
+// of that, also capable of caching certificates.
+type SecretStore interface {
+	SecretReader
+	GetCache() (autocert.Cache, bool)
+}
+
 // Config represents a configuration interface.
-type Config interface {
-	Vault() *VaultConfig
-}
-
-// TLSConfig represents TLS listener configuration.
-type TLSConfig struct {
-	ListenAddr  string `json:"listen"`                // The address to listen on.
-	Host        string `json:"host"`                  // The hostname to whitelist.
-	Email       string `json:"email,omitempty"`       // The email address for autocert.
-	Certificate string `json:"certificate,omitempty"` // The certificate request.
-	PrivateKey  string `json:"private,omitempty"`     // The private key for the certificate.
-}
-
-// Load loads the certificates from the cache or the configuration.
-func (c *TLSConfig) Load(certCache autocert.Cache) (*tls.Config, http.Handler, error) {
-	if c.Certificate != "" {
-		return c.loadFromLocal(certCache)
-	}
-
-	return c.loadFromAutocert(certCache)
-}
-
-// loadFromLocal loads TLS configuration from pre-existing certificate
-func (c *TLSConfig) loadFromLocal(certCache autocert.Cache) (*tls.Config, http.Handler, error) {
-	if c.PrivateKey == "" {
-		return &tls.Config{}, nil, errors.New("No certificate or private key configured")
-	}
-
-	// If the certificate provided is in plain text, write to file so we can read it.
-	if strings.HasPrefix(c.Certificate, "---") {
-		if err := ioutil.WriteFile("broker.crt", []byte(c.Certificate), os.ModePerm); err == nil {
-			c.Certificate = "broker.crt"
-		}
-	}
-
-	// If the private key provided is in plain text, write to file so we can read it.
-	if strings.HasPrefix(c.PrivateKey, "---") {
-		if err := ioutil.WriteFile("broker.key", []byte(c.PrivateKey), os.ModePerm); err == nil {
-			c.PrivateKey = "broker.key"
-		}
-	}
-
-	// Make sure the paths are absolute, otherwise we won't be able to read the files.
-	c.Certificate = resolvePath(c.Certificate)
-	c.PrivateKey = resolvePath(c.PrivateKey)
-
-	// Load the certificate from the cert/key files.
-
-	cer, err := tls.LoadX509KeyPair(c.Certificate, c.PrivateKey)
-	return &tls.Config{
-		Certificates: []tls.Certificate{cer},
-	}, nil, err
-}
-
-// loadFromAutocert loads TLS configuration from Letsencrypt
-func (c *TLSConfig) loadFromAutocert(certCache autocert.Cache) (*tls.Config, http.Handler, error) {
-	if c.Host == "" {
-		return nil, nil, errors.New("unable to request a certificate, no host name configured")
-	}
-
-	// Default to disk cache
-	if certCache == nil {
-		certCache = autocert.DirCache("certs")
-	}
-
-	// Create an auto-cert manager
-	certManager := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(c.Host),
-		Email:      c.Email,
-		Cache:      certCache,
-	}
-
-	return &tls.Config{
-		GetCertificate: certManager.GetCertificate,
-	}, certManager.HTTPHandler(nil), nil
-}
-
-// VaultConfig represents Vault configuration.
-type VaultConfig struct {
-	Address     string `json:"address"` // The vault address to use.
-	Application string `json:"app"`     // The vault application ID to use.
-}
-
-// NewClient creates a new vault client for the configuration.
-func (c *VaultConfig) NewClient(user string) (client *VaultClient, err error) {
-	if c.Address == "" || c.Application == "" {
-		return nil, errors.New("unable to configure Vault provider")
-	}
-
-	client = NewVaultClient(c.Address)
-	err = client.Authenticate(c.Application, user)
-	return
-}
+type Config interface{}
 
 // ProviderConfig represents provider configuration.
 type ProviderConfig struct {
@@ -249,7 +160,7 @@ func createDefault(path string, newDefault func() Config) (Config, error) {
 }
 
 // ReadOrCreate reads or creates the configuration object.
-func ReadOrCreate(prefix string, path string, newDefault func() Config, stores ...SecretStore) (cfg Config, err error) {
+func ReadOrCreate(prefix string, path string, newDefault func() Config, stores ...SecretReader) (cfg Config, err error) {
 	cfg = newDefault()
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Create a configuration and write it to a file
@@ -271,22 +182,59 @@ func ReadOrCreate(prefix string, path string, newDefault func() Config, stores .
 
 	// Apply all the store overrides, in order
 	for _, store := range stores {
-		if err := store.Configure(cfg); err == nil {
-			declassify(cfg, prefix, store)
+		sc, err := getSecretReaderConfig(cfg, store.Name())
+		if err != nil {
+			return nil, err
 		}
+
+		// Skip empty configurations
+		if sc == nil {
+			continue
+		}
+
+		// Configure the store
+		if err := store.Configure(sc); err != nil {
+			return nil, err
+		}
+
+		declassify(cfg, prefix, store)
 	}
 
 	return cfg, nil
 }
 
+// Retrieves a secret store configuration from the config
+func getSecretReaderConfig(cfg Config, key string) (map[string]interface{}, error) {
+	b, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return nil, err
+	}
+
+	v, ok := raw[key]
+	if !ok {
+		return nil, nil
+	}
+
+	if casted, ok := v.(map[string]interface{}); ok {
+		return casted, nil
+	}
+
+	return nil, fmt.Errorf("unable to parse configuration for %v provider", key)
+}
+
 // Declassify traverses the configuration and resolves secrets.
-func declassify(config interface{}, prefix string, provider SecretStore) {
+func declassify(config interface{}, prefix string, provider SecretReader) {
 	original := reflect.ValueOf(config)
 	declassifyRecursive(prefix, provider, original)
 }
 
 // DeclassifyRecursive traverses the configuration and resolves secrets.
-func declassifyRecursive(prefix string, provider SecretStore, value reflect.Value) {
+func declassifyRecursive(prefix string, provider SecretReader, value reflect.Value) {
 	switch value.Kind() {
 	case reflect.Ptr:
 		pValue := value.Elem()
