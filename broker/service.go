@@ -67,6 +67,7 @@ type Service struct {
 	measurer      stats.Measurer       // The monitoring registry for the service.
 	metering      usage.Metering       // The usage storage for metering contracts.
 	connections   int64                // The number of currently open connections.
+	queuePollFlag int                  // poll flag for Queue mode
 }
 
 // NewService creates a new service.
@@ -82,6 +83,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		presence:      make(chan *presenceNotify, 100),
 		storage:       new(storage.Noop),
 		measurer:      stats.New(),
+		queuePollFlag:      1,
 	}
 
 	// Create a new HTTP request multiplexer
@@ -432,15 +434,40 @@ func (s *Service) Survey(query string, payload []byte) (message.Awaiter, error) 
 // Publish publishes a message to everyone and returns the number of outgoing bytes written.
 func (s *Service) publish(m *message.Message) (n int64) {
 	size := m.Size()
-	for _, subscriber := range s.subscriptions.Lookup(m.Ssid()) {
-		subscriber.Send(m)
-
-		// Increment the egress size only for direct subscribers
-		if subscriber.Type() == message.SubscriberDirect {
-			n += size
+	// Queue mode
+	// if the first field is "-queue", to queue mode handle
+	if strings.Split(string(m.Channel[:]),"/")[0] == "-queue"    {
+		logging.LogTarget("service", "Queue model topic:", string(m.Channel[:]))
+		
+		// Get all the Subscribers list
+		queueSubscribers := s.subscriptions.Lookup(m.Ssid())
+		
+		// Get the count of Subscribers
+		len :=len(queueSubscribers) 
+		
+		// if the length of subscribers list is null，return
+		if len == 0 { 
+			return
+		}
+		//if the poll flag > the number of subscribers, reset queuePollFlag to 1
+		if  s.queuePollFlag >len{  
+			s.queuePollFlag = 1
+			logging.LogTarget("service", "queuePollFlag become %d", 	1)
+		}
+		//Send msg to the [queuePollFlag-1] subscriber
+		queueSubscribers[s.queuePollFlag-1].Send(m)
+		//poll flag increase
+		s.queuePollFlag++
+	// Common mode
+	}else {
+		for _, subscriber := range s.subscriptions.Lookup(m.Ssid()) {
+			subscriber.Send(m)
+			// Increment the egress size only for direct subscribers
+			if subscriber.Type() == message.SubscriberDirect {
+				n += size
+			}
 		}
 	}
-
 	return
 }
 
