@@ -16,6 +16,7 @@ package broker
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"net"
 	"runtime/debug"
@@ -118,6 +119,16 @@ func (c *Conn) Process() error {
 	}
 }
 
+// notifyError notifies the connection about an error
+func (c *Conn) notifyError(err *Error) {
+	if b, err := json.Marshal(err); err == nil {
+		c.Send(&message.Message{
+			Channel: []byte("emitter/error/"),
+			Payload: b,
+		})
+	}
+}
+
 // onReceive handles an MQTT receive.
 func (c *Conn) onReceive(msg mqtt.Message) error {
 	defer c.MeasureElapsed("rcv."+msg.String(), time.Now())
@@ -145,12 +156,13 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 		// Subscribe for each subscription
 		for _, sub := range packet.Subscriptions {
 			if err := c.onSubscribe(sub.Topic); err != nil {
-				logging.LogError("conn", "subscribe received", err)
 				ack.Qos = append(ack.Qos, 0x80) // 0x80 indicate subscription failure
-			} else {
-				// Append the QoS
-				ack.Qos = append(ack.Qos, sub.Qos)
+				c.notifyError(err)
+				continue
 			}
+
+			// Append the QoS
+			ack.Qos = append(ack.Qos, sub.Qos)
 		}
 
 		// Acknowledge the subscription
@@ -165,7 +177,9 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 
 		// Unsubscribe from each subscription
 		for _, sub := range packet.Topics {
-			c.onUnsubscribe(sub.Topic) // TODO: Handle error or just ignore?
+			if err := c.onUnsubscribe(sub.Topic); err != nil {
+				c.notifyError(err)
+			}
 		}
 
 		// Acknowledge the unsubscription
@@ -188,7 +202,7 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 
 		if err := c.onPublish(packet.Topic, packet.Payload); err != nil {
 			logging.LogError("conn", "publish received", err)
-			// TODO: Handle Error
+			c.notifyError(err)
 		}
 
 		// Acknowledge the publication
