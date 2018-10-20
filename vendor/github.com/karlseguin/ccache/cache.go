@@ -186,6 +186,9 @@ func (c *Cache) doDelete(item *Item) {
 		item.promotions = -2
 	} else {
 		c.size -= item.size
+		if c.onDelete != nil {
+			c.onDelete(item)
+		}
 		c.list.Remove(item.element)
 	}
 }

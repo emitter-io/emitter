@@ -32,7 +32,7 @@ func TestEncodeSubscriptionState(t *testing.T) {
 
 	// Encode
 	enc := state.Encode()[0]
-	assert.Equal(t, []byte{0x1, 0x1, 0x41, 0x14, 0x64}, enc)
+	assert.Equal(t, []byte{0x1, 0x1, 0x0, 0x41, 0x14, 0x64}, enc)
 
 	// Decode
 	dec, err := decodeSubscriptionState(enc)

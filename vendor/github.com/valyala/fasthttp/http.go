@@ -44,6 +44,9 @@ type Request struct {
 	keepBodyBuffer bool
 
 	isTLS bool
+
+	// To detect scheme changes in redirects
+	schemaUpdate bool
 }
 
 // Response represents HTTP response.
@@ -346,7 +349,7 @@ func (resp *Response) BodyGunzip() ([]byte, error) {
 }
 
 func gunzipData(p []byte) ([]byte, error) {
-	var bb ByteBuffer
+	var bb bytebufferpool.ByteBuffer
 	_, err := WriteGunzip(&bb, p)
 	if err != nil {
 		return nil, err
@@ -373,7 +376,7 @@ func (resp *Response) BodyInflate() ([]byte, error) {
 }
 
 func inflateData(p []byte) ([]byte, error) {
-	var bb ByteBuffer
+	var bb bytebufferpool.ByteBuffer
 	_, err := WriteInflate(&bb, p)
 	if err != nil {
 		return nil, err
@@ -711,7 +714,7 @@ func (req *Request) MultipartForm() (*multipart.Form, error) {
 }
 
 func marshalMultipartForm(f *multipart.Form, boundary string) ([]byte, error) {
-	var buf ByteBuffer
+	var buf bytebufferpool.ByteBuffer
 	if err := WriteMultipartForm(&buf, f, boundary); err != nil {
 		return nil, err
 	}
@@ -722,7 +725,7 @@ func marshalMultipartForm(f *multipart.Form, boundary string) ([]byte, error) {
 // boundary to w.
 func WriteMultipartForm(w io.Writer, f *multipart.Form, boundary string) error {
 	// Do not care about memory allocations here, since multipart
-	// form processing is slooow.
+	// form processing is slow.
 	if len(boundary) == 0 {
 		panic("BUG: form boundary cannot be empty")
 	}
@@ -744,7 +747,7 @@ func WriteMultipartForm(w io.Writer, f *multipart.Form, boundary string) error {
 	// marshal files
 	for k, fvv := range f.File {
 		for _, fv := range fvv {
-			vw, err := mw.CreateFormFile(k, fv.Filename)
+			vw, err := mw.CreatePart(fv.Header)
 			if err != nil {
 				return fmt.Errorf("cannot create form file %q (%q): %s", k, fv.Filename, err)
 			}
@@ -881,10 +884,6 @@ func (req *Request) readLimitBody(r *bufio.Reader, maxBodySize int, getOnly bool
 		return errGetOnly
 	}
 
-	if req.Header.noBody() {
-		return nil
-	}
-
 	if req.MayContinue() {
 		// 'Expect: 100-continue' header found. Let the caller deciding
 		// whether to read request body or
@@ -918,7 +917,7 @@ func (req *Request) MayContinue() bool {
 // then ErrBodyTooLarge is returned.
 func (req *Request) ContinueReadBody(r *bufio.Reader, maxBodySize int) error {
 	var err error
-	contentLength := req.Header.ContentLength()
+	contentLength := req.Header.realContentLength()
 	if contentLength > 0 {
 		if maxBodySize > 0 && contentLength > maxBodySize {
 			return ErrBodyTooLarge
@@ -1109,8 +1108,11 @@ func (req *Request) Write(w *bufio.Writer) error {
 		req.Header.SetMultipartFormBoundary(req.multipartFormBoundary)
 	}
 
-	hasBody := !req.Header.noBody()
+	hasBody := !req.Header.ignoreBody()
 	if hasBody {
+		if len(body) == 0 {
+			body = req.postArgs.QueryString()
+		}
 		req.Header.SetContentLength(len(body))
 	}
 	if err = req.Header.Write(w); err != nil {
@@ -1458,7 +1460,7 @@ func (resp *Response) String() string {
 }
 
 func getHTTPString(hw httpWriter) string {
-	w := AcquireByteBuffer()
+	w := bytebufferpool.Get()
 	bw := bufio.NewWriter(w)
 	if err := hw.Write(bw); err != nil {
 		return err.Error()
@@ -1467,7 +1469,7 @@ func getHTTPString(hw httpWriter) string {
 		return err.Error()
 	}
 	s := string(w.B)
-	ReleaseByteBuffer(w)
+	bytebufferpool.Put(w)
 	return s
 }
 
@@ -1683,14 +1685,21 @@ func parseChunkSize(r *bufio.Reader) (int, error) {
 	if err != nil {
 		return -1, err
 	}
+	for {
+		c, err := r.ReadByte()
+		if err != nil {
+			return -1, fmt.Errorf("cannot read '\r' char at the end of chunk size: %s", err)
+		}
+		// Skip any trailing whitespace after chunk size.
+		if c == ' ' {
+			continue
+		}
+		if c != '\r' {
+			return -1, fmt.Errorf("unexpected char %q at the end of chunk size. Expected %q", c, '\r')
+		}
+		break
+	}
 	c, err := r.ReadByte()
-	if err != nil {
-		return -1, fmt.Errorf("cannot read '\r' char at the end of chunk size: %s", err)
-	}
-	if c != '\r' {
-		return -1, fmt.Errorf("unexpected char %q at the end of chunk size. Expected %q", c, '\r')
-	}
-	c, err = r.ReadByte()
 	if err != nil {
 		return -1, fmt.Errorf("cannot read '\n' char at the end of chunk size: %s", err)
 	}

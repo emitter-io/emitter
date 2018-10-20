@@ -8,6 +8,7 @@ type Configuration struct {
 	promoteBuffer  int
 	getsPerPromote int32
 	tracking       bool
+	onDelete       func(item *Item)
 }
 
 // Creates a configuration object with sensible defaults
@@ -90,5 +91,13 @@ func (c *Configuration) GetsPerPromote(count int32) *Configuration {
 // counter.
 func (c *Configuration) Track() *Configuration {
 	c.tracking = true
+	return c
+}
+
+// OnDelete allows setting a callback function to react to ideam deletion.
+// This typically allows to do a cleanup of resources, such as calling a Close() on
+// cached object that require some kind of tear-down.
+func (c *Configuration) OnDelete(callback func(item *Item)) *Configuration {
+	c.onDelete = callback
 	return c
 }

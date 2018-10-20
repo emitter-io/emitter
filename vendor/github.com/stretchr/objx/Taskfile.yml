@@ -8,11 +8,16 @@ update-deps:
     - dep ensure -update
 
 lint:
-  desc: Runs golint
+  desc: Checks code style
   cmds:
     - gofmt -d -s *.go
     - go vet .
   silent: true
+
+lint-fix:
+  desc: Fixes code style
+  cmds:
+    - gofmt -w -s *.go
 
 test:
   desc: Runs go tests

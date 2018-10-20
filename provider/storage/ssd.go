@@ -245,16 +245,18 @@ func (s *SSD) Backup(writer io.Writer) error {
 	logging.LogAction("ssd", "writing a snapshot")
 	return s.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
-			val, err := item.Value()
+			valCopy, err := item.ValueCopy(nil)
 			if err != nil {
 				continue
 			}
 
 			entry := &protos.KVPair{
 				Key:       y.Copy(item.Key()),
-				Value:     y.Copy(val),
+				Value:     valCopy,
 				UserMeta:  []byte{item.UserMeta()},
 				Version:   item.Version(),
 				ExpiresAt: item.ExpiresAt(),

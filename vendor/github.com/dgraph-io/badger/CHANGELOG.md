@@ -6,6 +6,32 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.5.3] - 2018-07-11
+Bug Fixes:
+* Fix a panic caused due to item.vptr not copying over vs.Value, when looking
+    for a move key.
+
+## [1.5.2] - 2018-06-19
+Bug Fixes:
+* Fix the way move key gets generated.
+* If a transaction has unclosed, or multiple iterators running simultaneously,
+    throw a panic. Every iterator must be properly closed. At any point in time,
+    only one iterator per transaction can be running. This is to avoid bugs in a
+    transaction data structure which is thread unsafe.
+
+* *Warning: This change might cause panics in user code. Fix is to properly
+    close your iterators, and only have one running at a time per transaction.*
+
+## [1.5.1] - 2018-06-04
+Bug Fixes:
+* Fix for infinite yieldItemValue recursion. #503
+* Fix recursive addition of `badgerMove` prefix. https://github.com/dgraph-io/badger/commit/2e3a32f0ccac3066fb4206b28deb39c210c5266f
+* Use file size based window size for sampling, instead of fixing it to 10MB. #501
+
+Cleanup:
+* Clarify comments and documentation.
+* Move badger tool one directory level up.
+
 ## [1.5.0] - 2018-05-08
 * Introduce `NumVersionsToKeep` option. This option is used to discard many
   versions of the same key, which saves space.
@@ -28,7 +54,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Introduce new `LSMOnlyOptions`, to make Badger act like a typical LSM based DB.
 
 Bug fix:
-* [Temporary] Check max version across all tables in Get (removed in next
+* (Temporary) Check max version across all tables in Get (removed in next
   release).
 * Update commit and read ts while loading from backup.
 * Ensure all transaction entries are part of the same value log file.
@@ -61,7 +87,12 @@ Bug fix:
 ## [1.0.1] - 2017-11-06
 * Fix an uint16 overflow when resizing key slice
 
-[Unreleased]: https://github.com/dgraph-io/badger/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/dgraph-io/badger/compare/v1.5.3...HEAD
+[1.5.3]: https://github.com/dgraph-io/badger/compare/v1.5.2...v1.5.3
+[1.5.2]: https://github.com/dgraph-io/badger/compare/v1.5.1...v1.5.2
+[1.5.1]: https://github.com/dgraph-io/badger/compare/v1.5.0...v1.5.1
+[1.5.0]: https://github.com/dgraph-io/badger/compare/v1.4.0...v1.5.0
+[1.4.0]: https://github.com/dgraph-io/badger/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/dgraph-io/badger/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/dgraph-io/badger/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/dgraph-io/badger/compare/v1.1.0...v1.1.1

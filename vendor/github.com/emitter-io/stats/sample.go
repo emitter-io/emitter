@@ -16,26 +16,23 @@ package stats
 
 import (
 	"math"
+	"reflect"
 	"sort"
 
 	"github.com/kelindar/binary"
+	"github.com/kelindar/binary/sorted"
 )
 
 // Sample represents a sample window
-type sample binary.SortedInt32s
+type sample sorted.Int32s
 
 func (s sample) Len() int           { return len(s) }
 func (s sample) Less(i, j int) bool { return s[i] < s[j] }
 func (s sample) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
-// MarshalBinary implements a special purpose sortable binary encoding.
-func (s sample) MarshalBinary() (bytes []byte, err error) {
-	return binary.SortedInt32s(s).MarshalBinary()
-}
-
-// UnmarshalBinary implements a special purpose binary decoding.
-func (s *sample) UnmarshalBinary(data []byte) error {
-	return (*binary.SortedInt32s)(s).UnmarshalBinary(data)
+// GetBinaryCodec retrieves a custom binary codec.
+func (s *sample) GetBinaryCodec() binary.Codec {
+	return sorted.IntsCodecAs(reflect.TypeOf(sample{}), 4)
 }
 
 // StdDev returns the standard deviation of the sample.

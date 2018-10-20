@@ -78,6 +78,11 @@ func (s *Snapshot) Min() int {
 	return s.Sample.Min()
 }
 
+// Sum returns the arithmetic sum of all of the values in the snapshot.
+func (s *Snapshot) Sum() int {
+	return int(s.Sample.Sum())
+}
+
 // Quantile returns a slice of arbitrary quantiles of the sample.
 func (s *Snapshot) Quantile(quantiles ...float64) []float64 {
 	return s.Sample.Quantile(quantiles...)

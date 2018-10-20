@@ -20,6 +20,8 @@ func (v *Value) Data() interface{} {
 // String returns the value always as a string
 func (v *Value) String() string {
 	switch {
+	case v.IsNil():
+		return ""
 	case v.IsStr():
 		return v.Str()
 	case v.IsBool():

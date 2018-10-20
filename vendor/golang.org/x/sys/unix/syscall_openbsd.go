@@ -43,6 +43,23 @@ func nametomib(name string) (mib []_C_int, err error) {
 	return nil, EINVAL
 }
 
+func SysctlUvmexp(name string) (*Uvmexp, error) {
+	mib, err := sysctlmib(name)
+	if err != nil {
+		return nil, err
+	}
+
+	n := uintptr(SizeofUvmexp)
+	var u Uvmexp
+	if err := sysctl(mib, (*byte)(unsafe.Pointer(&u)), &n, nil, 0); err != nil {
+		return nil, err
+	}
+	if n != SizeofUvmexp {
+		return nil, EIO
+	}
+	return &u, nil
+}
+
 //sysnb pipe(p *[2]_C_int) (err error)
 func Pipe(p []int) (err error) {
 	if len(p) != 2 {
@@ -113,11 +130,11 @@ func IoctlSetInt(fd int, req uint, value int) error {
 	return ioctl(fd, req, uintptr(value))
 }
 
-func IoctlSetWinsize(fd int, req uint, value *Winsize) error {
+func ioctlSetWinsize(fd int, req uint, value *Winsize) error {
 	return ioctl(fd, req, uintptr(unsafe.Pointer(value)))
 }
 
-func IoctlSetTermios(fd int, req uint, value *Termios) error {
+func ioctlSetTermios(fd int, req uint, value *Termios) error {
 	return ioctl(fd, req, uintptr(unsafe.Pointer(value)))
 }
 
@@ -201,6 +218,7 @@ func Uname(uname *Utsname) error {
 //sys	Dup(fd int) (nfd int, err error)
 //sys	Dup2(from int, to int) (err error)
 //sys	Exit(code int)
+//sys	Faccessat(dirfd int, path string, mode uint32, flags int) (err error)
 //sys	Fchdir(fd int) (err error)
 //sys	Fchflags(fd int, flags int) (err error)
 //sys	Fchmod(fd int, mode uint32) (err error)

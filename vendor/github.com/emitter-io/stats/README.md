@@ -19,6 +19,8 @@ The package itself provides a general-purpose monitoring capabilities, with tigh
 Typical usage consists of creating a metric container, measuring various metrics and sending snapshots over the wire.
 
 ```
+rand.Seed(time.Now().UnixNano())
+
 // Create a container
 m := stats.New()
 
@@ -33,7 +35,7 @@ bytes := m.Snapshot()
 v, err := stats.Restore(bytes)
 
 // Get the values back
-percentiles := v.Quantile(50, 90, 95, 99)
-average := v.Mean()
-count := v.Count()
+percentiles := v[0].Quantile(50, 90, 95, 99)
+average := v[0].Mean()
+count := v[0].Count()
 ```
