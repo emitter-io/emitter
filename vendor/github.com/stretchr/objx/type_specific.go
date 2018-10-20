@@ -36,8 +36,8 @@ func (v *Value) MSISlice(optionalDefault ...[]map[string]interface{}) []map[stri
 		return s
 	}
 
-	s, ok := v.data.([]Map)
-	if !ok {
+	s := v.ObjxMapSlice()
+	if s == nil {
 		if len(optionalDefault) == 1 {
 			return optionalDefault[0]
 		}
@@ -55,16 +55,11 @@ func (v *Value) MSISlice(optionalDefault ...[]map[string]interface{}) []map[stri
 //
 // Panics if the object is not a []map[string]interface{}.
 func (v *Value) MustMSISlice() []map[string]interface{} {
-	s, ok := v.data.([]Map)
-	if !ok {
-		return v.data.([]map[string]interface{})
+	if s := v.MSISlice(); s != nil {
+		return s
 	}
 
-	result := make([]map[string]interface{}, len(s))
-	for i := range s {
-		result[i] = s[i].Value().MustMSI()
-	}
-	return result
+	return v.data.([]map[string]interface{})
 }
 
 // IsMSI gets whether the object contained is a map[string]interface{} or not.
@@ -213,6 +208,8 @@ func (v *Value) ObjxMapSlice(optionalDefault ...[](Map)) [](Map) {
 		switch s[i].(type) {
 		case Map:
 			result[i] = s[i].(Map)
+		case map[string]interface{}:
+			result[i] = New(s[i])
 		default:
 			return nil
 		}
@@ -224,12 +221,8 @@ func (v *Value) ObjxMapSlice(optionalDefault ...[](Map)) [](Map) {
 //
 // Panics if the object is not a [](Map).
 func (v *Value) MustObjxMapSlice() [](Map) {
-	if s, ok := v.data.([]map[string]interface{}); ok {
-		result := make([]Map, len(s))
-		for i := range s {
-			result[i] = s[i]
-		}
-		return result
+	if s := v.ObjxMapSlice(); s != nil {
+		return s
 	}
 	return v.data.([](Map))
 }

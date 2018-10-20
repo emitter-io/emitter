@@ -1,6 +1,8 @@
 ## bbloom: a bitset Bloom filter for go/golang
 ===
 
+[![Build Status](https://travis-ci.org/AndreasBriese/bbloom.png?branch=master)](http://travis-ci.org/AndreasBriese/bbloom)
+
 package implements a fast bloom filter with real 'bitset' and JSONMarshal/JSONUnmarshal to store/reload the Bloom filter. 
 
 NOTE: the package uses unsafe.Pointer to set and read the bits from the bitset. If you're uncomfortable with using the unsafe package, please consider using my bloom filter package at github.com/AndreasBriese/bloom

@@ -1,0 +1,114 @@
+# github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7
+github.com/AndreasBriese/bbloom
+# github.com/aws/aws-sdk-go v0.0.0-20181019205654-b2427922671b
+github.com/aws/aws-sdk-go/aws
+github.com/aws/aws-sdk-go/aws/session
+github.com/aws/aws-sdk-go/service/dynamodb
+github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface
+github.com/aws/aws-sdk-go/aws/awserr
+github.com/aws/aws-sdk-go/aws/credentials
+github.com/aws/aws-sdk-go/aws/endpoints
+github.com/aws/aws-sdk-go/internal/sdkio
+github.com/aws/aws-sdk-go/aws/client
+github.com/aws/aws-sdk-go/aws/corehandlers
+github.com/aws/aws-sdk-go/aws/credentials/stscreds
+github.com/aws/aws-sdk-go/aws/csm
+github.com/aws/aws-sdk-go/aws/defaults
+github.com/aws/aws-sdk-go/aws/request
+github.com/aws/aws-sdk-go/internal/ini
+github.com/aws/aws-sdk-go/internal/shareddefaults
+github.com/aws/aws-sdk-go/aws/awsutil
+github.com/aws/aws-sdk-go/aws/client/metadata
+github.com/aws/aws-sdk-go/aws/signer/v4
+github.com/aws/aws-sdk-go/private/protocol
+github.com/aws/aws-sdk-go/private/protocol/jsonrpc
+github.com/aws/aws-sdk-go/internal/sdkrand
+github.com/aws/aws-sdk-go/service/sts
+github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds
+github.com/aws/aws-sdk-go/aws/credentials/endpointcreds
+github.com/aws/aws-sdk-go/aws/ec2metadata
+github.com/aws/aws-sdk-go/private/protocol/rest
+github.com/aws/aws-sdk-go/private/protocol/json/jsonutil
+github.com/aws/aws-sdk-go/private/protocol/query
+github.com/aws/aws-sdk-go/internal/sdkuri
+github.com/aws/aws-sdk-go/private/protocol/query/queryutil
+github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil
+# github.com/axiomhq/hyperloglog v0.0.0-20180317131949-fe9507de0228
+github.com/axiomhq/hyperloglog
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
+# github.com/dgraph-io/badger v0.0.0-20181020042726-fbb27786246d
+github.com/dgraph-io/badger
+github.com/dgraph-io/badger/protos
+github.com/dgraph-io/badger/y
+github.com/dgraph-io/badger/options
+github.com/dgraph-io/badger/skl
+github.com/dgraph-io/badger/table
+# github.com/dgryski/go-farm v0.0.0-20180109070241-2de33835d102
+github.com/dgryski/go-farm
+# github.com/dgryski/go-metro v0.0.0-20180109044635-280f6062b5bc
+github.com/dgryski/go-metro
+# github.com/emitter-io/address v0.0.0-20180529130036-6045edd5ea32
+github.com/emitter-io/address
+# github.com/emitter-io/config v0.0.0-20180819095213-d98871f7d1dc
+github.com/emitter-io/config/dynamo
+github.com/emitter-io/config/vault
+github.com/emitter-io/config
+# github.com/emitter-io/stats v1.0.0
+github.com/emitter-io/stats
+# github.com/golang/protobuf v0.0.0-20181005181728-ddf22928ea3c
+github.com/golang/protobuf/proto
+# github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
+github.com/golang/snappy
+# github.com/gorilla/websocket v1.4.0
+github.com/gorilla/websocket
+# github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
+github.com/jmespath/go-jmespath
+# github.com/karlseguin/ccache v0.0.0-20180722041702-a3174167557e
+github.com/karlseguin/ccache
+# github.com/kelindar/binary v1.0.1
+github.com/kelindar/binary
+github.com/kelindar/binary/sorted
+# github.com/kelindar/process v0.0.0-20170730150328-69a29e249ec3
+github.com/kelindar/process
+# github.com/kelindar/tcp v0.0.0-20170901060004-951ea01d26dd
+github.com/kelindar/tcp
+# github.com/klauspost/compress v1.4.0
+github.com/klauspost/compress/flate
+github.com/klauspost/compress/gzip
+github.com/klauspost/compress/zlib
+# github.com/klauspost/cpuid v0.0.0-20180405133222-e7e905edc00e
+github.com/klauspost/cpuid
+# github.com/pkg/errors v0.0.0-20181008045315-2233dee583dc
+github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
+# github.com/stretchr/objx v0.0.0-20180825064932-ef50b0de2877
+github.com/stretchr/objx
+# github.com/stretchr/testify v1.2.2
+github.com/stretchr/testify/mock
+github.com/stretchr/testify/assert
+# github.com/valyala/bytebufferpool v1.0.0
+github.com/valyala/bytebufferpool
+# github.com/valyala/fasthttp v0.0.0-20181014131909-996610f021ff
+github.com/valyala/fasthttp
+github.com/valyala/fasthttp/fasthttputil
+github.com/valyala/fasthttp/stackless
+# github.com/weaveworks/mesh v0.0.0-20180416113225-61ba45522f8a
+github.com/weaveworks/mesh
+# golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e
+golang.org/x/crypto/pbkdf2
+golang.org/x/crypto/acme/autocert
+golang.org/x/crypto/nacl/box
+golang.org/x/crypto/nacl/secretbox
+golang.org/x/crypto/acme
+golang.org/x/crypto/curve25519
+golang.org/x/crypto/salsa20/salsa
+golang.org/x/crypto/internal/subtle
+golang.org/x/crypto/poly1305
+# golang.org/x/net v0.0.0-20181017193950-04a2e542c03f
+golang.org/x/net/trace
+golang.org/x/net/context
+golang.org/x/net/internal/timeseries
+# golang.org/x/sys v0.0.0-20181019160139-8e24a49d80f8
+golang.org/x/sys/unix

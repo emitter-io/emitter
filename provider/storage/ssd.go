@@ -247,21 +247,18 @@ func (s *SSD) Backup(writer io.Writer) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
-			val, err := item.Value()
-			if err != nil {
-				continue
-			}
+			if err := item.Value(func(val []byte) error {
+				entry := &protos.KVPair{
+					Key:       y.Copy(item.Key()),
+					Value:     y.Copy(val),
+					UserMeta:  []byte{item.UserMeta()},
+					Version:   item.Version(),
+					ExpiresAt: item.ExpiresAt(),
+				}
 
-			entry := &protos.KVPair{
-				Key:       y.Copy(item.Key()),
-				Value:     y.Copy(val),
-				UserMeta:  []byte{item.UserMeta()},
-				Version:   item.Version(),
-				ExpiresAt: item.ExpiresAt(),
-			}
-
-			// Write entries to disk
-			if err := writeTo(entry, writer); err != nil {
+				// Write entries to disk
+				return writeTo(entry, writer)
+			}); err != nil {
 				return err
 			}
 		}

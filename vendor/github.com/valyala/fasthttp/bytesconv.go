@@ -164,7 +164,7 @@ func ParseUint(buf []byte) (int, error) {
 var (
 	errEmptyInt               = errors.New("empty integer")
 	errUnexpectedFirstChar    = errors.New("unexpected first char found. Expecting 0-9")
-	errUnexpectedTrailingChar = errors.New("unexpected traling char found. Expecting 0-9")
+	errUnexpectedTrailingChar = errors.New("unexpected trailing char found. Expecting 0-9")
 	errTooLongInt             = errors.New("too long int")
 )
 
@@ -416,8 +416,17 @@ func AppendQuotedArg(dst, src []byte) []byte {
 
 func appendQuotedPath(dst, src []byte) []byte {
 	for _, c := range src {
+		// From the spec: http://tools.ietf.org/html/rfc3986#section-3.3
+		// an path can contain zero or more of pchar that is defined as follows:
+		// pchar       = unreserved / pct-encoded / sub-delims / ":" / "@"
+		// pct-encoded = "%" HEXDIG HEXDIG
+		// unreserved  = ALPHA / DIGIT / "-" / "." / "_" / "~"
+		// sub-delims  = "!" / "$" / "&" / "'" / "(" / ")"
+		//             / "*" / "+" / "," / ";" / "="
 		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' ||
-			c == '/' || c == '.' || c == ',' || c == '=' || c == ':' || c == '&' || c == '~' || c == '-' || c == '_' {
+			c == '-' || c == '.' || c == '_' || c == '~' || c == '!' || c == '$' ||
+			c == '&' || c == '\'' || c == '(' || c == ')' || c == '*' || c == '+' ||
+			c == ',' || c == ';' || c == '=' || c == ':' || c == '@' || c == '/' {
 			dst = append(dst, c)
 		} else {
 			dst = append(dst, '%', hexCharUpper(c>>4), hexCharUpper(c&15))
@@ -431,7 +440,7 @@ func appendQuotedPath(dst, src []byte) []byte {
 // This function has no performance benefits comparing to string(b) == s.
 // It is left here for backwards compatibility only.
 //
-// This function is deperecated and may be deleted soon.
+// Deprecated: may be deleted soon.
 func EqualBytesStr(b []byte, s string) bool {
 	return string(b) == s
 }
@@ -441,7 +450,7 @@ func EqualBytesStr(b []byte, s string) bool {
 // This function has no performance benefits comparing to append(dst, src...).
 // It is left here for backwards compatibility only.
 //
-// This function is deprecated and may be deleted soon.
+// Deprecated: may be deleted soon.
 func AppendBytesStr(dst []byte, src string) []byte {
 	return append(dst, src...)
 }

@@ -24,7 +24,6 @@ import (
 	"hash/crc32"
 	"io"
 	"io/ioutil"
-	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -36,7 +35,6 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/options"
-
 	"github.com/dgraph-io/badger/y"
 	"github.com/pkg/errors"
 	"golang.org/x/net/trace"
@@ -83,6 +81,7 @@ func (lf *logFile) openReadOnly() error {
 	if err != nil {
 		return errors.Wrapf(err, "Unable to check stat for %q", lf.path)
 	}
+	y.AssertTrue(fi.Size() <= math.MaxUint32)
 	lf.size = uint32(fi.Size())
 
 	if err = lf.mmap(fi.Size()); err != nil {
@@ -126,9 +125,12 @@ func (lf *logFile) read(p valuePointer, s *y.Slice) (buf []byte, err error) {
 		n, err = lf.fd.ReadAt(buf, int64(offset))
 		nbr = int64(n)
 	} else {
-		size := uint32(len(lf.fmap))
+		// Do not convert size to uint32, because the lf.fmap can be of size
+		// 4GB, which overflows the uint32 during conversion to make the size 0,
+		// causing the read to fail with ErrEOF. See issue #585.
+		size := int64(len(lf.fmap))
 		valsz := p.Len
-		if offset >= size || offset+valsz > size {
+		if int64(offset) >= size || int64(offset+valsz) > size {
 			err = y.ErrEOF
 		} else {
 			buf = lf.fmap[offset : offset+valsz]
@@ -199,7 +201,7 @@ func (r *safeRead) Entry(reader *bufio.Reader) (*Entry, error) {
 
 	var h header
 	h.Decode(hbuf[:])
-	if h.klen > maxKeySize {
+	if h.klen > uint32(1<<16) { // Key length must be below uint16.
 		return nil, errTruncate
 	}
 	kl := int(h.klen)
@@ -247,10 +249,24 @@ func (r *safeRead) Entry(reader *bufio.Reader) (*Entry, error) {
 
 // iterate iterates over log file. It doesn't not allocate new memory for every kv pair.
 // Therefore, the kv pair is only valid for the duration of fn call.
-func (vlog *valueLog) iterate(lf *logFile, offset uint32, fn logEntry) error {
-	_, err := lf.fd.Seek(int64(offset), io.SeekStart)
+func (vlog *valueLog) iterate(lf *logFile, offset uint32, fn logEntry) (uint32, error) {
+	fi, err := lf.fd.Stat()
 	if err != nil {
-		return y.Wrap(err)
+		return 0, err
+	}
+	if int64(offset) == fi.Size() {
+		// We're at the end of the file already. No need to do anything.
+		return offset, nil
+	}
+	if vlog.opt.ReadOnly {
+		// We're not at the end of the file. We'd need to replay the entries, or
+		// possibly truncate the file.
+		return 0, ErrReplayNeeded
+	}
+
+	// We're not at the end of the file. Let's Seek to the offset and start reading.
+	if _, err := lf.fd.Seek(int64(offset), io.SeekStart); err != nil {
+		return 0, y.Wrap(err)
 	}
 
 	reader := bufio.NewReader(lf.fd)
@@ -260,7 +276,6 @@ func (vlog *valueLog) iterate(lf *logFile, offset uint32, fn logEntry) error {
 		recordOffset: offset,
 	}
 
-	truncate := false
 	var lastCommit uint64
 	var validEndOffset uint32
 	for {
@@ -268,16 +283,15 @@ func (vlog *valueLog) iterate(lf *logFile, offset uint32, fn logEntry) error {
 		if err == io.EOF {
 			break
 		} else if err == io.ErrUnexpectedEOF || err == errTruncate {
-			truncate = true
 			break
 		} else if err != nil {
-			return err
+			return 0, err
 		} else if e == nil {
 			continue
 		}
 
 		var vp valuePointer
-		vp.Len = uint32(headerBufSize + len(e.Key) + len(e.Value) + 4) // len(crcBuf)
+		vp.Len = uint32(headerBufSize + len(e.Key) + len(e.Value) + crc32.Size)
 		read.recordOffset += vp.Len
 
 		vp.Offset = e.offset
@@ -289,14 +303,12 @@ func (vlog *valueLog) iterate(lf *logFile, offset uint32, fn logEntry) error {
 				lastCommit = txnTs
 			}
 			if lastCommit != txnTs {
-				truncate = true
 				break
 			}
 
 		} else if e.meta&bitFinTxn > 0 {
 			txnTs, err := strconv.ParseUint(string(e.Value), 10, 64)
 			if err != nil || lastCommit != txnTs {
-				truncate = true
 				break
 			}
 			// Got the end of txn. Now we can store them.
@@ -307,33 +319,19 @@ func (vlog *valueLog) iterate(lf *logFile, offset uint32, fn logEntry) error {
 			if lastCommit != 0 {
 				// This is most likely an entry which was moved as part of GC.
 				// We shouldn't get this entry in the middle of a transaction.
-				truncate = true
 				break
 			}
 			validEndOffset = read.recordOffset
 		}
 
-		if vlog.opt.ReadOnly {
-			return ErrReplayNeeded
-		}
 		if err := fn(*e, vp); err != nil {
 			if err == errStop {
 				break
 			}
-			return y.Wrap(err)
+			return 0, y.Wrap(err)
 		}
 	}
-
-	if vlog.opt.Truncate && truncate && len(lf.fmap) == 0 {
-		// Only truncate if the file isn't mmaped. Otherwise, Windows would puke.
-		if err := lf.fd.Truncate(int64(validEndOffset)); err != nil {
-			return err
-		}
-	} else if truncate {
-		return ErrTruncateNeeded
-	}
-
-	return nil
+	return validEndOffset, nil
 }
 
 func (vlog *valueLog) rewrite(f *logFile, tr trace.Trace) error {
@@ -387,7 +385,8 @@ func (vlog *valueLog) rewrite(f *logFile, tr trace.Trace) error {
 			if bytes.HasPrefix(e.Key, badgerMove) {
 				ne.Key = append([]byte{}, e.Key...)
 			} else {
-				ne.Key = append(badgerMove, e.Key...)
+				ne.Key = append([]byte{}, badgerMove...)
+				ne.Key = append(ne.Key, e.Key...)
 			}
 
 			ne.Value = append([]byte{}, e.Value...)
@@ -402,12 +401,12 @@ func (vlog *valueLog) rewrite(f *logFile, tr trace.Trace) error {
 				wb = wb[:0]
 			}
 		} else {
-			log.Printf("WARNING: This entry should have been caught. %+v\n", e)
+			Warningf("This entry should have been caught. %+v\n", e)
 		}
 		return nil
 	}
 
-	err := vlog.iterate(f, 0, func(e Entry, vp valuePointer) error {
+	_, err := vlog.iterate(f, 0, func(e Entry, vp valuePointer) error {
 		return fe(e)
 	})
 	if err != nil {
@@ -420,7 +419,7 @@ func (vlog *valueLog) rewrite(f *logFile, tr trace.Trace) error {
 	for i := 0; i < len(wb); {
 		loops++
 		if batchSize == 0 {
-			log.Printf("WARNING: We shouldn't reach batch size of zero.")
+			Warningf("We shouldn't reach batch size of zero.")
 			return ErrNoRewrite
 		}
 		end := i + batchSize
@@ -466,7 +465,7 @@ func (vlog *valueLog) rewrite(f *logFile, tr trace.Trace) error {
 	return nil
 }
 
-func (vlog *valueLog) deleteMoveKeysFor(fid uint32, tr trace.Trace) {
+func (vlog *valueLog) deleteMoveKeysFor(fid uint32, tr trace.Trace) error {
 	db := vlog.kv
 	var result []*Entry
 	var count, pointers uint64
@@ -488,7 +487,7 @@ func (vlog *valueLog) deleteMoveKeysFor(fid uint32, tr trace.Trace) {
 			var vp valuePointer
 			vp.Decode(item.vptr)
 			if vp.Fid == fid {
-				e := &Entry{Key: item.KeyCopy(nil), meta: bitDelete}
+				e := &Entry{Key: y.KeyWithTs(item.Key(), item.Version()), meta: bitDelete}
 				result = append(result, e)
 			}
 		}
@@ -497,7 +496,7 @@ func (vlog *valueLog) deleteMoveKeysFor(fid uint32, tr trace.Trace) {
 	if err != nil {
 		tr.LazyPrintf("Got error while iterating move keys: %v", err)
 		tr.SetError()
-		return
+		return err
 	}
 	tr.LazyPrintf("Num total move keys: %d. Num pointers: %d", count, pointers)
 	tr.LazyPrintf("Number of invalid move keys found: %d", len(result))
@@ -515,12 +514,12 @@ func (vlog *valueLog) deleteMoveKeysFor(fid uint32, tr trace.Trace) {
 			}
 			tr.LazyPrintf("Error while doing batchSet: %v", err)
 			tr.SetError()
-			return
+			return err
 		}
 		i += batchSize
 	}
 	tr.LazyPrintf("Move keys deletion done.")
-	return
+	return nil
 }
 
 func (vlog *valueLog) incrIteratorCount() {
@@ -582,8 +581,8 @@ type valueLog struct {
 	numActiveIterators int32
 
 	kv                *DB
-	maxFid            uint32
-	writableLogOffset uint32
+	maxFid            uint32 // accessed via atomics.
+	writableLogOffset uint32 // read by read, written by write. Must access via atomics.
 	numEntriesWritten uint32
 	opt               Options
 
@@ -668,7 +667,10 @@ func (vlog *valueLog) openOrCreateFiles(readOnly bool) error {
 func (vlog *valueLog) createVlogFile(fid uint32) (*logFile, error) {
 	path := vlog.fpath(fid)
 	lf := &logFile{fid: fid, path: path, loadingMode: vlog.opt.ValueLogLoadingMode}
-	vlog.writableLogOffset = 0
+	// writableLogOffset is only written by write func, by read by Read func.
+	// To avoid a race condition, all reads and updates to this variable must be
+	// done via atomics.
+	atomic.StoreUint32(&vlog.writableLogOffset, 0)
 	vlog.numEntriesWritten = 0
 
 	var err error
@@ -708,16 +710,16 @@ func (vlog *valueLog) Close() error {
 
 	var err error
 	for id, f := range vlog.filesMap {
-
 		f.lock.Lock() // We won’t release the lock.
 		if munmapErr := f.munmap(); munmapErr != nil && err == nil {
 			err = munmapErr
 		}
 
-		if !vlog.opt.ReadOnly && id == vlog.maxFid {
+		maxFid := atomic.LoadUint32(&vlog.maxFid)
+		if !vlog.opt.ReadOnly && id == maxFid {
 			// truncate writable log file to correct offset.
 			if truncErr := f.fd.Truncate(
-				int64(vlog.writableLogOffset)); truncErr != nil && err == nil {
+				int64(vlog.woffset())); truncErr != nil && err == nil {
 				err = truncErr
 			}
 		}
@@ -725,7 +727,6 @@ func (vlog *valueLog) Close() error {
 		if closeErr := f.fd.Close(); closeErr != nil && err == nil {
 			err = closeErr
 		}
-
 	}
 	return err
 }
@@ -765,10 +766,34 @@ func (vlog *valueLog) Replay(ptr valuePointer, fn logEntry) error {
 		if id > fid {
 			of = 0
 		}
-		f := vlog.filesMap[id]
-		err := vlog.iterate(f, of, fn)
+		lf := vlog.filesMap[id]
+		vlog.elog.Printf("Iterating file id: %d", id)
+		now := time.Now()
+		fi, err := lf.fd.Stat()
 		if err != nil {
-			return errors.Wrapf(err, "Unable to replay value log: %q", f.path)
+			return err
+		}
+		validEndOffset, err := vlog.iterate(lf, of, fn)
+		if err != nil {
+			return errors.Wrapf(err, "Unable to replay value log: %q", lf.path)
+		}
+		if int64(validEndOffset) != fi.Size() {
+			y.AssertTrue(int64(validEndOffset) <= fi.Size())
+			switch {
+			case !vlog.opt.Truncate:
+				return ErrTruncateNeeded
+			case len(lf.fmap) > 0:
+				// Only truncate if the file isn't mmaped. Otherwise, Windows would puke.
+				return ErrTruncateNeeded
+			default:
+				if err := lf.fd.Truncate(int64(validEndOffset)); err != nil {
+					return errors.Wrapf(err, "Unable to truncate file: %q", lf.path)
+				}
+			}
+		}
+		vlog.elog.Printf("Iteration took: %s\n", time.Since(now))
+		if err != nil {
+			return errors.Wrapf(err, "Unable to replay value log: %q", lf.path)
 		}
 	}
 
@@ -808,7 +833,8 @@ func (vlog *valueLog) sync() error {
 		vlog.filesLock.RUnlock()
 		return nil
 	}
-	curlf := vlog.filesMap[vlog.maxFid]
+	maxFid := atomic.LoadUint32(&vlog.maxFid)
+	curlf := vlog.filesMap[maxFid]
 	curlf.lock.RLock()
 	vlog.filesLock.RUnlock()
 
@@ -823,14 +849,15 @@ func (vlog *valueLog) sync() error {
 	return err
 }
 
-func (vlog *valueLog) writableOffset() uint32 {
+func (vlog *valueLog) woffset() uint32 {
 	return atomic.LoadUint32(&vlog.writableLogOffset)
 }
 
 // write is thread-unsafe by design and should not be called concurrently.
 func (vlog *valueLog) write(reqs []*request) error {
 	vlog.filesLock.RLock()
-	curlf := vlog.filesMap[vlog.maxFid]
+	maxFid := atomic.LoadUint32(&vlog.maxFid)
+	curlf := vlog.filesMap[maxFid]
 	vlog.filesLock.RUnlock()
 
 	toDisk := func() error {
@@ -848,7 +875,7 @@ func (vlog *valueLog) write(reqs []*request) error {
 		atomic.AddUint32(&vlog.writableLogOffset, uint32(n))
 		vlog.buf.Reset()
 
-		if vlog.writableOffset() > uint32(vlog.opt.ValueLogFileSize) ||
+		if vlog.woffset() > uint32(vlog.opt.ValueLogFileSize) ||
 			vlog.numEntriesWritten > vlog.opt.ValueLogMaxEntries {
 			var err error
 			if err = curlf.doneWriting(vlog.writableLogOffset); err != nil {
@@ -856,7 +883,7 @@ func (vlog *valueLog) write(reqs []*request) error {
 			}
 
 			newid := atomic.AddUint32(&vlog.maxFid, 1)
-			y.AssertTruef(newid <= math.MaxUint32, "newid will overflow uint32: %v", newid)
+			y.AssertTruef(newid > 0, "newid has overflown uint32: %v", newid)
 			newlf, err := vlog.createVlogFile(newid)
 			if err != nil {
 				return err
@@ -880,7 +907,7 @@ func (vlog *valueLog) write(reqs []*request) error {
 
 			p.Fid = curlf.fid
 			// Use the offset including buffer length so far.
-			p.Offset = vlog.writableOffset() + uint32(vlog.buf.Len())
+			p.Offset = vlog.woffset() + uint32(vlog.buf.Len())
 			plen, err := encodeEntry(e, &vlog.buf) // Now encode the entry into buffer.
 			if err != nil {
 				return err
@@ -892,7 +919,7 @@ func (vlog *valueLog) write(reqs []*request) error {
 		// We write to disk here so that all entries that are part of the same transaction are
 		// written to the same vlog file.
 		writeNow :=
-			vlog.writableOffset()+uint32(vlog.buf.Len()) > uint32(vlog.opt.ValueLogFileSize) ||
+			vlog.woffset()+uint32(vlog.buf.Len()) > uint32(vlog.opt.ValueLogFileSize) ||
 				vlog.numEntriesWritten > uint32(vlog.opt.ValueLogMaxEntries)
 		if writeNow {
 			if err := toDisk(); err != nil {
@@ -924,10 +951,11 @@ func (vlog *valueLog) getFileRLocked(fid uint32) (*logFile, error) {
 // TODO: Make this read private.
 func (vlog *valueLog) Read(vp valuePointer, s *y.Slice) ([]byte, func(), error) {
 	// Check for valid offset if we are reading to writable log.
-	if vp.Fid == vlog.maxFid && vp.Offset >= vlog.writableOffset() {
+	maxFid := atomic.LoadUint32(&vlog.maxFid)
+	if vp.Fid == maxFid && vp.Offset >= vlog.woffset() {
 		return nil, nil, errors.Errorf(
 			"Invalid value pointer offset: %d greater than current offset: %d",
-			vp.Offset, vlog.writableOffset())
+			vp.Offset, vlog.woffset())
 	}
 
 	buf, cb, err := vlog.readValueBytes(vp, s)
@@ -1068,11 +1096,15 @@ func (vlog *valueLog) doRunGC(lf *logFile, discardRatio float64, tr trace.Trace)
 		tr.SetError()
 		return err
 	}
-	window := float64(fi.Size()) * 0.1 // 10% of the file as window.
+
+	// Set up the sampling window sizes.
+	sizeWindow := float64(fi.Size()) * 0.1                          // 10% of the file as window.
+	countWindow := int(float64(vlog.opt.ValueLogMaxEntries) * 0.01) // 1% of num entries.
+	tr.LazyPrintf("Size window: %5.2f. Count window: %d.", sizeWindow, countWindow)
 
 	// Pick a random start point for the log.
 	skipFirstM := float64(rand.Int63n(fi.Size())) // Pick a random starting location.
-	skipFirstM -= window                          // Avoid hitting EOF by moving back by window.
+	skipFirstM -= sizeWindow                      // Avoid hitting EOF by moving back by window.
 	skipFirstM /= float64(mi)                     // Convert to MBs.
 	tr.LazyPrintf("Skip first %5.2f MB of file of size: %d MB", skipFirstM, fi.Size()/mi)
 	var skipped float64
@@ -1082,20 +1114,20 @@ func (vlog *valueLog) doRunGC(lf *logFile, discardRatio float64, tr trace.Trace)
 	y.AssertTrue(vlog.kv != nil)
 	s := new(y.Slice)
 	var numIterations int
-	err = vlog.iterate(lf, 0, func(e Entry, vp valuePointer) error {
+	_, err = vlog.iterate(lf, 0, func(e Entry, vp valuePointer) error {
 		numIterations++
-		esz := float64(vp.Len) / (1 << 20) // in MBs. +4 for the CAS stuff.
+		esz := float64(vp.Len) / (1 << 20) // in MBs.
 		if skipped < skipFirstM {
 			skipped += esz
 			return nil
 		}
 
-		// Sample until we reach window size or 10K entries or exceed 10 seconds.
-		if r.count > 10000 {
-			tr.LazyPrintf("Stopping sampling after 10K entries.")
+		// Sample until we reach the window sizes or exceed 10 seconds.
+		if r.count > countWindow {
+			tr.LazyPrintf("Stopping sampling after %d entries.", countWindow)
 			return errStop
 		}
-		if r.total > window {
+		if r.total > sizeWindow {
 			tr.LazyPrintf("Stopping sampling after reaching window size.")
 			return errStop
 		}
@@ -1158,8 +1190,9 @@ func (vlog *valueLog) doRunGC(lf *logFile, discardRatio float64, tr trace.Trace)
 	tr.LazyPrintf("Fid: %d. Skipped: %5.2fMB Num iterations: %d. Data status=%+v\n",
 		lf.fid, skipped, numIterations, r)
 
-	// If we sampled at least 10MB, we can make a call about rewrite.
-	if (r.count < 10000 && r.total < 10.0) || r.discard < discardRatio*r.total {
+	// If we couldn't sample at least a 1000 KV pairs or at least 75% of the window size,
+	// and what we can discard is below the threshold, we should skip the rewrite.
+	if (r.count < countWindow && r.total < sizeWindow*0.75) || r.discard < discardRatio*r.total {
 		tr.LazyPrintf("Skipping GC on fid: %d", lf.fid)
 		return ErrNoRewrite
 	}
@@ -1185,6 +1218,7 @@ func (vlog *valueLog) runGC(discardRatio float64, head valuePointer) error {
 	case vlog.garbageCh <- struct{}{}:
 		// Pick a log file for GC.
 		tr := trace.New("Badger.ValueLog", "GC")
+		tr.SetMaxEvents(100)
 		defer func() {
 			tr.Finish()
 			<-vlog.garbageCh
@@ -1192,6 +1226,10 @@ func (vlog *valueLog) runGC(discardRatio float64, head valuePointer) error {
 
 		var err error
 		files := vlog.pickLog(head, tr)
+		if len(files) == 0 {
+			tr.LazyPrintf("PickLog returned zero results.")
+			return ErrNoRewrite
+		}
 		tried := make(map[uint32]bool)
 		for _, lf := range files {
 			if _, done := tried[lf.fid]; done {
@@ -1200,8 +1238,7 @@ func (vlog *valueLog) runGC(discardRatio float64, head valuePointer) error {
 			tried[lf.fid] = true
 			err = vlog.doRunGC(lf, discardRatio, tr)
 			if err == nil {
-				vlog.deleteMoveKeysFor(lf.fid, tr)
-				return nil
+				return vlog.deleteMoveKeysFor(lf.fid, tr)
 			}
 		}
 		return err

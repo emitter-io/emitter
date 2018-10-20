@@ -9,11 +9,11 @@ import (
 	"unsafe"
 )
 
-func convertToString(buf *[]byte) string {
-	return *(*string)(unsafe.Pointer(buf))
+func binaryToString(b *[]byte) string {
+	return *(*string)(unsafe.Pointer(b))
 }
 
-func convertToBytes(v string) (b []byte) {
+func stringToBinary(v string) (b []byte) {
 	strHeader := (*reflect.StringHeader)(unsafe.Pointer(&v))
 	byteHeader := (*reflect.SliceHeader)(unsafe.Pointer(&b))
 	byteHeader.Data = strHeader.Data
@@ -22,4 +22,12 @@ func convertToBytes(v string) (b []byte) {
 	byteHeader.Len = l
 	byteHeader.Cap = l
 	return
+}
+
+func binaryToBools(b *[]byte) []bool {
+	return *(*[]bool)(unsafe.Pointer(b))
+}
+
+func boolsToBinary(v *[]bool) []byte {
+	return *(*[]byte)(unsafe.Pointer(v))
 }

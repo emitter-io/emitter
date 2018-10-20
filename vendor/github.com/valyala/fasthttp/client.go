@@ -91,20 +91,22 @@ func DoDeadline(req *Request, resp *Response, deadline time.Time) error {
 	return defaultClient.DoDeadline(req, resp, deadline)
 }
 
-// Get appends url contents to dst and returns it as body.
+// Get returns the status code and body of url.
+//
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 func Get(dst []byte, url string) (statusCode int, body []byte, err error) {
 	return defaultClient.Get(dst, url)
 }
 
-// GetTimeout appends url contents to dst and returns it as body.
+// GetTimeout returns the status code and body of url.
+//
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 //
 // ErrTimeout error is returned if url contents couldn't be fetched
 // during the given timeout.
@@ -112,11 +114,12 @@ func GetTimeout(dst []byte, url string, timeout time.Duration) (statusCode int, 
 	return defaultClient.GetTimeout(dst, url, timeout)
 }
 
-// GetDeadline appends url contents to dst and returns it as body.
+// GetDeadline returns the status code and body of url.
+//
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 //
 // ErrTimeout error is returned if url contents couldn't be fetched
 // until the given deadline.
@@ -126,11 +129,10 @@ func GetDeadline(dst []byte, url string, deadline time.Time) (statusCode int, bo
 
 // Post sends POST request to the given url with the given POST arguments.
 //
-// Response body is appended to dst, which is returned as body.
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 //
 // Empty POST body is sent if postArgs is nil.
 func Post(dst []byte, url string, postArgs *Args) (statusCode int, body []byte, err error) {
@@ -234,20 +236,22 @@ type Client struct {
 	ms    map[string]*HostClient
 }
 
-// Get appends url contents to dst and returns it as body.
+// Get returns the status code and body of url.
+//
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 func (c *Client) Get(dst []byte, url string) (statusCode int, body []byte, err error) {
 	return clientGetURL(dst, url, c)
 }
 
-// GetTimeout appends url contents to dst and returns it as body.
+// GetTimeout returns the status code and body of url.
+//
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 //
 // ErrTimeout error is returned if url contents couldn't be fetched
 // during the given timeout.
@@ -255,11 +259,12 @@ func (c *Client) GetTimeout(dst []byte, url string, timeout time.Duration) (stat
 	return clientGetURLTimeout(dst, url, timeout, c)
 }
 
-// GetDeadline appends url contents to dst and returns it as body.
+// GetDeadline returns the status code and body of url.
+//
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 //
 // ErrTimeout error is returned if url contents couldn't be fetched
 // until the given deadline.
@@ -269,11 +274,10 @@ func (c *Client) GetDeadline(dst []byte, url string, deadline time.Time) (status
 
 // Post sends POST request to the given url with the given POST arguments.
 //
-// Response body is appended to dst, which is returned as body.
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 //
 // Empty POST body is sent if postArgs is nil.
 func (c *Client) Post(dst []byte, url string, postArgs *Args) (statusCode int, body []byte, err error) {
@@ -443,6 +447,9 @@ const DefaultMaxConnsPerHost = 512
 // connection is closed.
 const DefaultMaxIdleConnDuration = 10 * time.Second
 
+// DefaultMaxIdemponentCallAttempts is the default idempotent calls attempts count.
+const DefaultMaxIdemponentCallAttempts = 5
+
 // DialFunc must establish connection to addr.
 //
 // There is no need in establishing TLS (SSL) connection for https.
@@ -521,6 +528,11 @@ type HostClient struct {
 	// By default idle connections are closed
 	// after DefaultMaxIdleConnDuration.
 	MaxIdleConnDuration time.Duration
+
+	// Maximum number of attempts for idempotent calls
+	//
+	// DefaultMaxIdemponentCallAttempts is used if not set.
+	MaxIdemponentCallAttempts int
 
 	// Per-connection buffer size for responses' reading.
 	// This also limits the maximum header size.
@@ -609,20 +621,22 @@ func (c *HostClient) LastUseTime() time.Time {
 	return time.Unix(startTimeUnix+int64(n), 0)
 }
 
-// Get appends url contents to dst and returns it as body.
+// Get returns the status code and body of url.
+//
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 func (c *HostClient) Get(dst []byte, url string) (statusCode int, body []byte, err error) {
 	return clientGetURL(dst, url, c)
 }
 
-// GetTimeout appends url contents to dst and returns it as body.
+// GetTimeout returns the status code and body of url.
+//
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 //
 // ErrTimeout error is returned if url contents couldn't be fetched
 // during the given timeout.
@@ -630,11 +644,12 @@ func (c *HostClient) GetTimeout(dst []byte, url string, timeout time.Duration) (
 	return clientGetURLTimeout(dst, url, timeout, c)
 }
 
-// GetDeadline appends url contents to dst and returns it as body.
+// GetDeadline returns the status code and body of url.
+//
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 //
 // ErrTimeout error is returned if url contents couldn't be fetched
 // until the given deadline.
@@ -644,11 +659,10 @@ func (c *HostClient) GetDeadline(dst []byte, url string, deadline time.Time) (st
 
 // Post sends POST request to the given url with the given POST arguments.
 //
-// Response body is appended to dst, which is returned as body.
+// The contents of dst will be replaced by the body and returned, if the dst
+// is too small a new slice will be allocated.
 //
 // The function follows redirects. Use Do* for manually handling redirects.
-//
-// New body buffer is allocated if dst is nil.
 //
 // Empty POST body is sent if postArgs is nil.
 func (c *HostClient) Post(dst []byte, url string, postArgs *Args) (statusCode int, body []byte, err error) {
@@ -756,9 +770,24 @@ func doRequestFollowRedirects(req *Request, dst []byte, url string, c clientDoer
 	resp.keepBodyBuffer = true
 	oldBody := bodyBuf.B
 	bodyBuf.B = dst
+	scheme := req.uri.Scheme()
+	req.schemaUpdate = false
 
 	redirectsCount := 0
 	for {
+		// In case redirect to different scheme
+		if redirectsCount > 0 && !bytes.Equal(scheme, req.uri.Scheme()) {
+			if strings.HasPrefix(url, string(strHTTPS)) {
+				req.isTLS = true
+				req.uri.SetSchemeBytes(strHTTPS)
+			} else {
+				req.isTLS = false
+				req.uri.SetSchemeBytes(strHTTP)
+			}
+			scheme = req.uri.Scheme()
+			req.schemaUpdate = true
+		}
+
 		req.parsedURI = false
 		req.Header.host = req.Header.host[:0]
 		req.SetRequestURI(url)
@@ -767,7 +796,11 @@ func doRequestFollowRedirects(req *Request, dst []byte, url string, c clientDoer
 			break
 		}
 		statusCode = resp.Header.StatusCode()
-		if statusCode != StatusMovedPermanently && statusCode != StatusFound && statusCode != StatusSeeOther {
+		if statusCode != StatusMovedPermanently &&
+			statusCode != StatusFound &&
+			statusCode != StatusSeeOther &&
+			statusCode != StatusTemporaryRedirect &&
+			statusCode != StatusPermanentRedirect {
 			break
 		}
 
@@ -969,7 +1002,10 @@ var errorChPool sync.Pool
 func (c *HostClient) Do(req *Request, resp *Response) error {
 	var err error
 	var retry bool
-	const maxAttempts = 5
+	maxAttempts := c.MaxIdemponentCallAttempts
+	if maxAttempts <= 0 {
+		maxAttempts = DefaultMaxIdemponentCallAttempts
+	}
 	attempts := 0
 
 	atomic.AddUint64(&c.pendingRequests, 1)
@@ -1041,11 +1077,21 @@ func (c *HostClient) doNonNilReqResp(req *Request, resp *Response) (bool, error)
 		panic("BUG: resp cannot be nil")
 	}
 
-	atomic.StoreUint32(&c.lastUseTime, uint32(CoarseTimeNow().Unix()-startTimeUnix))
+	atomic.StoreUint32(&c.lastUseTime, uint32(time.Now().Unix()-startTimeUnix))
 
 	// Free up resources occupied by response before sending the request,
 	// so the GC may reclaim these resources (e.g. response body).
 	resp.Reset()
+
+	// If we detected a redirect to another schema
+	if req.schemaUpdate {
+		c.IsTLS = bytes.Equal(req.URI().Scheme(), strHTTPS)
+		c.Addr = addMissingPort(string(req.Host()), c.IsTLS)
+		c.addrIdx = 0
+		c.addrs = nil
+		req.schemaUpdate = false
+		req.SetConnectionClose()
+	}
 
 	cc, err := c.acquireConn()
 	if err != nil {
@@ -1057,7 +1103,7 @@ func (c *HostClient) doNonNilReqResp(req *Request, resp *Response) (bool, error)
 		// Optimization: update write deadline only if more than 25%
 		// of the last write deadline exceeded.
 		// See https://github.com/golang/go/issues/15133 for details.
-		currentTime := CoarseTimeNow()
+		currentTime := time.Now()
 		if currentTime.Sub(cc.lastWriteDeadlineTime) > (c.WriteTimeout >> 2) {
 			if err = conn.SetWriteDeadline(currentTime.Add(c.WriteTimeout)); err != nil {
 				c.closeConn(cc)
@@ -1079,9 +1125,6 @@ func (c *HostClient) doNonNilReqResp(req *Request, resp *Response) (bool, error)
 	}
 	bw := c.acquireWriter(conn)
 	err = req.Write(bw)
-	if len(userAgentOld) == 0 {
-		req.Header.userAgent = userAgentOld
-	}
 
 	if resetConnection {
 		req.Header.ResetConnectionClose()
@@ -1101,7 +1144,7 @@ func (c *HostClient) doNonNilReqResp(req *Request, resp *Response) (bool, error)
 		// Optimization: update read deadline only if more than 25%
 		// of the last read deadline exceeded.
 		// See https://github.com/golang/go/issues/15133 for details.
-		currentTime := CoarseTimeNow()
+		currentTime := time.Now()
 		if currentTime.Sub(cc.lastReadDeadlineTime) > (c.ReadTimeout >> 2) {
 			if err = conn.SetReadDeadline(currentTime.Add(c.ReadTimeout)); err != nil {
 				c.closeConn(cc)
@@ -1226,6 +1269,12 @@ func (c *HostClient) connsCleaner() {
 		for i < n && currentTime.Sub(conns[i].lastUseTime) > maxIdleConnDuration {
 			i++
 		}
+		sleepFor := maxIdleConnDuration
+		if i < n {
+			// + 1 so we actually sleep past the expiration time and not up to it.
+			// Otherwise the > check above would still fail.
+			sleepFor = maxIdleConnDuration - currentTime.Sub(conns[i].lastUseTime) + 1
+		}
 		scratch = append(scratch[:0], conns[:i]...)
 		if i > 0 {
 			m := copy(conns, conns[i:])
@@ -1253,7 +1302,7 @@ func (c *HostClient) connsCleaner() {
 			break
 		}
 
-		time.Sleep(maxIdleConnDuration)
+		time.Sleep(sleepFor)
 	}
 }
 
@@ -1276,19 +1325,20 @@ func acquireClientConn(conn net.Conn) *clientConn {
 	}
 	cc := v.(*clientConn)
 	cc.c = conn
-	cc.createdTime = CoarseTimeNow()
+	cc.createdTime = time.Now()
 	return cc
 }
 
 func releaseClientConn(cc *clientConn) {
-	cc.c = nil
+	// Reset all fields.
+	*cc = clientConn{}
 	clientConnPool.Put(cc)
 }
 
 var clientConnPool sync.Pool
 
 func (c *HostClient) releaseConn(cc *clientConn) {
-	cc.lastUseTime = CoarseTimeNow()
+	cc.lastUseTime = time.Now()
 	c.connsLock.Lock()
 	c.conns = append(c.conns, cc)
 	c.connsLock.Unlock()
@@ -1524,7 +1574,7 @@ type PipelineClient struct {
 
 	// The maximum number of concurrent connections to the Addr.
 	//
-	// A sinle connection is used by default.
+	// A single connection is used by default.
 	MaxConns int
 
 	// The maximum number of pending pipelined requests over
@@ -1991,7 +2041,7 @@ func (c *pipelineConnClient) writer(conn net.Conn, stopCh <-chan struct{}) error
 			// Optimization: update write deadline only if more than 25%
 			// of the last write deadline exceeded.
 			// See https://github.com/golang/go/issues/15133 for details.
-			currentTime := CoarseTimeNow()
+			currentTime := time.Now()
 			if currentTime.Sub(lastWriteDeadlineTime) > (writeTimeout >> 2) {
 				if err = conn.SetWriteDeadline(currentTime.Add(writeTimeout)); err != nil {
 					w.err = err
@@ -2072,7 +2122,7 @@ func (c *pipelineConnClient) reader(conn net.Conn, stopCh <-chan struct{}) error
 			// Optimization: update read deadline only if more than 25%
 			// of the last read deadline exceeded.
 			// See https://github.com/golang/go/issues/15133 for details.
-			currentTime := CoarseTimeNow()
+			currentTime := time.Now()
 			if currentTime.Sub(lastReadDeadlineTime) > (readTimeout >> 2) {
 				if err = conn.SetReadDeadline(currentTime.Add(readTimeout)); err != nil {
 					w.err = err
