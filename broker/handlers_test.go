@@ -47,9 +47,9 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
 			subCount:      1,
-			subErr:        (*EventError)(nil),
+			subErr:        (*Error)(nil),
 			unsubCount:    0,
-			unsubErr:      (*EventError)(nil),
+			unsubErr:      (*Error)(nil),
 			contractValid: true,
 			contractFound: true,
 			msg:           "Successful case",
@@ -178,7 +178,7 @@ func TestHandlers_onPublish(t *testing.T) {
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
 			payload:       "test",
-			err:           (*EventError)(nil),
+			err:           (*Error)(nil),
 			contractValid: true,
 			contractFound: true,
 			msg:           "Successful case",
@@ -242,7 +242,7 @@ func TestHandlers_onPublish(t *testing.T) {
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
 			payload:       "test",
-			err:           (*EventError)(nil),
+			err:           (*Error)(nil),
 			contractValid: true,
 			contractFound: true,
 			msg:           "No store permission case",
@@ -455,7 +455,7 @@ func TestHandlers_onKeygen(t *testing.T) {
 			assert.Equal(t, tc.generated, generated, tc.msg)
 
 			if !generated {
-				keyGenResp := resp.(*EventError)
+				keyGenResp := resp.(*Error)
 				assert.Equal(t, tc.resp, keyGenResp)
 			} else {
 				keyGenResp := resp.(*keyGenResponse)

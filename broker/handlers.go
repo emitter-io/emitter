@@ -34,7 +34,7 @@ const (
 // ------------------------------------------------------------------------------------
 
 // OnSubscribe is a handler for MQTT Subscribe events.
-func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
+func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 
 	// Parse the channel
 	channel := security.ParseChannel(mqttTopic)
@@ -97,7 +97,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *EventError {
 // ------------------------------------------------------------------------------------
 
 // OnUnsubscribe is a handler for MQTT Unsubscribe events.
-func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
+func (c *Conn) onUnsubscribe(mqttTopic []byte) *Error {
 
 	// Parse the channel
 	channel := security.ParseChannel(mqttTopic)
@@ -142,7 +142,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 // ------------------------------------------------------------------------------------
 
 // OnPublish is a handler for MQTT Publish events.
-func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
+func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *Error {
 
 	// Parse the channel
 	channel := security.ParseChannel(mqttTopic)
