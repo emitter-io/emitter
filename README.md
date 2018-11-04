@@ -9,12 +9,20 @@
 # Emitter: Clustered Publish-Subscribe Broker
 > [Emitter is a free open source real-time messaging service](https://emitter.io) that connects all devices. This publish-subscribe messaging API is built for speed and security.
 
-![Emitter Youtube](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/logo/youtube.png) Video Tutorials: https://www.youtube.com/playlist?list=PLhFXrq-2gEb0ygxR477GJLngjYu-FcSVq
-
 Emitter is a real-time communication service for connecting online devices. Infrastructure and APIs for IoT, gaming, apps and real-time web. At its core, emitter.io is a distributed, scalable and fault-tolerant publish-subscribe messaging platform based on MQTT protocol and featuring message storage.
 
 Emitter can be used for online gaming and mobile apps by satisfying the requirements for low latency, binary messaging and high throughput. It can also be used for the real-time web application such as dashboards or visual analytics or chat systems. Moreover, Emitter is perfect for the internet of things and allows sensors to be controlled and data gathered and analyzed.
 
+## Video Tutorials & Demos
+
+![Emitter Youtube](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/logo/youtube.png?v=1) Playlist: https://www.youtube.com/playlist?list=PLhFXrq-2gEb0ygxR477GJLngjYu-FcSVq
+
+[![Emitter at Fosdem](https://img.youtube.com/vi/M8VhWckhZoM/1.jpg)](https://www.youtube.com/watch?v=M8VhWckhZoM)
+[![Local Emitter Cluster](https://img.youtube.com/vi/byq70fHeH-I/1.jpg)](https://www.youtube.com/watch?v=byq70fHeH-I)
+[![PubSub in Go](https://img.youtube.com/vi/ggFqj5P4W38/1.jpg)](https://www.youtube.com/watch?v=ggFqj5P4W38)
+[![Message Storage](https://img.youtube.com/vi/14cIxnR0Akc/1.jpg)](https://www.youtube.com/watch?v=14cIxnR0Akc)
+[![Using MQTTSpy](https://img.youtube.com/vi/OcdL_454XT0/1.jpg)](https://www.youtube.com/watch?v=OcdL_454XT0)
+[![ISS Tracking](https://img.youtube.com/vi/F47LTbl2Bjw/1.jpg)](https://www.youtube.com/watch?v=F47LTbl2Bjw)
 
 ## Quick Start
 
@@ -42,12 +50,10 @@ This message shows that a new security configuration was generated, you can then
 
 Finally, open a browser and navigate to **<http://127.0.0.1:8080/keygen>** in order to generate your key. Now you can use the secret key generated to create channel keys, which allow you to secure individual channels and start using emitter.
 
+
 ## Sandbox
 
 Emitter has a [sandbox](https://emitter.io/login) - a free cloud cluster which allows you to quickly try out the platform and see how simple it is to create connected, real-time applications. The movie below shows you how to create your sandbox account and create a simple hello-world application within **5 minutes**.
-
-[![Emitter Overview](https://img.youtube.com/vi/M8VhWckhZoM/0.jpg)](https://www.youtube.com/watch?v=M8VhWckhZoM)
-
 
 ## Usage Example
 
