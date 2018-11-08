@@ -18,13 +18,14 @@ github.com/emitter-io/address v0.0.0-20180529130036-6045edd5ea32 h1:5SGY4Z1s6bwO
 github.com/emitter-io/address v0.0.0-20180529130036-6045edd5ea32/go.mod h1:GfZb5+S/o8694B1GMGK2imUYQyn2skszMvGNA5D84Ug=
 github.com/emitter-io/config v0.0.0-20180819095213-d98871f7d1dc h1:0lwxxSkgbYJVZbywUtvc5tl6bQAB7FfJZliRQr10/ug=
 github.com/emitter-io/config v0.0.0-20180819095213-d98871f7d1dc/go.mod h1:LWPPyz7VqkW4lSn26RoCF7B9t/lZIG8PCUKLCaIp+so=
-github.com/emitter-io/stats v1.0.0 h1:8c84DQu9hZrqV83xsFJO9603YieyGDmOIvXGzfAM5k4=
-github.com/emitter-io/stats v1.0.0/go.mod h1:4hKrGsT8bS+kMlTNsCyY1r2j8Jsq25U1+JpLkAtgPX4=
+github.com/emitter-io/stats v1.0.1 h1:w3McdlSNZsJWULe8q9sKpONrDxgFlpvqUFqztmjroxA=
+github.com/emitter-io/stats v1.0.1/go.mod h1:4hKrGsT8bS+kMlTNsCyY1r2j8Jsq25U1+JpLkAtgPX4=
 github.com/golang/protobuf v0.0.0-20181005181728-ddf22928ea3c h1:KgJw3nNJsnby+wgopcttaq/2qfhNJcVmygvYRGQ5Yc4=
 github.com/golang/protobuf v0.0.0-20181005181728-ddf22928ea3c/go.mod h1:Qd/q+1AKNOZr9uGQzbzCmRO6sUih6GTPZv6a1/R87v0=
 github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db h1:woRePGFeVFfLKN/pOkfl+p/TAqKOfFu+7KPlMVpok/w=
 github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
+github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=
 github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
 github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=

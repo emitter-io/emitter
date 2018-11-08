@@ -10,9 +10,10 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/emitter-io/address v0.0.0-20180529130036-6045edd5ea32
 	github.com/emitter-io/config v0.0.0-20180819095213-d98871f7d1dc
-	github.com/emitter-io/stats v1.0.0
+	github.com/emitter-io/stats v1.0.1
 	github.com/golang/protobuf v0.0.0-20181005181728-ddf22928ea3c // indirect
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
+	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
 	github.com/gorilla/websocket v1.4.0
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
 	github.com/karlseguin/ccache v0.0.0-20180722041702-a3174167557e
