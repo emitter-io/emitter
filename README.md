@@ -23,6 +23,7 @@ Emitter can be used for online gaming and mobile apps by satisfying the requirem
 [![Message Storage](https://img.youtube.com/vi/14cIxnR0Akc/1.jpg)](https://www.youtube.com/watch?v=14cIxnR0Akc)
 [![Using MQTTSpy](https://img.youtube.com/vi/OcdL_454XT0/1.jpg)](https://www.youtube.com/watch?v=OcdL_454XT0)
 [![ISS Tracking](https://img.youtube.com/vi/F47LTbl2Bjw/1.jpg)](https://www.youtube.com/watch?v=F47LTbl2Bjw)
+[![Self-Signed TLS](https://img.youtube.com/vi/NRejmavZuAI/1.jpg)](https://www.youtube.com/watch?v=NRejmavZuAI)
 
 ## Quick Start
 
