@@ -43,7 +43,7 @@ func TestNotifyError(t *testing.T) {
 	assert.NotNil(t, pipe)
 
 	go func() {
-		conn.notifyError(ErrUnauthorized)
+		conn.notifyError(ErrUnauthorized, 1)
 		conn.Close()
 	}()
 

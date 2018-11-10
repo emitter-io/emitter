@@ -120,7 +120,8 @@ func (c *Conn) Process() error {
 }
 
 // notifyError notifies the connection about an error
-func (c *Conn) notifyError(err *Error) {
+func (c *Conn) notifyError(err *Error, messageID uint16) {
+	err.ID = int(messageID)
 	if b, err := json.Marshal(err); err == nil {
 		c.Send(&message.Message{
 			Channel: []byte("emitter/error/"),
@@ -157,7 +158,7 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 		for _, sub := range packet.Subscriptions {
 			if err := c.onSubscribe(sub.Topic); err != nil {
 				ack.Qos = append(ack.Qos, 0x80) // 0x80 indicate subscription failure
-				c.notifyError(err)
+				c.notifyError(err, packet.MessageID)
 				continue
 			}
 
@@ -178,7 +179,7 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 		// Unsubscribe from each subscription
 		for _, sub := range packet.Topics {
 			if err := c.onUnsubscribe(sub.Topic); err != nil {
-				c.notifyError(err)
+				c.notifyError(err, packet.MessageID)
 			}
 		}
 
@@ -202,7 +203,7 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 
 		if err := c.onPublish(packet.Topic, packet.Payload); err != nil {
 			logging.LogError("conn", "publish received", err)
-			c.notifyError(err)
+			c.notifyError(err, packet.MessageID)
 		}
 
 		// Acknowledge the publication
