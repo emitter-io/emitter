@@ -9,10 +9,10 @@ import (
 
 	"github.com/emitter-io/config/dynamo"
 	"github.com/emitter-io/config/vault"
-	"github.com/emitter-io/emitter/broker"
-	"github.com/emitter-io/emitter/config"
-	"github.com/emitter-io/emitter/provider/logging"
-	"github.com/emitter-io/emitter/security"
+	"github.com/emitter-io/emitter/internal/broker"
+	"github.com/emitter-io/emitter/internal/config"
+	"github.com/emitter-io/emitter/internal/provider/logging"
+	"github.com/emitter-io/emitter/internal/security"
 )
 
 func main() {
