@@ -27,6 +27,7 @@ import (
 type Error struct {
 	Status  int    `json:"status"`
 	Message string `json:"message"`
+	ID      int    `json:"id,omitempty"`
 }
 
 // Error implements error interface.

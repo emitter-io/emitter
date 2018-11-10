@@ -26,9 +26,9 @@ import (
 )
 
 const (
-	requestKeygen   = 548658350
-	requestPresence = 3869262148
-	requestMe       = 2539734036
+	requestKeygen   = 548658350  // hash("keygen")
+	requestPresence = 3869262148 // hash("presence")
+	requestMe       = 2539734036 // hash("me")
 )
 
 // ------------------------------------------------------------------------------------
