@@ -2,7 +2,7 @@ module github.com/emitter-io/emitter
 
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7 // indirect
-	github.com/aws/aws-sdk-go v0.0.0-20181019205654-b2427922671b // indirect
+	github.com/aws/aws-sdk-go v0.0.0-20181019205654-b2427922671b
 	github.com/axiomhq/hyperloglog v0.0.0-20180317131949-fe9507de0228
 	github.com/dgraph-io/badger v0.0.0-20181020042726-fbb27786246d
 	github.com/dgryski/go-farm v0.0.0-20180109070241-2de33835d102 // indirect
@@ -30,5 +30,6 @@ require (
 	golang.org/x/net v0.0.0-20181017193950-04a2e542c03f // indirect
 	golang.org/x/sys v0.0.0-20181019160139-8e24a49d80f8 // indirect
 	golang.org/x/text v0.3.0 // indirect
+	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
 )

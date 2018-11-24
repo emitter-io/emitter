@@ -145,7 +145,12 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 
 	// Load the monitor storage provider
 	sampler := newSampler(s, s.measurer)
-	s.monitor = config.LoadProvider(cfg.Monitor, monitor.NewSelf(sampler, s.selfPublish), monitor.NewNoop(), monitor.NewHTTP(sampler)).(monitor.Storage)
+	s.monitor = config.LoadProvider(cfg.Monitor,
+		monitor.NewSelf(sampler, s.selfPublish),
+		monitor.NewNoop(),
+		monitor.NewHTTP(sampler),
+		monitor.NewStatsd(sampler),
+	).(monitor.Storage)
 	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
 
 	// Addresses and things
