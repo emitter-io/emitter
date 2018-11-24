@@ -75,5 +75,7 @@ golang.org/x/sys v0.0.0-20181019160139-8e24a49d80f8/go.mod h1:STP8DvDyc/dI5b8T5h
 golang.org/x/text v0.3.0 h1:g61tztE5qeGQ89tm6NTjjM9VPIm088od1l6aSorWRWg=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 google.golang.org/genproto v0.0.0-20180831171423-11092d34479b/go.mod h1:JiN7NxoALGmiZfu7CAH4rXhgtRTLTxftemlI0sWmxmc=
+gopkg.in/alexcesaro/statsd.v2 v2.0.0 h1:FXkZSCZIH17vLCO5sO2UucTHsH9pc+17F6pl3JVCwMc=
+gopkg.in/alexcesaro/statsd.v2 v2.0.0/go.mod h1:i0ubccKGzBVNBpdGV5MocxyA/XlLUJzA7SLonnE4drU=
 gopkg.in/karlseguin/expect.v1 v1.0.1 h1:9u0iUltnhFbJTHaSIH0EP+cuTU5rafIgmcsEsg2JQFw=
 gopkg.in/karlseguin/expect.v1 v1.0.1/go.mod h1:uB7QIJBcclvYbwlUDkSCsGjAOMis3fP280LyhuDEf2I=

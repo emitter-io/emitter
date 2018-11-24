@@ -30,5 +30,6 @@ require (
 	golang.org/x/net v0.0.0-20181017193950-04a2e542c03f // indirect
 	golang.org/x/sys v0.0.0-20181019160139-8e24a49d80f8 // indirect
 	golang.org/x/text v0.3.0 // indirect
+	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
 )
