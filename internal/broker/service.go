@@ -144,17 +144,18 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	logging.LogTarget("service", "configured contracts provider", s.contracts.Name())
 
 	// Load the monitor storage provider
+	nodeName := address.Fingerprint(s.LocalName()).String()
 	sampler := newSampler(s, s.measurer)
 	s.monitor = config.LoadProvider(cfg.Monitor,
 		monitor.NewSelf(sampler, s.selfPublish),
 		monitor.NewNoop(),
 		monitor.NewHTTP(sampler),
-		monitor.NewStatsd(sampler, cfg.Addr().String()),
+		monitor.NewStatsd(sampler, nodeName),
 	).(monitor.Storage)
 	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
 
 	// Addresses and things
-	logging.LogTarget("service", "configured node name", address.Fingerprint(s.LocalName()).String())
+	logging.LogTarget("service", "configured node name", nodeName)
 	return s, nil
 }
 
