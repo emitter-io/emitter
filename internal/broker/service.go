@@ -149,7 +149,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		monitor.NewSelf(sampler, s.selfPublish),
 		monitor.NewNoop(),
 		monitor.NewHTTP(sampler),
-		monitor.NewStatsd(sampler),
+		monitor.NewStatsd(sampler, cfg.Addr().String()),
 	).(monitor.Storage)
 	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
 

@@ -16,6 +16,7 @@ package monitor
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/emitter-io/emitter/internal/async"
@@ -31,12 +32,14 @@ type Statsd struct {
 	reader stats.Snapshotter  // The reader which reads the snapshot of stats.
 	client *statsd.Client     // The statsd client to use.
 	cancel context.CancelFunc // The cancellation function.
+	nodeID string             // The ID of the node for tagging.
 }
 
 // NewStatsd creates a new statsd sink.
-func NewStatsd(snapshotter stats.Snapshotter) *Statsd {
+func NewStatsd(snapshotter stats.Snapshotter, nodeID string) *Statsd {
 	return &Statsd{
 		reader: snapshotter,
+		nodeID: nodeID,
 	}
 }
 
@@ -65,10 +68,13 @@ func (s *Statsd) Configure(config map[string]interface{}) (err error) {
 	}
 
 	// Create statsd client
-	if s.client, err = statsd.New(statsd.Address(url), statsd.Prefix("emitter")); err == nil {
+	if s.client, err = statsd.New(
+		statsd.Address(url),
+		statsd.Prefix("emitter"),
+		statsd.Tags("node", s.nodeID),
+	); err == nil {
 		s.cancel = async.Repeat(context.Background(), interval, s.write)
 	}
-
 	return
 }
 
@@ -77,30 +83,46 @@ func (s *Statsd) write() {
 
 	// Create a snapshot and restore it straight away
 	snapshot := s.reader.Snapshot()
-	metrics, err := stats.Restore(snapshot)
+	m, err := stats.Restore(snapshot)
 	if err != nil {
 		return
 	}
 
+	// Send the node and process-level metrics through
+	metrics := m.ToMap()
+	s.gauge(metrics, "node.peers")
+	s.gauge(metrics, "node.conns")
+	s.gauge(metrics, "node.subs")
+
 	// Send everything to statsd
-	for _, v := range metrics {
-		q := v.Quantile(25, 50, 75, 90, 95, 99)
-		s.client.Gauge(v.Name()+".p25", q[0])
-		s.client.Gauge(v.Name()+".p50", q[1])
-		s.client.Gauge(v.Name()+".p75", q[2])
-		s.client.Gauge(v.Name()+".p90", q[3])
-		s.client.Gauge(v.Name()+".p95", q[4])
-		s.client.Gauge(v.Name()+".p99", q[5])
-		s.client.Gauge(v.Name()+".min", v.Min())
-		s.client.Gauge(v.Name()+".max", v.Max())
-		s.client.Gauge(v.Name()+".avg", v.Mean())
-		s.client.Gauge(v.Name()+".var", v.Variance())
-		s.client.Gauge(v.Name()+".stddev", v.StdDev())
-		s.client.Count(v.Name()+".count", v.Count())
+	for name := range metrics {
+		prefix := strings.Split(name, ".")[0]
+		switch prefix {
+		case "proc", "heap", " mcache", "mspan", "stack", "gc", "go":
+			s.gauge(metrics, name)
+		case "rcv", "send":
+			s.histogram(metrics, name)
+		}
 	}
 
 	// Flush the client as well
 	s.client.Flush()
+}
+
+// Gauge sends the metric as a gauge
+func (s *Statsd) gauge(source map[string]stats.Snapshot, metric string) {
+	if v, ok := source[metric]; ok {
+		s.client.Gauge(metric, v.Max())
+	}
+}
+
+// Gauge sends the metric as a gauge
+func (s *Statsd) histogram(source map[string]stats.Snapshot, metric string) {
+	if v, ok := source[metric]; ok {
+		for _, sample := range v.Sample {
+			s.client.Histogram(metric, sample)
+		}
+	}
 }
 
 // Close gracefully terminates the storage and ensures that every related

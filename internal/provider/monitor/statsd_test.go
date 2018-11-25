@@ -24,10 +24,12 @@ import (
 func TestStatsd_HappyPath(t *testing.T) {
 	m := stats.New()
 	for i := int32(0); i < 100; i++ {
-		m.Measure("test.metric", i)
+		m.Measure("proc.test", i)
+		m.Measure("node.test", i)
+		m.Measure("rcv.test", i)
 	}
 
-	s := NewStatsd(m)
+	s := NewStatsd(m, "")
 	defer s.Close()
 
 	err := s.Configure(map[string]interface{}{
@@ -42,7 +44,7 @@ func TestStatsd_HappyPath(t *testing.T) {
 
 func TestStatsd_BadSnapshot(t *testing.T) {
 	r := snapshot("test")
-	s := NewStatsd(r)
+	s := NewStatsd(r, "")
 	defer s.Close()
 
 	err := s.Configure(map[string]interface{}{
@@ -57,7 +59,7 @@ func TestStatsd_BadSnapshot(t *testing.T) {
 
 func TestStatsd_Configure(t *testing.T) {
 	{
-		s := NewStatsd(nil)
+		s := NewStatsd(nil, "")
 		defer s.Close()
 		assert.Equal(t, "statsd", s.Name())
 
@@ -66,7 +68,7 @@ func TestStatsd_Configure(t *testing.T) {
 	}
 
 	{
-		s := NewStatsd(nil)
+		s := NewStatsd(nil, "")
 		defer s.Close()
 		assert.Equal(t, "statsd", s.Name())
 
@@ -75,7 +77,7 @@ func TestStatsd_Configure(t *testing.T) {
 	}
 
 	{
-		s := NewStatsd(nil)
+		s := NewStatsd(nil, "")
 		defer s.Close()
 		assert.Equal(t, "statsd", s.Name())
 
