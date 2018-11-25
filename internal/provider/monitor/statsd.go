@@ -71,7 +71,8 @@ func (s *Statsd) Configure(config map[string]interface{}) (err error) {
 	if s.client, err = statsd.New(
 		statsd.Address(url),
 		statsd.Prefix("emitter"),
-		statsd.Tags("node", s.nodeID),
+		statsd.TagsFormat(statsd.Datadog),
+		statsd.Tags("broker", s.nodeID),
 	); err == nil {
 		s.cancel = async.Repeat(context.Background(), interval, s.write)
 	}
