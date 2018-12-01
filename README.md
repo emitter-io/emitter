@@ -24,6 +24,9 @@ Emitter can be used for online gaming and mobile apps by satisfying the requirem
 [![Using MQTTSpy](https://img.youtube.com/vi/OcdL_454XT0/1.jpg)](https://www.youtube.com/watch?v=OcdL_454XT0)
 [![ISS Tracking](https://img.youtube.com/vi/F47LTbl2Bjw/1.jpg)](https://www.youtube.com/watch?v=F47LTbl2Bjw)
 [![Self-Signed TLS](https://img.youtube.com/vi/NRejmavZuAI/1.jpg)](https://www.youtube.com/watch?v=NRejmavZuAI)
+[![Monitor with eTop](https://img.youtube.com/vi/EOlOk9JPSyA/1.jpg)](https://www.youtube.com/watch?v=EOlOk9JPSyA)
+[![StatsD and DataDog](https://img.youtube.com/vi/bi77Wb7cqEc/2.jpg)](https://www.youtube.com/watch?v=bi77Wb7cqEc)
+
 
 ## Quick Start
 
