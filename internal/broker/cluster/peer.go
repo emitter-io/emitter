@@ -118,11 +118,6 @@ func (p *Peer) swap() (swapped message.Frame) {
 	return
 }
 
-// Touch updates the activity time of the peer.
-func (p *Peer) touch() {
-	atomic.StoreInt64(&p.activity, time.Now().Unix())
-}
-
 // processSendQueue flushes the current frame to the remote server
 func (p *Peer) processSendQueue() {
 	if len(p.frame) == 0 {

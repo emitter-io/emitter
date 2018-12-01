@@ -39,7 +39,7 @@ type Swarm struct {
 	state   *subscriptionState    // The state to synchronise.
 	router  *mesh.Router          // The mesh router.
 	gossip  mesh.Gossip           // The gossip protocol.
-	members sync.Map              // The map of members in the peer set.
+	members *memberlist           // The memberlist of peers.
 
 	OnSubscribe   func(message.Ssid, message.Subscriber) bool // Delegate to invoke when the subscription event is received.
 	OnUnsubscribe func(message.Ssid, message.Subscriber) bool // Delegate to invoke when the subscription event is received.
@@ -98,44 +98,47 @@ func NewSwarm(cfg *config.ClusterConfig) *Swarm {
 	//Store the gossip and the router
 	swarm.gossip = gossip
 	swarm.router = router
+	swarm.members = newMemberlist(swarm.newPeer)
 	return swarm
+}
+
+// onPeerOnline occurs when a new peer is created.
+func (s *Swarm) onPeerOnline(peer *Peer) {
+	logging.LogTarget("swarm", "peer created", peer.name)
+
+	// Subscribe to all of its subscriptions
+	for _, c := range peer.subs.All() {
+		s.OnSubscribe(c.Ssid, peer)
+	}
 }
 
 // Occurs when a peer is garbage collected.
 func (s *Swarm) onPeerOffline(name mesh.PeerName) {
-	if v, ok := s.members.Load(name); ok {
-		peer := v.(*Peer)
+	if peer, deleted := s.members.Remove(name); deleted {
 		logging.LogTarget("swarm", "unreachable peer removed", peer.name)
 		peer.Close() // Close the peer on our end
 
-		// We also need to remove the peer from our set, so next time a new peer can be created.
-		s.members.Delete(peer.name)
-
-		// Unsubscribe from all active subscriptions
+		// Unsubscribe from all active subscriptions and also broadcast the fact
+		// that the peer has gone offline.
 		for _, c := range peer.subs.All() {
 			s.OnUnsubscribe(c.Ssid, peer)
 		}
+
+		// We also need to broadcast the fact that the peer is offline
+		op := newSubscriptionState()
+		op.RemoveAll(name)
+		s.gossip.GossipBroadcast(op)
 	}
 }
 
 // FindPeer retrieves a peer.
-func (s *Swarm) FindPeer(name mesh.PeerName) (*Peer, bool) {
-	if p, ok := s.members.Load(name); ok {
-		return p.(*Peer), true
+func (s *Swarm) FindPeer(name mesh.PeerName) *Peer {
+	peer, added := s.members.GetOrAdd(name)
+	if added {
+		s.onPeerOnline(peer)
 	}
 
-	// Only add a peer if such exists
-	if exists := s.router.Peers.Fetch(name); exists == nil {
-		return nil, false
-	}
-
-	// Create new peer and store it
-	peer := s.newPeer(name)
-	v, ok := s.members.LoadOrStore(name, peer)
-	if !ok {
-		logging.LogTarget("swarm", "peer created", peer.name)
-	}
-	return v.(*Peer), true
+	return peer
 }
 
 // ID returns the local node ID.
@@ -160,10 +163,11 @@ func (s *Swarm) update() {
 	desc := s.router.Peers.Descriptions()
 	for _, peer := range desc {
 		if !peer.Self {
+
 			// Mark the peer as active, so even if there's no messages being exchanged
 			// we still keep the peer, since we know that the peer is live.
-			if p, ok := s.FindPeer(peer.Name); ok {
-				p.touch()
+			if exists := s.router.Peers.Fetch(peer.Name); exists != nil {
+				s.members.Touch(peer.Name)
 			}
 
 			// reinforce structure
@@ -227,19 +231,24 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 			return nil, err
 		}
 
-		// Get the peer to use
-		if peer, ok := s.FindPeer(ev.Peer); ok {
-
-			// If the subscription is added, notify (TODO: use channels)
-			if v.IsAdded() && peer.onSubscribe(k, ev.Ssid) {
-				s.OnSubscribe(ev.Ssid, peer)
-			}
-
-			// If the subscription is removed, notify (TODO: use channels)
-			if v.IsRemoved() && peer.onUnsubscribe(k, ev.Ssid) {
-				s.OnUnsubscribe(ev.Ssid, peer)
-			}
+		// Skip ourselves
+		if ev.Peer == s.router.Ourself.Name {
+			continue
 		}
+
+		// Find the active peer for this subscription event
+		peer := s.FindPeer(ev.Peer)
+
+		// If the subscription is added, notify (TODO: use channels)
+		if v.IsAdded() && peer.onSubscribe(k, ev.Ssid) && peer.IsActive() {
+			s.OnSubscribe(ev.Ssid, peer)
+		}
+
+		// If the subscription is removed, notify (TODO: use channels)
+		if v.IsRemoved() && peer.onUnsubscribe(k, ev.Ssid) && peer.IsActive() {
+			s.OnUnsubscribe(ev.Ssid, peer)
+		}
+
 	}
 
 	return delta, nil

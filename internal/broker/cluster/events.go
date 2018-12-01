@@ -27,9 +27,9 @@ import (
 
 // SubscriptionEvent represents a subscription event.
 type SubscriptionEvent struct {
-	Ssid message.Ssid  // The SSID for the subscription.
 	Peer mesh.PeerName // The name of the peer.
 	Conn security.ID   // The connection identifier.
+	Ssid message.Ssid  // The SSID for the subscription.
 }
 
 // Encode encodes the event to string representation.
@@ -133,6 +133,19 @@ func (st *subscriptionState) Add(ev string) {
 // Remove removes the subscription event from the state.
 func (st *subscriptionState) Remove(ev string) {
 	(*collection.LWWSet)(st).Remove(ev)
+}
+
+// RemoveAll removes all of the subscription events by prefix.
+func (st *subscriptionState) RemoveAll(name mesh.PeerName) {
+	buffer := make([]byte, 10, 10)
+	offset := bin.PutUvarint(buffer, uint64(name))
+	prefix := buffer[:offset]
+
+	for ev, v := range st.All() {
+		if bytes.HasPrefix([]byte(ev), prefix) && v.IsAdded() {
+			st.Remove(ev)
+		}
+	}
 }
 
 // All ...
