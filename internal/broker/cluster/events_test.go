@@ -20,6 +20,7 @@ import (
 	"github.com/emitter-io/emitter/internal/collection"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/stretchr/testify/assert"
+	"github.com/weaveworks/mesh"
 )
 
 func TestEncodeSubscriptionState(t *testing.T) {
@@ -67,5 +68,35 @@ func restoreClock(clk func() int64) {
 // SetClock sets the clock time for testing
 func setClock(t int64) {
 	collection.Now = func() int64 { return t }
-	println("clock set to", collection.Now())
+}
+
+func TestEncodeSubscriptionState_RemoveFor(t *testing.T) {
+	defer restoreClock(collection.Now)
+
+	setClock(0)
+	state := newSubscriptionState()
+
+	for i := 1; i <= 10; i++ {
+		ev := SubscriptionEvent{Ssid: message.Ssid{1}, Peer: mesh.PeerName(i % 3), Conn: 777}
+		setClock(int64(i))
+		state.Add(ev.Encode())
+	}
+
+	// Must have 3 keys alive
+	setClock(int64(20))
+	assert.Equal(t, 3, countAdded(state))
+
+	// Must have 2 keys alive after removal
+	setClock(int64(21))
+	state.RemoveAll(mesh.PeerName(1))
+	assert.Equal(t, 2, countAdded(state))
+}
+
+func countAdded(state *subscriptionState) (added int) {
+	for _, v := range state.All() {
+		if v.IsAdded() {
+			added++
+		}
+	}
+	return
 }

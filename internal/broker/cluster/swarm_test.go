@@ -72,14 +72,12 @@ func TestNewSwarm_Scenario(t *testing.T) {
 	assert.Equal(t, io.EOF, err)
 
 	// Find peer
-	peer, hasPeer := s.FindPeer(123)
-	assert.False(t, hasPeer)
-	assert.Nil(t, peer)
+	peer := s.FindPeer(123)
+	assert.NotNil(t, peer)
 
 	// Remove that peer, it should not be there
 	s.onPeerOffline(123)
-	_, ok := s.members.Load(mesh.PeerName(123))
-	assert.False(t, ok)
+	assert.False(t, s.members.Contains(mesh.PeerName(123)))
 
 	// Close the swarm
 	err = s.Close()
@@ -131,9 +129,10 @@ func Test_merge(t *testing.T) {
 	}
 	defer s.Close()
 
+	s.members.Touch(2)
 	_, err := s.merge(in.Encode()[0])
 	assert.NoError(t, err)
-	assert.False(t, subscribed)
+	assert.True(t, subscribed)
 }
 
 func TestJoin(t *testing.T) {

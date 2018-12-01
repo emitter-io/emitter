@@ -126,9 +126,9 @@ func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []by
 	}
 
 	// Get the peer to reply to
-	peer, ok := c.service.cluster.FindPeer(replyAddr)
-	if !ok {
-		return errors.New("unable to reply to a request, peer does not exist")
+	peer := c.service.cluster.FindPeer(replyAddr)
+	if !peer.IsActive() {
+		return errors.New("unable to reply to a request, peer is not active")
 	}
 
 	// Go through all the handlers and execute the first matching one
