@@ -17,6 +17,7 @@ Emitter can be used for online gaming and mobile apps by satisfying the requirem
 
 ![Emitter Youtube](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/logo/youtube.png?v=1) Playlist: https://www.youtube.com/playlist?list=PLhFXrq-2gEb0ygxR477GJLngjYu-FcSVq
 
+[![FOSDEM 2017](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-fosdem2017.png)](https://www.youtube.com/watch?v=M8VhWckhZoM)
 [![Local Emitter Cluster](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-win.png)](https://www.youtube.com/watch?v=byq70fHeH-I)
 [![PubSub in Go](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-golang.png)](https://www.youtube.com/watch?v=ggFqj5P4W38)
 [![Message Storage](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-storage.png)](https://www.youtube.com/watch?v=14cIxnR0Akc)
