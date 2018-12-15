@@ -26,6 +26,7 @@ Emitter can be used for online gaming and mobile apps by satisfying the requirem
 [![Self-Signed TLS](https://img.youtube.com/vi/NRejmavZuAI/1.jpg)](https://www.youtube.com/watch?v=NRejmavZuAI)
 [![Monitor with eTop](https://img.youtube.com/vi/EOlOk9JPSyA/1.jpg)](https://www.youtube.com/watch?v=EOlOk9JPSyA)
 [![StatsD and DataDog](https://img.youtube.com/vi/bi77Wb7cqEc/2.jpg)](https://www.youtube.com/watch?v=bi77Wb7cqEc)
+[![K8s and DigitalOcean](https://img.youtube.com/vi/CsrKiNjZ2Ew/1.jpg)](https://www.youtube.com/watch?v=CsrKiNjZ2Ew)
 
 
 ## Quick Start
