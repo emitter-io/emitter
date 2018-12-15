@@ -12,6 +12,6 @@ kubectl --kubeconfig="<your config>" apply -f service_loadbalancer.yaml
 
 The video tutorials below demonstrate how to create an emitter cluster with K8s and DigitalOcean.
 
-[![Creating Kubernetes Cluster](https://img.youtube.com/vi/lgSJCDTubqo/1.jpg)](https://www.youtube.com/watch?v=lgSJCDTubqo)
-[![Setting up Emitter Cluster](https://img.youtube.com/vi/CsrKiNjZ2Ew/1.jpg)](https://www.youtube.com/watch?v=CsrKiNjZ2Ew)
+[![Creating Kubernetes Cluster](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/k8s-digitalocean.png)](https://www.youtube.com/watch?v=lgSJCDTubqo)
+[![Setting up Emitter Cluster](http://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-k8s.png)](https://www.youtube.com/watch?v=CsrKiNjZ2Ew)
 
