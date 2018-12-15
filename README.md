@@ -17,16 +17,15 @@ Emitter can be used for online gaming and mobile apps by satisfying the requirem
 
 ![Emitter Youtube](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/logo/youtube.png?v=1) Playlist: https://www.youtube.com/playlist?list=PLhFXrq-2gEb0ygxR477GJLngjYu-FcSVq
 
-[![Emitter at Fosdem](https://img.youtube.com/vi/M8VhWckhZoM/1.jpg)](https://www.youtube.com/watch?v=M8VhWckhZoM)
-[![Local Emitter Cluster](https://img.youtube.com/vi/byq70fHeH-I/1.jpg)](https://www.youtube.com/watch?v=byq70fHeH-I)
-[![PubSub in Go](https://img.youtube.com/vi/ggFqj5P4W38/1.jpg)](https://www.youtube.com/watch?v=ggFqj5P4W38)
-[![Message Storage](https://img.youtube.com/vi/14cIxnR0Akc/1.jpg)](https://www.youtube.com/watch?v=14cIxnR0Akc)
-[![Using MQTTSpy](https://img.youtube.com/vi/OcdL_454XT0/1.jpg)](https://www.youtube.com/watch?v=OcdL_454XT0)
-[![ISS Tracking](https://img.youtube.com/vi/F47LTbl2Bjw/1.jpg)](https://www.youtube.com/watch?v=F47LTbl2Bjw)
-[![Self-Signed TLS](https://img.youtube.com/vi/NRejmavZuAI/1.jpg)](https://www.youtube.com/watch?v=NRejmavZuAI)
-[![Monitor with eTop](https://img.youtube.com/vi/EOlOk9JPSyA/1.jpg)](https://www.youtube.com/watch?v=EOlOk9JPSyA)
-[![StatsD and DataDog](https://img.youtube.com/vi/bi77Wb7cqEc/2.jpg)](https://www.youtube.com/watch?v=bi77Wb7cqEc)
-[![K8s and DigitalOcean](https://img.youtube.com/vi/CsrKiNjZ2Ew/1.jpg)](https://www.youtube.com/watch?v=CsrKiNjZ2Ew)
+[![Local Emitter Cluster](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-win.png)](https://www.youtube.com/watch?v=byq70fHeH-I)
+[![PubSub in Go](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-golang.png)](https://www.youtube.com/watch?v=ggFqj5P4W38)
+[![Message Storage](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-storage.png)](https://www.youtube.com/watch?v=14cIxnR0Akc)
+[![Using MQTTSpy](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-mqttspy.png)](https://www.youtube.com/watch?v=OcdL_454XT0)
+[![ISS Tracking](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-iss.png)](https://www.youtube.com/watch?v=F47LTbl2Bjw)
+[![Self-Signed TLS](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-tls.png)](https://www.youtube.com/watch?v=NRejmavZuAI)
+[![Monitor with eTop](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-etop.png)](https://www.youtube.com/watch?v=EOlOk9JPSyA)
+[![StatsD and DataDog](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-datadog.png)](https://www.youtube.com/watch?v=bi77Wb7cqEc)
+[![K8s and DigitalOcean](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-k8s.png)](https://www.youtube.com/watch?v=CsrKiNjZ2Ew)
 
 
 ## Quick Start
