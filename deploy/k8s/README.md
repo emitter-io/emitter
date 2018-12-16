@@ -1,19 +1,13 @@
 # Deploying with Kubernetes 
 
-This directory contains various configuration files which help you setup Emitter cluster on Kubernetes. 
+This directory contains various configuration files which help you setup Emitter cluster on Kubernetes. You can find different setups for different public clous as they leverage different storage classes. Typically, you'd want to use SSD-backed message storage for higher performance, given that Emitter's `ssd` message storage provider is optimised for it.
 
-In order to get started, you'd first need to register a `fast` storage class into Kubernetes, as the recommended way for Emitter message storage is to use SSDs.
+* [Amazon Web Services (EKS)](aws)
+* [Microsoft Azure (AKS)](azure)
+* [Google Cloud (GKE)](gcloud)
+* [Digital Ocean](digitalocean)
 
-You can simply run these files with ```kubectl apply -f ...```
-
-* [Storage Class for AWS](ssd_aws.yaml)
-* [Storage Class for Azure](ssd_azure.yaml)
-* [Storage Class for Google Cloud Engine](ssd_gce.yaml)
-* [Storage Class for Minikube](ssd_aws.yaml)
-
-
-
-Once the storage class is registered,  you can experiment with one of `broker_` configurations. A good starting point is [broker_test.yaml](broker_test.yaml) which can be used to create a simple stateful cluster of 3 nodes on minikube - keep in mind that you'd need to edit the license file as well. 
+Keep in mind that you'd need to edit the license file in `broker.yaml`. 
 
 ## Please Contribute
 
