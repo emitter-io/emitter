@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: broker
+spec:
+  selector:
+    matchLabels:
+      app: broker # has to match .spec.template.metadata.labels
+  serviceName: "broker"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: broker
+        role: broker
+    spec:
+      terminationGracePeriodSeconds: 30
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - broker
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - env:
+        - name: EMITTER_LICENSE
+          value: "..." # <- Provide license
+        - name: EMITTER_CLUSTER_SEED
+          value: "broker" # or "broker-0.broker.default.svc.cluster.local"
+        - name: EMITTER_CLUSTER_ADVERTISE
+          value: "private:4000"
+        - name: EMITTER_STORAGE_PROVIDER
+          value: "ssd"
+        name: broker
+        image: emitter/server:latest
+        ports:
+          - containerPort: 8080
+          - containerPort: 443
+          - containerPort: 4000
+        volumeMounts:
+          - name: broker-volume
+            mountPath: /data
+      restartPolicy: Always
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: broker-volume
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "fast"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 50Gi
