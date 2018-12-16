@@ -1,4 +1,4 @@
-# Deploying Emitter with Kubernetes on DigitalOcean
+# Deploying Emitter with Kubernetes on Google Cloud
 
 This directory contains Kubernetes configuration files which can be used to deploy an [production-grade cluster of emitter](https://emitter.io) on Google Cloud's Kubernetes (GKE).
 
