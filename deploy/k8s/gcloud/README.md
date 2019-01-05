@@ -10,3 +10,10 @@ kubectl apply -f service_dns.yaml
 kubectl apply -f service_loadbalancer.yaml
 kubectl apply -f broker.yaml
 ```
+
+
+The video tutorials below demonstrate how to create an emitter cluster with K8s and Google Cloud.
+
+[![Creating Kubernetes Cluster](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/k8s-gcloud.png)](https://www.youtube.com/watch?v=l1uDWG3Suzw)
+[![Setting up Emitter Cluster](http://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-gcloud.png)](https://www.youtube.com/watch?v=IL7WEH_2IOo)
+

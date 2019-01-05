@@ -51,7 +51,7 @@ spec:
   - metadata:
       name: broker-volume
       annotations:
-        volume.beta.kubernetes.io/storage-class: "fast"
+        volume.beta.kubernetes.io/storage-class: "managed-premium"
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:

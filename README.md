@@ -27,7 +27,7 @@ Emitter can be used for online gaming and mobile apps by satisfying the requirem
 [![Monitor with eTop](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-etop.png)](https://www.youtube.com/watch?v=EOlOk9JPSyA)
 [![StatsD and DataDog](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-datadog.png)](https://www.youtube.com/watch?v=bi77Wb7cqEc)
 [![K8s and DigitalOcean](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-k8s.png)](https://www.youtube.com/watch?v=CsrKiNjZ2Ew)
-
+[![K8s and Google Cloud](http://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-gcloud.png)](https://www.youtube.com/watch?v=IL7WEH_2IOo)
 
 ## Quick Start
 
