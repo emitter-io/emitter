@@ -250,7 +250,7 @@ func (s *Service) notifyPresenceChange() {
 				return
 			case notif := <-s.presence:
 				if encoded, ok := notif.Encode(); ok {
-					s.publish(message.New(notif.Ssid, channel, encoded))
+					s.publish(message.New(notif.Ssid, channel, encoded), "")
 				}
 			}
 		}
@@ -436,10 +436,12 @@ func (s *Service) Survey(query string, payload []byte) (message.Awaiter, error) 
 }
 
 // Publish publishes a message to everyone and returns the number of outgoing bytes written.
-func (s *Service) publish(m *message.Message) (n int64) {
+func (s *Service) publish(m *message.Message, exclude string) (n int64) {
 	size := m.Size()
 	for _, subscriber := range s.subscriptions.Lookup(m.Ssid()) {
-		subscriber.Send(m)
+		if subscriber.ID() != exclude {
+			subscriber.Send(m)
+		}
 
 		// Increment the egress size only for direct subscribers
 		if subscriber.Type() == message.SubscriberDirect {
@@ -458,7 +460,7 @@ func (s *Service) selfPublish(channelName string, payload []byte) {
 			message.NewSsid(s.License.Contract, channel),
 			channel.Channel,
 			payload,
-		))
+		), "")
 	}
 }
 

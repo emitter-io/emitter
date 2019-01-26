@@ -16,10 +16,14 @@ package broker
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/emitter-io/emitter/internal/security/hash"
 	"strings"
 	"time"
 
 	"github.com/emitter-io/emitter/internal/message"
+	"github.com/emitter-io/emitter/internal/network/mqtt"
+	"github.com/emitter-io/emitter/internal/provider/contract"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/kelindar/binary"
@@ -33,6 +37,88 @@ const (
 
 // ------------------------------------------------------------------------------------
 
+// Authorize attempts to authorize a channel with its key
+func (c *Conn) authorize(channel *security.Channel, permission uint32) (contract.Contract, security.Key, bool) {
+
+	// Attempt to parse the key
+	key, err := c.service.Cipher.DecryptKey(channel.Key)
+	if err != nil || key.IsExpired() {
+		return nil, nil, false
+	}
+
+	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract, contractFound := c.service.contracts.Get(key.Contract())
+	if !contractFound || !contract.Validate(key) || !key.HasPermission(permission) || !key.ValidateChannel(channel) {
+		return nil, nil, false
+	}
+
+	// Return the contract and the key
+	return contract, key, true
+}
+
+// ------------------------------------------------------------------------------------
+
+// onConnect handles the connection authorization
+func (c *Conn) onConnect(packet *mqtt.Connect) bool {
+	c.username = string(packet.Username)
+
+	// If there's no password provided, we're done
+	if len(packet.Password) == 0 {
+		return true
+	}
+
+	// If the password was provided, evalute our scheme. The format should be:
+	// dial://{key}/{channel}/
+	scheme, channel := security.ParsePassword(string(packet.Password))
+	if len(scheme) == 0 || channel == nil || channel.ChannelType == security.ChannelInvalid {
+		return false
+	}
+
+	// If it's a dial, we need to append the connection ID and generate a new key
+	if scheme == "dial" {
+		if dial, ok := c.dialAndSubscribe(channel); ok {
+			c.dial = dial // Keep it as string, we want to copy later
+			return true
+		}
+	}
+
+	return false
+}
+
+// creates a new channel for the dial and subscribes to it if allowed
+func (c *Conn) dialAndSubscribe(channel *security.Channel) (string, bool) {
+
+	// Check the authorization and permissions
+	_, key, allowed := c.authorize(channel, security.AllowAny)
+	if !allowed {
+		return "", false
+	}
+
+	// Create a new key for the dial
+	target := fmt.Sprintf("%s%s/", channel.Channel, c.ID())
+	if err := key.SetTarget(target); err != nil {
+		return "", false
+	}
+
+	// Encrypt the key for storing
+	encryptedKey, err := c.service.Cipher.EncryptKey(key)
+	if err != nil {
+		return "", false
+	}
+
+	// Auto-subscribe to the dial if allowed
+	if key.HasPermission(security.AllowRead) {
+		channel.Channel = []byte(target)
+		channel.Query = append(channel.Query, hash.Of([]byte(c.ID())))
+		ssid := message.NewSsid(key.Contract(), channel)
+		c.Subscribe(ssid, channel.Channel)
+	}
+
+	return fmt.Sprintf("%s/%s", encryptedKey, target), true
+}
+
+// ------------------------------------------------------------------------------------
+
 // OnSubscribe is a handler for MQTT Subscribe events.
 func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 
@@ -42,30 +128,9 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 		return ErrBadRequest
 	}
 
-	// Attempt to parse the key
-	key, err := c.service.Cipher.DecryptKey(channel.Key)
-	if err != nil || key.IsExpired() {
-		return ErrUnauthorized
-	}
-
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := c.service.contracts.Get(key.Contract())
-	if !contractFound {
-		return ErrNotFound
-	}
-
-	// Validate the contract
-	if !contract.Validate(key) {
-		return ErrUnauthorized
-	}
-
-	// Check if the key has the permission to read from here
-	if !key.HasPermission(security.AllowRead) {
-		return ErrUnauthorized
-	}
-
-	// Check if the key has the permission for the required channel
-	if !key.ValidateChannel(channel) {
+	// Check the authorization and permissions
+	contract, key, allowed := c.authorize(channel, security.AllowRead)
+	if !allowed {
 		return ErrUnauthorized
 	}
 
@@ -105,30 +170,9 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *Error {
 		return ErrBadRequest
 	}
 
-	// Attempt to parse the key
-	key, err := c.service.Cipher.DecryptKey(channel.Key)
-	if err != nil || key.IsExpired() {
-		return ErrUnauthorized
-	}
-
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := c.service.contracts.Get(key.Contract())
-	if !contractFound {
-		return ErrNotFound
-	}
-
-	// Validate the contract
-	if !contract.Validate(key) {
-		return ErrUnauthorized
-	}
-
-	// Check if the key has the permission to read from here
-	if !key.HasPermission(security.AllowRead) {
-		return ErrUnauthorized
-	}
-
-	// Check if the key has the permission for the required channel
-	if !key.ValidateChannel(channel) {
+	// Check the authorization and permissions
+	contract, key, allowed := c.authorize(channel, security.AllowRead)
+	if !allowed {
 		return ErrUnauthorized
 	}
 
@@ -143,8 +187,13 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *Error {
 
 // OnPublish is a handler for MQTT Publish events.
 func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *Error {
+	exclude := ""
+	if len(mqttTopic) <= 1 {
+		mqttTopic = []byte(c.dial)
+		exclude = c.ID()
+	}
 
-	// Parse the channel
+	// Make sure we have a valid channel
 	channel := security.ParseChannel(mqttTopic)
 	if channel.ChannelType == security.ChannelInvalid {
 		return ErrBadRequest
@@ -161,30 +210,9 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *Error {
 		return nil
 	}
 
-	// Attempt to parse the key
-	key, err := c.service.Cipher.DecryptKey(channel.Key)
-	if err != nil || key.IsExpired() {
-		return ErrUnauthorized
-	}
-
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := c.service.contracts.Get(key.Contract())
-	if !contractFound {
-		return ErrNotFound
-	}
-
-	// Validate the contract
-	if !contract.Validate(key) {
-		return ErrUnauthorized
-	}
-
-	// Check if the key has the permission to write here
-	if !key.HasPermission(security.AllowWrite) {
-		return ErrUnauthorized
-	}
-
-	// Check if the key has the permission for the required channel
-	if !key.ValidateChannel(channel) {
+	// Check the authorization and permissions
+	contract, key, allowed := c.authorize(channel, security.AllowWrite)
+	if !allowed {
 		return ErrUnauthorized
 	}
 
@@ -202,7 +230,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *Error {
 	}
 
 	// Iterate through all subscribers and send them the message
-	size := c.service.publish(msg)
+	size := c.service.publish(msg, exclude)
 
 	// Write the monitoring information
 	c.track(contract)
@@ -250,9 +278,9 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 
 // OnMe is a handler that returns information to the connection.
 func (c *Conn) onMe() (interface{}, bool) {
-	// Success, return the response
 	return &meResponse{
-		ID: c.ID(),
+		ID:   c.ID(),
+		Dial: string(c.dial),
 	}, true
 }
 

@@ -41,6 +41,7 @@ type Conn struct {
 	username string            // The username provided by the client during MQTT connect.
 	luid     security.ID       // The locally unique id of the connection.
 	guid     string            // The globally unique id of the connection.
+	dial     string            // The pre-authorized channel with a valid key used for dial.
 	service  *Service          // The service for this connection.
 	subs     *message.Counters // The subscriptions for this connection.
 	measurer stats.Measurer    // The measurer to use for monitoring.
@@ -137,11 +138,13 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 
 	// We got an attempt to connect to MQTT.
 	case mqtt.TypeOfConnect:
-		packet := msg.(*mqtt.Connect)
-		c.username = string(packet.Username)
+		var result uint8
+		if !c.onConnect(msg.(*mqtt.Connect)) {
+			result = 0x05 // Unauthorized
+		}
 
 		// Write the ack
-		ack := mqtt.Connack{ReturnCode: 0x00}
+		ack := mqtt.Connack{ReturnCode: result}
 		if _, err := ack.EncodeTo(c.socket); err != nil {
 			return err
 		}

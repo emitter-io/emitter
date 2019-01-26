@@ -16,6 +16,7 @@ package security
 
 import (
 	"errors"
+	"math"
 	"strings"
 	"time"
 
@@ -33,6 +34,7 @@ const (
 	AllowPresence  = uint32(1 << 5)         // Key should be allowed to query the presence on the target channel.
 	AllowReadWrite = AllowRead | AllowWrite // Key should be allowed to read and write to the target channel.
 	AllowStoreLoad = AllowStore | AllowLoad // Key should be allowed to read and write the message history.
+	AllowAny       = math.MaxUint32
 )
 
 // Key errors
@@ -253,5 +255,5 @@ func (k Key) IsMaster() bool {
 // HasPermission check whether the key provides some permission.
 func (k Key) HasPermission(flag uint32) bool {
 	p := k.Permissions()
-	return (p & flag) == flag
+	return flag == AllowAny || (p&flag) == flag
 }

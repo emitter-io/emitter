@@ -1,5 +1,5 @@
 /**********************************************************************************
-* Copyright (c) 2009-2018 Misakai Ltd.
+* Copyright (c) 2009-2017 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
 * terms of the GNU Affero General Public License as published by the  Free Software
 * Foundation, either version 3 of the License, or(at your option) any later version.
@@ -12,45 +12,34 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package hash
+package security
 
 import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
+	"regexp"
 )
 
-//  16.1 ns/op             0 B/op          0 allocs/op
-func BenchmarkGetHash(b *testing.B) {
-	v := []byte("a/b/c/d/e/f/g/h/this/is/emitter")
+// This is a strict password format
+var passwordFormat = regexp.MustCompile(`^(dial)\:\/\/(.+)$`)
 
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = Of(v)
+// ParsePassword parses a pre-authorized channel key
+func ParsePassword(password string) (string, *Channel) {
+	parts := passwordFormat.FindStringSubmatch(password)
+	if len(parts) != 3 {
+		return "", nil // Invalid channel
 	}
-}
 
-func TestMeHash(t *testing.T) {
-	h := Of([]byte("me"))
-	assert.Equal(t, uint32(2539734036), h)
-}
-
-func TestDialHash(t *testing.T) {
-	h := Of([]byte("dial"))
-	assert.Equal(t, uint32(1673593207), h)
-}
-
-func TestGetHash(t *testing.T) {
-	h := Of([]byte("+"))
-	if h != 1815237614 {
-		t.Errorf("Hash %d is not equal to %d", h, 1815237614)
+	// Get the scheme and channel and make sure they're valid
+	scheme := parts[1]
+	channel := ParseChannel([]byte(parts[2]))
+	if len(scheme) == 0 || channel == nil || channel.ChannelType == ChannelInvalid {
+		return "", nil
 	}
-}
 
-func TestGetHash2(t *testing.T) {
-	h := Of([]byte("hello world"))
-	if h != 4008393376 {
-		t.Errorf("Hash %d is not equal to %d", h, 1815237614)
+	// For dial to work, the channel must be static
+	if scheme == "dial" && channel.ChannelType == ChannelStatic {
+		return scheme, channel
 	}
+
+	// Safe default
+	return "", nil
 }

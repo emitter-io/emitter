@@ -87,7 +87,8 @@ func (m *keyGenRequest) access() uint32 {
 // ------------------------------------------------------------------------------------
 
 type meResponse struct {
-	ID string `json:"id"`
+	ID   string `json:"id"`             // The private ID of the connection, ret
+	Dial string `json:"dial,omitempty"` // The dial channel name
 }
 
 // ------------------------------------------------------------------------------------

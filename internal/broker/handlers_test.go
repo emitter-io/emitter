@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"testing"
 
 	"github.com/emitter-io/emitter/internal/message"
@@ -24,12 +25,61 @@ func TestHandlers_onMe(t *testing.T) {
 
 	conn := netmock.NewConn()
 	nc := s.newConn(conn.Client)
+	nc.dial = "a/b/c/"
 	resp, success := nc.onMe()
 	meResp := resp.(*meResponse)
 
-	assert.Equal(t, success, true, success)
+	assert.True(t, success)
+	assert.Equal(t, "a/b/c/", meResp.Dial)
 	assert.NotNil(t, resp)
 	assert.NotZero(t, len(meResp.ID))
+}
+
+func TestHandlers_onConnect(t *testing.T) {
+	license, _ := security.ParseLicense(testLicense)
+	tests := []struct {
+		password string
+		channel  string
+		ok       bool
+	}{
+		{password: "", ok: true},
+		{password: "dial://0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/", channel: "a/b/c/CONNECTION_ID/", ok: true},
+
+		{password: "dial://a/b/c/"},
+		{password: "a/b/c/"},
+		{password: "agsew350290"},
+		{password: "1.2342/24/225"},
+		{password: "fake://0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.password, func(*testing.T) {
+			provider := secmock.NewContractProvider()
+			contract := new(secmock.Contract)
+			contract.On("Validate", mock.Anything).Return(true)
+			contract.On("Stats").Return(usage.NewMeter(0))
+			provider.On("Get", mock.Anything).Return(contract, true)
+			s := &Service{
+				contracts:     provider,
+				subscriptions: message.NewTrie(),
+				License:       license,
+				presence:      make(chan *presenceNotify, 100),
+			}
+
+			conn := netmock.NewConn()
+			nc := s.newConn(conn.Client)
+			nc.guid = "CONNECTION_ID"
+			s.Cipher, _ = s.License.Cipher()
+			ok := nc.onConnect(&mqtt.Connect{
+				Password: []byte(tc.password),
+			})
+
+			assert.Equal(t, tc.ok, ok, tc.password)
+			if tc.channel != "" {
+				assert.Contains(t, string(nc.dial), tc.channel)
+			}
+		})
+	}
 }
 
 func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
@@ -86,9 +136,9 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
 			subCount:      0,
-			subErr:        ErrNotFound,
+			subErr:        ErrUnauthorized,
 			unsubCount:    0,
-			unsubErr:      ErrNotFound,
+			unsubErr:      ErrUnauthorized,
 			contractValid: true,
 			contractFound: false,
 			msg:           "Contract not found case",
@@ -210,7 +260,7 @@ func TestHandlers_onPublish(t *testing.T) {
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
 			payload:       "test",
-			err:           ErrNotFound,
+			err:           ErrUnauthorized,
 			contractValid: true,
 			contractFound: false,
 			msg:           "Contract not found case",
