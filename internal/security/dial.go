@@ -18,28 +18,28 @@ import (
 	"regexp"
 )
 
-// This is a strict password format
-var passwordFormat = regexp.MustCompile(`^(dial)\:\/\/(.+)$`)
+// This is a strict format for the dial string
+var dialFormat = regexp.MustCompile(`^(dial)\:\/\/(.+)$`)
 
-// ParsePassword parses a pre-authorized channel key
-func ParsePassword(password string) (string, *Channel) {
-	parts := passwordFormat.FindStringSubmatch(password)
+// ParseDial parses a pre-authorized channel key
+func ParseDial(password string) (*Channel, bool) {
+	parts := dialFormat.FindStringSubmatch(password)
 	if len(parts) != 3 {
-		return "", nil // Invalid channel
+		return nil, false // Invalid channel
 	}
 
 	// Get the scheme and channel and make sure they're valid
 	scheme := parts[1]
 	channel := ParseChannel([]byte(parts[2]))
 	if len(scheme) == 0 || channel == nil || channel.ChannelType == ChannelInvalid {
-		return "", nil
+		return nil, false
 	}
 
 	// For dial to work, the channel must be static
 	if scheme == "dial" && channel.ChannelType == ChannelStatic {
-		return scheme, channel
+		return channel, true
 	}
 
 	// Safe default
-	return "", nil
+	return nil, false
 }

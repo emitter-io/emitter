@@ -43,13 +43,13 @@ func TestHandlers_onConnect(t *testing.T) {
 		ok       bool
 	}{
 		{password: "", ok: true},
-		{password: "dial://0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/", channel: "a/b/c/CONNECTION_ID/", ok: true},
+		{password: "dial://k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm/a/b/c/", channel: "a/b/c/CONNECTION_ID/", ok: true},
 
 		{password: "dial://a/b/c/"},
 		{password: "a/b/c/"},
 		{password: "agsew350290"},
 		{password: "1.2342/24/225"},
-		{password: "fake://0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/"},
+		{password: "fake://k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm/a/b/c/"},
 	}
 
 	for _, tc := range tests {

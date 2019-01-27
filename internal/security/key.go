@@ -16,7 +16,6 @@ package security
 
 import (
 	"errors"
-	"math"
 	"strings"
 	"time"
 
@@ -25,16 +24,17 @@ import (
 
 // Access types for a security key.
 const (
-	AllowNone      = uint32(0)              // Key has no privileges.
-	AllowMaster    = uint32(1 << 0)         // Key should be allowed to generate other keys.
-	AllowRead      = uint32(1 << 1)         // Key should be allowed to subscribe to the target channel.
-	AllowWrite     = uint32(1 << 2)         // Key should be allowed to publish to the target channel.
-	AllowStore     = uint32(1 << 3)         // Key should be allowed to write to the message history of the target channel.
-	AllowLoad      = uint32(1 << 4)         // Key should be allowed to write to read the message history of the target channel.
-	AllowPresence  = uint32(1 << 5)         // Key should be allowed to query the presence on the target channel.
+	AllowNone      = uint8(0)               // Key has no privileges.
+	AllowMaster    = uint8(1 << 0)          // Key should be allowed to generate other keys.
+	AllowRead      = uint8(1 << 1)          // Key should be allowed to subscribe to the target channel.
+	AllowWrite     = uint8(1 << 2)          // Key should be allowed to publish to the target channel.
+	AllowStore     = uint8(1 << 3)          // Key should be allowed to write to the message history of the target channel.
+	AllowLoad      = uint8(1 << 4)          // Key should be allowed to write to read the message history of the target channel.
+	AllowPresence  = uint8(1 << 5)          // Key should be allowed to query the presence on the target channel.
+	AllowDial      = uint8(1 << 6)          // Key should be allowed to create a 'dial' sub-channel.
+	AllowExecute   = uint8(1 << 7)          // Key should be allowed to execute code. (RESERVED)
 	AllowReadWrite = AllowRead | AllowWrite // Key should be allowed to read and write to the target channel.
 	AllowStoreLoad = AllowStore | AllowLoad // Key should be allowed to read and write the message history.
-	AllowAny       = math.MaxUint32
 )
 
 // Key errors
@@ -100,13 +100,13 @@ func (k Key) SetSignature(value uint32) {
 }
 
 // Permissions gets the permission flags.
-func (k Key) Permissions() uint32 {
-	return uint32(k[15])
+func (k Key) Permissions() uint8 {
+	return k[15]
 }
 
 // SetPermissions sets the permission flags.
-func (k Key) SetPermissions(value uint32) {
-	k[15] = byte(value)
+func (k Key) SetPermissions(value uint8) {
+	k[15] = value
 }
 
 // ValidateChannel validates the channel string.
@@ -253,7 +253,7 @@ func (k Key) IsMaster() bool {
 }
 
 // HasPermission check whether the key provides some permission.
-func (k Key) HasPermission(flag uint32) bool {
+func (k Key) HasPermission(flag uint8) bool {
 	p := k.Permissions()
-	return flag == AllowAny || (p&flag) == flag
+	return (p & flag) == flag
 }

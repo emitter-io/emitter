@@ -38,7 +38,7 @@ const (
 // ------------------------------------------------------------------------------------
 
 // Authorize attempts to authorize a channel with its key
-func (c *Conn) authorize(channel *security.Channel, permission uint32) (contract.Contract, security.Key, bool) {
+func (c *Conn) authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
 
 	// Attempt to parse the key
 	key, err := c.service.Cipher.DecryptKey(channel.Key)
@@ -67,29 +67,25 @@ func (c *Conn) onConnect(packet *mqtt.Connect) bool {
 		return true
 	}
 
-	// If the password was provided, evalute our scheme. The format should be:
-	// dial://{key}/{channel}/
-	scheme, channel := security.ParsePassword(string(packet.Password))
-	if len(scheme) == 0 || channel == nil || channel.ChannelType == security.ChannelInvalid {
-		return false
-	}
-
-	// If it's a dial, we need to append the connection ID and generate a new key
-	if scheme == "dial" {
-		if dial, ok := c.dialAndSubscribe(channel); ok {
-			c.dial = dial // Keep it as string, we want to copy later
-			return true
-		}
+	// If the password was provided, try to parse the 'dial' string. The format
+	// should be: dial://{key}/{channel}/
+	if dial, ok := c.dialAndSubscribe(string(packet.Password)); ok {
+		c.dial = dial // Keep it as string, we want to copy later
+		return true
 	}
 
 	return false
 }
 
 // creates a new channel for the dial and subscribes to it if allowed
-func (c *Conn) dialAndSubscribe(channel *security.Channel) (string, bool) {
+func (c *Conn) dialAndSubscribe(password string) (string, bool) {
+	channel, valid := security.ParseDial(string(password))
+	if !valid {
+		return "", false
+	}
 
 	// Check the authorization and permissions
-	_, key, allowed := c.authorize(channel, security.AllowAny)
+	_, key, allowed := c.authorize(channel, security.AllowDial)
 	if !allowed {
 		return "", false
 	}

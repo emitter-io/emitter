@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParsePassword(t *testing.T) {
+func TestParseDial(t *testing.T) {
 	tests := []struct {
 		input   string
 		expect  string
@@ -32,9 +32,9 @@ func TestParsePassword(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		scheme, channel := ParsePassword(tc.input)
-		assert.Equal(t, scheme != "", tc.success, tc.input)
-		if tc.expect != "" {
+		channel, ok := ParseDial(tc.input)
+		assert.Equal(t, ok, tc.success, tc.input)
+		if ok && tc.expect != "" {
 			assert.Equal(t, tc.expect, string(channel.Channel), tc.input)
 		}
 	}

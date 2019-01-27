@@ -63,7 +63,7 @@ func (m *keyGenRequest) expires() time.Time {
 	return time.Now().Add(time.Duration(m.TTL) * time.Second).UTC()
 }
 
-func (m *keyGenRequest) access() uint32 {
+func (m *keyGenRequest) access() uint8 {
 	required := security.AllowNone
 
 	for i := 0; i < len(m.Type); i++ {
@@ -78,6 +78,10 @@ func (m *keyGenRequest) access() uint32 {
 			required |= security.AllowLoad
 		case 'p':
 			required |= security.AllowPresence
+		case 'd':
+			required |= security.AllowDial
+		case 'x':
+			required |= security.AllowExecute
 		}
 	}
 
