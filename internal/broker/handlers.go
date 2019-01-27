@@ -17,6 +17,7 @@ package broker
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ import (
 const (
 	requestKeygen   = 548658350  // hash("keygen")
 	requestPresence = 3869262148 // hash("presence")
+	requestDial     = 1673593207 // hash("dial")
 	requestMe       = 2539734036 // hash("me")
 )
 
@@ -70,7 +72,7 @@ func (c *Conn) onConnect(packet *mqtt.Connect) bool {
 	// If the password was provided, try to parse the 'dial' string. The format
 	// should be: dial://{key}/{channel}/
 	if dial, ok := c.dialAndSubscribe(string(packet.Password)); ok {
-		c.dial = dial // Keep it as string, we want to copy later
+		c.dials["0"] = dial // Keep it as string, we want to copy later
 		return true
 	}
 
@@ -79,6 +81,8 @@ func (c *Conn) onConnect(packet *mqtt.Connect) bool {
 
 // creates a new channel for the dial and subscribes to it if allowed
 func (c *Conn) dialAndSubscribe(password string) (string, bool) {
+
+	// Parse the dial string
 	channel, valid := security.ParseDial(string(password))
 	if !valid {
 		return "", false
@@ -90,7 +94,7 @@ func (c *Conn) dialAndSubscribe(password string) (string, bool) {
 		return "", false
 	}
 
-	// Create a new key for the dial
+	// Create a new key for the dial.
 	target := fmt.Sprintf("%s%s/", channel.Channel, c.ID())
 	if err := key.SetTarget(target); err != nil {
 		return "", false
@@ -184,8 +188,13 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *Error {
 // OnPublish is a handler for MQTT Publish events.
 func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *Error {
 	exclude := ""
-	if len(mqttTopic) <= 1 {
-		mqttTopic = []byte(c.dial)
+	if len(mqttTopic) == 0 && c.dials != nil {
+		mqttTopic = []byte(c.dials["0"])
+		exclude = c.ID()
+	}
+
+	if len(mqttTopic) == 1 && c.dials != nil {
+		mqttTopic = []byte(c.dials[string(mqttTopic[0])])
 		exclude = c.ID()
 	}
 
@@ -265,6 +274,9 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 	case requestMe:
 		resp, ok = c.onMe()
 		return
+	case requestDial:
+		resp, ok = c.onDial(payload)
+		return
 	default:
 		return
 	}
@@ -272,12 +284,38 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 
 // ------------------------------------------------------------------------------------
 
+// OnDial handles the dial & subscribe.
+func (c *Conn) onDial(payload []byte) (interface{}, bool) {
+	var message dialRequest
+	if err := json.Unmarshal(payload, &message); err != nil {
+		return ErrBadRequest, false
+	}
+
+	dial, ok := c.dialAndSubscribe(fmt.Sprintf("dial://%s/%s", message.Key, message.Channel))
+	if !ok {
+		return ErrBadRequest, false
+	}
+
+	c.dials[strconv.FormatInt(int64(message.Index), 10)] = dial
+	channel := security.ParseChannel([]byte(dial))
+	return &dialResponse{
+		Status:  200,
+		Channel: string(channel.Channel),
+	}, true
+}
+
+// ------------------------------------------------------------------------------------
+
 // OnMe is a handler that returns information to the connection.
 func (c *Conn) onMe() (interface{}, bool) {
-	dial := security.ParseChannel([]byte(c.dial))
+	dials := make(map[string]string)
+	for k, v := range c.dials {
+		dials[k] = string(security.ParseChannel([]byte(v)).Channel)
+	}
+
 	return &meResponse{
-		ID:   c.ID(),
-		Dial: string(dial.Channel),
+		ID:    c.ID(),
+		Dials: dials,
 	}, true
 }
 

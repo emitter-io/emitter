@@ -90,17 +90,32 @@ func (m *keyGenRequest) access() uint8 {
 
 // ------------------------------------------------------------------------------------
 
-type meResponse struct {
-	ID   string `json:"id"`             // The private ID of the connection, ret
-	Dial string `json:"dial,omitempty"` // The dial channel name
-}
-
-// ------------------------------------------------------------------------------------
-
 type keyGenResponse struct {
 	Status  int    `json:"status"`
 	Key     string `json:"key"`
 	Channel string `json:"channel"`
+}
+
+// ------------------------------------------------------------------------------------
+
+type dialRequest struct {
+	Index   int32  `json:"index"`
+	Key     string `json:"key"`
+	Channel string `json:"channel"`
+}
+
+// ------------------------------------------------------------------------------------
+
+type dialResponse struct {
+	Status  int    `json:"status"`
+	Channel string `json:"channel,omitempty"`
+}
+
+// ------------------------------------------------------------------------------------
+
+type meResponse struct {
+	ID    string            `json:"id"`              // The private ID of the connection, ret
+	Dials map[string]string `json:"dials,omitempty"` // The dial channel name
 }
 
 // ------------------------------------------------------------------------------------

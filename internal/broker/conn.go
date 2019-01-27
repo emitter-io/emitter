@@ -41,10 +41,10 @@ type Conn struct {
 	username string            // The username provided by the client during MQTT connect.
 	luid     security.ID       // The locally unique id of the connection.
 	guid     string            // The globally unique id of the connection.
-	dial     string            // The pre-authorized channel with a valid key used for dial.
 	service  *Service          // The service for this connection.
 	subs     *message.Counters // The subscriptions for this connection.
 	measurer stats.Measurer    // The measurer to use for monitoring.
+	dials    map[string]string // The map of all pre-authorized dials.
 }
 
 // NewConn creates a new connection.
@@ -56,6 +56,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		socket:   t,
 		subs:     message.NewCounters(),
 		measurer: s.measurer,
+		dials:    map[string]string{},
 	}
 
 	// Generate a globally unique id as well

@@ -16,6 +16,29 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func TestHandlers_onDial(t *testing.T) {
+	provider := secmock.NewContractProvider()
+	contract := new(secmock.Contract)
+	contract.On("Validate", mock.Anything).Return(true)
+	provider.On("Get", mock.Anything).Return(contract, true)
+	license, _ := security.ParseLicense(testLicense)
+	s := &Service{
+		contracts:     provider,
+		subscriptions: message.NewTrie(),
+		License:       license,
+		presence:      make(chan *presenceNotify, 100),
+	}
+
+	s.Cipher, _ = s.License.Cipher()
+	conn := netmock.NewConn()
+	nc := s.newConn(conn.Client)
+	resp, success := nc.onDial([]byte(`{ "index": 1, "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/" }`))
+	meResp := resp.(*dialResponse)
+
+	assert.True(t, success)
+	assert.Contains(t, meResp.Channel, "a/b/c/")
+}
+
 func TestHandlers_onMe(t *testing.T) {
 	license, _ := security.ParseLicense(testLicense)
 	s := &Service{
@@ -25,12 +48,12 @@ func TestHandlers_onMe(t *testing.T) {
 
 	conn := netmock.NewConn()
 	nc := s.newConn(conn.Client)
-	nc.dial = "key/a/b/c/"
+	nc.dials["0"] = "key/a/b/c/"
 	resp, success := nc.onMe()
 	meResp := resp.(*meResponse)
 
 	assert.True(t, success)
-	assert.Equal(t, "a/b/c/", meResp.Dial)
+	assert.Equal(t, "a/b/c/", meResp.Dials["0"])
 	assert.NotNil(t, resp)
 	assert.NotZero(t, len(meResp.ID))
 }
@@ -76,7 +99,7 @@ func TestHandlers_onConnect(t *testing.T) {
 
 			assert.Equal(t, tc.ok, ok, tc.password)
 			if tc.channel != "" {
-				assert.Contains(t, string(nc.dial), tc.channel)
+				assert.Contains(t, string(nc.dials["0"]), tc.channel)
 			}
 		})
 	}
