@@ -31,7 +31,7 @@ const (
 	AllowStore     = uint8(1 << 3)          // Key should be allowed to write to the message history of the target channel.
 	AllowLoad      = uint8(1 << 4)          // Key should be allowed to write to read the message history of the target channel.
 	AllowPresence  = uint8(1 << 5)          // Key should be allowed to query the presence on the target channel.
-	AllowDial      = uint8(1 << 6)          // Key should be allowed to create a 'dial' sub-channel.
+	AllowExtend    = uint8(1 << 6)          // Key should be allowed to create sub-channels by extending an existing one.
 	AllowExecute   = uint8(1 << 7)          // Key should be allowed to execute code. (RESERVED)
 	AllowReadWrite = AllowRead | AllowWrite // Key should be allowed to read and write to the target channel.
 	AllowStoreLoad = AllowStore | AllowLoad // Key should be allowed to read and write the message history.

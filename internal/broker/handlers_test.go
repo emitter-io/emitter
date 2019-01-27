@@ -1,7 +1,6 @@
 package broker
 
 import (
-	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"testing"
 
 	"github.com/emitter-io/emitter/internal/message"
@@ -16,27 +15,54 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestHandlers_onDial(t *testing.T) {
-	provider := secmock.NewContractProvider()
-	contract := new(secmock.Contract)
-	contract.On("Validate", mock.Anything).Return(true)
-	provider.On("Get", mock.Anything).Return(contract, true)
-	license, _ := security.ParseLicense(testLicense)
-	s := &Service{
-		contracts:     provider,
-		subscriptions: message.NewTrie(),
-		License:       license,
-		presence:      make(chan *presenceNotify, 100),
+func TestHandlers_onLink(t *testing.T) {
+	tests := []struct {
+		packet  string
+		channel string
+		success bool
+	}{
+		{
+			packet:  `{ "name": "AB", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`,
+			channel: "a/b/c/",
+			success: true,
+		},
+		{
+			packet:  `{ "name": "AB", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/"}`,
+			channel: "a/b/c/",
+			success: true,
+		},
+		{packet: `{ "name": "ABC", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`},
+		{packet: `{ "name": "", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`},
+		{packet: `{"key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`},
+		{packet: `{ "name": "AB", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "---", "private": true, "subscribe": true }`},
+		{packet: `{ "name": "AB", "key": "xxx", "channel": "a/b/c/", "private": true, "subscribe": true }`},
 	}
 
-	s.Cipher, _ = s.License.Cipher()
-	conn := netmock.NewConn()
-	nc := s.newConn(conn.Client)
-	resp, success := nc.onDial([]byte(`{ "index": 1, "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/" }`))
-	meResp := resp.(*dialResponse)
+	for _, tc := range tests {
+		t.Run(tc.packet, func(*testing.T) {
+			provider := secmock.NewContractProvider()
+			contract := new(secmock.Contract)
+			contract.On("Validate", mock.Anything).Return(true)
+			provider.On("Get", mock.Anything).Return(contract, true)
+			license, _ := security.ParseLicense(testLicense)
+			s := &Service{
+				contracts:     provider,
+				subscriptions: message.NewTrie(),
+				License:       license,
+				presence:      make(chan *presenceNotify, 100),
+			}
 
-	assert.True(t, success)
-	assert.Contains(t, meResp.Channel, "a/b/c/")
+			s.Cipher, _ = s.License.Cipher()
+			conn := netmock.NewConn()
+			nc := s.newConn(conn.Client)
+
+			resp, ok := nc.onLink([]byte(tc.packet))
+			assert.Equal(t, tc.success, ok)
+			if tc.success {
+				assert.Contains(t, resp.(*linkResponse).Channel, tc.channel)
+			}
+		})
+	}
 }
 
 func TestHandlers_onMe(t *testing.T) {
@@ -48,61 +74,14 @@ func TestHandlers_onMe(t *testing.T) {
 
 	conn := netmock.NewConn()
 	nc := s.newConn(conn.Client)
-	nc.dials["0"] = "key/a/b/c/"
+	nc.links["0"] = "key/a/b/c/"
 	resp, success := nc.onMe()
 	meResp := resp.(*meResponse)
 
 	assert.True(t, success)
-	assert.Equal(t, "a/b/c/", meResp.Dials["0"])
+	assert.Equal(t, "a/b/c/", meResp.Links["0"])
 	assert.NotNil(t, resp)
 	assert.NotZero(t, len(meResp.ID))
-}
-
-func TestHandlers_onConnect(t *testing.T) {
-	license, _ := security.ParseLicense(testLicense)
-	tests := []struct {
-		password string
-		channel  string
-		ok       bool
-	}{
-		{password: "", ok: true},
-		{password: "dial://k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm/a/b/c/", channel: "a/b/c/CONNECTION_ID/", ok: true},
-
-		{password: "dial://a/b/c/"},
-		{password: "a/b/c/"},
-		{password: "agsew350290"},
-		{password: "1.2342/24/225"},
-		{password: "fake://k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm/a/b/c/"},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.password, func(*testing.T) {
-			provider := secmock.NewContractProvider()
-			contract := new(secmock.Contract)
-			contract.On("Validate", mock.Anything).Return(true)
-			contract.On("Stats").Return(usage.NewMeter(0))
-			provider.On("Get", mock.Anything).Return(contract, true)
-			s := &Service{
-				contracts:     provider,
-				subscriptions: message.NewTrie(),
-				License:       license,
-				presence:      make(chan *presenceNotify, 100),
-			}
-
-			conn := netmock.NewConn()
-			nc := s.newConn(conn.Client)
-			nc.guid = "CONNECTION_ID"
-			s.Cipher, _ = s.License.Cipher()
-			ok := nc.onConnect(&mqtt.Connect{
-				Password: []byte(tc.password),
-			})
-
-			assert.Equal(t, tc.ok, ok, tc.password)
-			if tc.channel != "" {
-				assert.Contains(t, string(nc.dials["0"]), tc.channel)
-			}
-		})
-	}
 }
 
 func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
@@ -223,7 +202,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 			// Search for the ssid.
 			channel := security.ParseChannel([]byte(tc.channel))
 			key, _ := s.Cipher.DecryptKey(channel.Key)
-			ssid := message.NewSsid(key.Contract(), channel)
+			ssid := message.NewSsid(key.Contract(), channel.Query)
 			subscribers := s.subscriptions.Lookup(ssid)
 			assert.Equal(t, tc.subCount, len(subscribers))
 
@@ -570,6 +549,11 @@ func TestHandlers_onEmitterRequest(t *testing.T) {
 			channel: "me",
 			query:   []uint32{requestMe},
 			success: true,
+		},
+		{
+			channel: "link",
+			query:   []uint32{requestLink},
+			success: false,
 		},
 	}
 

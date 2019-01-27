@@ -17,7 +17,7 @@ package broker
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"regexp"
 	"strings"
 	"time"
 
@@ -33,8 +33,12 @@ import (
 const (
 	requestKeygen   = 548658350  // hash("keygen")
 	requestPresence = 3869262148 // hash("presence")
-	requestDial     = 1673593207 // hash("dial")
+	requestLink     = 2667034312 // hash("link")
 	requestMe       = 2539734036 // hash("me")
+)
+
+var (
+	shortcut = regexp.MustCompile("^[a-zA-Z0-9]{1,2}$")
 )
 
 // ------------------------------------------------------------------------------------
@@ -63,58 +67,7 @@ func (c *Conn) authorize(channel *security.Channel, permission uint8) (contract.
 // onConnect handles the connection authorization
 func (c *Conn) onConnect(packet *mqtt.Connect) bool {
 	c.username = string(packet.Username)
-
-	// If there's no password provided, we're done
-	if len(packet.Password) == 0 {
-		return true
-	}
-
-	// If the password was provided, try to parse the 'dial' string. The format
-	// should be: dial://{key}/{channel}/
-	if dial, ok := c.dialAndSubscribe(string(packet.Password)); ok {
-		c.dials["0"] = dial // Keep it as string, we want to copy later
-		return true
-	}
-
-	return false
-}
-
-// creates a new channel for the dial and subscribes to it if allowed
-func (c *Conn) dialAndSubscribe(password string) (string, bool) {
-
-	// Parse the dial string
-	channel, valid := security.ParseDial(string(password))
-	if !valid {
-		return "", false
-	}
-
-	// Check the authorization and permissions
-	_, key, allowed := c.authorize(channel, security.AllowDial)
-	if !allowed {
-		return "", false
-	}
-
-	// Create a new key for the dial.
-	target := fmt.Sprintf("%s%s/", channel.Channel, c.ID())
-	if err := key.SetTarget(target); err != nil {
-		return "", false
-	}
-
-	// Encrypt the key for storing
-	encryptedKey, err := c.service.Cipher.EncryptKey(key)
-	if err != nil {
-		return "", false
-	}
-
-	// Auto-subscribe to the dial if allowed
-	if key.HasPermission(security.AllowRead) {
-		channel.Channel = []byte(target)
-		channel.Query = append(channel.Query, hash.Of([]byte(c.ID())))
-		ssid := message.NewSsid(key.Contract(), channel)
-		c.Subscribe(ssid, channel.Channel)
-	}
-
-	return fmt.Sprintf("%s/%s", encryptedKey, target), true
+	return true
 }
 
 // ------------------------------------------------------------------------------------
@@ -135,7 +88,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 	}
 
 	// Subscribe the client to the channel
-	ssid := message.NewSsid(key.Contract(), channel)
+	ssid := message.NewSsid(key.Contract(), channel.Query)
 	c.Subscribe(ssid, channel.Channel)
 
 	// In case of ttl, check the key provides the permission to store (soft permission)
@@ -177,7 +130,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *Error {
 	}
 
 	// Unsubscribe the client from the channel
-	ssid := message.NewSsid(key.Contract(), channel)
+	ssid := message.NewSsid(key.Contract(), channel.Query)
 	c.Unsubscribe(ssid, channel.Channel)
 	c.track(contract)
 	return nil
@@ -188,13 +141,8 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *Error {
 // OnPublish is a handler for MQTT Publish events.
 func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *Error {
 	exclude := ""
-	if len(mqttTopic) == 0 && c.dials != nil {
-		mqttTopic = []byte(c.dials["0"])
-		exclude = c.ID()
-	}
-
-	if len(mqttTopic) == 1 && c.dials != nil {
-		mqttTopic = []byte(c.dials[string(mqttTopic[0])])
+	if len(mqttTopic) <= 2 && c.links != nil {
+		mqttTopic = []byte(c.links[string(mqttTopic)])
 		exclude = c.ID()
 	}
 
@@ -223,7 +171,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *Error {
 
 	// Create a new message
 	msg := message.New(
-		message.NewSsid(key.Contract(), channel),
+		message.NewSsid(key.Contract(), channel.Query),
 		channel.Channel,
 		payload,
 	)
@@ -274,8 +222,8 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 	case requestMe:
 		resp, ok = c.onMe()
 		return
-	case requestDial:
-		resp, ok = c.onDial(payload)
+	case requestLink:
+		resp, ok = c.onLink(payload)
 		return
 	default:
 		return
@@ -284,38 +232,88 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 
 // ------------------------------------------------------------------------------------
 
-// OnDial handles the dial & subscribe.
-func (c *Conn) onDial(payload []byte) (interface{}, bool) {
-	var message dialRequest
-	if err := json.Unmarshal(payload, &message); err != nil {
+// onLink handles a request to create a link.
+func (c *Conn) onLink(payload []byte) (interface{}, bool) {
+	var request linkRequest
+	if err := json.Unmarshal(payload, &request); err != nil {
 		return ErrBadRequest, false
 	}
 
-	dial, ok := c.dialAndSubscribe(fmt.Sprintf("dial://%s/%s", message.Key, message.Channel))
-	if !ok {
+	// Check whether the name is a valid shortcut name
+	if !shortcut.Match([]byte(request.Name)) {
+		return ErrLinkInvalid, false
+	}
+
+	// Make the channel from the request or try to make a private one
+	channel := security.MakeChannel(request.Key, request.Channel)
+	if request.Private {
+		channel = c.makePrivateChannel(request.Key, request.Channel)
+	}
+
+	// Ensures that the channel requested is valid
+	if channel == nil || channel.ChannelType == security.ChannelInvalid {
 		return ErrBadRequest, false
 	}
 
-	c.dials[strconv.FormatInt(int64(message.Index), 10)] = dial
-	channel := security.ParseChannel([]byte(dial))
-	return &dialResponse{
+	// Create the link with the name and set the full channel to it
+	c.links[request.Name] = channel.String()
+
+	// If an auto-subscribe was requested and the key has read permissions, subscribe
+	if _, key, allowed := c.authorize(channel, security.AllowRead); allowed && request.Subscribe {
+		c.Subscribe(message.NewSsid(key.Contract(), channel.Query), channel.Channel)
+	}
+
+	return &linkResponse{
 		Status:  200,
-		Channel: string(channel.Channel),
+		Name:    request.Name,
+		Channel: channel.SafeString(),
 	}, true
+}
+
+// makePrivateChannel creates a private channel and an appropriate key.
+func (c *Conn) makePrivateChannel(chanKey, chanName string) *security.Channel {
+	channel := security.MakeChannel(chanKey, chanName)
+	if channel.ChannelType != security.ChannelStatic {
+		return nil
+	}
+
+	// Make sure we can actually extend it
+	_, key, allowed := c.authorize(channel, security.AllowExtend)
+	if !allowed {
+		return nil
+	}
+
+	// Create a new key for the private link
+	target := fmt.Sprintf("%s%s/", channel.Channel, c.ID())
+	if err := key.SetTarget(target); err != nil {
+		return nil
+	}
+
+	// Encrypt the key for storing
+	encryptedKey, err := c.service.Cipher.EncryptKey(key)
+	if err != nil {
+		return nil
+	}
+
+	// Create the private channel
+	channel.Channel = []byte(target)
+	channel.Query = append(channel.Query, hash.Of([]byte(c.ID())))
+	channel.Key = []byte(encryptedKey)
+	return channel
 }
 
 // ------------------------------------------------------------------------------------
 
 // OnMe is a handler that returns information to the connection.
 func (c *Conn) onMe() (interface{}, bool) {
-	dials := make(map[string]string)
-	for k, v := range c.dials {
-		dials[k] = string(security.ParseChannel([]byte(v)).Channel)
+	links := make(map[string]string)
+	for k, v := range c.links {
+		links[k] = security.ParseChannel([]byte(v)).SafeString()
 	}
 
 	return &meResponse{
 		ID:    c.ID(),
-		Dials: dials,
+		Links: links,
 	}, true
 }
 
@@ -470,7 +468,7 @@ func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
 	}
 
 	// Create the ssid for the presence
-	ssid := message.NewSsid(key.Contract(), channel)
+	ssid := message.NewSsid(key.Contract(), channel.Query)
 
 	// Check if the client is interested in subscribing/unsubscribing from changes.
 	if msg.Changes {

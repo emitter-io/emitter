@@ -44,7 +44,7 @@ type Conn struct {
 	service  *Service          // The service for this connection.
 	subs     *message.Counters // The subscriptions for this connection.
 	measurer stats.Measurer    // The measurer to use for monitoring.
-	dials    map[string]string // The map of all pre-authorized dials.
+	links    map[string]string // The map of all pre-authorized links.
 }
 
 // NewConn creates a new connection.
@@ -56,7 +56,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		socket:   t,
 		subs:     message.NewCounters(),
 		measurer: s.measurer,
-		dials:    map[string]string{},
+		links:    map[string]string{},
 	}
 
 	// Generate a globally unique id as well

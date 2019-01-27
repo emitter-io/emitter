@@ -364,7 +364,7 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create the ssid for the presence
-	ssid := message.NewSsid(key.Contract(), channel)
+	ssid := message.NewSsid(key.Contract(), channel.Query)
 	now := time.Now().UTC().Unix()
 	who := getAllPresence(s, ssid)
 	resp, err := json.Marshal(&presenceResponse{
@@ -457,7 +457,7 @@ func (s *Service) selfPublish(channelName string, payload []byte) {
 	channel := security.ParseChannel([]byte("emitter/" + channelName))
 	if channel.ChannelType == security.ChannelStatic {
 		s.publish(message.New(
-			message.NewSsid(s.License.Contract, channel),
+			message.NewSsid(s.License.Contract, channel.Query),
 			channel.Channel,
 			payload,
 		), "")
