@@ -233,6 +233,32 @@ func TestPubsub(t *testing.T) {
 		assert.Equal(t, mqtt.TypeOfUnsuback, pkt.Type())
 	}
 
+	{ // Create a private link
+		msg := mqtt.Publish{
+			Header:  &mqtt.StaticHeader{QOS: 0},
+			Topic:   []byte("emitter/link/"),
+			Payload: []byte(`{ "name": "hi", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true }`),
+		}
+		_, err := msg.EncodeTo(cli)
+		assert.NoError(t, err)
+	}
+
+	{ // Read the link response
+		pkt, err := mqtt.DecodePacket(cli)
+		assert.NoError(t, err)
+		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
+	}
+
+	{ // Publish a message to a link
+		msg := mqtt.Publish{
+			Header:  &mqtt.StaticHeader{QOS: 0},
+			Topic:   []byte("hi"),
+			Payload: []byte("hello world"),
+		}
+		_, err := msg.EncodeTo(cli)
+		assert.NoError(t, err)
+	}
+
 	{ // Disconnect from the broker
 		disconnect := mqtt.Disconnect{}
 		n, err := disconnect.EncodeTo(cli)
