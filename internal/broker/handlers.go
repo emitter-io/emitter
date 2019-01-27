@@ -17,7 +17,6 @@ package broker
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/emitter-io/emitter/internal/security/hash"
 	"strings"
 	"time"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/emitter-io/emitter/internal/provider/contract"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/security/hash"
 	"github.com/kelindar/binary"
 )
 
@@ -274,9 +274,10 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 
 // OnMe is a handler that returns information to the connection.
 func (c *Conn) onMe() (interface{}, bool) {
+	dial := security.ParseChannel([]byte(c.dial))
 	return &meResponse{
 		ID:   c.ID(),
-		Dial: string(c.dial),
+		Dial: string(dial.Channel),
 	}, true
 }
 

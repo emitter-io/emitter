@@ -25,7 +25,7 @@ func TestHandlers_onMe(t *testing.T) {
 
 	conn := netmock.NewConn()
 	nc := s.newConn(conn.Client)
-	nc.dial = "a/b/c/"
+	nc.dial = "key/a/b/c/"
 	resp, success := nc.onMe()
 	meResp := resp.(*meResponse)
 
