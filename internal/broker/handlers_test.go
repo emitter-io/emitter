@@ -15,6 +15,56 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func TestHandlers_onLink(t *testing.T) {
+	tests := []struct {
+		packet  string
+		channel string
+		success bool
+	}{
+		{
+			packet:  `{ "name": "AB", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`,
+			channel: "a/b/c/",
+			success: true,
+		},
+		{
+			packet:  `{ "name": "AB", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/"}`,
+			channel: "a/b/c/",
+			success: true,
+		},
+		{packet: `{ "name": "ABC", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`},
+		{packet: `{ "name": "", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`},
+		{packet: `{"key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`},
+		{packet: `{ "name": "AB", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "---", "private": true, "subscribe": true }`},
+		{packet: `{ "name": "AB", "key": "xxx", "channel": "a/b/c/", "private": true, "subscribe": true }`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.packet, func(*testing.T) {
+			provider := secmock.NewContractProvider()
+			contract := new(secmock.Contract)
+			contract.On("Validate", mock.Anything).Return(true)
+			provider.On("Get", mock.Anything).Return(contract, true)
+			license, _ := security.ParseLicense(testLicense)
+			s := &Service{
+				contracts:     provider,
+				subscriptions: message.NewTrie(),
+				License:       license,
+				presence:      make(chan *presenceNotify, 100),
+			}
+
+			s.Cipher, _ = s.License.Cipher()
+			conn := netmock.NewConn()
+			nc := s.newConn(conn.Client)
+
+			resp, ok := nc.onLink([]byte(tc.packet))
+			assert.Equal(t, tc.success, ok)
+			if tc.success {
+				assert.Contains(t, resp.(*linkResponse).Channel, tc.channel)
+			}
+		})
+	}
+}
+
 func TestHandlers_onMe(t *testing.T) {
 	license, _ := security.ParseLicense(testLicense)
 	s := &Service{
@@ -24,10 +74,12 @@ func TestHandlers_onMe(t *testing.T) {
 
 	conn := netmock.NewConn()
 	nc := s.newConn(conn.Client)
+	nc.links["0"] = "key/a/b/c/"
 	resp, success := nc.onMe()
 	meResp := resp.(*meResponse)
 
-	assert.Equal(t, success, true, success)
+	assert.True(t, success)
+	assert.Equal(t, "a/b/c/", meResp.Links["0"])
 	assert.NotNil(t, resp)
 	assert.NotZero(t, len(meResp.ID))
 }
@@ -86,9 +138,9 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
 			subCount:      0,
-			subErr:        ErrNotFound,
+			subErr:        ErrUnauthorized,
 			unsubCount:    0,
-			unsubErr:      ErrNotFound,
+			unsubErr:      ErrUnauthorized,
 			contractValid: true,
 			contractFound: false,
 			msg:           "Contract not found case",
@@ -150,7 +202,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 			// Search for the ssid.
 			channel := security.ParseChannel([]byte(tc.channel))
 			key, _ := s.Cipher.DecryptKey(channel.Key)
-			ssid := message.NewSsid(key.Contract(), channel)
+			ssid := message.NewSsid(key.Contract(), channel.Query)
 			subscribers := s.subscriptions.Lookup(ssid)
 			assert.Equal(t, tc.subCount, len(subscribers))
 
@@ -210,7 +262,7 @@ func TestHandlers_onPublish(t *testing.T) {
 		{
 			channel:       "0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/",
 			payload:       "test",
-			err:           ErrNotFound,
+			err:           ErrUnauthorized,
 			contractValid: true,
 			contractFound: false,
 			msg:           "Contract not found case",
@@ -497,6 +549,11 @@ func TestHandlers_onEmitterRequest(t *testing.T) {
 			channel: "me",
 			query:   []uint32{requestMe},
 			success: true,
+		},
+		{
+			channel: "link",
+			query:   []uint32{requestLink},
+			success: false,
 		},
 	}
 

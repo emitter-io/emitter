@@ -250,7 +250,7 @@ func (s *Service) notifyPresenceChange() {
 				return
 			case notif := <-s.presence:
 				if encoded, ok := notif.Encode(); ok {
-					s.publish(message.New(notif.Ssid, channel, encoded))
+					s.publish(message.New(notif.Ssid, channel, encoded), "")
 				}
 			}
 		}
@@ -364,7 +364,7 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create the ssid for the presence
-	ssid := message.NewSsid(key.Contract(), channel)
+	ssid := message.NewSsid(key.Contract(), channel.Query)
 	now := time.Now().UTC().Unix()
 	who := getAllPresence(s, ssid)
 	resp, err := json.Marshal(&presenceResponse{
@@ -436,10 +436,12 @@ func (s *Service) Survey(query string, payload []byte) (message.Awaiter, error) 
 }
 
 // Publish publishes a message to everyone and returns the number of outgoing bytes written.
-func (s *Service) publish(m *message.Message) (n int64) {
+func (s *Service) publish(m *message.Message, exclude string) (n int64) {
 	size := m.Size()
 	for _, subscriber := range s.subscriptions.Lookup(m.Ssid()) {
-		subscriber.Send(m)
+		if subscriber.ID() != exclude {
+			subscriber.Send(m)
+		}
 
 		// Increment the egress size only for direct subscribers
 		if subscriber.Type() == message.SubscriberDirect {
@@ -455,10 +457,10 @@ func (s *Service) selfPublish(channelName string, payload []byte) {
 	channel := security.ParseChannel([]byte("emitter/" + channelName))
 	if channel.ChannelType == security.ChannelStatic {
 		s.publish(message.New(
-			message.NewSsid(s.License.Contract, channel),
+			message.NewSsid(s.License.Contract, channel.Query),
 			channel.Channel,
 			payload,
-		))
+		), "")
 	}
 }
 

@@ -36,6 +36,11 @@ func TestMeHash(t *testing.T) {
 	assert.Equal(t, uint32(2539734036), h)
 }
 
+func TestLinkHash(t *testing.T) {
+	h := Of([]byte("link"))
+	assert.Equal(t, uint32(2667034312), h)
+}
+
 func TestGetHash(t *testing.T) {
 	h := Of([]byte("+"))
 	if h != 1815237614 {

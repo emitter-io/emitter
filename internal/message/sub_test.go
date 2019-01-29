@@ -8,7 +8,7 @@ import (
 )
 
 func BenchmarkSsidEncode(b *testing.B) {
-	ssid := NewSsid(0, &security.Channel{Query: []uint32{56498455, 44565213, 46512350, 18204498}})
+	ssid := NewSsid(0, []uint32{56498455, 44565213, 46512350, 18204498})
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -32,7 +32,7 @@ func TestSsid(t *testing.T) {
 		ChannelType: security.ChannelStatic,
 	}
 
-	ssid := NewSsid(0, &c)
+	ssid := NewSsid(0, c.Query)
 	assert.Equal(t, uint32(0), ssid.Contract())
 	assert.Equal(t, uint32(0x2c), ssid.GetHashCode())
 }
@@ -53,7 +53,7 @@ func TestSsidEncode(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		ssid := NewSsid(0, &security.Channel{Query: tc.ssid})
+		ssid := NewSsid(0, tc.ssid)
 		assert.Equal(t, tc.expected, ssid.Encode())
 	}
 }

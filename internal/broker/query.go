@@ -164,7 +164,7 @@ func (c *QueryManager) Query(query string, payload []byte) (message.Awaiter, err
 		message.Ssid{idSystem, idQuery, awaiter.id},
 		[]byte(channel),
 		payload,
-	))
+	), "")
 	return awaiter, nil
 }
 

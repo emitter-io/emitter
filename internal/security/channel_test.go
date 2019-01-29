@@ -195,3 +195,34 @@ func TestGetChannelTarget(t *testing.T) {
 		assert.Equal(t, tc.target, target)
 	}
 }
+
+func TestMakeChannel(t *testing.T) {
+	tests := []struct {
+		key     string
+		channel string
+	}{
+		{key: "key1", channel: "emitter/a/"},
+	}
+
+	for _, tc := range tests {
+		channel := MakeChannel(tc.key, tc.channel)
+		assert.Equal(t, tc.key, string(channel.Key))
+		assert.Equal(t, tc.channel, string(channel.Channel))
+	}
+}
+
+func TestChannelString(t *testing.T) {
+	tests := []struct {
+		channel string
+	}{
+		{channel: "emitter/a/?last=42&abc=9"},
+		{channel: "emitter/a/?last=1200"},
+		{channel: "emitter/a/?last=1200a"},
+		{channel: "emitter/a/"},
+	}
+
+	for _, tc := range tests {
+		channel := ParseChannel([]byte(tc.channel))
+		assert.Equal(t, tc.channel, channel.String())
+	}
+}

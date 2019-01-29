@@ -15,6 +15,7 @@
 package security
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 	"unsafe"
@@ -75,6 +76,32 @@ func (c *Channel) Window() (time.Time, time.Time) {
 	return toUnix(u0), toUnix(u1)
 }
 
+// SafeString returns a string representation of the channel without the key.
+func (c *Channel) SafeString() string {
+	text := string(c.Channel)
+	if len(c.Options) == 0 {
+		return text
+	}
+
+	text += "?"
+	for i, v := range c.Options {
+		if i > 0 {
+			text += "&"
+		}
+
+		text += v.Key + "=" + v.Value
+	}
+	return text
+}
+
+// String returns a string representation of the channel.
+func (c *Channel) String() string {
+	text := string(c.Key)
+	text += "/"
+	text += c.SafeString()
+	return text
+}
+
 // Converts the time to Unix Time with validation.
 func toUnix(t int64) time.Time {
 	if t == 0 || t < MinTime || t > MaxTime {
@@ -95,6 +122,11 @@ func (c *Channel) getOption(name string) (int64, bool) {
 		}
 	}
 	return 0, false
+}
+
+// MakeChannel attempts to parse the channel from the key and channel strings.
+func MakeChannel(key, channel string) *Channel {
+	return ParseChannel([]byte(fmt.Sprintf("%s/%s", key, channel)))
 }
 
 // ParseChannel attempts to parse the channel from the underlying slice.

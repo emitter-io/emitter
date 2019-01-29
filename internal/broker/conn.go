@@ -44,6 +44,7 @@ type Conn struct {
 	service  *Service          // The service for this connection.
 	subs     *message.Counters // The subscriptions for this connection.
 	measurer stats.Measurer    // The measurer to use for monitoring.
+	links    map[string]string // The map of all pre-authorized links.
 }
 
 // NewConn creates a new connection.
@@ -55,6 +56,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 		socket:   t,
 		subs:     message.NewCounters(),
 		measurer: s.measurer,
+		links:    map[string]string{},
 	}
 
 	// Generate a globally unique id as well
@@ -137,11 +139,13 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 
 	// We got an attempt to connect to MQTT.
 	case mqtt.TypeOfConnect:
-		packet := msg.(*mqtt.Connect)
-		c.username = string(packet.Username)
+		var result uint8
+		if !c.onConnect(msg.(*mqtt.Connect)) {
+			result = 0x05 // Unauthorized
+		}
 
 		// Write the ack
-		ack := mqtt.Connack{ReturnCode: 0x00}
+		ack := mqtt.Connack{ReturnCode: result}
 		if _, err := ack.EncodeTo(c.socket); err != nil {
 			return err
 		}

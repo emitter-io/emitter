@@ -127,7 +127,7 @@ func (c *Cipher) EncryptKey(k Key) (string, error) {
 }
 
 // GenerateKey generates a new key.
-func (c *Cipher) GenerateKey(masterKey Key, channel string, permissions uint32, expires time.Time, maxRandSalt int16) (string, error) {
+func (c *Cipher) GenerateKey(masterKey Key, channel string, permissions uint8, expires time.Time, maxRandSalt int16) (string, error) {
 	if maxRandSalt <= 0 {
 		maxRandSalt = math.MaxInt16
 	}
