@@ -45,6 +45,7 @@ func TestParseChannel(t *testing.T) {
 		{k: "emitter", ch: "b/+/", t: ChannelWildcard},
 		{k: "0TJnt4yZPL73zt35h1UTIFsYBLetyD_g", ch: "emitter/", o: []string{"test=true", "something=7"}, t: ChannelStatic},
 		{k: "emitter", ch: "a/b/c/d/", o: []string{"test=true", "something=7"}, t: ChannelStatic},
+		{k: "emitter", ch: "a/b/c/d/", o: []string{"req=13", "something=7"}, t: ChannelStatic},
 
 		// Invalid channels
 		{t: ChannelInvalid},
@@ -108,6 +109,47 @@ func TestParseChannel(t *testing.T) {
 				assert.Equal(t, true, found, "unable to find key = "+target)
 			}
 		}
+	}
+}
+
+func TestGetChannelExclude(t *testing.T) {
+	tests := []struct {
+		channel string
+		ok      bool
+	}{
+		{channel: "emitter/a/?me=0", ok: true},
+		{channel: "emitter/a/?me=12000000", ok: false},
+		{channel: "emitter/a/?me=1200a", ok: false},
+		{channel: "emitter/a/?me=-1", ok: false},
+		{channel: "emitter/a/", ok: false},
+	}
+
+	for _, tc := range tests {
+		channel := ParseChannel([]byte(tc.channel))
+		excludeMe := channel.Exclude()
+
+		assert.Equal(t, excludeMe, tc.ok)
+	}
+}
+
+func TestGetChannelRequest(t *testing.T) {
+	tests := []struct {
+		channel string
+		req     uint16
+		ok      bool
+	}{
+		{channel: "emitter/a/?req=42", req: 42, ok: true},
+		{channel: "emitter/a/?req=12000000", ok: false},
+		{channel: "emitter/a/?req=1200a", ok: false},
+		{channel: "emitter/a/", ok: false},
+	}
+
+	for _, tc := range tests {
+		channel := ParseChannel([]byte(tc.channel))
+		req, hasValue := channel.Request()
+
+		assert.Equal(t, tc.req, req)
+		assert.Equal(t, hasValue, tc.ok)
 	}
 }
 
