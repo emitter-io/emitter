@@ -216,6 +216,16 @@ func TestPubsub(t *testing.T) {
 		}, pkt)
 	}
 
+	{ // Publish a message but ignore ourselves
+		msg := mqtt.Publish{
+			Header:  &mqtt.StaticHeader{QOS: 0},
+			Topic:   []byte("0Nq8SWbL8qoOKEDqh_ebBepug6cLLlWO/a/b/c/?me=0"),
+			Payload: []byte("hello world"),
+		}
+		_, err := msg.EncodeTo(cli)
+		assert.NoError(t, err)
+	}
+
 	{ // Unsubscribe from the topic
 		sub := mqtt.Unsubscribe{
 			Header: &mqtt.StaticHeader{QOS: 0},
@@ -236,7 +246,7 @@ func TestPubsub(t *testing.T) {
 	{ // Create a private link
 		msg := mqtt.Publish{
 			Header:  &mqtt.StaticHeader{QOS: 0},
-			Topic:   []byte("emitter/link/"),
+			Topic:   []byte("emitter/link/?req=1"),
 			Payload: []byte(`{ "name": "hi", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true }`),
 		}
 		_, err := msg.EncodeTo(cli)

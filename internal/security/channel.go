@@ -61,18 +61,30 @@ func (c *Channel) Target() uint32 {
 
 // TTL returns a Time-To-Live option.
 func (c *Channel) TTL() (int64, bool) {
-	return c.getOption("ttl")
+	return c.getOption("ttl", 64)
 }
 
 // Last returns the 'last' option, which is a number of messages to retrieve.
 func (c *Channel) Last() (int64, bool) {
-	return c.getOption("last")
+	return c.getOption("last", 64)
+}
+
+// Request returns an optional request ID for response mapping.
+func (c *Channel) Request() (uint16, bool) {
+	v, ok := c.getOption("req", 16)
+	return uint16(v), ok
+}
+
+// Exclude returns whether the exclude me ('me=0') option was set or not.
+func (c *Channel) Exclude() bool {
+	v, ok := c.getOption("me", 64)
+	return ok && v == 0
 }
 
 // Window returns the from-until options which should be a UTC unix timestamp in seconds.
 func (c *Channel) Window() (time.Time, time.Time) {
-	u0, _ := c.getOption("from")
-	u1, _ := c.getOption("until")
+	u0, _ := c.getOption("from", 64)
+	u1, _ := c.getOption("until", 64)
 	return toUnix(u0), toUnix(u1)
 }
 
@@ -112,10 +124,10 @@ func toUnix(t int64) time.Time {
 }
 
 // getOptUint retrieves a Uint option
-func (c *Channel) getOption(name string) (int64, bool) {
+func (c *Channel) getOption(name string, bitSize int) (int64, bool) {
 	for i := 0; i < len(c.Options); i++ {
 		if c.Options[i].Key == name {
-			if val, err := strconv.ParseInt(c.Options[i].Value, 10, 64); err == nil {
+			if val, err := strconv.ParseInt(c.Options[i].Value, 10, bitSize); err == nil {
 				return int64(val), true
 			}
 			return 0, false
@@ -125,8 +137,8 @@ func (c *Channel) getOption(name string) (int64, bool) {
 }
 
 // MakeChannel attempts to parse the channel from the key and channel strings.
-func MakeChannel(key, channel string) *Channel {
-	return ParseChannel([]byte(fmt.Sprintf("%s/%s", key, channel)))
+func MakeChannel(key, channelWithOptions string) *Channel {
+	return ParseChannel([]byte(fmt.Sprintf("%s/%s", key, channelWithOptions)))
 }
 
 // ParseChannel attempts to parse the channel from the underlying slice.

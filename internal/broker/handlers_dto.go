@@ -27,7 +27,6 @@ import (
 type Error struct {
 	Status  int    `json:"status"`
 	Message string `json:"message"`
-	ID      int    `json:"id,omitempty"`
 }
 
 // Error implements error interface.
@@ -50,10 +49,10 @@ var (
 // ------------------------------------------------------------------------------------
 
 type keyGenRequest struct {
-	Key     string `json:"key"`
-	Channel string `json:"channel"`
-	Type    string `json:"type"`
-	TTL     int32  `json:"ttl"`
+	Key     string `json:"key"`     // The master key to use.
+	Channel string `json:"channel"` // The channel to create a key for.
+	Type    string `json:"type"`    // The permission set.
+	TTL     int32  `json:"ttl"`     // The TTL of the key.
 }
 
 func (m *keyGenRequest) expires() time.Time {
