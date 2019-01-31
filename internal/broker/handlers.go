@@ -182,6 +182,11 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *Error {
 		c.service.storage.Store(msg)
 	}
 
+	// Check whether an exclude me option was set (i.e.: 'me=0')
+	if channel.Exclude() {
+		exclude = c.ID()
+	}
+
 	// Iterate through all subscribers and send them the message
 	size := c.service.publish(msg, exclude)
 
@@ -200,7 +205,7 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 	defer func() {
 		if b, err := json.Marshal(resp); err == nil {
 			c.Send(&message.Message{
-				Channel: []byte("emitter/" + string(channel.Channel)), // TODO: reduce allocations
+				Channel: []byte(channel.String()), // if the 'req' option was passed, it will be in the channel
 				Payload: b,
 			})
 		}

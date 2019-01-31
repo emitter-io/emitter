@@ -123,7 +123,7 @@ func (c *Conn) Process() error {
 
 // notifyError notifies the connection about an error
 func (c *Conn) notifyError(err *Error, messageID uint16) {
-	err.ID = int(messageID)
+	// TODO: pass '?req=messageID' back
 	if b, err := json.Marshal(err); err == nil {
 		c.Send(&message.Message{
 			Channel: []byte("emitter/error/"),
