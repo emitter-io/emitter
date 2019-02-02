@@ -320,7 +320,7 @@ func TestHandlers_onPublish(t *testing.T) {
 		nc := s.newConn(conn.Client)
 		s.Cipher, _ = s.License.Cipher()
 
-		err := nc.onPublish([]byte(tc.channel), []byte(tc.payload))
+		err := nc.onPublish([]byte(tc.channel), []byte(tc.payload), 0)
 
 		assert.Equal(t, tc.err, err, tc.msg)
 	}
@@ -572,7 +572,7 @@ func TestHandlers_onEmitterRequest(t *testing.T) {
 			}
 
 			nc := s.newConn(netmock.NewNoop())
-			ok := nc.onEmitterRequest(channel, []byte(tc.payload))
+			ok := nc.onEmitterRequest(channel, []byte(tc.payload), 0)
 			assert.Equal(t, tc.success, ok, tc.channel)
 		})
 	}
