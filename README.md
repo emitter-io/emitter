@@ -139,8 +139,8 @@ The structure of the configuration is described below:
 | `cluster.advertise` | `EMITTER_CLUSTER_ADVERTISE` | The address and port to advertise inter-node communication network. This is used for nat traversal. |
 | `cluster.seed` | `EMITTER_CLUSTER_SEED` | The seed address (or a domain name) for cluster join. |
 | `cluster.passphrase` | `EMITTER_CLUSTER_PASSPHRASE` | Passphrase is used to initialize the primary encryption key in a keyring. This key is used for encrypting all the gossip messages (message-level encryption). |
-| `storage.provider` | Not Support |  This property represents the publishers publish message storage mode. there are two kinds of can use, they are respectively `inmemory` and `ssd`, defaults to the former. |
-| `storage.config.dir` | Not Support |  If the storage mode is `ssd`, this property indicates where the messages are stored (emitter server nodes are not allowed to use the same directory within the same machine)
+| `storage.provider` | `EMITTER_STORAGE_PROVIDER` |  This property represents the publishers publish message storage mode. there are two kinds of can use, they are respectively `inmemory` and `ssd`, defaults to the former. |
+| `storage.config.dir` | `EMITTER_STORAGE_CONFIG` |  If the storage mode is `ssd`, this property indicates where the messages are stored (emitter server nodes are not allowed to use the same directory within the same machine)
 
 
 
