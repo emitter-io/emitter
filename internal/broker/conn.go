@@ -121,17 +121,6 @@ func (c *Conn) Process() error {
 	}
 }
 
-// notifyError notifies the connection about an error
-func (c *Conn) notifyError(err *Error, messageID uint16) {
-	// TODO: pass '?req=messageID' back
-	if b, err := json.Marshal(err); err == nil {
-		c.Send(&message.Message{
-			Channel: []byte("emitter/error/"),
-			Payload: b,
-		})
-	}
-}
-
 // onReceive handles an MQTT receive.
 func (c *Conn) onReceive(msg mqtt.Message) error {
 	defer c.MeasureElapsed("rcv."+msg.String(), time.Now())
@@ -204,8 +193,7 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 
 	case mqtt.TypeOfPublish:
 		packet := msg.(*mqtt.Publish)
-
-		if err := c.onPublish(packet.Topic, packet.Payload); err != nil {
+		if err := c.onPublish(packet.Topic, packet.Payload, packet.MessageID); err != nil {
 			logging.LogError("conn", "publish received", err)
 			c.notifyError(err, packet.MessageID)
 		}
@@ -226,16 +214,37 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 func (c *Conn) Send(m *message.Message) (err error) {
 	defer c.MeasureElapsed("send.pub", time.Now())
 	packet := mqtt.Publish{
-		Header: &mqtt.StaticHeader{
-			QOS: 0, // TODO when we'll support more QoS
-		},
-		MessageID: 0,         // TODO
-		Topic:     m.Channel, // The channel for this message.
-		Payload:   m.Payload, // The payload for this message.
+		Header:  &mqtt.StaticHeader{QOS: 0},
+		Topic:   m.Channel, // The channel for this message.
+		Payload: m.Payload, // The payload for this message.
 	}
 
 	// Acknowledge the publication
 	_, err = packet.EncodeTo(c.socket)
+	return
+}
+
+// notifyError notifies the connection about an error
+func (c *Conn) notifyError(err *Error, requestID uint16) {
+	c.sendResponse("emitter/error/", err, requestID)
+}
+
+func (c *Conn) sendResponse(topic string, resp response, requestID uint16) {
+	switch m := resp.(type) {
+	case *Error:
+		errCopy := *m // Copy the value
+		errCopy.ForRequest(requestID)
+		resp = &errCopy
+	default:
+		m.ForRequest(requestID)
+	}
+
+	if b, err := json.Marshal(resp); err == nil {
+		c.Send(&message.Message{
+			Channel: []byte(topic),
+			Payload: b,
+		})
+	}
 	return
 }
 

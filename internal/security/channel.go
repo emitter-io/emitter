@@ -69,12 +69,6 @@ func (c *Channel) Last() (int64, bool) {
 	return c.getOption("last", 64)
 }
 
-// Request returns an optional request ID for response mapping.
-func (c *Channel) Request() (uint16, bool) {
-	v, ok := c.getOption("req", 16)
-	return uint16(v), ok
-}
-
 // Exclude returns whether the exclude me ('me=0') option was set or not.
 func (c *Channel) Exclude() bool {
 	v, ok := c.getOption("me", 64)

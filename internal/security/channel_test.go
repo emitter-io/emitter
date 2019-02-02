@@ -132,27 +132,6 @@ func TestGetChannelExclude(t *testing.T) {
 	}
 }
 
-func TestGetChannelRequest(t *testing.T) {
-	tests := []struct {
-		channel string
-		req     uint16
-		ok      bool
-	}{
-		{channel: "emitter/a/?req=42", req: 42, ok: true},
-		{channel: "emitter/a/?req=12000000", ok: false},
-		{channel: "emitter/a/?req=1200a", ok: false},
-		{channel: "emitter/a/", ok: false},
-	}
-
-	for _, tc := range tests {
-		channel := ParseChannel([]byte(tc.channel))
-		req, hasValue := channel.Request()
-
-		assert.Equal(t, tc.req, req)
-		assert.Equal(t, hasValue, tc.ok)
-	}
-}
-
 func TestGetChannelTTL(t *testing.T) {
 	tests := []struct {
 		channel string
