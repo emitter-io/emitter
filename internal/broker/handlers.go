@@ -139,7 +139,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *Error {
 // ------------------------------------------------------------------------------------
 
 // OnPublish is a handler for MQTT Publish events.
-func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *Error {
+func (c *Conn) onPublish(mqttTopic []byte, payload []byte, requestID uint16) *Error {
 	exclude := ""
 	if len(mqttTopic) <= 2 && c.links != nil {
 		mqttTopic = []byte(c.links[string(mqttTopic)])
@@ -159,7 +159,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *Error {
 
 	// Check whether the key is 'emitter' which means it's an API request
 	if len(channel.Key) == 7 && string(channel.Key) == "emitter" {
-		c.onEmitterRequest(channel, payload)
+		c.onEmitterRequest(channel, payload, requestID)
 		return nil
 	}
 
@@ -200,15 +200,10 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *Error {
 // ------------------------------------------------------------------------------------
 
 // onEmitterRequest processes an emitter request.
-func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok bool) {
-	var resp interface{}
+func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte, requestID uint16) (ok bool) {
+	var resp response
 	defer func() {
-		if b, err := json.Marshal(resp); err == nil {
-			c.Send(&message.Message{
-				Channel: []byte(channel.String()), // if the 'req' option was passed, it will be in the channel
-				Payload: b,
-			})
-		}
+		c.sendResponse(channel.String(), resp, requestID)
 	}()
 
 	// Make sure we have a query
@@ -238,7 +233,7 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte) (ok b
 // ------------------------------------------------------------------------------------
 
 // onLink handles a request to create a link.
-func (c *Conn) onLink(payload []byte) (interface{}, bool) {
+func (c *Conn) onLink(payload []byte) (response, bool) {
 	var request linkRequest
 	if err := json.Unmarshal(payload, &request); err != nil {
 		return ErrBadRequest, false
@@ -310,7 +305,7 @@ func (c *Conn) makePrivateChannel(chanKey, chanName string) *security.Channel {
 // ------------------------------------------------------------------------------------
 
 // OnMe is a handler that returns information to the connection.
-func (c *Conn) onMe() (interface{}, bool) {
+func (c *Conn) onMe() (response, bool) {
 	links := make(map[string]string)
 	for k, v := range c.links {
 		links[k] = security.ParseChannel([]byte(v)).SafeString()
@@ -325,7 +320,7 @@ func (c *Conn) onMe() (interface{}, bool) {
 // ------------------------------------------------------------------------------------
 
 // onKeyGen processes a keygen request.
-func (c *Conn) onKeyGen(payload []byte) (interface{}, bool) {
+func (c *Conn) onKeyGen(payload []byte) (response, bool) {
 	// Deserialize the payload.
 	message := keyGenRequest{}
 	if err := json.Unmarshal(payload, &message); err != nil {
@@ -434,7 +429,7 @@ func getAllPresence(s *Service, ssid message.Ssid) []presenceInfo {
 }
 
 // onPresence processes a presence request.
-func (c *Conn) onPresence(payload []byte) (interface{}, bool) {
+func (c *Conn) onPresence(payload []byte) (response, bool) {
 	// Deserialize the payload.
 	msg := presenceRequest{
 		Status:  true, // Default: send status info
