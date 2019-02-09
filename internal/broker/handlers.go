@@ -143,7 +143,6 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte, requestID uint16) *Er
 	exclude := ""
 	if len(mqttTopic) <= 2 && c.links != nil {
 		mqttTopic = []byte(c.links[string(mqttTopic)])
-		exclude = c.ID()
 	}
 
 	// Make sure we have a valid channel
