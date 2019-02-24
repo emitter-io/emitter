@@ -23,7 +23,7 @@ import (
 
 func TestID_NewID(t *testing.T) {
 	next = math.MaxUint32
-	id := NewID(Ssid{1, 2, 3})
+	id := NewID(Ssid{1, 2, 3}, false)
 
 	assert.Zero(t, next)
 	assert.True(t, id.Time() > 1527819700)
@@ -33,7 +33,7 @@ func TestID_NewID(t *testing.T) {
 }
 
 func TestID_NewPrefix(t *testing.T) {
-	id1 := NewID(Ssid{1, 2, 3})
+	id1 := NewID(Ssid{1, 2, 3}, false)
 	id2 := NewPrefix(Ssid{1, 2, 3}, 123)
 
 	assert.Equal(t, id1[:4], id2[:4])
@@ -41,7 +41,7 @@ func TestID_NewPrefix(t *testing.T) {
 
 func TestID_HasPrefix(t *testing.T) {
 	next = 0
-	id := NewID(Ssid{1, 2, 3})
+	id := NewID(Ssid{1, 2, 3}, false)
 
 	assert.True(t, id.HasPrefix(Ssid{1, 2}, 0))
 	assert.False(t, id.HasPrefix(Ssid{1, 2}, 2527784701635600500)) // After Sunday, February 6, 2050 6:25:01.636 PM this test will fail :-)
@@ -49,7 +49,7 @@ func TestID_HasPrefix(t *testing.T) {
 }
 
 func TestID_Match(t *testing.T) {
-	id := NewID(Ssid{1, 2, 3, 4})
+	id := NewID(Ssid{1, 2, 3, 4}, false)
 
 	assert.NotEmpty(t, id)
 	assert.True(t, id.Match(Ssid{1, 2, 3, 4}, 0, math.MaxInt64))
@@ -64,9 +64,22 @@ func TestID_Match(t *testing.T) {
 	assert.False(t, id.Match(Ssid{2, 2, 3, 4, 5}, 0, math.MaxInt64))
 }
 
+func TestID_SetRetain(t *testing.T) {
+	in := Ssid{1, 2, 3, 4, 5, 6}
+	id := NewID(in, false)
+
+	assert.Equal(t, in[0], id.Contract())
+	assert.Equal(t, in, id.Ssid())
+	assert.NotEqual(t, int64(3029529600), id.Time())
+
+	id.SetRetain()
+	assert.Equal(t, int64(3029529600), id.Time())
+	assert.True(t, id.Retain())
+}
+
 func TestID_Ssid(t *testing.T) {
 	in := Ssid{1, 2, 3, 4, 5, 6}
-	id := NewID(in)
+	id := NewID(in, false)
 
 	assert.Equal(t, in[0], id.Contract())
 	assert.Equal(t, in, id.Ssid())
@@ -78,12 +91,12 @@ func BenchmarkID_New(b *testing.B) {
 
 	ssid := Ssid{1, 2}
 	for n := 0; n < b.N; n++ {
-		NewID(ssid)
+		NewID(ssid, false)
 	}
 }
 
 func BenchmarkID_Match(b *testing.B) {
-	id := NewID(Ssid{1, 2, 3, 4})
+	id := NewID(Ssid{1, 2, 3, 4}, false)
 	ssid := Ssid{1, 2, 3, 4}
 
 	b.ReportAllocs()

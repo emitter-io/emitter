@@ -44,13 +44,18 @@ func newUnique() uint32 {
 type ID []byte
 
 // NewID creates a new message identifier for the current time.
-func NewID(ssid Ssid) ID {
+func NewID(ssid Ssid, retained bool) ID {
 	id := make(ID, len(ssid)*4+fixed)
-	now := uint32(time.Now().Unix() - offset)
-
 	binary.BigEndian.PutUint32(id[0:4], ssid[0]^ssid[1])
-	binary.BigEndian.PutUint32(id[4:8], math.MaxUint32-now)
-	binary.BigEndian.PutUint32(id[8:12], math.MaxUint32-atomic.AddUint32(&next, 1)) // Reverse order
+	if !retained {
+		now := uint32(time.Now().Unix() - offset)
+		binary.BigEndian.PutUint32(id[4:8], math.MaxUint32-now)
+		binary.BigEndian.PutUint32(id[8:12], math.MaxUint32-atomic.AddUint32(&next, 1)) // Reverse order
+	} else {
+		binary.BigEndian.PutUint32(id[4:8], math.MaxUint32-security.MinTime)
+		binary.BigEndian.PutUint32(id[8:12], 0)
+	}
+
 	binary.BigEndian.PutUint32(id[12:16], unique)
 	for i, v := range ssid {
 		binary.BigEndian.PutUint32(id[fixed+i*4:fixed+4+i*4], v)
@@ -62,7 +67,6 @@ func NewID(ssid Ssid) ID {
 // NewPrefix creates a new message identifier only containing the prefix.
 func NewPrefix(ssid Ssid, from int64) ID {
 	id := make(ID, 8)
-
 	binary.BigEndian.PutUint32(id[0:4], ssid[0]^ssid[1])
 	binary.BigEndian.PutUint32(id[4:8], math.MaxUint32-uint32(from-offset))
 	return id
@@ -71,6 +75,17 @@ func NewPrefix(ssid Ssid, from int64) ID {
 // SetTime sets the time on the ID, useful for testing.
 func (id ID) SetTime(t int64) {
 	binary.BigEndian.PutUint32(id[4:8], math.MaxUint32-uint32(t-offset))
+}
+
+// SetRetain sets the time to the maximum, so it would be "retained" as per MQTT
+func (id ID) SetRetain() {
+	binary.BigEndian.PutUint32(id[4:8], math.MaxUint32-security.MinTime)
+	binary.BigEndian.PutUint32(id[8:12], 0)
+}
+
+// Retain returns whether the message should be retained
+func (id ID) Retain() bool {
+	return binary.BigEndian.Uint32(id[8:12]) == 0
 }
 
 // Time gets the time of the key, adjusted.

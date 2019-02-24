@@ -21,6 +21,7 @@ import (
 
 	"github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/internal/message"
+	"github.com/emitter-io/emitter/internal/security"
 )
 
 var (
@@ -58,7 +59,7 @@ func window(from, until time.Time) (int64, int64) {
 	t0 := from.Unix()
 	t1 := until.Unix()
 	if t1 == 0 {
-		t1 = time.Now().Unix() + 3600 // Lookup a bit further
+		t1 = int64(security.MaxTime)
 	}
 
 	return t0, t1

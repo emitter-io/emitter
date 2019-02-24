@@ -74,6 +74,7 @@ func (s *SSD) Configure(config map[string]interface{}) error {
 	opts.Dir = dir
 	opts.ValueDir = opts.Dir
 	opts.SyncWrites = false
+	opts.Truncate = true
 
 	//opts.ValueLogLoadingMode = options.FileIO
 

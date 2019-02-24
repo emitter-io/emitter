@@ -30,7 +30,7 @@ func (s survey) Survey(q string, b []byte) (message.Awaiter, error) {
 
 func testMessage(a, b, c uint32) *message.Message {
 	return &message.Message{
-		ID:      message.NewID(message.Ssid{0, a, b, c}),
+		ID:      message.NewID(message.Ssid{0, a, b, c}, false),
 		Channel: []byte("test/channel/"),
 		Payload: []byte(fmt.Sprintf("%v,%v,%v", a, b, c)),
 		TTL:     100,
@@ -68,4 +68,31 @@ func TestNoop_Close(t *testing.T) {
 	s := new(Noop)
 	err := s.Close()
 	assert.NoError(t, err)
+}
+
+func testOrder(t *testing.T, store Storage) {
+	for i := int64(0); i < 100; i++ {
+		msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), []byte(fmt.Sprintf("%d", i)), false)
+		msg.ID.SetTime(msg.ID.Time() + (i * 10000))
+		assert.NoError(t, store.Store(msg))
+	}
+
+	// Add a couple of retained messages, they should overwrite each other
+	for i := 0; i < 5; i++ {
+		msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), []byte(fmt.Sprintf("RETAIN_%d", i)), true)
+		assert.NoError(t, store.Store(msg))
+	}
+
+	// Issue a query
+	zero := time.Unix(0, 0)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 5)
+	assert.NoError(t, err)
+
+	assert.Len(t, f, 5)
+	assert.Equal(t, message.Ssid{0, 1, 2}, f[0].Ssid())
+	assert.Equal(t, "96", string(f[0].Payload))
+	assert.Equal(t, "97", string(f[1].Payload))
+	assert.Equal(t, "98", string(f[2].Payload))
+	assert.Equal(t, "99", string(f[3].Payload))
+	assert.Equal(t, "RETAIN_4", string(f[4].Payload))
 }

@@ -23,6 +23,14 @@ require (
 	github.com/pkg/errors v0.0.0-20181008045315-2233dee583dc // indirect
 	github.com/stretchr/objx v0.0.0-20180825064932-ef50b0de2877 // indirect
 	github.com/stretchr/testify v1.2.2
+	github.com/tidwall/btree v0.0.0-20170113224114-9876f1454cf0 // indirect
+	github.com/tidwall/buntdb v1.0.0
+	github.com/tidwall/gjson v1.2.1 // indirect
+	github.com/tidwall/grect v0.0.0-20161006141115-ba9a043346eb // indirect
+	github.com/tidwall/match v1.0.1 // indirect
+	github.com/tidwall/pretty v0.0.0-20180105212114-65a9db5fad51 // indirect
+	github.com/tidwall/rtree v0.0.0-20180113144539-6cd427091e0e // indirect
+	github.com/tidwall/tinyqueue v0.0.0-20180302190814-1e39f5511563 // indirect
 	github.com/valyala/fasthttp v0.0.0-20181014131909-996610f021ff
 	github.com/weaveworks/mesh v0.0.0-20180416113225-61ba45522f8a
 	github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0 // indirect
