@@ -59,6 +59,11 @@ func (m *Message) Contract() uint32 {
 	return m.ID.Contract()
 }
 
+// Stored returns whether the message is or should be stored.
+func (m *Message) Stored() bool {
+	return m.TTL > 0
+}
+
 // Expires calculates the expiration time.
 func (m *Message) Expires() time.Time {
 	return time.Unix(m.Time(), 0).Add(time.Second * time.Duration(m.TTL))

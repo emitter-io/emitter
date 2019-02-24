@@ -54,6 +54,11 @@ func TestEncryptDecrypt(t *testing.T) {
 			acl:     "rwsl",
 		},
 		{
+			key:     "EbUlduEbUssgWueAWjkEZwdYG5YC0dGh",
+			channel: "a/b/c/",
+			acl:     "rwslpex",
+		},
+		{
 			key: "",
 			err: true,
 		},

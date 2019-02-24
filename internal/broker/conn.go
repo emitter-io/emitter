@@ -193,7 +193,7 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 
 	case mqtt.TypeOfPublish:
 		packet := msg.(*mqtt.Publish)
-		if err := c.onPublish(packet.Topic, packet.Payload, packet.MessageID); err != nil {
+		if err := c.onPublish(packet); err != nil {
 			logging.LogError("conn", "publish received", err)
 			c.notifyError(err, packet.MessageID)
 		}

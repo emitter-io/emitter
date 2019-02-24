@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -82,25 +81,13 @@ func TestSSD_Query(t *testing.T) {
 
 func TestSSD_QueryOrdered(t *testing.T) {
 	runSSDTest(func(store *SSD) {
-		for i := int64(0); i < 100; i++ {
-			msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), []byte(strconv.FormatInt(i, 10)))
-			msg.ID.SetTime(msg.ID.Time() + (i * 10))
-			err := store.Store(msg)
-			assert.NoError(t, err)
-		}
+		testOrder(t, store)
+	})
+}
 
-		zero := time.Unix(0, 0)
-		f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 5)
-		assert.NoError(t, err)
-
-		assert.Len(t, f, 5)
-		assert.Equal(t, message.Ssid{0, 1, 2}, f[0].Ssid())
-		assert.Equal(t, "95", string(f[0].Payload))
-		assert.Equal(t, "96", string(f[1].Payload))
-		assert.Equal(t, "97", string(f[2].Payload))
-		assert.Equal(t, "98", string(f[3].Payload))
-		assert.Equal(t, "99", string(f[4].Payload))
-
+func TestSSD_QueryRetained(t *testing.T) {
+	runSSDTest(func(store *SSD) {
+		testRetained(t, store)
 	})
 }
 
