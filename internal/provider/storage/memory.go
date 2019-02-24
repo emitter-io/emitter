@@ -17,13 +17,13 @@ package storage
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/emitter-io/emitter/internal/message"
-	"github.com/karlseguin/ccache"
 	"github.com/kelindar/binary"
+	"github.com/tidwall/buntdb"
 )
 
 // InMemory implements Storage contract.
@@ -31,9 +31,10 @@ var _ Storage = new(InMemory)
 
 // InMemory represents a storage which does nothing.
 type InMemory struct {
-	cluster Surveyor      // The cluster surveyor.
-	cur     *sync.Map     // The cursor map which stores the last written offset.
-	mem     *ccache.Cache // The LRU cache with TTL.
+	retain  uint32     // The configured TTL for 'retained' messages.
+	cluster Surveyor   // The surveyor to use.
+	index   *sync.Map  // The set of indices.
+	db      *buntdb.DB // The in-memory storage.
 }
 
 // NewInMemory creates a new in-memory storage.
@@ -52,12 +53,14 @@ func (s *InMemory) Name() string {
 // loosely typed, since various storage mechanisms will require different
 // configurations.
 func (s *InMemory) Configure(config map[string]interface{}) error {
-	cfg := ccache.Configure().
-		MaxSize(param(config, "maxsize", 1*1024*1024*1024)).
-		ItemsToPrune(uint32(param(config, "prune", 100)))
-	s.mem = ccache.New(cfg)
-	s.cur = new(sync.Map)
-	return nil
+	s.index = new(sync.Map)
+	db, err := buntdb.Open(":memory:")
+	if err == nil {
+		s.db = db
+	}
+
+	s.retain = configUint32(config, "retain", defaultRetain)
+	return err
 }
 
 // Store is used to store a message, the SSID provided must be a full SSID
@@ -65,20 +68,35 @@ func (s *InMemory) Configure(config map[string]interface{}) error {
 // for TTL will be in seconds. The function is executed synchronously and
 // it returns an error if some error was encountered during storage.
 func (s *InMemory) Store(m *message.Message) error {
+	if m.TTL == message.RetainedTTL {
+		m.TTL = s.retain
+	}
+
+	// Marshal the message
+	encoded, err := binary.Marshal(m)
+	if err != nil {
+		return err
+	}
 
 	// Get the string version of the SSID trunk
 	key := m.Ssid().Encode()
 	trunk := key[:16]
 
-	// Get and increment the last message cursor
-	cur, _ := s.cur.LoadOrStore(trunk, new(uint64))
-	idx := atomic.AddUint64(cur.(*uint64), 1)
+	// Make sure we have an index
+	if _, loaded := s.index.LoadOrStore(trunk, true); !loaded {
+		s.db.Update(func(tx *buntdb.Tx) error {
+			return tx.CreateIndex(trunk, fmt.Sprintf("%s:*", trunk), buntdb.IndexBinary)
+		})
+	}
 
-	// Set the key in form of (ssid:index) so we can retrieve
-	s.mem.Set(fmt.Sprintf("%v:%v", trunk, idx), *m, time.Duration(m.TTL)*time.Second)
-
-	//logging.LogTarget("memstore", "message stored", idx)
-	return nil
+	// Write the message
+	return s.db.Update(func(tx *buntdb.Tx) error {
+		tx.Set(fmt.Sprintf("%s:%d:%s", trunk, m.Time(), key), string(encoded), &buntdb.SetOptions{
+			Expires: m.TTL > 0,
+			TTL:     time.Second * time.Duration(m.TTL),
+		})
+		return nil
+	})
 }
 
 // Query performs a query and attempts to fetch last n messages where
@@ -142,27 +160,26 @@ func (s *InMemory) lookup(q lookupQuery) (matches message.Frame) {
 	key := message.Ssid(q.Ssid).Encode()
 	trunk := key[:16]
 
-	// Get the value of the last message cursor
-	last, ok := s.cur.Load(trunk)
-	if !ok {
-		return
-	}
-
-	// Create a compiled regular expression for querying
 	if query, err := regexp.Compile(key + ".*"); err == nil {
-
-		// Iterate from last to 0 (limit to last n) and append locally
-		for i := atomic.LoadUint64(last.(*uint64)); i > 0 && matchCount < q.Limit; i-- {
-			if item := s.mem.Get(fmt.Sprintf("%v:%v", trunk, i)); item != nil && !item.Expired() {
-				msg := item.Value().(message.Message)
+		s.db.View(func(tx *buntdb.Tx) error {
+			tx.Ascend(trunk, func(key, value string) bool {
 
 				// Match using regular expression
-				if query.MatchString(msg.Ssid().Encode()) {
-					matchCount++
-					matches = append(matches, msg)
+				if k := strings.SplitN(key, ":", 3); len(k) == 3 && query.MatchString(k[2]) {
+					var msg message.Message
+					if err := binary.Unmarshal([]byte(value), &msg); err == nil {
+						matchCount++
+						matches = append(matches, msg)
+						if matchCount >= q.Limit {
+							return false
+						}
+					}
 				}
-			}
-		}
+
+				return true
+			})
+			return nil
+		})
 	}
 
 	// Return the matching messages we found
@@ -173,14 +190,4 @@ func (s *InMemory) lookup(q lookupQuery) (matches message.Frame) {
 // resource is properly disposed.
 func (s *InMemory) Close() error {
 	return nil
-}
-
-// Param retrieves a parameter from the configuration.
-func param(config map[string]interface{}, name string, defaultValue int64) int64 {
-	if v, ok := config[name]; ok {
-		if i, ok := v.(float64); ok {
-			return int64(i)
-		}
-	}
-	return defaultValue
 }

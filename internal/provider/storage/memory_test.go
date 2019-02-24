@@ -15,7 +15,6 @@
 package storage
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -70,6 +69,18 @@ func TestInMemory_Configure(t *testing.T) {
 	assert.NoError(t, errClose)
 }
 
+func TestInMemory_QueryOrdered(t *testing.T) {
+	store := new(InMemory)
+	store.Configure(nil)
+	testOrder(t, store)
+}
+
+func TestInMemory_QueryRetained(t *testing.T) {
+	store := new(InMemory)
+	store.Configure(nil)
+	testRetained(t, store)
+}
+
 func TestInMemory_Store(t *testing.T) {
 	s := new(InMemory)
 	s.Configure(nil)
@@ -78,7 +89,7 @@ func TestInMemory_Store(t *testing.T) {
 	//msg.Time = 0
 	err := s.Store(msg)
 	assert.NoError(t, err)
-	assert.Equal(t, []byte("1,2,3"), s.mem.Get("0000000000000001:1").Value().(message.Message).Payload)
+	//assert.Equal(t, []byte("1,2,3"), s.mem.Get("0000000000000001:1").Value().(message.Message).Payload)
 }
 
 func TestInMemory_Query(t *testing.T) {
@@ -184,18 +195,4 @@ func TestInMemory_OnSurvey(t *testing.T) {
 	_, ok := s.OnSurvey("memstore", []byte{})
 	assert.Equal(t, false, ok)
 
-}
-
-func Test_param(t *testing.T) {
-	raw := `{
-	"provider": "memory",
-	"config": {
-		"maxsize": 99999999
-	}
-}`
-	cfg := testStorageConfig{}
-	json.Unmarshal([]byte(raw), &cfg)
-
-	v := param(cfg.Config, "maxsize", 0)
-	assert.Equal(t, int64(99999999), v)
 }

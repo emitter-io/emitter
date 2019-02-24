@@ -14,6 +14,7 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -68,4 +69,57 @@ func TestNoop_Close(t *testing.T) {
 	s := new(Noop)
 	err := s.Close()
 	assert.NoError(t, err)
+}
+
+func testOrder(t *testing.T, store Storage) {
+	for i := int64(0); i < 100; i++ {
+		msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), []byte(fmt.Sprintf("%d", i)))
+		msg.ID.SetTime(msg.ID.Time() + (i * 10000))
+		assert.NoError(t, store.Store(msg))
+	}
+
+	// Issue a query
+	zero := time.Unix(0, 0)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 5)
+	assert.NoError(t, err)
+
+	assert.Len(t, f, 5)
+	assert.Equal(t, message.Ssid{0, 1, 2}, f[0].Ssid())
+	assert.Equal(t, "95", string(f[0].Payload))
+	assert.Equal(t, "96", string(f[1].Payload))
+	assert.Equal(t, "97", string(f[2].Payload))
+	assert.Equal(t, "98", string(f[3].Payload))
+	assert.Equal(t, "99", string(f[4].Payload))
+}
+
+func testRetained(t *testing.T, store Storage) {
+
+	for i := int64(0); i < 10; i++ {
+		msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), []byte(fmt.Sprintf("%d", i)))
+		msg.TTL = message.RetainedTTL
+		msg.ID.SetTime(msg.ID.Time() + (i * 10000))
+		assert.NoError(t, store.Store(msg))
+	}
+
+	// Issue a query
+	zero := time.Unix(0, 0)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 1)
+	assert.NoError(t, err)
+
+	assert.Len(t, f, 1)
+	assert.Equal(t, "9", string(f[0].Payload))
+}
+
+func Test_configUint32(t *testing.T) {
+	raw := `{
+		"provider": "memory",
+		"config": {
+			"retain": 99999999
+		}
+	}`
+	cfg := testStorageConfig{}
+	json.Unmarshal([]byte(raw), &cfg)
+
+	v := configUint32(cfg.Config, "retain", 0)
+	assert.Equal(t, uint32(99999999), v)
 }

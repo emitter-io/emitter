@@ -5,6 +5,7 @@ import (
 
 	"github.com/emitter-io/emitter/internal/message"
 	netmock "github.com/emitter-io/emitter/internal/network/mock"
+	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/contract"
 	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
 	"github.com/emitter-io/emitter/internal/provider/usage"
@@ -320,7 +321,11 @@ func TestHandlers_onPublish(t *testing.T) {
 		nc := s.newConn(conn.Client)
 		s.Cipher, _ = s.License.Cipher()
 
-		err := nc.onPublish([]byte(tc.channel), []byte(tc.payload), 0)
+		err := nc.onPublish(&mqtt.Publish{
+			Header:  new(mqtt.StaticHeader),
+			Topic:   []byte(tc.channel),
+			Payload: []byte(tc.payload),
+		})
 
 		assert.Equal(t, tc.err, err, tc.msg)
 	}

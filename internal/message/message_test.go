@@ -54,6 +54,7 @@ func TestNewMessage(t *testing.T) {
 	assert.Equal(t, Ssid{1, 2, 3}, m.Ssid())
 	assert.Equal(t, uint32(1), m.Contract())
 	assert.NotNil(t, m.Expires().String())
+	assert.False(t, m.Stored())
 }
 
 func TestNewFrame(t *testing.T) {

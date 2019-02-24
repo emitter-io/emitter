@@ -28,6 +28,9 @@ const (
 	fixed = 16
 )
 
+// RetainedTTL represents a TTL value to use for retained messages (max TTL).
+const RetainedTTL = math.MaxUint32
+
 var (
 	next   uint32
 	unique = newUnique()
@@ -62,7 +65,6 @@ func NewID(ssid Ssid) ID {
 // NewPrefix creates a new message identifier only containing the prefix.
 func NewPrefix(ssid Ssid, from int64) ID {
 	id := make(ID, 8)
-
 	binary.BigEndian.PutUint32(id[0:4], ssid[0]^ssid[1])
 	binary.BigEndian.PutUint32(id[4:8], math.MaxUint32-uint32(from-offset))
 	return id

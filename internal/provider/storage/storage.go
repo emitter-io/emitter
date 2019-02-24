@@ -21,10 +21,15 @@ import (
 
 	"github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/internal/message"
+	"github.com/emitter-io/emitter/internal/security"
 )
 
 var (
 	errNotFound = errors.New("no messages were found")
+)
+
+const (
+	defaultRetain = 2592000 // 30-days
 )
 
 // Storage represents a message storage contract that message storage provides
@@ -58,7 +63,7 @@ func window(from, until time.Time) (int64, int64) {
 	t0 := from.Unix()
 	t1 := until.Unix()
 	if t1 == 0 {
-		t1 = time.Now().Unix() + 3600 // Lookup a bit further
+		t1 = int64(security.MaxTime)
 	}
 
 	return t0, t1
@@ -81,6 +86,16 @@ func newLookupQuery(ssid message.Ssid, from, until time.Time, limit int) lookupQ
 		Until: t1,
 		Limit: limit,
 	}
+}
+
+// configUint32 retrieves an uint32 from the config
+func configUint32(config map[string]interface{}, name string, defaultValue uint32) uint32 {
+	if v, ok := config[name]; ok {
+		if i, ok := v.(float64); ok && i > 0 {
+			return uint32(i)
+		}
+	}
+	return defaultValue
 }
 
 // ------------------------------------------------------------------------------------

@@ -91,8 +91,15 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 	ssid := message.NewSsid(key.Contract(), channel.Query)
 	c.Subscribe(ssid, channel.Channel)
 
-	// In case of ttl, check the key provides the permission to store (soft permission)
-	if limit, ok := channel.Last(); ok && key.HasPermission(security.AllowLoad) {
+	// Use limit = 1 if not specified, otherwise use the limit option. The limit now
+	// defaults to one as per MQTT spec we always need to send retained messages.
+	limit := int64(1)
+	if v, ok := channel.Last(); ok {
+		limit = v
+	}
+
+	// Check if the key has a load permission (also applies for retained)
+	if key.HasPermission(security.AllowLoad) {
 		t0, t1 := channel.Window() // Get the window
 		msgs, err := c.service.storage.Query(ssid, t0, t1, int(limit))
 		if err != nil {
@@ -139,8 +146,8 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *Error {
 // ------------------------------------------------------------------------------------
 
 // OnPublish is a handler for MQTT Publish events.
-func (c *Conn) onPublish(mqttTopic []byte, payload []byte, requestID uint16) *Error {
-	exclude := ""
+func (c *Conn) onPublish(packet *mqtt.Publish) *Error {
+	mqttTopic := packet.Topic
 	if len(mqttTopic) <= 2 && c.links != nil {
 		mqttTopic = []byte(c.links[string(mqttTopic)])
 	}
@@ -158,7 +165,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte, requestID uint16) *Er
 
 	// Check whether the key is 'emitter' which means it's an API request
 	if len(channel.Key) == 7 && string(channel.Key) == "emitter" {
-		c.onEmitterRequest(channel, payload, requestID)
+		c.onEmitterRequest(channel, packet.Payload, packet.MessageID)
 		return nil
 	}
 
@@ -172,16 +179,26 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte, requestID uint16) *Er
 	msg := message.New(
 		message.NewSsid(key.Contract(), channel.Query),
 		channel.Channel,
-		payload,
+		packet.Payload,
 	)
 
-	// In case of ttl, check the key provides the permission to store (soft permission)
-	if ttl, ok := channel.TTL(); ok && key.HasPermission(security.AllowStore) {
-		msg.TTL = uint32(ttl) // Add the TTL to the message
+	// If a user have specified a retain flag, retain with a default TTL
+	if packet.Header.Retain {
+		msg.TTL = message.RetainedTTL
+	}
+
+	// If a user have specified a TTL, use that value
+	if ttl, ok := channel.TTL(); ok && ttl > 0 {
+		msg.TTL = uint32(ttl)
+	}
+
+	// Store the message if needed
+	if msg.Stored() && key.HasPermission(security.AllowStore) {
 		c.service.storage.Store(msg)
 	}
 
 	// Check whether an exclude me option was set (i.e.: 'me=0')
+	var exclude string
 	if channel.Exclude() {
 		exclude = c.ID()
 	}
@@ -191,7 +208,7 @@ func (c *Conn) onPublish(mqttTopic []byte, payload []byte, requestID uint16) *Er
 
 	// Write the monitoring information
 	c.track(contract)
-	contract.Stats().AddIngress(int64(len(payload)))
+	contract.Stats().AddIngress(int64(len(packet.Payload)))
 	contract.Stats().AddEgress(size)
 	return nil
 }
