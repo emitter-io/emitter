@@ -85,6 +85,12 @@ func TestSSD_QueryOrdered(t *testing.T) {
 	})
 }
 
+func TestSSD_QueryRetained(t *testing.T) {
+	runSSDTest(func(store *SSD) {
+		testRetained(t, store)
+	})
+}
+
 func TestSSD_QuerySurveyed(t *testing.T) {
 	runSSDTest(func(s *SSD) {
 		const wildcard = uint32(1815237614)

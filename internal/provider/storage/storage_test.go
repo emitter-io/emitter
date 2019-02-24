@@ -92,6 +92,24 @@ func testOrder(t *testing.T, store Storage) {
 	assert.Equal(t, "99", string(f[4].Payload))
 }
 
+func testRetained(t *testing.T, store Storage) {
+
+	for i := int64(0); i < 10; i++ {
+		msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), []byte(fmt.Sprintf("%d", i)))
+		msg.TTL = message.RetainedTTL
+		msg.ID.SetTime(msg.ID.Time() + (i * 10000))
+		assert.NoError(t, store.Store(msg))
+	}
+
+	// Issue a query
+	zero := time.Unix(0, 0)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 1)
+	assert.NoError(t, err)
+
+	assert.Len(t, f, 1)
+	assert.Equal(t, "9", string(f[0].Payload))
+}
+
 func Test_configUint32(t *testing.T) {
 	raw := `{
 		"provider": "memory",

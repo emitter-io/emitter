@@ -75,6 +75,12 @@ func TestInMemory_QueryOrdered(t *testing.T) {
 	testOrder(t, store)
 }
 
+func TestInMemory_QueryRetained(t *testing.T) {
+	store := new(InMemory)
+	store.Configure(nil)
+	testRetained(t, store)
+}
+
 func TestInMemory_Store(t *testing.T) {
 	s := new(InMemory)
 	s.Configure(nil)
