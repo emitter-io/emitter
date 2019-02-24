@@ -23,7 +23,7 @@ import (
 
 func newTestMessage(ssid Ssid, channel, payload string) Message {
 	return Message{
-		ID:      NewID(ssid, false),
+		ID:      NewID(ssid),
 		Channel: []byte(channel),
 		Payload: []byte(payload),
 	}
@@ -49,7 +49,7 @@ func TestDecodeFrame(t *testing.T) {
 }
 
 func TestNewMessage(t *testing.T) {
-	m := New(Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"), false)
+	m := New(Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"))
 	assert.Equal(t, int64(9), m.Size())
 	assert.Equal(t, Ssid{1, 2, 3}, m.Ssid())
 	assert.Equal(t, uint32(1), m.Contract())

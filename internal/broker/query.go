@@ -134,7 +134,7 @@ func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []by
 	// Go through all the handlers and execute the first matching one
 	for _, surveyee := range c.handlers {
 		if response, ok := surveyee.OnSurvey(query, payload); ok {
-			return peer.Send(message.New(ssid, []byte("response"), response, false))
+			return peer.Send(message.New(ssid, []byte("response"), response))
 		}
 	}
 
@@ -164,7 +164,6 @@ func (c *QueryManager) Query(query string, payload []byte) (message.Awaiter, err
 		message.Ssid{idSystem, idQuery, awaiter.id},
 		[]byte(channel),
 		payload,
-		false,
 	), "")
 	return awaiter, nil
 }

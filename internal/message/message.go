@@ -31,9 +31,9 @@ type Message struct {
 }
 
 // New creates a new message structure from the provided SSID, channel and payload.
-func New(ssid Ssid, channel, payload []byte, retained bool) *Message {
+func New(ssid Ssid, channel, payload []byte) *Message {
 	return &Message{
-		ID:      NewID(ssid, retained),
+		ID:      NewID(ssid),
 		Channel: channel,
 		Payload: payload,
 	}
@@ -61,7 +61,7 @@ func (m *Message) Contract() uint32 {
 
 // Stored returns whether the message is or should be stored.
 func (m *Message) Stored() bool {
-	return m.TTL > 0 || m.ID.Retain()
+	return m.TTL > 0
 }
 
 // Expires calculates the expiration time.

@@ -32,7 +32,7 @@ import (
 
 func getNTestMessages(count int) (frame message.Frame) {
 	for i := 0; i < count; i++ {
-		id := message.NewID(message.Ssid{0, uint32(i / 2), 2, uint32(i)}, false)
+		id := message.NewID(message.Ssid{0, uint32(i / 2), 2, uint32(i)})
 		frame = append(frame, message.Message{
 			ID:      id,
 			Channel: []byte("test/channel/"),

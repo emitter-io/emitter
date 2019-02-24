@@ -180,10 +180,14 @@ func (c *Conn) onPublish(packet *mqtt.Publish) *Error {
 		message.NewSsid(key.Contract(), channel.Query),
 		channel.Channel,
 		packet.Payload,
-		packet.Header.Retain,
 	)
 
-	// If the channel has a TTL or a Retain option, add it to the message
+	// If a user have specified a retain flag, retain with a default TTL
+	if packet.Header.Retain {
+		msg.TTL = 604800 // TODO: make this 7-day duration configurable
+	}
+
+	// If a user have specified a TTL, use that value
 	if ttl, ok := channel.TTL(); ok && ttl > 0 {
 		msg.TTL = uint32(ttl)
 	}
