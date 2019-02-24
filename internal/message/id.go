@@ -28,6 +28,9 @@ const (
 	fixed = 16
 )
 
+// RetainedTTL represents a TTL value to use for retained messages (max TTL).
+const RetainedTTL = math.MaxUint32
+
 var (
 	next   uint32
 	unique = newUnique()

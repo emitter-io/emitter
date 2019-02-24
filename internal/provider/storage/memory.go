@@ -31,9 +31,10 @@ var _ Storage = new(InMemory)
 
 // InMemory represents a storage which does nothing.
 type InMemory struct {
-	cluster Surveyor
-	index   *sync.Map
-	db      *buntdb.DB
+	retain  uint32     // The configured TTL for 'retained' messages.
+	cluster Surveyor   // The surveyor to use.
+	index   *sync.Map  // The set of indices.
+	db      *buntdb.DB // The in-memory storage.
 }
 
 // NewInMemory creates a new in-memory storage.
@@ -58,6 +59,7 @@ func (s *InMemory) Configure(config map[string]interface{}) error {
 		s.db = db
 	}
 
+	s.retain = configUint32(config, "retain", defaultRetain)
 	return err
 }
 
@@ -66,6 +68,9 @@ func (s *InMemory) Configure(config map[string]interface{}) error {
 // for TTL will be in seconds. The function is executed synchronously and
 // it returns an error if some error was encountered during storage.
 func (s *InMemory) Store(m *message.Message) error {
+	if m.TTL == message.RetainedTTL {
+		m.TTL = s.retain
+	}
 
 	// Marshal the message
 	encoded, err := binary.Marshal(m)
@@ -185,14 +190,4 @@ func (s *InMemory) lookup(q lookupQuery) (matches message.Frame) {
 // resource is properly disposed.
 func (s *InMemory) Close() error {
 	return nil
-}
-
-// Param retrieves a parameter from the configuration.
-func param(config map[string]interface{}, name string, defaultValue int64) int64 {
-	if v, ok := config[name]; ok {
-		if i, ok := v.(float64); ok {
-			return int64(i)
-		}
-	}
-	return defaultValue
 }

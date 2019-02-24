@@ -28,6 +28,10 @@ var (
 	errNotFound = errors.New("no messages were found")
 )
 
+const (
+	defaultRetain = 2592000 // 30-days
+)
+
 // Storage represents a message storage contract that message storage provides
 // must fulfill.
 type Storage interface {
@@ -82,6 +86,16 @@ func newLookupQuery(ssid message.Ssid, from, until time.Time, limit int) lookupQ
 		Until: t1,
 		Limit: limit,
 	}
+}
+
+// configUint32 retrieves an uint32 from the config
+func configUint32(config map[string]interface{}, name string, defaultValue uint32) uint32 {
+	if v, ok := config[name]; ok {
+		if i, ok := v.(float64); ok && i > 0 {
+			return uint32(i)
+		}
+	}
+	return defaultValue
 }
 
 // ------------------------------------------------------------------------------------

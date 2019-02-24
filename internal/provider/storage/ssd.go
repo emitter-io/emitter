@@ -34,6 +34,7 @@ import (
 
 // SSD represents an SSD-optimized storage storage.
 type SSD struct {
+	retain  uint32             // The configured TTL for 'retained' messages.
 	cluster Surveyor           // The cluster surveyor.
 	db      *badger.DB         // The underlying database to use for messages.
 	cancel  context.CancelFunc // The cancellation function.
@@ -86,12 +87,16 @@ func (s *SSD) Configure(config map[string]interface{}) error {
 
 	// Setup the database and start GC
 	s.db = db
+	s.retain = configUint32(config, "retain", defaultRetain)
 	s.cancel = async.Repeat(context.Background(), 30*time.Minute, s.GC)
 	return nil
 }
 
 // Store appends the messages to the store.
 func (s *SSD) Store(m *message.Message) error {
+	if m.TTL == message.RetainedTTL {
+		m.TTL = s.retain
+	}
 
 	// TODO: add batching instead of storing one by one
 	return s.storeFrame(message.Frame{*m})

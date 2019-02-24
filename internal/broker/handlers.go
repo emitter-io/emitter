@@ -184,7 +184,7 @@ func (c *Conn) onPublish(packet *mqtt.Publish) *Error {
 
 	// If a user have specified a retain flag, retain with a default TTL
 	if packet.Header.Retain {
-		msg.TTL = 604800 // TODO: make this 7-day duration configurable
+		msg.TTL = message.RetainedTTL
 	}
 
 	// If a user have specified a TTL, use that value

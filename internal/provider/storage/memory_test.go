@@ -15,7 +15,6 @@
 package storage
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -190,18 +189,4 @@ func TestInMemory_OnSurvey(t *testing.T) {
 	_, ok := s.OnSurvey("memstore", []byte{})
 	assert.Equal(t, false, ok)
 
-}
-
-func Test_param(t *testing.T) {
-	raw := `{
-	"provider": "memory",
-	"config": {
-		"maxsize": 99999999
-	}
-}`
-	cfg := testStorageConfig{}
-	json.Unmarshal([]byte(raw), &cfg)
-
-	v := param(cfg.Config, "maxsize", 0)
-	assert.Equal(t, int64(99999999), v)
 }

@@ -14,6 +14,7 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -89,4 +90,18 @@ func testOrder(t *testing.T, store Storage) {
 	assert.Equal(t, "97", string(f[2].Payload))
 	assert.Equal(t, "98", string(f[3].Payload))
 	assert.Equal(t, "99", string(f[4].Payload))
+}
+
+func Test_configUint32(t *testing.T) {
+	raw := `{
+		"provider": "memory",
+		"config": {
+			"retain": 99999999
+		}
+	}`
+	cfg := testStorageConfig{}
+	json.Unmarshal([]byte(raw), &cfg)
+
+	v := configUint32(cfg.Config, "retain", 0)
+	assert.Equal(t, uint32(99999999), v)
 }

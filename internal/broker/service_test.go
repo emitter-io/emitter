@@ -3,7 +3,6 @@ package broker
 import (
 	"context"
 	"encoding/json"
-	"github.com/emitter-io/emitter/internal/provider/storage"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +15,7 @@ import (
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/contract"
 	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
+	"github.com/emitter-io/emitter/internal/provider/storage"
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/stretchr/testify/assert"
