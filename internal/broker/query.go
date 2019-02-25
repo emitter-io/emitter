@@ -146,10 +146,11 @@ func (c *QueryManager) Query(query string, payload []byte) (message.Awaiter, err
 
 	// Create an awaiter
 	// TODO: replace the max with the total number of cluster nodes
+	numPeers := c.service.NumPeers()
 	awaiter := &queryAwaiter{
 		id:      atomic.AddUint32(&c.next, 1),
-		receive: make(chan []byte),
-		maximum: c.service.NumPeers(),
+		receive: make(chan []byte, numPeers),
+		maximum: numPeers,
 		manager: c,
 	}
 
