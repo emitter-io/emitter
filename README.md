@@ -134,7 +134,7 @@ The structure of the configuration is described below:
 |---|---|---|
 | `license` | `EMITTER_LICENSE` | The license file to use for the broker. This contains the encryption key. |
 | `listen` | `EMITTER_LISTEN` | The API address used for TCP & Websocket communication, in `IP:PORT` format (e.g: `:8080`). |
-| `maxMessageSize` | `EMITTER_MAXMESSAGESIZE` | Maximum message size. Default is 64KB.
+| `limit.messageSize` | `EMITTER_LIMIT_MESSAGESIZE` | Maximum message size. Default is 64KB.
 | `tls.listen` | `EMITTER_TLS_LISTEN` |The API address used for Secure TCP & Websocket communication, in `IP:PORT` format (e.g: `:443`).  |
 | `tls.host` | `EMITTER_TLS_HOST` | The hostname to whitelist for the certificate.  |
 | `tls.email` | `EMITTER_TLS_EMAIL` |The email account to use for autocert. |

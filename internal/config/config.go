@@ -85,7 +85,7 @@ func New(filename string, stores ...cfg.SecretStore) *Config {
 type Config struct {
 	ListenAddr     string              `json:"listen"`             // The API port used for TCP & Websocket communication.
 	License        string              `json:"license"`            // The license file to use for the broker.
-	MaxMessageSize int               `json:"maxMessageSize"`     // Maximum message size allowed from/to the peer
+	Limit		   *LimitConfig        `json:"limit,omitempty"`    // Configuration for various limits.
 	TLS            *cfg.TLSConfig      `json:"tls,omitempty"`      // The API port used for Secure TCP & Websocket communication.
 	Cluster        *ClusterConfig      `json:"cluster,omitempty"`  // The configuration for the clustering.
 	Storage        *cfg.ProviderConfig `json:"storage,omitempty"`  // The configuration for the storage provider.
@@ -103,10 +103,10 @@ type Config struct {
 
 func (c *Config) MaxMessageBytes() int64{
 	//return default if not configured
-	if c.MaxMessageSize <= 0{
+	if c.Limit == nil || c.Limit.MessageSize <= 0{
 		return maxMessageSize
 	}
-	return int64(c.MaxMessageSize)
+	return int64(c.Limit.MessageSize)
 }
 
 // Addr returns the listen address configured.
@@ -157,6 +157,11 @@ type ClusterConfig struct {
 	// Passphrase is used to initialize the primary encryption key in a keyring. This key
 	// is used for encrypting all the gossip messages (message-level encryption).
 	Passphrase string `json:"passphrase,omitempty"`
+}
+
+//Limit represent various limit configurations - such as message size.
+type LimitConfig struct{
+	MessageSize int `json:"messageSize,omitempty"` //Maximum message size allowed from/to the peer
 }
 
 // LoadProvider loads a provider from the configuration or panics if the configuration is
