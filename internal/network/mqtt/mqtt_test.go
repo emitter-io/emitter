@@ -8,7 +8,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/emitter-io/emitter/internal/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -81,7 +80,7 @@ func benchmarkPacketDecode(b *testing.B, packet Message) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		reader.Seek(0, io.SeekStart)
-		_, err := DecodePacket(reader)
+		_, err := DecodePacket(reader,65536)
 		if err != nil {
 			b.Error(err)
 		}
@@ -89,7 +88,7 @@ func benchmarkPacketDecode(b *testing.B, packet Message) {
 }
 
 func Test_LargePacket(t *testing.T) {
-	pay := make([]byte, config.MaxMessageSize-10)
+	pay := make([]byte, 65536-10)
 	for i := range pay {
 		pay[i] = 0x0f
 	}
@@ -110,7 +109,7 @@ func Test_LargePacket(t *testing.T) {
 		go func() {
 			slc := bytes.NewBuffer([]byte{})
 			_, _ = pub.EncodeTo(slc)
-			_, err := DecodePacket(slc)
+			_, err := DecodePacket(slc,65536)
 			if err != nil {
 				t.Error(err)
 			}
@@ -123,7 +122,7 @@ func Test_LargePacket(t *testing.T) {
 func encodeTestHelper(toEncode Message) bool {
 	buf := bytes.NewBuffer([]byte{})
 	_, _ = toEncode.EncodeTo(buf)
-	msg, err := DecodePacket(buf)
+	msg, err := DecodePacket(buf,65536)
 	if err != nil {
 		log.Printf("error in here %+v\n", err.Error())
 		return false
@@ -231,7 +230,7 @@ func Test_Publish2(t *testing.T) {
 	}
 	buf := bytes.NewBuffer([]byte{})
 	_, _ = testPkt.EncodeTo(buf)
-	msg, err := DecodePacket(buf)
+	msg, err := DecodePacket(buf,65536)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -256,7 +255,7 @@ func Test_Publish_WithUnicodeDecoding(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	_, _ = testPkt.EncodeTo(buf)
 
-	msg, err := DecodePacket(buf)
+	msg, err := DecodePacket(buf,65536)
 	if err != nil {
 		t.Error(err.Error())
 	}
