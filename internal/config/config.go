@@ -85,7 +85,7 @@ func New(filename string, stores ...cfg.SecretStore) *Config {
 type Config struct {
 	ListenAddr     string              `json:"listen"`             // The API port used for TCP & Websocket communication.
 	License        string              `json:"license"`            // The license file to use for the broker.
-	Limit		   *LimitConfig        `json:"limit,omitempty"`    // Configuration for various limits.
+	Limit		   *LimitConfig        `json:"limit,omitempty"`    // Configuration for various limits such as message size.
 	TLS            *cfg.TLSConfig      `json:"tls,omitempty"`      // The API port used for Secure TCP & Websocket communication.
 	Cluster        *ClusterConfig      `json:"cluster,omitempty"`  // The configuration for the clustering.
 	Storage        *cfg.ProviderConfig `json:"storage,omitempty"`  // The configuration for the storage provider.
@@ -161,7 +161,8 @@ type ClusterConfig struct {
 
 //Limit represent various limit configurations - such as message size.
 type LimitConfig struct{
-	MessageSize int `json:"messageSize,omitempty"` //Maximum message size allowed from/to the peer
+	//Maximum message size allowed from/to the peer. Default if not specified is 64kB.
+	MessageSize int `json:"messageSize,omitempty"`
 }
 
 // LoadProvider loads a provider from the configuration or panics if the configuration is
