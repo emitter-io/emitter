@@ -24,7 +24,7 @@ import (
 )
 
 // buffers are reusable fixed-side buffers for faster encoding.
-var buffers = collection.NewBufferPool(config.MaxMessageSize)
+var buffers = collection.NewBufferPool(config.EncodingBufferSize)
 
 // reserveForHeader reserves the bytes for a header.
 var reserveForHeader = []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
@@ -169,7 +169,7 @@ type TopicQOSTuple struct {
 }
 
 // DecodePacket decodes the packet from the provided reader.
-func DecodePacket(rdr io.Reader) (Message, error) {
+func DecodePacket(rdr io.Reader, maxMessageSize int64) (Message, error) {
 	hdr, sizeOf, messageType, err := decodeStaticHeader(rdr)
 	if err != nil {
 		return nil, err
@@ -186,7 +186,7 @@ func DecodePacket(rdr io.Reader) (Message, error) {
 	}
 
 	//check to make sure packet isn't above size limit
-	if int64(sizeOf) > config.MaxMessageSize {
+	if int64(sizeOf) > maxMessageSize {
 		return nil, fmt.Errorf("Message size is too large")
 	}
 

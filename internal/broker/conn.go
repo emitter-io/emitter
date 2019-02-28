@@ -103,13 +103,13 @@ func (c *Conn) track(contract contract.Contract) {
 func (c *Conn) Process() error {
 	defer c.Close()
 	reader := bufio.NewReaderSize(c.socket, 65536)
-
+	maxMessageSize := c.service.Config.MaxMessageBytes()
 	for {
 		// Set read/write deadlines so we can close dangling connections
 		c.socket.SetDeadline(time.Now().Add(time.Second * 120))
 
 		// Decode an incoming MQTT packet
-		msg, err := mqtt.DecodePacket(reader)
+		msg, err := mqtt.DecodePacket(reader, maxMessageSize)
 		if err != nil {
 			return err
 		}

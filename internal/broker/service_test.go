@@ -163,7 +163,7 @@ func TestPubsub(t *testing.T) {
 	}
 
 	{ // Read connack
-		pkt, err := mqtt.DecodePacket(cli)
+		pkt, err := mqtt.DecodePacket(cli, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfConnack, pkt.Type())
 	}
@@ -176,7 +176,7 @@ func TestPubsub(t *testing.T) {
 	}
 
 	{ // Read pong
-		pkt, err := mqtt.DecodePacket(cli)
+		pkt, err := mqtt.DecodePacket(cli,65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPingresp, pkt.Type())
 	}
@@ -203,7 +203,7 @@ func TestPubsub(t *testing.T) {
 	}
 
 	{ // Read the retained message
-		pkt, err := mqtt.DecodePacket(cli)
+		pkt, err := mqtt.DecodePacket(cli,65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
 		assert.Equal(t, &mqtt.Publish{
@@ -214,7 +214,7 @@ func TestPubsub(t *testing.T) {
 	}
 
 	{ // Read suback
-		pkt, err := mqtt.DecodePacket(cli)
+		pkt, err := mqtt.DecodePacket(cli,65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfSuback, pkt.Type())
 	}
@@ -230,7 +230,7 @@ func TestPubsub(t *testing.T) {
 	}
 
 	{ // Read the message back
-		pkt, err := mqtt.DecodePacket(cli)
+		pkt, err := mqtt.DecodePacket(cli,65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
 		assert.Equal(t, &mqtt.Publish{
@@ -262,7 +262,7 @@ func TestPubsub(t *testing.T) {
 	}
 
 	{ // Read unsuback
-		pkt, err := mqtt.DecodePacket(cli)
+		pkt, err := mqtt.DecodePacket(cli,65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfUnsuback, pkt.Type())
 	}
@@ -278,7 +278,7 @@ func TestPubsub(t *testing.T) {
 	}
 
 	{ // Read the link response
-		pkt, err := mqtt.DecodePacket(cli)
+		pkt, err := mqtt.DecodePacket(cli,65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
 	}
