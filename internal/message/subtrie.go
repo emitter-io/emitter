@@ -16,6 +16,8 @@ package message
 
 import (
 	"sync"
+
+	"github.com/kelindar/rand"
 )
 
 type node struct {
@@ -114,18 +116,32 @@ func (t *Trie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 }
 
 // Lookup returns the Subscribers for the given topic.
-func (t *Trie) Lookup(query Ssid) (subs Subscribers) {
+func (t *Trie) Lookup(query Ssid, filter func(s Subscriber) bool) (subs Subscribers) {
 	t.RLock()
-	t.lookup(query, &subs, t.root)
+	t.lookup(query, &subs, t.root, filter)
 	t.RUnlock()
 	return
 }
 
-func (t *Trie) lookup(query Ssid, subs *Subscribers, node *node) {
+// Random picks a random subscriber.
+func (t *Trie) Random(query Ssid, filter func(s Subscriber) bool) (subs Subscribers) {
+	t.RLock()
+	t.lookup(query, &subs, t.root, filter)
+	t.RUnlock()
+	if len(subs) > 0 {
+		x := rand.Uint32n(uint32(len(subs)))
+		subs = subs[x : x+1]
+	}
+	return
+}
+
+func (t *Trie) lookup(query Ssid, subs *Subscribers, node *node, filter func(s Subscriber) bool) {
 
 	// Add subscribers from the current branch
 	for _, s := range node.subs {
-		subs.AddUnique(s)
+		if filter == nil || filter(s) {
+			subs.AddUnique(s)
+		}
 	}
 
 	// If we're not yet done, continue
@@ -133,12 +149,12 @@ func (t *Trie) lookup(query Ssid, subs *Subscribers, node *node) {
 
 		// Go through the exact match branch
 		if n, ok := node.children[query[0]]; ok {
-			t.lookup(query[1:], subs, n)
+			t.lookup(query[1:], subs, n, filter)
 		}
 
 		// Go through wildcard match branc
 		if n, ok := node.children[wildcard]; ok {
-			t.lookup(query[1:], subs, n)
+			t.lookup(query[1:], subs, n, filter)
 		}
 	}
 }

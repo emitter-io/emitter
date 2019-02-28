@@ -28,6 +28,7 @@ const (
 	presence = uint32(3869262148)
 	query    = uint32(3939663052)
 	wildcard = uint32(1815237614)
+	share    = uint32(1480642916)
 )
 
 // Query represents a constant SSID for a query.

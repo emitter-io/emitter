@@ -23,13 +23,14 @@ import (
 
 func TestID_NewID(t *testing.T) {
 	next = math.MaxUint32
-	id := NewID(Ssid{1, 2, 3})
+	id := NewID(Ssid{1, share, 3})
 
 	assert.Zero(t, next)
 	assert.True(t, id.Time() > 1527819700)
 
 	id.SetTime(offset + 1)
 	assert.Equal(t, int64(offset+1), id.Time())
+	assert.True(t, id.Share())
 }
 
 func TestID_NewPrefix(t *testing.T) {

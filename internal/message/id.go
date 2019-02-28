@@ -94,6 +94,11 @@ func (id ID) Ssid() Ssid {
 	return ssid
 }
 
+// Share returns whether the message is for a shared subscription or not.
+func (id ID) Share() bool {
+	return binary.BigEndian.Uint32(id[fixed+4:fixed+8]) == share
+}
+
 // HasPrefix matches the prefix with the cutoff time.
 func (id ID) HasPrefix(ssid Ssid, cutoff int64) bool {
 	return (binary.BigEndian.Uint32(id[0:4]) == ssid[0]^ssid[1]) && id.Time() >= cutoff
