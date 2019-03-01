@@ -23,6 +23,12 @@ func TestSsidPresence(t *testing.T) {
 	assert.EqualValues(t, Ssid{0, 3869262148, 1, 2, 3}, ssid)
 }
 
+func TestSsidShare(t *testing.T) {
+	ssid := NewSsidForShare(Ssid{1, 2, 3})
+	assert.NotNil(t, ssid)
+	assert.EqualValues(t, Ssid{1, share, 2, 3}, ssid)
+}
+
 func TestSsid(t *testing.T) {
 	c := security.Channel{
 		Key:         []byte("key"),

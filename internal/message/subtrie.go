@@ -116,21 +116,26 @@ func (t *Trie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 }
 
 // Lookup returns the Subscribers for the given topic.
-func (t *Trie) Lookup(query Ssid, filter func(s Subscriber) bool) (subs Subscribers) {
+func (t *Trie) Lookup(ssid Ssid, filter func(s Subscriber) bool) (subs Subscribers) {
 	t.RLock()
-	t.lookup(query, &subs, t.root, filter)
+	t.lookup(ssid, &subs, t.root, filter)
+	if contractNode, ok := t.root.children[ssid[0]]; ok && len(ssid) >= 4 {
+		if shareNode, ok := contractNode.children[share]; ok {
+			t.randomByGroup(ssid[1:], &subs, shareNode, filter)
+		}
+	}
+
 	t.RUnlock()
 	return
 }
 
-// Random picks a random subscriber.
-func (t *Trie) Random(query Ssid, filter func(s Subscriber) bool) (subs Subscribers) {
-	t.RLock()
-	t.lookup(query, &subs, t.root, filter)
-	t.RUnlock()
-	if len(subs) > 0 {
-		x := rand.Uint32n(uint32(len(subs)))
-		subs = subs[x : x+1]
+func (t *Trie) randomByGroup(query Ssid, subs *Subscribers, shareNode *node, filter func(s Subscriber) bool) {
+	for _, n := range shareNode.children {
+		var group Subscribers
+		t.lookup(query, &group, n, filter)
+		if len(group) > 0 {
+			subs.AddUnique(group[rand.Uint32n(uint32(len(group)))])
+		}
 	}
 	return
 }
@@ -152,7 +157,7 @@ func (t *Trie) lookup(query Ssid, subs *Subscribers, node *node, filter func(s S
 			t.lookup(query[1:], subs, n, filter)
 		}
 
-		// Go through wildcard match branc
+		// Go through wildcard match branch
 		if n, ok := node.children[wildcard]; ok {
 			t.lookup(query[1:], subs, n, filter)
 		}

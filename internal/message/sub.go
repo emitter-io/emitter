@@ -55,6 +55,15 @@ func NewSsidForPresence(original Ssid) Ssid {
 	return ssid
 }
 
+// NewSsidForShare creates a new SSID for shared subscriptions.
+func NewSsidForShare(original Ssid) Ssid {
+	ssid := make([]uint32, 0, len(original)+1)
+	ssid = append(ssid, original[0])
+	ssid = append(ssid, share)
+	ssid = append(ssid, original[1:]...)
+	return ssid
+}
+
 // Contract gets the contract part from SSID.
 func (s Ssid) Contract() uint32 {
 	return uint32(s[0])

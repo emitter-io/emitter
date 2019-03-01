@@ -48,14 +48,18 @@ func TestTrieMatch1(t *testing.T) {
 func TestTrieMatch(t *testing.T) {
 	m := NewTrie()
 	testPopulateWithStrings(m, []string{
-		"a/",
-		"a/b/c/",
-		"a/+/c/",
-		"a/b/c/d/",
-		"a/+/c/+/",
-		"x/",
-		"x/y/",
-		"x/+/z",
+		"key/a/",
+		"key/a/b/c/",
+		"key/a/+/c/",
+		"key/a/b/c/d/",
+		"key/a/+/c/+/",
+		"key/x/",
+		"key/x/y/",
+		"key/x/+/z",
+		"key/$share/group1/a/+/c/",
+		"key/$share/group1/a/b/c/",
+		"key/$share/group2/a/b/c/",
+		"key/$share/group2/a/b/",
 	})
 
 	// Tests to run
@@ -63,23 +67,23 @@ func TestTrieMatch(t *testing.T) {
 		topic string
 		n     int
 	}{
-		{topic: "a/", n: 1},
-		{topic: "a/1/", n: 1},
-		{topic: "a/2/", n: 1},
-		{topic: "a/1/2/", n: 1},
-		{topic: "a/1/2/3/", n: 1},
-		{topic: "a/x/y/c/", n: 1},
-		{topic: "a/x/c/", n: 2},
-		{topic: "a/b/c/", n: 3},
-		{topic: "a/b/c/d/", n: 5},
-		{topic: "a/b/c/e/", n: 4},
-		{topic: "x/y/c/e/", n: 2},
+		{topic: "key/a/", n: 1},
+		{topic: "key/a/1/", n: 1},
+		{topic: "key/a/2/", n: 1},
+		{topic: "key/a/1/2/", n: 1},
+		{topic: "key/a/1/2/3/", n: 1},
+		{topic: "key/a/x/y/c/", n: 1},
+		{topic: "key/a/x/c/", n: 3},
+		{topic: "key/a/b/c/", n: 5},
+		{topic: "key/a/b/c/d/", n: 7},
+		{topic: "key/a/b/c/e/", n: 6},
+		{topic: "key/x/y/c/e/", n: 2},
 	}
 
-	assert.Equal(t, 8, m.Count())
+	assert.Equal(t, 12, m.Count())
 	for _, tc := range tests {
 		result := m.Lookup(testSub(tc.topic), nil)
-		assert.Equal(t, tc.n, len(result))
+		assert.Equal(t, tc.n, len(result), tc.topic)
 	}
 }
 
@@ -129,39 +133,6 @@ func TestTrieIntegration(t *testing.T) {
 	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{4, 5}, nil))
 	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1, 5}, nil))
 	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{4}, nil))
-}
-
-func TestTrieRandom(t *testing.T) {
-	m := NewTrie()
-	testPopulateWithStrings(m, []string{
-		"$share/a/",
-		"$share/a/b/c/",
-		"$share/a/+/c/",
-		"$share/a/b/c/d/",
-		"$share/a/+/c/+/",
-		"$share/x/",
-		"$share/x/y/",
-		"$share/x/+/z",
-	})
-
-	// Tests to run
-	tests := []struct {
-		topic string
-		n     int
-	}{
-		{topic: "$share/z/", n: 0},
-		{topic: "$share/a/", n: 1},
-		{topic: "$share/a/b/c/", n: 1},
-		{topic: "$share/a/b/c/d/", n: 1},
-		{topic: "$share/a/b/c/e/", n: 1},
-		{topic: "$share/x/y/c/e/", n: 1},
-	}
-
-	assert.Equal(t, 8, m.Count())
-	for _, tc := range tests {
-		result := m.Random(testSub(tc.topic), nil)
-		assert.Equal(t, tc.n, len(result))
-	}
 }
 
 // Populates the trie with a set of strings
@@ -214,6 +185,7 @@ func BenchmarkSubscriptionTrieUnsubscribe(b *testing.B) {
 	}
 }
 
+// BenchmarkSubscriptionTrieLookup-8   	10000000	       168 ns/op	      16 B/op	       1 allocs/op
 func BenchmarkSubscriptionTrieLookup(b *testing.B) {
 	var (
 		m  = NewTrie()

@@ -30,7 +30,6 @@ func TestID_NewID(t *testing.T) {
 
 	id.SetTime(offset + 1)
 	assert.Equal(t, int64(offset+1), id.Time())
-	assert.True(t, id.Share())
 }
 
 func TestID_NewPrefix(t *testing.T) {

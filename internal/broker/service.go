@@ -406,20 +406,13 @@ func (s *Service) onUnsubscribe(ssid message.Ssid, sub message.Subscriber) (ok b
 // Occurs when a message is received from a peer.
 func (s *Service) onPeerMessage(m *message.Message) {
 	defer s.measurer.MeasureElapsed("peer.msg", time.Now())
-
-	// Iterate through all subscribers and send them the message
 	size, n := len(m.Payload), 0
 	filter := func(s message.Subscriber) bool {
 		return s.Type() == message.SubscriberDirect // only local subscribers
 	}
 
-	// Find the lookup method to execute
-	lookup := s.subscriptions.Lookup
-	if m.ID.Share() {
-		lookup = s.subscriptions.Random
-	}
-
-	for _, subscriber := range lookup(m.Ssid(), filter) {
+	// Iterate through all subscribers and send them the message
+	for _, subscriber := range s.subscriptions.Lookup(m.Ssid(), filter) {
 		subscriber.Send(m)
 		n += size
 	}
@@ -448,14 +441,8 @@ func (s *Service) publish(m *message.Message, exclude string) (n int64) {
 		return s.ID() != exclude
 	}
 
-	// Find the lookup method to execute
-	lookup := s.subscriptions.Lookup
-	if m.ID.Share() {
-		lookup = s.subscriptions.Random
-	}
-
 	// Run the lookup and send the message
-	for _, subscriber := range lookup(m.Ssid(), filter) {
+	for _, subscriber := range s.subscriptions.Lookup(m.Ssid(), filter) {
 		subscriber.Send(m)
 		if subscriber.Type() == message.SubscriberDirect {
 			n += size
