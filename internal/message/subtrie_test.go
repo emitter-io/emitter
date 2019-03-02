@@ -188,8 +188,10 @@ func BenchmarkSubscriptionTrieUnsubscribe(b *testing.B) {
 	}
 }
 
-// BenchmarkSubscriptionTrieLookup-8   	10000000	       168 ns/op	      16 B/op	       1 allocs/op
+// BenchmarkSubscriptionTrieLookup-8   	  200000	     11055 ns/op	    5072 B/op	      52 allocs/op
+// BenchmarkSubscriptionTrieLookup-8   	  200000	      7106 ns/op	    1504 B/op	      11 allocs/op
 func BenchmarkSubscriptionTrieLookup(b *testing.B) {
+	rand.Seed(42)
 	var (
 		m  = NewTrie()
 		s0 = new(testSubscriber)
@@ -198,7 +200,7 @@ func BenchmarkSubscriptionTrieLookup(b *testing.B) {
 	)
 
 	m.Subscribe(q1, s0)
-	populateMatcher(m, 1000, 5)
+	populateMatcher(m, 1000, 3)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -262,9 +264,14 @@ func populateMatcher(m *Trie, num, topicSize int) {
 	for i := 0; i < num; i++ {
 		topic := make([]uint32, 0)
 		for j := 0; j < topicSize; j++ {
-			topic = append(topic, uint32(rand.Int()))
+			topic = append(topic, uint32(rand.Intn(10)))
 		}
 
+		// Add a normal subscriber
+		m.Subscribe(topic, new(testSubscriber))
+
+		// Add a share subscriber
+		topic[1] = share
 		m.Subscribe(topic, new(testSubscriber))
 	}
 }
