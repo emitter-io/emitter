@@ -7,11 +7,9 @@ require (
 	github.com/dgraph-io/badger v1.5.4
 	github.com/dgryski/go-farm v0.0.0-20180109070241-2de33835d102 // indirect
 	github.com/dgryski/go-metro v0.0.0-20180109044635-280f6062b5bc // indirect
-	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/emitter-io/address v1.0.0
 	github.com/emitter-io/config v1.0.0
 	github.com/emitter-io/stats v1.0.1
-	github.com/go-ini/ini v1.42.0 // indirect
 	github.com/golang/protobuf v0.0.0-20181005181728-ddf22928ea3c // indirect
 	github.com/golang/snappy v0.0.1
 	github.com/gorilla/websocket v1.4.0
