@@ -40,7 +40,7 @@ func TestTrieMatch1(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		result := m.Lookup(testSub(tc.topic))
+		result := m.Lookup(testSub(tc.topic), nil)
 		assert.Equal(t, tc.n, len(result))
 	}
 }
@@ -48,14 +48,20 @@ func TestTrieMatch1(t *testing.T) {
 func TestTrieMatch(t *testing.T) {
 	m := NewTrie()
 	testPopulateWithStrings(m, []string{
-		"a/",
-		"a/b/c/",
-		"a/+/c/",
-		"a/b/c/d/",
-		"a/+/c/+/",
-		"x/",
-		"x/y/",
-		"x/+/z",
+		"key/a/",
+		"key/a/b/c/",
+		"key/a/+/c/",
+		"key/a/b/c/d/",
+		"key/a/+/c/+/",
+		"key/x/",
+		"key/x/y/",
+		"key/x/+/z",
+		"key/$share/group1/a/+/c/",
+		"key/$share/group1/a/b/c/",
+		"key/$share/group2/a/b/c/",
+		"key/$share/group2/a/b/",
+		"key/$share/group3/y/",
+		"key/$share/group3/y/",
 	})
 
 	// Tests to run
@@ -63,23 +69,24 @@ func TestTrieMatch(t *testing.T) {
 		topic string
 		n     int
 	}{
-		{topic: "a/", n: 1},
-		{topic: "a/1/", n: 1},
-		{topic: "a/2/", n: 1},
-		{topic: "a/1/2/", n: 1},
-		{topic: "a/1/2/3/", n: 1},
-		{topic: "a/x/y/c/", n: 1},
-		{topic: "a/x/c/", n: 2},
-		{topic: "a/b/c/", n: 3},
-		{topic: "a/b/c/d/", n: 5},
-		{topic: "a/b/c/e/", n: 4},
-		{topic: "x/y/c/e/", n: 2},
+		{topic: "key/a/", n: 1},
+		{topic: "key/a/1/", n: 1},
+		{topic: "key/a/2/", n: 1},
+		{topic: "key/a/1/2/", n: 1},
+		{topic: "key/a/1/2/3/", n: 1},
+		{topic: "key/a/x/y/c/", n: 1},
+		{topic: "key/a/x/c/", n: 3},
+		{topic: "key/a/b/c/", n: 5},
+		{topic: "key/a/b/c/d/", n: 7},
+		{topic: "key/a/b/c/e/", n: 6},
+		{topic: "key/x/y/c/e/", n: 2},
+		{topic: "key/y/", n: 1},
 	}
 
-	assert.Equal(t, 8, m.Count())
+	assert.Equal(t, 14, m.Count())
 	for _, tc := range tests {
-		result := m.Lookup(testSub(tc.topic))
-		assert.Equal(t, tc.n, len(result))
+		result := m.Lookup(testSub(tc.topic), nil)
+		assert.Equal(t, tc.n, len(result), tc.topic)
 	}
 }
 
@@ -109,11 +116,11 @@ func TestTrieIntegration(t *testing.T) {
 	_, err = m.Subscribe([]uint32{wildcard}, s2)
 	assert.NoError(err)
 
-	assertEqual(assert, Subscribers{s0, s1, s2}, m.Lookup([]uint32{1, 3}))
-	assertEqual(assert, Subscribers{s2}, m.Lookup([]uint32{1}))
-	assertEqual(assert, Subscribers{s1, s2}, m.Lookup([]uint32{4, 5}))
-	assertEqual(assert, Subscribers{s0, s1, s2}, m.Lookup([]uint32{1, 5}))
-	assertEqual(assert, Subscribers{s1, s2}, m.Lookup([]uint32{4}))
+	assertEqual(assert, Subscribers{s0, s1, s2}, m.Lookup([]uint32{1, 3}, nil))
+	assertEqual(assert, Subscribers{s2}, m.Lookup([]uint32{1}, nil))
+	assertEqual(assert, Subscribers{s1, s2}, m.Lookup([]uint32{4, 5}, nil))
+	assertEqual(assert, Subscribers{s0, s1, s2}, m.Lookup([]uint32{1, 5}, nil))
+	assertEqual(assert, Subscribers{s1, s2}, m.Lookup([]uint32{4}, nil))
 
 	m.Unsubscribe(sub0.Ssid, sub0.Subscriber)
 	m.Unsubscribe(sub1.Ssid, sub1.Subscriber)
@@ -124,17 +131,17 @@ func TestTrieIntegration(t *testing.T) {
 	m.Unsubscribe(sub6.Ssid, sub6.Subscriber)
 	m.Unsubscribe(sub6.Ssid, sub6.Subscriber)
 
-	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1, 3}))
-	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1}))
-	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{4, 5}))
-	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1, 5}))
-	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{4}))
+	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1, 3}, nil))
+	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1}, nil))
+	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{4, 5}, nil))
+	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1, 5}, nil))
+	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{4}, nil))
 }
 
 // Populates the trie with a set of strings
 func testPopulateWithStrings(m *Trie, values []string) {
 	for _, s := range values {
-		m.Subscribe(testSub(s), new(testSubscriber))
+		m.Subscribe(testSub(s), &testSubscriber{s})
 	}
 }
 
@@ -181,6 +188,7 @@ func BenchmarkSubscriptionTrieUnsubscribe(b *testing.B) {
 	}
 }
 
+// BenchmarkSubscriptionTrieLookup-8   	10000000	       168 ns/op	      16 B/op	       1 allocs/op
 func BenchmarkSubscriptionTrieLookup(b *testing.B) {
 	var (
 		m  = NewTrie()
@@ -195,7 +203,7 @@ func BenchmarkSubscriptionTrieLookup(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.Lookup(q2)
+		m.Lookup(q2, nil)
 	}
 }
 
@@ -239,7 +247,7 @@ func BenchmarkSubscriptionTrieLookupCold(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.Lookup(q2)
+		m.Lookup(q2, nil)
 	}
 }
 

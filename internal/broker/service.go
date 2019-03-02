@@ -394,7 +394,7 @@ func (s *Service) onSubscribe(ssid message.Ssid, sub message.Subscriber) bool {
 
 // Occurs when a peer has unsubscribed.
 func (s *Service) onUnsubscribe(ssid message.Ssid, sub message.Subscriber) (ok bool) {
-	subscribers := s.subscriptions.Lookup(ssid)
+	subscribers := s.subscriptions.Lookup(ssid, nil)
 	if ok = subscribers.Contains(sub); ok {
 		s.subscriptions.Unsubscribe(ssid, sub)
 
@@ -406,22 +406,21 @@ func (s *Service) onUnsubscribe(ssid message.Ssid, sub message.Subscriber) (ok b
 // Occurs when a message is received from a peer.
 func (s *Service) onPeerMessage(m *message.Message) {
 	defer s.measurer.MeasureElapsed("peer.msg", time.Now())
+	size, n := len(m.Payload), 0
+	filter := func(s message.Subscriber) bool {
+		return s.Type() == message.SubscriberDirect // only local subscribers
+	}
+
+	// Iterate through all subscribers and send them the message
+	for _, subscriber := range s.subscriptions.Lookup(m.Ssid(), filter) {
+		subscriber.Send(m)
+		n += size
+	}
 
 	// Get the contract
 	contract, contractFound := s.contracts.Get(m.Contract())
-
-	// Iterate through all subscribers and send them the message
-	for _, subscriber := range s.subscriptions.Lookup(m.Ssid()) {
-		if subscriber.Type() == message.SubscriberDirect {
-
-			// Send to the local subscriber
-			subscriber.Send(m)
-
-			// Write the egress stats
-			if contractFound {
-				contract.Stats().AddEgress(int64(len(m.Payload)))
-			}
-		}
+	if contractFound {
+		contract.Stats().AddEgress(int64(n))
 	}
 }
 
@@ -438,17 +437,17 @@ func (s *Service) Survey(query string, payload []byte) (message.Awaiter, error) 
 // Publish publishes a message to everyone and returns the number of outgoing bytes written.
 func (s *Service) publish(m *message.Message, exclude string) (n int64) {
 	size := m.Size()
-	for _, subscriber := range s.subscriptions.Lookup(m.Ssid()) {
-		if subscriber.ID() != exclude {
-			subscriber.Send(m)
-		}
+	filter := func(s message.Subscriber) bool {
+		return s.ID() != exclude
+	}
 
-		// Increment the egress size only for direct subscribers
+	// Run the lookup and send the message
+	for _, subscriber := range s.subscriptions.Lookup(m.Ssid(), filter) {
+		subscriber.Send(m)
 		if subscriber.Type() == message.SubscriberDirect {
 			n += size
 		}
 	}
-
 	return
 }
 

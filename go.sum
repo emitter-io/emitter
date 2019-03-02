@@ -34,6 +34,10 @@ github.com/kelindar/binary v1.0.1 h1:618UzNUN9ckT2CeGcRF4N8q/0WWtvcpVL6O1DDfCXUM
 github.com/kelindar/binary v1.0.1/go.mod h1:wMMTJccK3HLFh6eH9bD4VRIjUTFVW7pC1q0vTUQ7vV8=
 github.com/kelindar/process v0.0.0-20170730150328-69a29e249ec3 h1:6If+E1dikQbdT7DlhZqLplfGkEt6dSoz7+MK+TFC7+U=
 github.com/kelindar/process v0.0.0-20170730150328-69a29e249ec3/go.mod h1:+lTCLnZFXOkqwD8sLPl6u4erAc0cP8wFegQHfipz7KE=
+github.com/kelindar/rand v1.0.0 h1:bbNIldIvDRhql45OjzwYvkDZV9ANExnxt295UpmIvUQ=
+github.com/kelindar/rand v1.0.0/go.mod h1:Ps9zsneYaqEckQIYsC/6I/VkYv+zVEGeUXs/WQIGpWw=
+github.com/kelindar/rand v1.0.1 h1:PfCe86AM7iprR8lWOj4AWiYcdbT+b3iaLmFMRxjjihc=
+github.com/kelindar/rand v1.0.1/go.mod h1:Ps9zsneYaqEckQIYsC/6I/VkYv+zVEGeUXs/WQIGpWw=
 github.com/kelindar/tcp v0.0.0-20170901060004-951ea01d26dd h1:db4hk9Jwj8GBRIeBEOJh9OiwcuYRbqXhuX5JNmCHRoc=
 github.com/kelindar/tcp v0.0.0-20170901060004-951ea01d26dd/go.mod h1:JB5hj1cshLU60XrLij2BBxW3JQ4hOye8vqbyvuKb52k=
 github.com/klauspost/compress v1.4.0 h1:8nsMz3tWa9SWWPL60G1V6CUsf4lLjWLTNEtibhe8gh8=
