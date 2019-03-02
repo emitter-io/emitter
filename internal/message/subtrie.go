@@ -130,8 +130,9 @@ func (t *Trie) Lookup(ssid Ssid, filter func(s Subscriber) bool) (subs Subscribe
 }
 
 func (t *Trie) randomByGroup(query Ssid, subs *Subscribers, shareNode *node, filter func(s Subscriber) bool) {
+	var group Subscribers
 	for _, n := range shareNode.children {
-		var group Subscribers
+		group = group[:0]
 		t.lookup(query, &group, n, filter)
 		if len(group) > 0 {
 			subs.AddUnique(group[rand.Uint32n(uint32(len(group)))])
