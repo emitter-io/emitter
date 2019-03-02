@@ -16,7 +16,6 @@ require (
 	github.com/gorilla/websocket v1.4.0
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
 	github.com/kelindar/binary v1.0.1
-	github.com/kelindar/rand v1.0.1
 	github.com/kelindar/tcp v0.0.0-20170901060004-951ea01d26dd
 	github.com/pkg/errors v0.0.0-20181008045315-2233dee583dc // indirect
 	github.com/stretchr/objx v0.0.0-20180825064932-ef50b0de2877 // indirect
