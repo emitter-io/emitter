@@ -190,6 +190,8 @@ func BenchmarkSubscriptionTrieUnsubscribe(b *testing.B) {
 
 // BenchmarkSubscriptionTrieLookup-8   	  200000	     11055 ns/op	    5072 B/op	      52 allocs/op
 // BenchmarkSubscriptionTrieLookup-8   	  200000	      7106 ns/op	    1504 B/op	      11 allocs/op
+// BenchmarkSubscriptionTrieLookup-8   	  200000	      5415 ns/op	     528 B/op	       6 allocs/op
+// BenchmarkSubscriptionTrieLookup-8   	  300000	      4940 ns/op	     496 B/op	       5 allocs/op
 func BenchmarkSubscriptionTrieLookup(b *testing.B) {
 	rand.Seed(42)
 	var (

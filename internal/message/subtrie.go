@@ -16,8 +16,7 @@ package message
 
 import (
 	"sync"
-
-	"github.com/kelindar/rand"
+	"time"
 )
 
 type node struct {
@@ -129,18 +128,6 @@ func (t *Trie) Lookup(ssid Ssid, filter func(s Subscriber) bool) (subs Subscribe
 	return
 }
 
-func (t *Trie) randomByGroup(query Ssid, subs *Subscribers, shareNode *node, filter func(s Subscriber) bool) {
-	var group Subscribers
-	for _, n := range shareNode.children {
-		group = group[:0]
-		t.lookup(query, &group, n, filter)
-		if len(group) > 0 {
-			subs.AddUnique(group[rand.Uint32n(uint32(len(group)))])
-		}
-	}
-	return
-}
-
 func (t *Trie) lookup(query Ssid, subs *Subscribers, node *node, filter func(s Subscriber) bool) {
 
 	// Add subscribers from the current branch
@@ -150,17 +137,62 @@ func (t *Trie) lookup(query Ssid, subs *Subscribers, node *node, filter func(s S
 		}
 	}
 
-	// If we're not yet done, continue
-	if len(query) > 0 {
-
-		// Go through the exact match branch
-		if n, ok := node.children[query[0]]; ok {
-			t.lookup(query[1:], subs, n, filter)
-		}
-
-		// Go through wildcard match branch
-		if n, ok := node.children[wildcard]; ok {
-			t.lookup(query[1:], subs, n, filter)
-		}
+	// If we're done, stop
+	if len(query) == 0 {
+		return
 	}
+
+	// Go through the exact match branch
+	if n, ok := node.children[query[0]]; ok {
+		t.lookup(query[1:], subs, n, filter)
+	}
+
+	// Go through wildcard match branch
+	if n, ok := node.children[wildcard]; ok {
+		t.lookup(query[1:], subs, n, filter)
+	}
+}
+
+// Reusable pool of subscriber groups
+var temp = &sync.Pool{
+	New: func() interface{} {
+		x := time.Now().UnixNano()
+		return &tempState{
+			list: make(Subscribers, 0, 8),
+			rand: uint32((x >> 32) ^ x),
+		}
+	},
+}
+
+type tempState struct {
+	list Subscribers
+	rand uint32
+}
+
+// RandomByGroup adds a random subscribers for shared subscriptions, by share group
+func (t *Trie) randomByGroup(query Ssid, subs *Subscribers, shareNode *node, filter func(s Subscriber) bool) {
+	tmp := temp.Get().(*tempState)
+	defer temp.Put(tmp)
+
+	// Select a random subscriber from each share group (child of the share node)
+	for _, n := range shareNode.children {
+		tmp.list = tmp.list[:0] // recycle
+		t.lookup(query, &tmp.list, n, filter)
+		if len(tmp.list) == 0 {
+			continue
+		}
+
+		// Generate a random number using xorshift
+		x := tmp.rand
+		x ^= x << 13
+		x ^= x >> 17
+		x ^= x << 5
+		tmp.rand = x
+
+		// Select a random element from the list and add it
+		x = uint32((uint64(x) * uint64(len(tmp.list))) >> 32)
+		subs.AddUnique(tmp.list[x])
+
+	}
+	return
 }
