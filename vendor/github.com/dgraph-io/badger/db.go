@@ -17,9 +17,9 @@
 package badger
 
 import (
-	"bytes"
 	"encoding/binary"
 	"expvar"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -29,11 +29,13 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/options"
+
+	"golang.org/x/net/trace"
+
 	"github.com/dgraph-io/badger/skl"
 	"github.com/dgraph-io/badger/table"
 	"github.com/dgraph-io/badger/y"
 	"github.com/pkg/errors"
-	"golang.org/x/net/trace"
 )
 
 var (
@@ -44,12 +46,11 @@ var (
 )
 
 type closers struct {
-	updateSize  *y.Closer
-	compactors  *y.Closer
-	memtable    *y.Closer
-	writes      *y.Closer
-	txnCallback *y.Closer
-	valueGC     *y.Closer
+	updateSize *y.Closer
+	compactors *y.Closer
+	memtable   *y.Closer
+	writes     *y.Closer
+	valueGC    *y.Closer
 }
 
 // DB provides the various functions required to interact with Badger.
@@ -61,18 +62,17 @@ type DB struct {
 	// nil if Dir and ValueDir are the same
 	valueDirGuard *directoryLockGuard
 
-	closers       closers
-	elog          trace.EventLog
-	mt            *skl.Skiplist   // Our latest (actively written) in-memory table
-	imm           []*skl.Skiplist // Add here only AFTER pushing to flushChan.
-	opt           Options
-	manifest      *manifestFile
-	lc            *levelsController
-	vlog          valueLog
-	vptr          valuePointer // less than or equal to a pointer to the last vlog value put into mt
-	writeCh       chan *request
-	flushChan     chan flushTask // For flushing memtables.
-	txnCallbackCh chan *txnCb    // For running txn callbacks.
+	closers   closers
+	elog      trace.EventLog
+	mt        *skl.Skiplist   // Our latest (actively written) in-memory table
+	imm       []*skl.Skiplist // Add here only AFTER pushing to flushChan.
+	opt       Options
+	manifest  *manifestFile
+	lc        *levelsController
+	vlog      valueLog
+	vptr      valuePointer // less than or equal to a pointer to the last vlog value put into mt
+	writeCh   chan *request
+	flushChan chan flushTask // For flushing memtables.
 
 	blockWrites int32
 
@@ -107,8 +107,8 @@ func replayFunction(out *DB) func(Entry, valuePointer) error {
 		}
 		first = false
 
-		if out.orc.nextTxnTs < y.ParseTs(e.Key) {
-			out.orc.nextTxnTs = y.ParseTs(e.Key)
+		if out.orc.curRead < y.ParseTs(e.Key) {
+			out.orc.curRead = y.ParseTs(e.Key)
 		}
 
 		nk := make([]byte, len(e.Key))
@@ -241,17 +241,24 @@ func Open(opt Options) (db *DB, err error) {
 		}
 	}()
 
+	orc := &oracle{
+		isManaged:  opt.managedTxns,
+		nextCommit: 1,
+		commits:    make(map[uint64]uint64),
+		readMark:   y.WaterMark{},
+	}
+	orc.readMark.Init()
+
 	db = &DB{
 		imm:           make([]*skl.Skiplist, 0, opt.NumMemtables),
 		flushChan:     make(chan flushTask, opt.NumMemtables),
 		writeCh:       make(chan *request, kvWriteChCapacity),
-		txnCallbackCh: make(chan *txnCb, 100),
 		opt:           opt,
 		manifest:      manifestFile,
 		elog:          trace.NewEventLog("Badger", "DB"),
 		dirLockGuard:  dirLockGuard,
 		valueDirGuard: valueDirLockGuard,
-		orc:           newOracle(opt),
+		orc:           orc,
 	}
 
 	// Calculate initial size.
@@ -283,11 +290,18 @@ func Open(opt Options) (db *DB, err error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Retrieving head")
 	}
-	db.orc.nextTxnTs = vs.Version
+	db.orc.curRead = vs.Version
 	var vptr valuePointer
 	if len(vs.Value) > 0 {
 		vptr.Decode(vs.Value)
 	}
+
+	// lastUsedCasCounter will either be the value stored in !badger!head, or some subsequently
+	// written value log entry that we replay.  (Subsequent value log entries might be _less_
+	// than lastUsedCasCounter, if there was value log gc so we have to max() values while
+	// replaying.)
+	// out.lastUsedCasCounter = item.casCounter
+	// TODO: Figure this out. This would update the read timestamp, and set nextCommitTs.
 
 	replayCloser := y.NewCloser(1)
 	go db.doWrites(replayCloser)
@@ -297,22 +311,13 @@ func Open(opt Options) (db *DB, err error) {
 	}
 
 	replayCloser.SignalAndWait() // Wait for replay to be applied first.
-
-	// Let's advance nextTxnTs to one more than whatever we observed via
-	// replaying the logs.
-	db.orc.txnMark.Done(db.orc.nextTxnTs)
-	db.orc.nextTxnTs++
+	// Now that we have the curRead, we can update the nextCommit.
+	db.orc.nextCommit = db.orc.curRead + 1
 
 	// Mmap writable log
 	lf := db.vlog.filesMap[db.vlog.maxFid]
 	if err = lf.mmap(2 * db.vlog.opt.ValueLogFileSize); err != nil {
 		return db, errors.Wrapf(err, "Unable to mmap RDWR log file")
-	}
-
-	// These goroutines run the user specified callbacks passed during txn.CommitWith.
-	db.closers.txnCallback = y.NewCloser(3)
-	for i := 0; i < 3; i++ {
-		go db.runTxnCallbacks(db.closers.txnCallback)
 	}
 
 	db.writeCh = make(chan *request, kvWriteChCapacity)
@@ -338,10 +343,6 @@ func (db *DB) Close() (err error) {
 
 	// Stop writes next.
 	db.closers.writes.SignalAndWait()
-
-	// Wait for callbacks to be run.
-	close(db.txnCallbackCh)
-	db.closers.txnCallback.SignalAndWait()
 
 	// Now close the value log.
 	if vlogErr := db.vlog.Close(); err == nil {
@@ -494,45 +495,19 @@ func (db *DB) getMemTables() ([]*skl.Skiplist, func()) {
 // tables and find the max version among them.  To maintain this invariant, we also need to ensure
 // that all versions of a key are always present in the same table from level 1, because compaction
 // can push any table down.
-//
-// Update (Sep 22, 2018): To maintain the above invariant, and to allow keys to be moved from one
-// value log to another (while reclaiming space during value log GC), we have logically moved this
-// need to write "old versions after new versions" to the badgerMove keyspace. Thus, for normal
-// gets, we can stop going down the LSM tree once we find any version of the key (note however that
-// we will ALWAYS skip versions with ts greater than the key version).  However, if that key has
-// been moved, then for the corresponding movekey, we'll look through all the levels of the tree
-// to ensure that we pick the highest version of the movekey present.
 func (db *DB) get(key []byte) (y.ValueStruct, error) {
 	tables, decr := db.getMemTables() // Lock should be released.
 	defer decr()
-
-	var maxVs *y.ValueStruct
-	var version uint64
-	if bytes.HasPrefix(key, badgerMove) {
-		// If we are checking badgerMove key, we should look into all the
-		// levels, so we can pick up the newer versions, which might have been
-		// compacted down the tree.
-		maxVs = &y.ValueStruct{}
-		version = y.ParseTs(key)
-	}
 
 	y.NumGets.Add(1)
 	for i := 0; i < len(tables); i++ {
 		vs := tables[i].Get(key)
 		y.NumMemtableGets.Add(1)
-		if vs.Meta == 0 && vs.Value == nil {
-			continue
-		}
-		// Found a version of the key. For user keyspace, return immediately. For move keyspace,
-		// continue iterating, unless we found a version == given key version.
-		if maxVs == nil || vs.Version == version {
+		if vs.Meta != 0 || vs.Value != nil {
 			return vs, nil
 		}
-		if maxVs.Version < vs.Version {
-			*maxVs = vs
-		}
 	}
-	return db.lc.get(key, maxVs)
+	return db.lc.get(key)
 }
 
 func (db *DB) updateOffset(ptrs []valuePointer) {
@@ -680,7 +655,7 @@ func (db *DB) doWrites(lc *y.Closer) {
 
 	writeRequests := func(reqs []*request) {
 		if err := db.writeRequests(reqs); err != nil {
-			Errorf("writeRequests: %v", err)
+			log.Printf("ERROR in Badger::writeRequests: %v", err)
 		}
 		<-pendingCh
 	}
@@ -823,86 +798,73 @@ type flushTask struct {
 	vptr valuePointer
 }
 
-// handleFlushTask must be run serially.
-func (db *DB) handleFlushTask(ft flushTask) error {
-	if !ft.mt.Empty() {
-		// Store badger head even if vptr is zero, need it for readTs
-		db.elog.Printf("Storing offset: %+v\n", ft.vptr)
-		offset := make([]byte, vptrSize)
-		ft.vptr.Encode(offset)
-
-		// Pick the max commit ts, so in case of crash, our read ts would be higher than all the
-		// commits.
-		headTs := y.KeyWithTs(head, db.orc.nextTs())
-		ft.mt.Put(headTs, y.ValueStruct{Value: offset})
-	}
-
-	fileID := db.lc.reserveFileID()
-	fd, err := y.CreateSyncedFile(table.NewFilename(fileID, db.opt.Dir), true)
-	if err != nil {
-		return y.Wrap(err)
-	}
-
-	// Don't block just to sync the directory entry.
-	dirSyncCh := make(chan error)
-	go func() { dirSyncCh <- syncDir(db.opt.Dir) }()
-
-	err = writeLevel0Table(ft.mt, fd)
-	dirSyncErr := <-dirSyncCh
-
-	if err != nil {
-		db.elog.Errorf("ERROR while writing to level 0: %v", err)
-		return err
-	}
-	if dirSyncErr != nil {
-		// Do dir sync as best effort. No need to return due to an error there.
-		db.elog.Errorf("ERROR while syncing level directory: %v", dirSyncErr)
-	}
-
-	tbl, err := table.OpenTable(fd, db.opt.TableLoadingMode)
-	if err != nil {
-		db.elog.Printf("ERROR while opening table: %v", err)
-		return err
-	}
-	// We own a ref on tbl.
-	err = db.lc.addLevel0Table(tbl) // This will incrRef (if we don't error, sure)
-	tbl.DecrRef()                   // Releases our ref.
-	if err != nil {
-		return err
-	}
-
-	// Update s.imm. Need a lock.
-	db.Lock()
-	defer db.Unlock()
-	// This is a single-threaded operation. ft.mt corresponds to the head of
-	// db.imm list. Once we flush it, we advance db.imm. The next ft.mt
-	// which would arrive here would match db.imm[0], because we acquire a
-	// lock over DB when pushing to flushChan.
-	// TODO: This logic is dirty AF. Any change and this could easily break.
-	y.AssertTrue(ft.mt == db.imm[0])
-	db.imm = db.imm[1:]
-	ft.mt.DecrRef() // Return memory.
-	return nil
-}
-
-// flushMemtable must keep running until we send it an empty flushTask. If there
-// are errors during handling the flush task, we'll retry indefinitely.
+// TODO: Ensure that this function doesn't return, or is handled by another wrapper function.
+// Otherwise, we would have no goroutine which can flush memtables.
 func (db *DB) flushMemtable(lc *y.Closer) error {
 	defer lc.Done()
 
 	for ft := range db.flushChan {
 		if ft.mt == nil {
-			return nil // Stop this goroutine.
+			return nil
 		}
-		for {
-			err := db.handleFlushTask(ft)
-			if err == nil {
-				break
-			}
-			// Encounterd error. Retry indefinitely.
-			Errorf("Failure while flushing memtable to disk: %v. Retrying...\n", err)
-			time.Sleep(time.Second)
+
+		if !ft.mt.Empty() {
+			// Store badger head even if vptr is zero, need it for readTs
+			db.elog.Printf("Storing offset: %+v\n", ft.vptr)
+			offset := make([]byte, vptrSize)
+			ft.vptr.Encode(offset)
+
+			// Pick the max commit ts, so in case of crash, our read ts would be higher than all the
+			// commits.
+			headTs := y.KeyWithTs(head, db.orc.commitTs())
+			ft.mt.Put(headTs, y.ValueStruct{Value: offset})
 		}
+
+		fileID := db.lc.reserveFileID()
+		fd, err := y.CreateSyncedFile(table.NewFilename(fileID, db.opt.Dir), true)
+		if err != nil {
+			return y.Wrap(err)
+		}
+
+		// Don't block just to sync the directory entry.
+		dirSyncCh := make(chan error)
+		go func() { dirSyncCh <- syncDir(db.opt.Dir) }()
+
+		err = writeLevel0Table(ft.mt, fd)
+		dirSyncErr := <-dirSyncCh
+
+		if err != nil {
+			db.elog.Errorf("ERROR while writing to level 0: %v", err)
+			return err
+		}
+		if dirSyncErr != nil {
+			db.elog.Errorf("ERROR while syncing level directory: %v", dirSyncErr)
+			return err
+		}
+
+		tbl, err := table.OpenTable(fd, db.opt.TableLoadingMode)
+		if err != nil {
+			db.elog.Printf("ERROR while opening table: %v", err)
+			return err
+		}
+		// We own a ref on tbl.
+		err = db.lc.addLevel0Table(tbl) // This will incrRef (if we don't error, sure)
+		tbl.DecrRef()                   // Releases our ref.
+		if err != nil {
+			return err
+		}
+
+		// Update s.imm. Need a lock.
+		db.Lock()
+		// This is a single-threaded operation. ft.mt corresponds to the head of
+		// db.imm list. Once we flush it, we advance db.imm. The next ft.mt
+		// which would arrive here would match db.imm[0], because we acquire a
+		// lock over DB when pushing to flushChan.
+		// TODO: This logic is dirty AF. Any change and this could easily break.
+		y.AssertTrue(ft.mt == db.imm[0])
+		db.imm = db.imm[1:]
+		ft.mt.DecrRef() // Return memory.
+		db.Unlock()
 	}
 	return nil
 }
@@ -1007,7 +969,7 @@ func (db *DB) RunValueLogGC(discardRatio float64) error {
 	// Find head on disk
 	headKey := y.KeyWithTs(head, math.MaxUint64)
 	// Need to pass with timestamp, lsm get removes the last 8 bytes and compares key
-	val, err := db.lc.get(headKey, nil)
+	val, err := db.lc.get(headKey)
 	if err != nil {
 		return errors.Wrap(err, "Retrieving head from on-disk LSM")
 	}
@@ -1084,13 +1046,11 @@ func (seq *Sequence) updateLease() error {
 		} else if err != nil {
 			return err
 		} else {
-			var num uint64
-			if err := item.Value(func(v []byte) error {
-				num = binary.BigEndian.Uint64(v)
-				return nil
-			}); err != nil {
+			val, err := item.Value()
+			if err != nil {
 				return err
 			}
+			num := binary.BigEndian.Uint64(val)
 			seq.next = num
 		}
 
@@ -1109,13 +1069,7 @@ func (seq *Sequence) updateLease() error {
 // available, in the database. Sequence can be used to get a list of monotonically increasing
 // integers. Multiple sequences can be created by providing different keys. Bandwidth sets the
 // size of the lease, determining how many Next() requests can be served from memory.
-//
-// GetSequence is not supported on ManagedDB. Calling this would result in a panic.
 func (db *DB) GetSequence(key []byte, bandwidth uint64) (*Sequence, error) {
-	if db.opt.managedTxns {
-		panic("Cannot use GetSequence with managedDB=true.")
-	}
-
 	switch {
 	case len(key) == 0:
 		return nil, ErrEmptyKey
@@ -1199,12 +1153,11 @@ func (op *MergeOperator) iterateAndMerge(txn *Txn) (val []byte, err error) {
 				return nil, err
 			}
 		} else {
-			if err := item.Value(func(newVal []byte) error {
-				val = op.f(val, newVal)
-				return nil
-			}); err != nil {
+			newVal, err := item.Value()
+			if err != nil {
 				return nil, err
 			}
+			val = op.f(val, newVal)
 		}
 		if item.DiscardEarlierVersions() {
 			break
@@ -1257,7 +1210,7 @@ func (op *MergeOperator) runCompactions(dur time.Duration) {
 		case <-ticker.C: // wait for tick
 		}
 		if err := op.compact(); err != nil {
-			Errorf("failure while running merge operation: %s", err)
+			log.Printf("Error while running merge operation: %s", err)
 		}
 		if stop {
 			ticker.Stop()

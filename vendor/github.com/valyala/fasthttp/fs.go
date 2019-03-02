@@ -943,7 +943,7 @@ func (h *fsHandler) createDirIndex(base *URI, dirPath string, mustCompress bool)
 	}
 
 	fm := make(map[string]os.FileInfo, len(fileinfos))
-	var filenames []string
+	filenames := make([]string, 0, len(fileinfos))
 	for _, fi := range fileinfos {
 		name := fi.Name()
 		if strings.HasSuffix(name, h.compressedFileSuffix) {
@@ -958,7 +958,7 @@ func (h *fsHandler) createDirIndex(base *URI, dirPath string, mustCompress bool)
 	base.CopyTo(&u)
 	u.Update(string(u.Path()) + "/")
 
-	sort.Sort(sort.StringSlice(filenames))
+	sort.Strings(filenames)
 	for _, name := range filenames {
 		u.Update(name)
 		pathEscaped := html.EscapeString(string(u.Path()))
