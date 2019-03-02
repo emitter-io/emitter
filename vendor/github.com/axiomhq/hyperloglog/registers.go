@@ -19,7 +19,7 @@ func (r *reg) set(offset, val uint8) bool {
 		tmpVal := uint8((*r) << 4 >> 4)
 		*r = reg(tmpVal | (val << 4))
 	} else {
-		isZero = *r > 15
+		isZero = *r&0x0f == 0
 		tmpVal := uint8((*r) >> 4 << 4)
 		*r = reg(tmpVal | val)
 	}

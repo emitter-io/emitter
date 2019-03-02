@@ -28,37 +28,56 @@ type Sketch struct {
 	regs       *registers
 }
 
-//New returns a HyperLogLog Sketch with 2^14 registers (precision 14)
+// New returns a HyperLogLog Sketch with 2^14 registers (precision 14)
 func New() *Sketch {
 	return New14()
 }
 
-//New14 returns a HyperLogLog Sketch with 2^14 registers (precision 14)
+// New14 returns a HyperLogLog Sketch with 2^14 registers (precision 14)
 func New14() *Sketch {
-	sk, _ := new(14)
+	sk, _ := new(14, true)
 	return sk
 }
 
-//New16 returns a HyperLogLog Sketch with 2^16 registers (precision 16)
+// New16 returns a HyperLogLog Sketch with 2^16 registers (precision 16)
 func New16() *Sketch {
-	sk, _ := new(16)
+	sk, _ := new(16, true)
 	return sk
 }
 
-// New returns a HyperLogLog Sketch with 2^precision registers
-func new(precision uint8) (*Sketch, error) {
+// NewNoSparse returns a HyperLogLog Sketch with 2^14 registers (precision 14)
+// that will not use a sparse representation
+func NewNoSparse() *Sketch {
+	sk, _ := new(14, false)
+	return sk
+}
+
+// New16NoSparse returns a HyperLogLog Sketch with 2^16 registers (precision 16)
+// that will not use a sparse representation
+func New16NoSparse() *Sketch {
+	sk, _ := new(16, false)
+	return sk
+}
+
+// new returns a HyperLogLog Sketch with 2^precision registers
+func new(precision uint8, sparse bool) (*Sketch, error) {
 	if precision < 4 || precision > 18 {
 		return nil, fmt.Errorf("p has to be >= 4 and <= 18")
 	}
 	m := uint32(math.Pow(2, float64(precision)))
-	return &Sketch{
-		m:          m,
-		p:          precision,
-		alpha:      alpha(float64(m)),
-		sparse:     true,
-		tmpSet:     set{},
-		sparseList: newCompressedList(int(m)),
-	}, nil
+	s := &Sketch{
+		m:     m,
+		p:     precision,
+		alpha: alpha(float64(m)),
+	}
+	if sparse {
+		s.sparse = true
+		s.tmpSet = set{}
+		s.sparseList = newCompressedList(int(m))
+	} else {
+		s.regs = newRegisters(m)
+	}
+	return s, nil
 }
 
 // Clone returns a deep copy of sk.
@@ -322,8 +341,16 @@ func (sk *Sketch) MarshalBinary() (data []byte, err error) {
 	return data, nil
 }
 
+// ErrorTooShort is an error that UnmarshalBinary try to parse too short
+// binary.
+var ErrorTooShort = errors.New("too short binary")
+
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface.
 func (sk *Sketch) UnmarshalBinary(data []byte) error {
+	if len(data) < 8 {
+		return ErrorTooShort
+	}
+
 	// Unmarshal version. We may need this in the future if we make
 	// non-compatible changes.
 	_ = data[0]
@@ -331,18 +358,25 @@ func (sk *Sketch) UnmarshalBinary(data []byte) error {
 	// Unmarshal p.
 	p := data[1]
 
-	newh, err := new(p)
-	if err != nil {
-		return err
-	}
-	*sk = *newh
-
 	// Unmarshal b.
 	sk.b = data[2]
 
+	// Determine if we need a sparse Sketch
+	sparse := data[3] == byte(1)
+
+	// Make a new Sketch if the precision doesn't match or if the Sketch was used
+	if sk.p != p || sk.regs != nil || len(sk.tmpSet) > 0 || (sk.sparseList != nil && sk.sparseList.Len() > 0) {
+		newh, err := new(p, sparse)
+		if err != nil {
+			return err
+		}
+		newh.b = sk.b
+		*sk = *newh
+	}
+
 	// h is now initialised with the correct p. We just need to fill the
 	// rest of the details out.
-	if data[3] == byte(1) {
+	if sparse {
 		// Using the sparse Sketch.
 		sk.sparse = true
 
