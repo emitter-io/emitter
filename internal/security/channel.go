@@ -231,7 +231,7 @@ func (c *Channel) parseChannel(text []byte) (i int) {
 			continue
 
 		// Valid character, but nothing special
-		case (symbol >= 45 && symbol <= 58) || (symbol >= 65 && symbol <= 122):
+		case (symbol >= 45 && symbol <= 58) || (symbol >= 65 && symbol <= 122) || symbol == 36:
 			if wildcards > 0 {
 				c.ChannelType = ChannelInvalid
 				return i

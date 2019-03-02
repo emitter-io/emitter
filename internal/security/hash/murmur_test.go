@@ -36,6 +36,11 @@ func TestMeHash(t *testing.T) {
 	assert.Equal(t, uint32(2539734036), h)
 }
 
+func TestShareHash(t *testing.T) {
+	h := Of([]byte("$share"))
+	assert.Equal(t, uint32(1480642916), h)
+}
+
 func TestLinkHash(t *testing.T) {
 	h := Of([]byte("link"))
 	assert.Equal(t, uint32(2667034312), h)

@@ -204,7 +204,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 			channel := security.ParseChannel([]byte(tc.channel))
 			key, _ := s.Cipher.DecryptKey(channel.Key)
 			ssid := message.NewSsid(key.Contract(), channel.Query)
-			subscribers := s.subscriptions.Lookup(ssid)
+			subscribers := s.subscriptions.Lookup(ssid, nil)
 			assert.Equal(t, tc.subCount, len(subscribers))
 
 			// Unsubscribe and check for error.
@@ -212,7 +212,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 			assert.Equal(t, tc.unsubErr, unsubErr, tc.msg)
 
 			// Search for the ssid.
-			subscribers = s.subscriptions.Lookup(ssid)
+			subscribers = s.subscriptions.Lookup(ssid, nil)
 			assert.Equal(t, tc.unsubCount, len(subscribers))
 		})
 	}

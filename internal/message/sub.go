@@ -28,6 +28,7 @@ const (
 	presence = uint32(3869262148)
 	query    = uint32(3939663052)
 	wildcard = uint32(1815237614)
+	share    = uint32(1480642916)
 )
 
 // Query represents a constant SSID for a query.
@@ -51,6 +52,15 @@ func NewSsidForPresence(original Ssid) Ssid {
 	ssid = append(ssid, system)
 	ssid = append(ssid, presence)
 	ssid = append(ssid, original...)
+	return ssid
+}
+
+// NewSsidForShare creates a new SSID for shared subscriptions.
+func NewSsidForShare(original Ssid) Ssid {
+	ssid := make([]uint32, 0, len(original)+1)
+	ssid = append(ssid, original[0])
+	ssid = append(ssid, share)
+	ssid = append(ssid, original[1:]...)
 	return ssid
 }
 

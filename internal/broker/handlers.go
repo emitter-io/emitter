@@ -405,7 +405,7 @@ func (s *Service) OnSurvey(queryType string, payload []byte) ([]byte, bool) {
 // lookupPresence performs a subscriptions lookup and returns a presence information.
 func (s *Service) lookupPresence(ssid message.Ssid) []presenceInfo {
 	resp := make([]presenceInfo, 0, 4)
-	for _, subscriber := range s.subscriptions.Lookup(ssid) {
+	for _, subscriber := range s.subscriptions.Lookup(ssid, nil) {
 		if conn, ok := subscriber.(*Conn); ok {
 			resp = append(resp, presenceInfo{
 				ID:       conn.ID(),

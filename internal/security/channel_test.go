@@ -207,6 +207,7 @@ func TestGetChannelTarget(t *testing.T) {
 		target  uint32
 	}{
 		{channel: "emitter/a/?ttl=42&abc=9", target: 0xc103eab3},
+		{channel: "emitter/$share/a/b/c/", target: 1480642916},
 	}
 
 	for _, tc := range tests {
