@@ -119,7 +119,7 @@ func (t *Trie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 func (t *Trie) Lookup(ssid Ssid, filter func(s Subscriber) bool) (subs Subscribers) {
 	t.RLock()
 	t.lookup(ssid, &subs, t.root, filter)
-	if contractNode, ok := t.root.children[ssid[0]]; ok && len(ssid) >= 4 {
+	if contractNode, ok := t.root.children[ssid[0]]; ok {
 		if shareNode, ok := contractNode.children[share]; ok {
 			t.randomByGroup(ssid[1:], &subs, shareNode, filter)
 		}

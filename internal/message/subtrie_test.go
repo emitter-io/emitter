@@ -60,6 +60,8 @@ func TestTrieMatch(t *testing.T) {
 		"key/$share/group1/a/b/c/",
 		"key/$share/group2/a/b/c/",
 		"key/$share/group2/a/b/",
+		"key/$share/group3/y/",
+		"key/$share/group3/y/",
 	})
 
 	// Tests to run
@@ -78,9 +80,10 @@ func TestTrieMatch(t *testing.T) {
 		{topic: "key/a/b/c/d/", n: 7},
 		{topic: "key/a/b/c/e/", n: 6},
 		{topic: "key/x/y/c/e/", n: 2},
+		{topic: "key/y/", n: 1},
 	}
 
-	assert.Equal(t, 12, m.Count())
+	assert.Equal(t, 14, m.Count())
 	for _, tc := range tests {
 		result := m.Lookup(testSub(tc.topic), nil)
 		assert.Equal(t, tc.n, len(result), tc.topic)
