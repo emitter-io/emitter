@@ -151,7 +151,6 @@ func (s *SSD) Query(ssid message.Ssid, from, until time.Time, limit int) (messag
 		}
 	}
 
-	match.Sort()
 	match.Limit(limit)
 	return match, nil
 }
@@ -195,7 +194,8 @@ func (s *SSD) lookup(q lookupQuery) (matches message.Frame) {
 		prefix := message.NewPrefix(q.Ssid, q.Until)
 
 		// Seek the prefix and check the key so we can quickly exit the iteration.
-		for it.Seek(prefix); it.Valid() && message.ID(it.Item().Key()).HasPrefix(q.Ssid, q.From) &&
+		for it.Seek(prefix); it.Valid() &&
+			message.ID(it.Item().Key()).HasPrefix(q.Ssid, q.From) &&
 			len(matches) < q.Limit; it.Next() {
 			if message.ID(it.Item().Key()).Match(q.Ssid, q.From, q.Until) {
 				if msg, err := loadMessage(it.Item()); err == nil {
