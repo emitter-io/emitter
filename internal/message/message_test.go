@@ -91,13 +91,14 @@ func BenchmarkEncodeWithSnappy(b *testing.B) {
 
 func TestFrameLimit(t *testing.T) {
 	f := Frame{
+		newTestMessage(Ssid{1, 2, 1}, "a/b/a/", "hello aba"),
+		newTestMessage(Ssid{1, 2, 2}, "a/b/b/", "hello abb"),
 		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
-		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
-		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
-		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
+		newTestMessage(Ssid{1, 2, 4}, "a/b/d/", "hello abd"),
 	}
 
-	f.Sort()
 	f.Limit(2)
 	assert.Len(t, f, 2)
+	assert.Equal(t, "a/b/c/", string(f[0].Channel))
+	assert.Equal(t, "a/b/d/", string(f[1].Channel))
 }
