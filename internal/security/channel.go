@@ -302,8 +302,8 @@ func (c *Channel) parseOptions(text []byte) (i int, ok bool) {
 
 		// Set the option
 		c.Options = append(c.Options, ChannelOption{
-			Key:   unsafeToString(key),
-			Value: unsafeToString(val),
+			Key:   binaryToString(&key),
+			Value: binaryToString(&val),
 		})
 
 		val = val[0:0]
@@ -313,10 +313,6 @@ func (c *Channel) parseOptions(text []byte) (i int, ok bool) {
 	return i, true
 }
 
-// unsafeToString is used when you really want to convert a slice
-// of bytes to a string without incurring overhead. It is only safe
-// to use if you really know the byte slice is not going to change
-// in the lifetime of the string
-func unsafeToString(bs []byte) string {
-	return *(*string)(unsafe.Pointer(&bs))
+func binaryToString(b *[]byte) string {
+	return *(*string)(unsafe.Pointer(b))
 }

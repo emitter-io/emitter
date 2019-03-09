@@ -1,6 +1,8 @@
 package message
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/emitter-io/emitter/internal/security"
@@ -92,22 +94,23 @@ func TestSub_getOrCreate(t *testing.T) {
 }
 
 func TestSubscribers(t *testing.T) {
-	var subs Subscribers
+	subs := newSubscribers()
+	sub := &testSubscriber{id: "x"}
 
 	{
-		added := subs.AddUnique(nil)
+		added := subs.AddUnique(sub)
 		assert.True(t, added)
 	}
 	{
-		added := subs.AddUnique(nil)
+		added := subs.AddUnique(sub)
 		assert.False(t, added)
 	}
 	{
-		removed := subs.Remove(nil)
+		removed := subs.Remove(sub)
 		assert.True(t, removed)
 	}
 	{
-		removed := subs.Remove(nil)
+		removed := subs.Remove(sub)
 		assert.False(t, removed)
 	}
 }
@@ -162,4 +165,52 @@ func TestSub_Increment(t *testing.T) {
 	// Test decrement previously incremented counter.
 	isDecremented = counters.Decrement(ssid2)
 	assert.True(t, isDecremented)
+}
+
+func TestCollisions(t *testing.T) {
+	subs := newSubscribers()
+	count := 100000
+	for i := 0; i < count; i++ {
+		subs.AddUnique(&testSubscriber{fmt.Sprintf("%d", i)})
+	}
+	assert.Equal(t, count, subs.Size())
+}
+
+func TestRandom(t *testing.T) {
+	rand.Seed(42)
+	for count := 2; count < 20; count++ {
+		testRandom(t, count, 100000)
+	}
+}
+
+func testRandom(t *testing.T, count, iter int) {
+	subs := newSubscribers()
+	for i := 0; i < count; i++ {
+		subs.AddUnique(&testSubscriber{fmt.Sprintf("%d", i)})
+	}
+
+	n := 1552127721834
+	x := uint32((n >> 32) ^ n)
+	out := make(map[string]int)
+	for i := 0; i < iter; i++ {
+		x ^= x << 13
+		x ^= x >> 17
+		x ^= x << 5
+		r := x
+		if s := subs.Random(r); s != nil {
+			out[s.ID()]++
+		}
+	}
+
+	assert.Equal(t, count, len(out))
+	avg := float64(iter) / float64(count)
+	for k, v := range out {
+		p := (float64(v) - float64(avg)) / float64(avg)
+		if p < 0 {
+			p = -p
+		}
+		if p > 0.05 {
+			t.Fatalf("[count = %d] skew more than 5%% for key '%v' it's %.2f%%", count, k, p*100)
+		}
+	}
 }
