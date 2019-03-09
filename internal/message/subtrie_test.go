@@ -191,6 +191,7 @@ func BenchmarkSubscriptionTrieUnsubscribe(b *testing.B) {
 
 // BenchmarkTrieLargeN-8   	      50	  24884968 ns/op	    5163 B/op	       8 allocs/op
 // BenchmarkTrieLargeN-8   	    2000	    637117 ns/op	   12309 B/op	      10 allocs/op
+// BenchmarkTrieLargeN-8   	    3000	    542881 ns/op	   12277 B/op	      10 allocs/op
 func BenchmarkTrieLargeN(b *testing.B) {
 	rand.Seed(42)
 	var (
@@ -212,6 +213,7 @@ func BenchmarkTrieLargeN(b *testing.B) {
 // BenchmarkSubscriptionTrieLookup-8   	  200000	      5415 ns/op	     528 B/op	       6 allocs/op
 // BenchmarkSubscriptionTrieLookup-8   	  300000	      4940 ns/op	     496 B/op	       5 allocs/op
 // BenchmarkSubscriptionTrieLookup-8   	  200000	      9525 ns/op	     755 B/op	       2 allocs/op
+// BenchmarkSubscriptionTrieLookup-8   	  200000	      8183 ns/op	     752 B/op	       2 allocs/op
 func BenchmarkSubscriptionTrieLookup(b *testing.B) {
 	rand.Seed(42)
 	var (

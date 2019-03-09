@@ -214,3 +214,19 @@ func testRandom(t *testing.T, count, iter int) {
 		}
 	}
 }
+
+// BenchmarkReset-8   	    2000	    560516 ns/op	     409 B/op	       0 allocs/op
+func BenchmarkReset(b *testing.B) {
+	orig := newSubscribers()
+	subs := newSubscribers()
+	for i := 0; i < 10000; i++ {
+		orig.AddUnique(&testSubscriber{fmt.Sprintf("%d", i)})
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		subs.AddRange(orig, nil)
+		subs.Reset()
+	}
+}

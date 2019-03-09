@@ -145,39 +145,35 @@ func newSubscribers() Subscribers {
 
 // AddUnique adds a subscriber to the set.
 func (s *Subscribers) AddUnique(value Subscriber) bool {
-	if value == nil {
-		return false
+	if value != nil {
+		key := hash.OfString(value.ID())
+		if _, found := (*s)[key]; !found {
+			(*s)[key] = value
+			return true
+		}
 	}
-
-	key := hash.OfString(value.ID())
-	if _, found := (*s)[key]; !found {
-		(*s)[key] = value
-		return true
-	}
-
 	return false
 }
 
 // AddRange adds multiple subscribers from an existing list of subscribers, with filter applied.
 func (s *Subscribers) AddRange(from Subscribers, filter func(s Subscriber) bool) {
 	for id, v := range from {
-		if _, ok := (*s)[id]; !ok && (filter == nil || filter(v)) {
-			(*s)[id] = v
+		if filter == nil || filter(v) {
+			(*s)[id] = v // This would simply overwrite duplicates
 		}
 	}
 }
 
 // Remove removes a subscriber from the set.
 func (s *Subscribers) Remove(value Subscriber) bool {
-	if value == nil {
-		return false
+	if value != nil {
+		key := hash.OfString(value.ID())
+		if _, ok := (*s)[key]; ok {
+			delete(*s, key)
+			return true
+		}
 	}
 
-	key := hash.OfString(value.ID())
-	if _, ok := (*s)[key]; ok {
-		delete(*s, key)
-		return true
-	}
 	return false
 }
 
