@@ -206,8 +206,8 @@ func (s *Subscribers) Random(rnd uint32) (v Subscriber) {
 	return
 }
 
-// contains checks whether a subscriber is in the set.
-func (s *Subscribers) contains(value Subscriber) (ok bool) {
+// Contains checks whether a subscriber is in the set.
+func (s *Subscribers) Contains(value Subscriber) (ok bool) {
 	key := hash.OfString(value.ID())
 	_, ok = (*s)[key]
 	return

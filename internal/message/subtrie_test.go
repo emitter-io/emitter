@@ -278,7 +278,7 @@ func BenchmarkSubscriptionTrieLookupCold(b *testing.B) {
 func assertEqual(assert *assert.Assertions, actual Subscribers, expected ...Subscriber) {
 	assert.Equal(actual.Size(), len(expected))
 	for _, sub := range expected {
-		assert.True(actual.contains(sub))
+		assert.True(actual.Contains(sub))
 	}
 }
 
