@@ -1,6 +1,7 @@
 package message
 
 import (
+	"fmt"
 	"math/rand"
 	"strings"
 	"testing"
@@ -41,7 +42,7 @@ func TestTrieMatch1(t *testing.T) {
 
 	for _, tc := range tests {
 		result := m.Lookup(testSub(tc.topic), nil)
-		assert.Equal(t, tc.n, len(result))
+		assert.Equal(t, tc.n, result.Size())
 	}
 }
 
@@ -61,7 +62,7 @@ func TestTrieMatch(t *testing.T) {
 		"key/$share/group2/a/b/c/",
 		"key/$share/group2/a/b/",
 		"key/$share/group3/y/",
-		"key/$share/group3/y/",
+		"key/$share/group3/y/", // Duplicate (same ID)
 	})
 
 	// Tests to run
@@ -83,10 +84,10 @@ func TestTrieMatch(t *testing.T) {
 		{topic: "key/y/", n: 1},
 	}
 
-	assert.Equal(t, 14, m.Count())
+	assert.Equal(t, 13, m.Count())
 	for _, tc := range tests {
 		result := m.Lookup(testSub(tc.topic), nil)
-		assert.Equal(t, tc.n, len(result), tc.topic)
+		assert.Equal(t, tc.n, result.Size(), tc.topic)
 	}
 }
 
@@ -94,9 +95,9 @@ func TestTrieIntegration(t *testing.T) {
 	assert := assert.New(t)
 	var (
 		m  = NewTrie()
-		s0 = new(testSubscriber)
-		s1 = new(testSubscriber)
-		s2 = new(testSubscriber)
+		s0 = &testSubscriber{"s0"}
+		s1 = &testSubscriber{"s1"}
+		s2 = &testSubscriber{"s2"}
 	)
 
 	sub0, err := m.Subscribe([]uint32{1, wildcard}, s0)
@@ -116,11 +117,11 @@ func TestTrieIntegration(t *testing.T) {
 	_, err = m.Subscribe([]uint32{wildcard}, s2)
 	assert.NoError(err)
 
-	assertEqual(assert, Subscribers{s0, s1, s2}, m.Lookup([]uint32{1, 3}, nil))
-	assertEqual(assert, Subscribers{s2}, m.Lookup([]uint32{1}, nil))
-	assertEqual(assert, Subscribers{s1, s2}, m.Lookup([]uint32{4, 5}, nil))
-	assertEqual(assert, Subscribers{s0, s1, s2}, m.Lookup([]uint32{1, 5}, nil))
-	assertEqual(assert, Subscribers{s1, s2}, m.Lookup([]uint32{4}, nil))
+	assertEqual(assert, m.Lookup([]uint32{1, 3}, nil), s0, s1, s2)
+	assertEqual(assert, m.Lookup([]uint32{1}, nil), s2)
+	assertEqual(assert, m.Lookup([]uint32{4, 5}, nil), s1, s2)
+	assertEqual(assert, m.Lookup([]uint32{1, 5}, nil), s0, s1, s2)
+	assertEqual(assert, m.Lookup([]uint32{4}, nil), s1, s2)
 
 	m.Unsubscribe(sub0.Ssid, sub0.Subscriber)
 	m.Unsubscribe(sub1.Ssid, sub1.Subscriber)
@@ -131,11 +132,11 @@ func TestTrieIntegration(t *testing.T) {
 	m.Unsubscribe(sub6.Ssid, sub6.Subscriber)
 	m.Unsubscribe(sub6.Ssid, sub6.Subscriber)
 
-	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1, 3}, nil))
-	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1}, nil))
-	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{4, 5}, nil))
-	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{1, 5}, nil))
-	assertEqual(assert, []Subscriber{}, m.Lookup([]uint32{4}, nil))
+	assertEqual(assert, m.Lookup([]uint32{1, 3}, nil))
+	assertEqual(assert, m.Lookup([]uint32{1}, nil))
+	assertEqual(assert, m.Lookup([]uint32{4, 5}, nil))
+	assertEqual(assert, m.Lookup([]uint32{1, 5}, nil))
+	assertEqual(assert, m.Lookup([]uint32{4}, nil))
 }
 
 // Populates the trie with a set of strings
@@ -188,10 +189,31 @@ func BenchmarkSubscriptionTrieUnsubscribe(b *testing.B) {
 	}
 }
 
+// BenchmarkTrieLargeN-8   	      50	  24884968 ns/op	    5163 B/op	       8 allocs/op
+// BenchmarkTrieLargeN-8   	    2000	    637117 ns/op	   12309 B/op	      10 allocs/op
+// BenchmarkTrieLargeN-8   	    3000	    542881 ns/op	   12277 B/op	      10 allocs/op
+func BenchmarkTrieLargeN(b *testing.B) {
+	rand.Seed(42)
+	var (
+		m     = NewTrie()
+		query = []uint32{1, 2, 3}
+	)
+
+	populateMatcher(m, 100000, 3)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.Lookup(query, nil)
+	}
+}
+
 // BenchmarkSubscriptionTrieLookup-8   	  200000	     11055 ns/op	    5072 B/op	      52 allocs/op
 // BenchmarkSubscriptionTrieLookup-8   	  200000	      7106 ns/op	    1504 B/op	      11 allocs/op
 // BenchmarkSubscriptionTrieLookup-8   	  200000	      5415 ns/op	     528 B/op	       6 allocs/op
 // BenchmarkSubscriptionTrieLookup-8   	  300000	      4940 ns/op	     496 B/op	       5 allocs/op
+// BenchmarkSubscriptionTrieLookup-8   	  200000	      9525 ns/op	     755 B/op	       2 allocs/op
+// BenchmarkSubscriptionTrieLookup-8   	  200000	      8183 ns/op	     752 B/op	       2 allocs/op
 func BenchmarkSubscriptionTrieLookup(b *testing.B) {
 	rand.Seed(42)
 	var (
@@ -255,14 +277,15 @@ func BenchmarkSubscriptionTrieLookupCold(b *testing.B) {
 	}
 }
 
-func assertEqual(assert *assert.Assertions, expected, actual Subscribers) {
-	assert.Len(actual, len(expected))
-	for _, sub := range actual {
-		assert.True(expected.Contains(sub))
+func assertEqual(assert *assert.Assertions, actual Subscribers, expected ...Subscriber) {
+	assert.Equal(actual.Size(), len(expected))
+	for _, sub := range expected {
+		assert.True(actual.Contains(sub))
 	}
 }
 
 func populateMatcher(m *Trie, num, topicSize int) {
+
 	for i := 0; i < num; i++ {
 		topic := make([]uint32, 0)
 		for j := 0; j < topicSize; j++ {
@@ -270,10 +293,10 @@ func populateMatcher(m *Trie, num, topicSize int) {
 		}
 
 		// Add a normal subscriber
-		m.Subscribe(topic, new(testSubscriber))
+		m.Subscribe(topic, &testSubscriber{fmt.Sprintf("%d", rand.Int())})
 
 		// Add a share subscriber
 		topic[1] = share
-		m.Subscribe(topic, new(testSubscriber))
+		m.Subscribe(topic, &testSubscriber{fmt.Sprintf("%d", rand.Int())})
 	}
 }

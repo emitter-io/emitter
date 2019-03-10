@@ -32,7 +32,7 @@ func (n *node) orphan() {
 	}
 
 	delete(n.parent.children, n.word)
-	if len(n.parent.subs) == 0 && len(n.parent.children) == 0 {
+	if n.parent.subs.Size() == 0 && len(n.parent.children) == 0 {
 		n.parent.orphan()
 	}
 }
@@ -48,7 +48,7 @@ type Trie struct {
 func NewTrie() *Trie {
 	return &Trie{
 		root: &node{
-			subs:     Subscribers{},
+			subs:     newSubscribers(),
 			children: make(map[uint32]*node),
 		},
 	}
@@ -70,7 +70,7 @@ func (t *Trie) Subscribe(ssid Ssid, sub Subscriber) (*Subscription, error) {
 		if !ok {
 			child = &node{
 				word:     word,
-				subs:     Subscribers{},
+				subs:     newSubscribers(),
 				parent:   curr,
 				children: make(map[uint32]*node),
 			}
@@ -108,7 +108,7 @@ func (t *Trie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 	}
 
 	// Remove orphans
-	if len(curr.subs) == 0 && len(curr.children) == 0 {
+	if curr.subs.Size() == 0 && len(curr.children) == 0 {
 		curr.orphan()
 	}
 	t.Unlock()
@@ -116,6 +116,7 @@ func (t *Trie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 
 // Lookup returns the Subscribers for the given topic.
 func (t *Trie) Lookup(ssid Ssid, filter func(s Subscriber) bool) (subs Subscribers) {
+	subs = newSubscribers()
 	t.RLock()
 	t.lookup(ssid, &subs, t.root, filter)
 	if contractNode, ok := t.root.children[ssid[0]]; ok {
@@ -131,11 +132,7 @@ func (t *Trie) Lookup(ssid Ssid, filter func(s Subscriber) bool) (subs Subscribe
 func (t *Trie) lookup(query Ssid, subs *Subscribers, node *node, filter func(s Subscriber) bool) {
 
 	// Add subscribers from the current branch
-	for _, s := range node.subs {
-		if filter == nil || filter(s) {
-			subs.AddUnique(s)
-		}
-	}
+	subs.AddRange(node.subs, filter)
 
 	// If we're done, stop
 	if len(query) == 0 {
@@ -158,7 +155,7 @@ var temp = &sync.Pool{
 	New: func() interface{} {
 		x := time.Now().UnixNano()
 		return &tempState{
-			list: make(Subscribers, 0, 8),
+			list: newSubscribers(),
 			rand: uint32((x >> 32) ^ x),
 		}
 	},
@@ -176,9 +173,9 @@ func (t *Trie) randomByGroup(query Ssid, subs *Subscribers, shareNode *node, fil
 
 	// Select a random subscriber from each share group (child of the share node)
 	for _, n := range shareNode.children {
-		tmp.list = tmp.list[:0] // recycle
+		tmp.list.Reset() // recycle
 		t.lookup(query, &tmp.list, n, filter)
-		if len(tmp.list) == 0 {
+		if tmp.list.Size() == 0 {
 			continue
 		}
 
@@ -190,8 +187,7 @@ func (t *Trie) randomByGroup(query Ssid, subs *Subscribers, shareNode *node, fil
 		tmp.rand = x
 
 		// Select a random element from the list and add it
-		x = uint32((uint64(x) * uint64(len(tmp.list))) >> 32)
-		subs.AddUnique(tmp.list[x])
+		subs.AddUnique(tmp.list.Random(x))
 
 	}
 	return

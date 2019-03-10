@@ -20,8 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//  16.1 ns/op             0 B/op          0 allocs/op
-func BenchmarkGetHash(b *testing.B) {
+// BenchmarkOf-8   	100000000	        14.5 ns/op	       0 B/op	       0 allocs/op
+func BenchmarkOf(b *testing.B) {
 	v := []byte("a/b/c/d/e/f/g/h/this/is/emitter")
 
 	b.ReportAllocs()
@@ -31,8 +31,19 @@ func BenchmarkGetHash(b *testing.B) {
 	}
 }
 
+// BenchmarkOfString-8   	100000000	        18.4 ns/op	       0 B/op	       0 allocs/op
+func BenchmarkOfString(b *testing.B) {
+	v := "a/b/c/d/e/f/g/h/this/is/emitter"
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = OfString(v)
+	}
+}
+
 func TestMeHash(t *testing.T) {
-	h := Of([]byte("me"))
+	h := OfString("me")
 	assert.Equal(t, uint32(2539734036), h)
 }
 
