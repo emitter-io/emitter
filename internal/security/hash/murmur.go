@@ -15,6 +15,7 @@
 package hash
 
 import (
+	"reflect"
 	"unsafe"
 )
 
@@ -22,6 +23,11 @@ const (
 	c1_32 uint32 = 0xcc9e2d51
 	c2_32 uint32 = 0x1b873593
 )
+
+// OfString returns a murmur32 hash for the string
+func OfString(value string) uint32 {
+	return Of(stringToBinary(value))
+}
 
 // Of returns a murmur32 hash for the data slice.
 func Of(data []byte) uint32 {
@@ -74,4 +80,15 @@ func Of(data []byte) uint32 {
 	h1 ^= h1 >> 16
 
 	return (h1 << 24) | (((h1 >> 8) << 16) & 0xFF0000) | (((h1 >> 16) << 8) & 0xFF00) | (h1 >> 24)
+}
+
+func stringToBinary(v string) (b []byte) {
+	strHeader := (*reflect.StringHeader)(unsafe.Pointer(&v))
+	byteHeader := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	byteHeader.Data = strHeader.Data
+
+	l := len(v)
+	byteHeader.Len = l
+	byteHeader.Cap = l
+	return
 }
