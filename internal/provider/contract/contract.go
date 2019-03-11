@@ -59,7 +59,7 @@ func (c *contract) Validate(key security.Key) bool {
 		c.State == ContractStateAllowed
 }
 
-// Gets the usage statistics.
+// Stats gets the usage statistics.
 func (c *contract) Stats() usage.Meter {
 	return c.stats
 }
