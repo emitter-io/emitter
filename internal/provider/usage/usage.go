@@ -72,7 +72,7 @@ func (t *usage) AddDevice(addr string) {
 	t.Devices.Insert([]byte(addr))
 }
 
-// Returns the estimated number of devices.
+// DeviceCount returns the estimated number of devices.
 func (t *usage) DeviceCount() int {
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
