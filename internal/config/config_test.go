@@ -42,7 +42,7 @@ func Test_New(t *testing.T) {
 	assert.NotNil(t, c)
 }
 
-func Test_DefaultMaxMessageSize(t *testing.T){
+func Test_DefaultMaxMessageSize(t *testing.T) {
 	c := New("test.conf", dynamo.NewProvider())
 	defer os.Remove("test.conf")
 

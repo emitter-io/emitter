@@ -88,6 +88,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", s.onHealth)
 	mux.HandleFunc("/keygen", s.onHTTPKeyGen)
+	mux.HandleFunc("/keycheck", s.onHTTPKeyCheck)
 	mux.HandleFunc("/presence", s.onHTTPPresence)
 	mux.HandleFunc("/debug/pprof/", pprof.Index)          // TODO: use config flag to enable/disable this
 	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline) // TODO: use config flag to enable/disable this
@@ -314,7 +315,93 @@ func (s *Service) onHTTPKeyGen(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Occurs when a new HTTP keycheck request is received.
+func (s *Service) onHTTPKeyCheck(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	// Deserialize the body.
+	msg := keyCheckRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&msg)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	keyCheckRespObj := new(keyCheckResponse)
+
+	// Attempt to parse the key, this should be a master key
+	key, err := s.Cipher.DecryptKey([]byte(msg.Key))
+	if err != nil {
+		keyCheckRespObj.Status = fmt.Sprintf("Invalid key: %v", err)
+		resp, err := json.Marshal(keyCheckRespObj)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Write(resp)
+		return
+	}
+
+	keyCheckRespObj.Status = "OK"
+	keyCheckRespObj.Permissions = keyCheckPermissions{
+		Master:   key.HasPermission(security.AllowMaster),
+		Read:     key.HasPermission(security.AllowRead),
+		Write:    key.HasPermission(security.AllowWrite),
+		Store:    key.HasPermission(security.AllowStore),
+		Load:     key.HasPermission(security.AllowLoad),
+		Presence: key.HasPermission(security.AllowPresence),
+		Extend:   key.HasPermission(security.AllowExtend),
+		Execute:  key.HasPermission(security.AllowExecute),
+	}
+
+	keyCheckRespObj.Expires = key.Expires().Unix()
+	if key.Expires() == time.Unix(0, 0).UTC() {
+		keyCheckRespObj.ExpiresText = "[no expiration]"
+	} else {
+		keyCheckRespObj.ExpiresText = fmt.Sprintf("%v", key.Expires())
+	}
+
+	if key.IsExpired() {
+		keyCheckRespObj.Status = "Expired"
+		resp, err := json.Marshal(keyCheckRespObj)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Write(resp)
+		return
+	}
+
+	// Ensure we have trailing slash
+	if !strings.HasSuffix(msg.Channel, "/") {
+		msg.Channel = msg.Channel + "/"
+	}
+
+	// Parse the channel
+	channel := security.ParseChannel([]byte("emitter/" + msg.Channel))
+	if channel.ChannelType == security.ChannelInvalid {
+		keyCheckRespObj.ChannelAccessible = false
+	} else {
+		keyCheckRespObj.ChannelAccessible = true
+	}
+
+	resp, err := json.Marshal(keyCheckRespObj)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(resp)
+	return
+}
+
 // Occurs when a new HTTP presence request is received.
+// Occurs when a check HTTP presence request is receiCheck.
 func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusNotFound)

@@ -154,6 +154,34 @@ func (r *meResponse) ForRequest(id uint16) {
 
 // ------------------------------------------------------------------------------------
 
+type keyCheckRequest struct {
+	Key     string `json:"key"`     // The key for this request.
+	Channel string `json:"channel"` // The channel to test with this request.
+}
+
+// ------------------------------------------------------------------------------------
+
+type keyCheckResponse struct {
+	Status            string              `json:"status"`             // The textual status of this response.
+	Expires           int64               `json:"expires"`            // The expiration UNIX timestamp
+	ExpiresText       string              `json:"expires_text"`       // The expiration in text format
+	ChannelAccessible bool                `json:"channel_accessible"` // Specifies that the given channel is accessible with the given key
+	Permissions       keyCheckPermissions `json:"permissions"`        // The permissions associated with the key
+}
+
+type keyCheckPermissions struct {
+	Master   bool `json:"master"`   // Specifies Master key permissions
+	Read     bool `json:"read"`     // Specifies Read key permissions
+	Write    bool `json:"write"`    // Specifies Write key permissions
+	Store    bool `json:"store"`    // Specifies Store key permissions
+	Load     bool `json:"load"`     // Specifies Load key permissions
+	Presence bool `json:"presence"` // Specifies Presence key permissions
+	Extend   bool `json:"extend"`   // Specifies Extend key permissions
+	Execute  bool `json:"execute"`  // Specifies Execute key permissions
+}
+
+// ------------------------------------------------------------------------------------
+
 type presenceRequest struct {
 	Key     string `json:"key"`     // The channel key for this request.
 	Channel string `json:"channel"` // The target channel for this request.
