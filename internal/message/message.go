@@ -85,10 +85,11 @@ func (f Frame) Sort() {
 	sort.Slice(f, func(i, j int) bool { return f[i].Time() < f[j].Time() })
 }
 
-// Limit limits the frame to a specific number of elements
+// Limit takes the last N elements, sorted by message time
 func (f *Frame) Limit(n int) {
-	if len(*f) > n {
-		*f = (*f)[:n]
+	f.Sort()
+	if size := len(*f); size > n {
+		*f = (*f)[size-n:]
 	}
 }
 

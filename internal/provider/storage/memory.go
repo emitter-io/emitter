@@ -121,7 +121,6 @@ func (s *InMemory) Query(ssid message.Ssid, from, until time.Time, limit int) (m
 		}
 	}
 
-	match.Sort()
 	match.Limit(limit)
 	return match, nil
 }
