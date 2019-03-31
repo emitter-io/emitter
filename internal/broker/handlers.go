@@ -91,6 +91,22 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 	ssid := message.NewSsid(key.Contract(), channel.Query)
 	c.Subscribe(ssid, channel.Channel)
 
+	// Write the stats
+	c.track(contract)
+
+	var errorSendHistory *Error
+	// Check if the key has a load permission (also applies for retained)
+	if key.HasPermission(security.AllowLoad) {
+		errorSendHistory = c.sendHistory(channel, ssid)
+	}
+
+	return errorSendHistory
+}
+
+// ------------------------------------------------------------------------------------
+
+// sendHistory sends messages stored for the channel based on the "last" parameter.
+func (c *Conn) sendHistory(channel *security.Channel, ssid message.Ssid) *Error {
 	// Use limit = 1 if not specified, otherwise use the limit option. The limit now
 	// defaults to one as per MQTT spec we always need to send retained messages.
 	limit := int64(1)
@@ -98,24 +114,19 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 		limit = v
 	}
 
-	// Check if the key has a load permission (also applies for retained)
-	if key.HasPermission(security.AllowLoad) {
-		t0, t1 := channel.Window() // Get the window
-		msgs, err := c.service.storage.Query(ssid, t0, t1, int(limit))
-		if err != nil {
-			logging.LogError("conn", "query last messages", err)
-			return ErrServerError
-		}
-
-		// Range over the messages in the channel and forward them
-		for _, m := range msgs {
-			msg := m // Copy message
-			c.Send(&msg)
-		}
+	t0, t1 := channel.Window() // Get the window
+	msgs, err := c.service.storage.Query(ssid, t0, t1, int(limit))
+	if err != nil {
+		logging.LogError("conn", "query last messages", err)
+		return ErrServerError
 	}
 
-	// Write the stats
-	c.track(contract)
+	// Range over the messages in the channel and forward them
+	for _, m := range msgs {
+		msg := m // Copy message
+		c.Send(&msg)
+	}
+
 	return nil
 }
 
@@ -276,7 +287,13 @@ func (c *Conn) onLink(payload []byte) (response, bool) {
 
 	// If an auto-subscribe was requested and the key has read permissions, subscribe
 	if _, key, allowed := c.authorize(channel, security.AllowRead); allowed && request.Subscribe {
-		c.Subscribe(message.NewSsid(key.Contract(), channel.Query), channel.Channel)
+		ssid := message.NewSsid(key.Contract(), channel.Query)
+		c.Subscribe(ssid, channel.Channel)
+
+		// Check if the key has a load permission (also applies for retained)
+		if key.HasPermission(security.AllowLoad) {
+			c.sendHistory(channel, ssid)
+		}
 	}
 
 	return &linkResponse{
