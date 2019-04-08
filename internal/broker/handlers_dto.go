@@ -158,7 +158,7 @@ type presenceRequest struct {
 	Key     string `json:"key"`     // The channel key for this request.
 	Channel string `json:"channel"` // The target channel for this request.
 	Status  bool   `json:"status"`  // Specifies that a status response should be sent.
-	Changes bool   `json:"changes"` // Specifies that the changes should be notified.
+	Changes *bool  `json:"changes"` // Specifies that the changes should be notified.
 }
 
 type presenceEvent string
