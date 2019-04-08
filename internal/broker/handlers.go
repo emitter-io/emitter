@@ -449,7 +449,7 @@ func (c *Conn) onPresence(payload []byte) (response, bool) {
 	// Deserialize the payload.
 	msg := presenceRequest{
 		Status:  true, // Default: send status info
-		Changes: true, // Default: send all changes
+		Changes: nil,  // Default: send all changes
 	}
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		return ErrBadRequest, false
@@ -487,10 +487,12 @@ func (c *Conn) onPresence(payload []byte) (response, bool) {
 	ssid := message.NewSsid(key.Contract(), channel.Query)
 
 	// Check if the client is interested in subscribing/unsubscribing from changes.
-	if msg.Changes {
-		c.Subscribe(message.NewSsidForPresence(ssid), nil)
-	} else {
-		c.Unsubscribe(message.NewSsidForPresence(ssid), nil)
+	if msg.Changes != nil {
+		if *msg.Changes {
+			c.Subscribe(message.NewSsidForPresence(ssid), nil)
+		} else {
+			c.Unsubscribe(message.NewSsidForPresence(ssid), nil)
+		}
 	}
 
 	// If we requested a status, populate the slice via scatter/gather.
