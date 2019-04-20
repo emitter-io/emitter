@@ -219,7 +219,9 @@ func (c *Conn) onPublish(packet *mqtt.Publish) *Error {
 func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte, requestID uint16) (ok bool) {
 	var resp response
 	defer func() {
-		c.sendResponse(channel.String(), resp, requestID)
+		if resp != nil {
+			c.sendResponse(channel.String(), resp, requestID)
+		}
 	}()
 
 	// Make sure we have a query
@@ -502,12 +504,12 @@ func (c *Conn) onPresence(payload []byte) (response, bool) {
 
 		// Gather local & cluster presence
 		who = append(who, getAllPresence(c.service, ssid)...)
+		return &presenceResponse{
+			Time:    now,
+			Event:   presenceStatusEvent,
+			Channel: msg.Channel,
+			Who:     who,
+		}, true
 	}
-
-	return &presenceResponse{
-		Time:    now,
-		Event:   presenceStatusEvent,
-		Channel: msg.Channel,
-		Who:     who,
-	}, true
+	return nil, true
 }
