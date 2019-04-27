@@ -39,7 +39,7 @@ The following [set of videos](https://www.youtube.com/playlist?list=PLhFXrq-2gEb
 The quick way to start an Emitter broker is by using `docker run` command as shown below. 
 
 ```shell
-docker run -d --name emitter -p 8080:8080 --privileged --restart=unless-stopped emitter/server
+docker run -d --name emitter -p 8080:8080 --restart=unless-stopped emitter/server
 ```
 
 Alternatively, you might compile this repository and use `go get` command to rebuild and run from source. 
