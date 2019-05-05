@@ -151,6 +151,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		monitor.NewNoop(),
 		monitor.NewHTTP(sampler),
 		monitor.NewStatsd(sampler, nodeName),
+		monitor.NewPrometheus(sampler, mux),
 	).(monitor.Storage)
 	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
 
