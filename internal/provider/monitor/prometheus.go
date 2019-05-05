@@ -9,7 +9,6 @@ import (
 	"github.com/emitter-io/emitter/internal/async"
 	"github.com/emitter-io/stats"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -18,6 +17,7 @@ var _ Storage = new(Prometheus)
 
 // Prometheus represents a storage which publishes stats to a statsd sink.
 type Prometheus struct {
+	registry   *prometheus.Registry            // Prometheus registry
 	reader     stats.Snapshotter               // The reader which reads the snapshot of stats.
 	cancel     context.CancelFunc              // The cancellation function.
 	gauges     map[string]prometheus.Gauge     // The gauges created
@@ -27,9 +27,15 @@ type Prometheus struct {
 // NewPrometheus creates a new prometheus endpoint.
 func NewPrometheus(snapshotter stats.Snapshotter, mux *http.ServeMux) *Prometheus {
 
-	mux.Handle("/metrics", promhttp.Handler())
+	// manage own prometheus registry
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	registry.MustRegister(prometheus.NewGoCollector())
+
+	mux.Handle("/metrics", promhttp.InstrumentMetricHandler(registry, promhttp.HandlerFor(registry, promhttp.HandlerOpts{})))
 
 	return &Prometheus{
+		registry:   registry,
 		reader:     snapshotter,
 		gauges:     make(map[string]prometheus.Gauge, 0),
 		histograms: make(map[string]prometheus.Histogram, 0),
@@ -88,16 +94,27 @@ func (p *Prometheus) addGauge(metric string) prometheus.Gauge {
 	opts := prometheus.GaugeOpts{
 		Name: strings.Replace(metric, ".", "_", -1),
 	}
-	p.gauges[metric] = promauto.NewGauge(opts)
-	return p.gauges[metric]
+
+	g := prometheus.NewGauge(opts)
+	if err := p.registry.Register(g); err != nil {
+		panic(err)
+	}
+
+	p.gauges[metric] = g
+
+	return g
 }
 
 func (p *Prometheus) addHistogram(metric string) prometheus.Histogram {
 	opts := prometheus.HistogramOpts{
 		Name: strings.Replace(metric, ".", "_", -1),
 	}
-	p.histograms[metric] = promauto.NewHistogram(opts)
-	return p.histograms[metric]
+	h := prometheus.NewHistogram(opts)
+	if err := p.registry.Register(h); err != nil {
+		panic(err)
+	}
+	p.histograms[metric] = h
+	return h
 }
 
 // sends the metric as a gauge

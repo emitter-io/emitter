@@ -4,6 +4,7 @@ require (
 	github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7 // indirect
 	github.com/aws/aws-sdk-go v1.17.9 // indirect
 	github.com/axiomhq/hyperloglog v0.0.0-20181223111420-4b99d0c2c99e
+	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger v1.5.4
 	github.com/dgryski/go-farm v0.0.0-20180109070241-2de33835d102 // indirect
 	github.com/dgryski/go-metro v0.0.0-20180109044635-280f6062b5bc // indirect
