@@ -81,7 +81,4 @@ func TestPrometheus_Request(t *testing.T) {
 
 	// from the NewGoCollector
 	assert.Contains(t, string(content), "go_threads")
-
-	// from the ProcessCollector
-	assert.Contains(t, string(content), "process_cpu_seconds_total")
 }

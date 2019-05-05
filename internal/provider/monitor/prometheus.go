@@ -29,7 +29,6 @@ func NewPrometheus(snapshotter stats.Snapshotter, mux *http.ServeMux) *Prometheu
 
 	// manage own prometheus registry
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	registry.MustRegister(prometheus.NewGoCollector())
 
 	mux.Handle("/metrics", promhttp.InstrumentMetricHandler(registry, promhttp.HandlerFor(registry, promhttp.HandlerOpts{})))
