@@ -10,7 +10,6 @@ require (
 	github.com/emitter-io/address v1.0.0
 	github.com/emitter-io/config v1.0.0
 	github.com/emitter-io/stats v1.0.1
-	github.com/golang/protobuf v0.0.0-20181005181728-ddf22928ea3c // indirect
 	github.com/golang/snappy v0.0.1
 	github.com/gorilla/websocket v1.4.0
 	github.com/kelindar/binary v1.0.1
@@ -18,6 +17,7 @@ require (
 	github.com/klauspost/compress v1.4.1 // indirect
 	github.com/klauspost/cpuid v1.2.0 // indirect
 	github.com/pkg/errors v0.0.0-20181008045315-2233dee583dc // indirect
+	github.com/prometheus/client_golang v0.9.2
 	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/tidwall/btree v0.0.0-20170113224114-9876f1454cf0 // indirect
@@ -30,9 +30,6 @@ require (
 	github.com/tidwall/tinyqueue v0.0.0-20180302190814-1e39f5511563 // indirect
 	github.com/valyala/fasthttp v1.2.0
 	github.com/weaveworks/mesh v0.0.0-20190204141226-512bdb7b3cb7
-	golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25
-	golang.org/x/net v0.0.0-20190301231341-16b79f2e4e95 // indirect
-	golang.org/x/sys v0.0.0-20190302025703-b6889370fb10 // indirect
-	golang.org/x/text v0.3.0 // indirect
+	golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
