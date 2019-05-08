@@ -86,7 +86,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	// Create a new HTTP request multiplexer
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", s.onHealth)
-	mux.HandleFunc("/keygen", s.onHTTPKeyGen)
+	mux.HandleFunc("/keygen", handleKeyGen(s))
 	mux.HandleFunc("/presence", s.onHTTPPresence)
 	mux.HandleFunc("/debug/pprof/", pprof.Index)          // TODO: use config flag to enable/disable this
 	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline) // TODO: use config flag to enable/disable this
@@ -302,11 +302,6 @@ func (s *Service) onRequest(w http.ResponseWriter, r *http.Request) {
 // Occurs when a new HTTP health check is received.
 func (s *Service) onHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
-}
-
-// Occurs when a new HTTP request is received.
-func (s *Service) onHTTPKeyGen(w http.ResponseWriter, r *http.Request) {
-	handleKeyGen(s)
 }
 
 // Occurs when a new HTTP presence request is received.

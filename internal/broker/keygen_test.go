@@ -104,7 +104,7 @@ func TestGenerateKey(t *testing.T) {
 			PermissionStore:          "on",
 			PermissionPresence:       "on",
 			PermissionExtend:         "on",
-			ExpectedResponseContains: "success: ",
+			ExpectedResponseContains: "key    :",
 		},
 		testCase{
 			Scenario:                 "Request with empty valid arguments",
@@ -117,7 +117,7 @@ func TestGenerateKey(t *testing.T) {
 			PermissionStore:          "",
 			PermissionPresence:       "",
 			PermissionExtend:         "",
-			ExpectedResponseContains: "success: ",
+			ExpectedResponseContains: "key    :",
 		},
 		testCase{
 			Scenario:                 "Request with invalid arguments",

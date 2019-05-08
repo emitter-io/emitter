@@ -170,6 +170,7 @@ func handleKeyGen(s *Service) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		f := keygenForm{Sub: true}
 		switch r.Method {
 		case "GET":
@@ -184,7 +185,7 @@ func handleKeyGen(s *Service) http.HandlerFunc {
 					if err != nil {
 						f.Response = err.Error()
 					} else {
-						f.Response = fmt.Sprintf("channel: %s\nsuccess: %s", f.Channel, key)
+						f.Response = fmt.Sprintf("channel: %s\nkey    : %s", f.Channel, key)
 					}
 
 				}
