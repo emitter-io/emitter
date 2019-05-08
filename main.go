@@ -14,6 +14,8 @@ import (
 	"github.com/emitter-io/emitter/internal/security"
 )
 
+//go:generate go run internal/broker/generate/assets_gen.go
+
 func main() {
 	// Process command-line arguments
 	argConfig := flag.String("config", "emitter.conf", "The configuration file to use for the broker.")

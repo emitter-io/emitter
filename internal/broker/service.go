@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -307,12 +306,7 @@ func (s *Service) onHealth(w http.ResponseWriter, r *http.Request) {
 
 // Occurs when a new HTTP request is received.
 func (s *Service) onHTTPKeyGen(w http.ResponseWriter, r *http.Request) {
-	if resp, err := http.Get("http://s3-eu-west-1.amazonaws.com/cdn.emitter.io/web/keygen.html"); err == nil {
-		if content, err := ioutil.ReadAll(resp.Body); err == nil {
-			w.Write(content)
-			return
-		}
-	}
+	handleKeyGen(s)
 }
 
 // Occurs when a new HTTP presence request is received.
