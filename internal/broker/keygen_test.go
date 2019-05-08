@@ -57,6 +57,21 @@ func TestRenderKeyGenPage(t *testing.T) {
 	assert.NotEmpty(t, content)
 }
 
+func TestHeadRequest(t *testing.T) {
+
+	handler, teardown := setup(t)
+	defer teardown()
+
+	req := httptest.NewRequest("PUT", "https://emitter.io/keygen", nil)
+	w := httptest.NewRecorder()
+
+	// act
+	handler(w, req)
+
+	// assert
+	assert.Equal(t, 405, w.Code)
+}
+
 func TestGenerateKey(t *testing.T) {
 
 	handler, teardown := setup(t)
@@ -105,6 +120,19 @@ func TestGenerateKey(t *testing.T) {
 			ExpectedResponseContains: "success: ",
 		},
 		testCase{
+			Scenario:                 "Request with invalid arguments",
+			Key:                      keygenTestSecret,
+			Channel:                  "bar/",
+			TTL:                      "bad",
+			PermissionSub:            "bad",
+			PermissionPub:            "bad",
+			PermissionLoad:           "bad",
+			PermissionStore:          "bad",
+			PermissionPresence:       "bad",
+			PermissionExtend:         "bad",
+			ExpectedResponseContains: "invalid arguments",
+		},
+		testCase{
 			Scenario:                 "Request with invalid TTL",
 			Key:                      keygenTestSecret,
 			Channel:                  "bar/",
@@ -122,7 +150,7 @@ func TestGenerateKey(t *testing.T) {
 			Scenario:                 "Pass missing secret",
 			Key:                      "",
 			Channel:                  "bar/",
-			PermissionSub:            "on",
+			PermissionSub:            "off",
 			ExpectedResponseContains: "Missing SecretKey",
 		},
 		testCase{
@@ -166,5 +194,4 @@ func TestGenerateKey(t *testing.T) {
 		response := strings.TrimSpace(keyGenResponseM.FindStringSubmatch(string(content))[1])
 		assert.Contains(t, response, c.ExpectedResponseContains, c.Scenario)
 	}
-
 }
