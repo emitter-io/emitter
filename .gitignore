@@ -16,7 +16,6 @@
 debug
 *.log
 *.sst
-*.html
 build/*
 *.log
 *.bat
