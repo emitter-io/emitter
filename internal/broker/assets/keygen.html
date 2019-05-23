@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" crossorigin="anonymous">
+    <style>
+        pre { border:  none; padding: 5px; background-color: transparent}
+        .string { color: #d35400; }
+        .number { color: #8e44ad; }
+        .boolean { color: #27ae60; }
+        .null { color: #c0392b; }
+        .key { color: #2980b9; }
+    </style>
+</head>
+<body>
+    <div class="container" id="content">
+        <div class="row">
+            <form method="post">
+                <div class="col-md-offset-2 col-md-8">
+                    <h3>Key Generation</h3>
+                    <div class="well">
+                    <div class="form-group">
+                        <label for="keygenKey">Secret Key</label>
+                        <input type="text" class="form-control" name="key" value="{{.Key}}" required="true" placeholder="[Required] Your secret key">
+                    </div>
+                    <div class="form-group">
+                        <label for="keygenChannel">Target Channel</label>
+                        <input type="text" class="form-control" name="channel" value="{{.Channel}}" required="true" placeholder="[Required] The target channel to secure with the key">
+                    </div>
+                    <div class="form-group">
+                        <label for="keygenTtl">Time-To-Live</label>
+                        <input type="number" class="form-control" name="ttl" value={{.TTL}} placeholder="Number of seconds after which the key will expire">
+                    </div>    
+                    <div class="form-group">
+                        <label>Security Access</label>
+                        <div class="checkbox"><label><input name="sub" {{ isChecked .Sub }} type="checkbox"> Allow <b>read</b> (subscribe) from the channel</label></div>
+                        <div class="checkbox"><label><input name="pub" {{ isChecked .Pub }} type="checkbox"> Allow <b>write</b> (publish) to the channel</label></div>
+                        <div class="checkbox"><label><input name="store" {{ isChecked .Store }} type="checkbox"> Allow <b>store</b> messages into the channel store</label></div>
+                        <div class="checkbox"><label><input name="load" {{ isChecked .Load }} type="checkbox"> Allow <b>load</b> messages from the channel store</label></div>
+                        <div class="checkbox"><label><input name="presence" {{ isChecked .Presence }} type="checkbox"> Allow <b>presence</b> querying </label></div>
+                        <div class="checkbox"><label><input name="extend" {{ isChecked .Extend }} type="checkbox"> Allow <b>extending</b> for private sub-channels</label></div>
+                    </div>
+    
+                    <div class="form-group">
+                        <button id="keygen" type="submit" class="btn btn-default">Generate Key</button>
+                    </div>
+                    <pre id="keygenResponse">{{.Response}}</pre>
+                    </div>
+                </div>
+     
+            </form>
+        </div>
+    </div>
+</body>
+</html>
