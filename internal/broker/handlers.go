@@ -345,34 +345,9 @@ func (c *Conn) onKeyGen(payload []byte) (response, bool) {
 		return ErrBadRequest, false
 	}
 
-	// Attempt to parse the key, this should be a master key
-	masterKey, err := c.service.Cipher.DecryptKey([]byte(message.Key))
-	if err != nil || !masterKey.IsMaster() || masterKey.IsExpired() {
-		return ErrUnauthorized, false
-	}
-
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := c.service.contracts.Get(masterKey.Contract())
-	if !contractFound {
-		return ErrNotFound, false
-	}
-
-	// Validate the contract
-	if !contract.Validate(masterKey) {
-		return ErrUnauthorized, false
-	}
-
-	// Use the cipher to generate the key
-	key, err := c.service.Cipher.GenerateKey(masterKey, message.Channel, message.access(), message.expires(), -1)
+	key, err := c.service.generateKey(message.Key, message.Channel, message.access(), message.expires())
 	if err != nil {
-		switch err {
-		case security.ErrTargetInvalid:
-			return ErrTargetInvalid, false
-		case security.ErrTargetTooLong:
-			return ErrTargetTooLong, false
-		default:
-			return ErrServerError, false
-		}
+		return err, false
 	}
 
 	// Success, return the response
@@ -381,6 +356,40 @@ func (c *Conn) onKeyGen(payload []byte) (response, bool) {
 		Key:     key,
 		Channel: message.Channel,
 	}, true
+}
+
+func (s *Service) generateKey(rawMasterKey string, channel string, access uint8, expires time.Time) (string, *Error) {
+	// Attempt to parse the key, this should be a master key
+	masterKey, err := s.Cipher.DecryptKey([]byte(rawMasterKey))
+	if err != nil || !masterKey.IsMaster() || masterKey.IsExpired() {
+		return "", ErrUnauthorized
+	}
+
+	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract, contractFound := s.contracts.Get(masterKey.Contract())
+	if !contractFound {
+		return "", ErrNotFound
+	}
+
+	// Validate the contract
+	if !contract.Validate(masterKey) {
+		return "", ErrUnauthorized
+	}
+
+	// Use the cipher to generate the key
+	key, err := s.Cipher.GenerateKey(masterKey, channel, access, expires, -1)
+	if err != nil {
+		switch err {
+		case security.ErrTargetInvalid:
+			return "", ErrTargetInvalid
+		case security.ErrTargetTooLong:
+			return "", ErrTargetTooLong
+		default:
+			return "", ErrServerError
+		}
+	}
+
+	return key, nil
 }
 
 // ------------------------------------------------------------------------------------
