@@ -3,7 +3,7 @@
         "**/.git": true,
         "**/.DS_Store": true,
         ".gitignore": true,
-        "vendor/": true,
+       // "vendor/": true,
         ".vscode": true,
         "build*": true,
         "LICENSE": true,

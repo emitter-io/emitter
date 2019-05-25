@@ -23,11 +23,6 @@ type Reader interface {
 	io.ByteReader
 }
 
-// Slicer represents a reader which can slice without copying.
-type Slicer interface {
-	Slice(n int) ([]byte, error)
-}
-
 // Unmarshal decodes the payload from the binary format.
 func Unmarshal(b []byte, v interface{}) (err error) {
 
@@ -44,14 +39,14 @@ func Unmarshal(b []byte, v interface{}) (err error) {
 // Decoder represents a binary decoder.
 type Decoder struct {
 	r       Reader
-	s       Slicer
+	s       *reader // Not using the interface for better inlining
 	scratch [10]byte
 }
 
 // NewDecoder creates a binary decoder.
 func NewDecoder(r Reader) *Decoder {
-	var slicer Slicer
-	if s, ok := r.(Slicer); ok {
+	var slicer *reader
+	if s, ok := r.(*reader); ok {
 		slicer = s
 	}
 

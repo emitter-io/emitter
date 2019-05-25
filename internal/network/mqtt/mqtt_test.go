@@ -53,6 +53,7 @@ func benchmarkPacketEncode(b *testing.B, packet Message) {
 	}
 }
 
+// BenchmarkPublishDecode-8   	 3000000	       458 ns/op	     964 B/op	       4 allocs/op
 func BenchmarkPublishDecode(b *testing.B) {
 	benchmarkPacketDecode(b, &Publish{
 		Header: &StaticHeader{

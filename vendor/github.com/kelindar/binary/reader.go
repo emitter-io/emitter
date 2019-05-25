@@ -73,7 +73,12 @@ func (r *reader) Slice(n int) ([]byte, error) {
 }
 
 // Reset resets the Reader to be reading from b.
-func (r *reader) Reset(b []byte) { *r = reader{b, 0} }
+func (r *reader) Reset(b []byte) {
+	r.s = b
+	r.i = 0
+}
 
 // newReader returns a new Reader reading from b.
-func newReader(b []byte) *reader { return &reader{b, 0} }
+func newReader(b []byte) *reader {
+	return &reader{b, 0}
+}
