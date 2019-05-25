@@ -18,6 +18,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/emitter-io/emitter/internal/collection"
+
 	"github.com/golang/snappy"
 	"github.com/kelindar/binary"
 )
@@ -71,6 +73,8 @@ func (m *Message) Expires() time.Time {
 
 // ------------------------------------------------------------------------------------
 
+var bufferPool = collection.NewBufferPool(64 * 1024)
+
 // Frame represents a message frame which is sent through the wire to the
 // remote server and contains a set of messages.
 type Frame []Message
@@ -95,21 +99,27 @@ func (f *Frame) Limit(n int) {
 
 // Encode encodes the message frame
 func (f *Frame) Encode() (out []byte) {
-	var enc []byte
-	enc, err := binary.Marshal(f)
-	if err != nil {
+
+	// Use a buffer pool to avoid allocating memory over and over again. It's safe here since
+	// we're using snappy right away which would perform a memory copy
+	buffer := bufferPool.Get()
+	defer bufferPool.Put(buffer)
+
+	// Encode into a temporary buffer
+	encoder := binary.NewEncoder(buffer)
+	if err := encoder.Encode(f); err != nil {
 		panic(err) // This should never happen unless there's some terrible bug in the encoder
 	}
 
-	return snappy.Encode(out, enc)
+	return snappy.Encode(out, buffer.Bytes())
 }
 
 // DecodeFrame decodes the message frame from the decoder.
 func DecodeFrame(buf []byte) (out Frame, err error) {
-	// TODO: optimize
-	var buffer []byte
-	if buf, err = snappy.Decode(buffer, buf); err == nil {
-		out = make(Frame, 0, 64)
+	buffer := bufferPool.Get()
+	defer bufferPool.Put(buffer)
+
+	if buf, err = snappy.Decode(buffer.Bytes(), buf); err == nil {
 		err = binary.Unmarshal(buf, &out)
 	}
 	return
