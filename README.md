@@ -193,6 +193,6 @@ If you'd like to contribute, please fork the repository and use a feature branch
 
 ## Licensing
 
-Copyright (c) 2009-2017 Misakai Ltd. This project is licensed under [Affero General Public License v3](https://github.com/emitter-io/emitter/blob/master/LICENSE).
+Copyright (c) 2009-2019 Misakai Ltd. This project is licensed under [Affero General Public License v3](https://github.com/emitter-io/emitter/blob/master/LICENSE).
 
 Emitter offers support contracts and is now also offered via a commercial license. Please contact info@emitter.io for more information.

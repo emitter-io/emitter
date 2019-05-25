@@ -1,3 +1,17 @@
+/**********************************************************************************
+* Copyright (c) 2009-2019 Misakai Ltd.
+* This program is free software: you can redistribute it and/or modify it under the
+* terms of the GNU Affero General Public License as published by the  Free Software
+* Foundation, either version 3 of the License, or(at your option) any later version.
+*
+* This program is distributed  in the hope that it  will be useful, but WITHOUT ANY
+* WARRANTY;  without even  the implied warranty of MERCHANTABILITY or FITNESS FOR A
+* PARTICULAR PURPOSE.  See the GNU Affero General Public License  for  more details.
+*
+* You should have  received a copy  of the  GNU Affero General Public License along
+* with this program. If not, see<http://www.gnu.org/licenses/>.
+************************************************************************************/
+
 package mqtt
 
 import (
@@ -80,7 +94,7 @@ func benchmarkPacketDecode(b *testing.B, packet Message) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		reader.Seek(0, io.SeekStart)
-		_, err := DecodePacket(reader,65536)
+		_, err := DecodePacket(reader, 65536)
 		if err != nil {
 			b.Error(err)
 		}
@@ -109,7 +123,7 @@ func Test_LargePacket(t *testing.T) {
 		go func() {
 			slc := bytes.NewBuffer([]byte{})
 			_, _ = pub.EncodeTo(slc)
-			_, err := DecodePacket(slc,65536)
+			_, err := DecodePacket(slc, 65536)
 			if err != nil {
 				t.Error(err)
 			}
@@ -122,7 +136,7 @@ func Test_LargePacket(t *testing.T) {
 func encodeTestHelper(toEncode Message) bool {
 	buf := bytes.NewBuffer([]byte{})
 	_, _ = toEncode.EncodeTo(buf)
-	msg, err := DecodePacket(buf,65536)
+	msg, err := DecodePacket(buf, 65536)
 	if err != nil {
 		log.Printf("error in here %+v\n", err.Error())
 		return false
@@ -230,7 +244,7 @@ func Test_Publish2(t *testing.T) {
 	}
 	buf := bytes.NewBuffer([]byte{})
 	_, _ = testPkt.EncodeTo(buf)
-	msg, err := DecodePacket(buf,65536)
+	msg, err := DecodePacket(buf, 65536)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -255,7 +269,7 @@ func Test_Publish_WithUnicodeDecoding(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	_, _ = testPkt.EncodeTo(buf)
 
-	msg, err := DecodePacket(buf,65536)
+	msg, err := DecodePacket(buf, 65536)
 	if err != nil {
 		t.Error(err.Error())
 	}
