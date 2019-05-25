@@ -124,7 +124,8 @@ func (p *Peer) processSendQueue() {
 		return
 	}
 
-	// Swap the frame and encode it
+	// Swap the frame and encode it.
+	// TODO: split the frame in chunks of at most 10MB for gossip unicast to work.
 	frame := p.swap()
 	buffer := frame.Encode()
 
