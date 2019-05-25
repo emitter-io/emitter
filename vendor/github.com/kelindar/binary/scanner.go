@@ -105,17 +105,9 @@ func scanType(t reflect.Type) (Codec, error) {
 		for _, i := range s.fields {
 			field := t.Field(i)
 			if c, err := scanType(field.Type); err == nil {
-
-				var nillable bool
-				switch field.Type.Kind() {
-				case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Interface, reflect.Slice:
-					nillable = true
-				}
-
-				v.fields = append(v.fields, fieldCodec{
-					Index:    i,
-					Codec:    c,
-					Nillable: nillable,
+				v = append(v, fieldCodec{
+					Index: i,
+					Codec: c,
 				})
 			} else {
 				return nil, err

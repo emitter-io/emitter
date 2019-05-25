@@ -183,13 +183,15 @@ func (sk *Sketch) toNormal() {
 	sk.sparseList = nil
 }
 
-func (sk *Sketch) insert(i uint32, r uint8) {
+func (sk *Sketch) insert(i uint32, r uint8) bool {
+	changed := false
 	if r-sk.b >= capacity {
 		//overflow
 		db := sk.regs.min()
 		if db > 0 {
 			sk.b += db
 			sk.regs.rebase(db)
+			changed = true
 		}
 	}
 	if r > sk.b {
@@ -200,29 +202,35 @@ func (sk *Sketch) insert(i uint32, r uint8) {
 
 		if val > sk.regs.get(i) {
 			sk.regs.set(i, val)
+			changed = true
 		}
 	}
+	return changed
 }
 
 // Insert adds element e to sketch
-func (sk *Sketch) Insert(e []byte) {
+func (sk *Sketch) Insert(e []byte) bool {
 	x := hash(e)
-	sk.InsertHash(x)
+	return sk.InsertHash(x)
 }
 
 // InsertHash adds hash x to sketch
-func (sk *Sketch) InsertHash(x uint64) {
+func (sk *Sketch) InsertHash(x uint64) bool {
 	if sk.sparse {
-		sk.tmpSet.add(encodeHash(x, sk.p, pp))
+		changed := sk.tmpSet.add(encodeHash(x, sk.p, pp))
+		if !changed {
+			return false
+		}
 		if uint32(len(sk.tmpSet))*100 > sk.m/2 {
 			sk.mergeSparse()
 			if uint32(sk.sparseList.Len()) > sk.m/2 {
 				sk.toNormal()
 			}
 		}
+		return true
 	} else {
 		i, r := getPosVal(x, sk.p)
-		sk.insert(uint32(i), r)
+		return sk.insert(uint32(i), r)
 	}
 }
 

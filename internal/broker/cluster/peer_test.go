@@ -15,6 +15,26 @@ func (s *stubGossip) GossipUnicast(dst mesh.PeerName, msg []byte) error {
 	return nil
 }
 
+// Benchmark_ProcessQueue-8   	    3000	    515299 ns/op	  407117 B/op	      18 allocs/op
+func Benchmark_ProcessQueue(b *testing.B) {
+	msg := newTestMessage(message.Ssid{1, 2, 3}, "a/b/c/", "hello abc")
+	s := new(Swarm)
+	p := s.newPeer(123)
+	p.sender = new(stubGossip)
+	defer p.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for m := 0; m < 1000; m++ {
+			p.Send(&msg)
+		}
+
+		p.processSendQueue()
+	}
+
+}
+
 func TestPeer_Multiple(t *testing.T) {
 	s := new(Swarm)
 	p := s.newPeer(123)

@@ -91,8 +91,9 @@ type byteSliceCodec struct{}
 
 // Encode encodes a value into the encoder.
 func (c *byteSliceCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) {
-	e.WriteUvarint(uint64(rv.Len()))
-	e.Write(rv.Bytes())
+	b := rv.Bytes()
+	e.WriteUvarint(uint64(len(b)))
+	e.Write(b)
 	return
 }
 
@@ -181,12 +182,11 @@ func (c *varuintSliceCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) {
 
 // Decode decodes into a reflect value from the decoder.
 func (c *varuintSliceCodec) DecodeTo(d *Decoder, rv reflect.Value) (err error) {
-	var l uint64
+	var l, v uint64
 	if l, err = binary.ReadUvarint(d.r); err == nil && l > 0 {
 		slice := reflect.MakeSlice(rv.Type(), int(l), int(l))
 		for i := 0; i < int(l); i++ {
-			var v uint64
-			if v, err = binary.ReadUvarint(d.r); err == nil {
+			if v, err = d.ReadUvarint(); err == nil {
 				slice.Index(i).SetUint(v)
 			}
 		}
@@ -198,19 +198,16 @@ func (c *varuintSliceCodec) DecodeTo(d *Decoder, rv reflect.Value) (err error) {
 
 // ------------------------------------------------------------------------------
 
-type reflectStructCodec struct {
-	fields []fieldCodec // Codecs for all of the fields of the struct
-}
+type reflectStructCodec []fieldCodec
 
 type fieldCodec struct {
-	Index    int   // The index of the field
-	Codec    Codec // The codec to use for this field
-	Nillable bool  // The type of the field can be nil or not
+	Index int   // The index of the field
+	Codec Codec // The codec to use for this field
 }
 
 // Encode encodes a value into the encoder.
 func (c *reflectStructCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) {
-	for _, i := range c.fields {
+	for _, i := range *c {
 		if err = i.Codec.EncodeTo(e, rv.Field(i.Index)); err != nil {
 			return
 		}
@@ -220,7 +217,7 @@ func (c *reflectStructCodec) EncodeTo(e *Encoder, rv reflect.Value) (err error) 
 
 // Decode decodes into a reflect value from the decoder.
 func (c *reflectStructCodec) DecodeTo(d *Decoder, rv reflect.Value) (err error) {
-	for _, i := range c.fields {
+	for _, i := range *c {
 		if v := rv.Field(i.Index); v.CanSet() {
 			if err = i.Codec.DecodeTo(d, reflect.Indirect(v)); err != nil {
 				return
