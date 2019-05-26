@@ -75,6 +75,12 @@ func TestInMemory_QueryOrdered(t *testing.T) {
 	testOrder(t, store)
 }
 
+func TestInMemory_QueryRange(t *testing.T) {
+	store := new(InMemory)
+	store.Configure(nil)
+	testRange(t, store)
+}
+
 func TestInMemory_QueryRetained(t *testing.T) {
 	store := new(InMemory)
 	store.Configure(nil)
@@ -137,6 +143,7 @@ func TestInMemory_Query(t *testing.T) {
 func TestInMemory_lookup(t *testing.T) {
 	s := newTestMemStore()
 	const wildcard = uint32(1815237614)
+	zero := time.Unix(0, 0)
 	tests := []struct {
 		query []uint32
 		limit int
@@ -151,13 +158,14 @@ func TestInMemory_lookup(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		matches := s.lookup(lookupQuery{Ssid: tc.query, Limit: tc.limit})
+		matches := s.lookup(newLookupQuery(tc.query, zero, zero, tc.limit))
 		assert.Equal(t, tc.count, len(matches))
 	}
 }
 
 func TestInMemory_OnSurvey(t *testing.T) {
 	s := newTestMemStore()
+	zero := time.Unix(0, 0)
 	tests := []struct {
 		name        string
 		query       lookupQuery
@@ -168,13 +176,13 @@ func TestInMemory_OnSurvey(t *testing.T) {
 		{name: "memstore"},
 		{
 			name:        "memstore",
-			query:       lookupQuery{Ssid: []uint32{0, 1}, Limit: 1},
+			query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 1),
 			expectOk:    true,
 			expectCount: 1,
 		},
 		{
 			name:        "memstore",
-			query:       lookupQuery{Ssid: []uint32{0, 1}, Limit: 10},
+			query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 10),
 			expectOk:    true,
 			expectCount: 6,
 		},
