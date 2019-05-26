@@ -71,7 +71,7 @@ func (c *Salsa) EncryptKey(k security.Key) (string, error) {
 // DecryptKey decrypts the security key from a base64 encoded string.
 func (c *Salsa) DecryptKey(buffer []byte) (security.Key, error) {
 	if len(buffer) != 32 {
-		return nil, errors.New("cipher: the key provided is invalid")
+		return nil, errors.New("cipher: the key provided is not valid")
 	}
 
 	// Warning: we do a base64 decode in the same underlying buffer, to save up
