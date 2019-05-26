@@ -52,18 +52,11 @@ func (c *Salsa) setup(subKey *[32]byte, counter *[16]byte, nonce *[24]byte) {
 	copy(counter[:], nonce[16:])
 }
 
-// nonce *[24]byte, key *[32]byte
-var nonce [24]byte
-var key [32]byte
-
 // EncryptKey encrypts the key and return a base-64 encoded string.
 func (c *Salsa) EncryptKey(k security.Key) (string, error) {
-
 	buffer := make([]byte, 24)
 	copy(buffer[:], k)
 
-	// Then encrypt the key using the master key
-	//fmt.Printf("%v", buffer)
 	err := c.box(buffer)
 	return base64.RawURLEncoding.EncodeToString(buffer), err
 }
@@ -82,7 +75,7 @@ func (c *Salsa) DecryptKey(buffer []byte) (security.Key, error) {
 	}
 
 	// We now need to resize the slice, since we changed it.
-	buffer = buffer[0:n]
+	buffer = buffer[:n]
 
 	// Warning: we do a XTEA decryption in same underlying buffer, to save up
 	// on memory allocations. Keep in mind that the previous data will be lost.

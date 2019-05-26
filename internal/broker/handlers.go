@@ -15,11 +15,8 @@
 package broker
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math"
-	"math/big"
 	"regexp"
 	"strings"
 	"time"
@@ -336,83 +333,6 @@ func (c *Conn) onMe() (response, bool) {
 		ID:    c.ID(),
 		Links: links,
 	}, true
-}
-
-// ------------------------------------------------------------------------------------
-
-// onKeyGen processes a keygen request.
-func (c *Conn) onKeyGen(payload []byte) (response, bool) {
-	// Deserialize the payload.
-	message := keyGenRequest{}
-	if err := json.Unmarshal(payload, &message); err != nil {
-		return ErrBadRequest, false
-	}
-
-	key, err := c.service.generateKey(message.Key, message.Channel, message.access(), message.expires())
-	if err != nil {
-		return err, false
-	}
-
-	// Success, return the response
-	return &keyGenResponse{
-		Status:  200,
-		Key:     key,
-		Channel: message.Channel,
-	}, true
-}
-
-func (s *Service) generateKey(rawMasterKey string, channel string, access uint8, expires time.Time) (string, *Error) {
-	// Attempt to parse the key, this should be a master key
-	masterKey, err := s.Cipher.DecryptKey([]byte(rawMasterKey))
-	if err != nil || !masterKey.IsMaster() || masterKey.IsExpired() {
-		return "", ErrUnauthorized
-	}
-
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := s.contracts.Get(masterKey.Contract())
-	if !contractFound {
-		return "", ErrNotFound
-	}
-
-	// Validate the contract
-	if !contract.Validate(masterKey) {
-		return "", ErrUnauthorized
-	}
-
-	// Generate random salt
-	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt16))
-	if err != nil {
-		return "", ErrServerError
-	}
-
-	// Create a key request
-	key := security.Key(make([]byte, 24))
-	key.SetSalt(uint16(n.Uint64()))
-	key.SetMaster(masterKey.Master())
-	key.SetContract(masterKey.Contract())
-	key.SetSignature(masterKey.Signature())
-	key.SetPermissions(access)
-	key.SetExpires(expires)
-
-	// Set the target and return an convert the error if it occurs
-	if err := key.SetTarget(channel); err != nil {
-		switch err {
-		case security.ErrTargetInvalid:
-			return "", ErrTargetInvalid
-		case security.ErrTargetTooLong:
-			return "", ErrTargetTooLong
-		default:
-			return "", ErrServerError
-		}
-	}
-
-	// Encrypt the final key
-	out, err := s.Cipher.EncryptKey(key)
-	if err != nil {
-		return "", ErrServerError
-	}
-
-	return out, nil
 }
 
 // ------------------------------------------------------------------------------------
