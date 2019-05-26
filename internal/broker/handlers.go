@@ -15,8 +15,11 @@
 package broker
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"math"
+	"math/big"
 	"regexp"
 	"strings"
 	"time"
@@ -376,9 +379,23 @@ func (s *Service) generateKey(rawMasterKey string, channel string, access uint8,
 		return "", ErrUnauthorized
 	}
 
-	// Use the cipher to generate the key
-	key, err := s.Cipher.GenerateKey(masterKey, channel, access, expires, -1)
+	// Generate random salt
+	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt16))
 	if err != nil {
+		return "", ErrServerError
+	}
+
+	// Create a key request
+	key := security.Key(make([]byte, 24))
+	key.SetSalt(uint16(n.Uint64()))
+	key.SetMaster(masterKey.Master())
+	key.SetContract(masterKey.Contract())
+	key.SetSignature(masterKey.Signature())
+	key.SetPermissions(access)
+	key.SetExpires(expires)
+
+	// Set the target and return an convert the error if it occurs
+	if err := key.SetTarget(channel); err != nil {
 		switch err {
 		case security.ErrTargetInvalid:
 			return "", ErrTargetInvalid
@@ -389,7 +406,13 @@ func (s *Service) generateKey(rawMasterKey string, channel string, access uint8,
 		}
 	}
 
-	return key, nil
+	// Encrypt the final key
+	out, err := s.Cipher.EncryptKey(key)
+	if err != nil {
+		return "", ErrServerError
+	}
+
+	return out, nil
 }
 
 // ------------------------------------------------------------------------------------

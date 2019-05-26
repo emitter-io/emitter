@@ -12,42 +12,48 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package broker
+package license
 
 import (
-	"io/ioutil"
 	"testing"
 
-	"github.com/emitter-io/emitter/internal/message"
-	netmock "github.com/emitter-io/emitter/internal/network/mock"
-	"github.com/emitter-io/emitter/internal/security/license"
-	"github.com/emitter-io/stats"
 	"github.com/stretchr/testify/assert"
 )
 
-func newTestConn() (pipe *netmock.Conn, conn *Conn) {
-	license, _ := license.Parse(testLicense)
-	s := &Service{
-		subscriptions: message.NewTrie(),
-		License:       license,
-		measurer:      stats.NewNoop(),
-	}
+func TestNewV2(t *testing.T) {
+	l := NewV2()
+	assert.NotEqual(t, "", l.EncryptionKey)
+	assert.Len(t, l.EncryptionKey, 32)
 
-	pipe = netmock.NewConn()
-	conn = s.newConn(pipe.Client)
-	return
+	c, err := l.Cipher()
+	assert.NotNil(t, c)
+	assert.NoError(t, err)
+
+	text := l.String()
+	assert.NotEqual(t, "", text)
+	assert.Equal(t, ":2", text[len(text)-2:])
+
+	out, err := parseV2(text[:len(text)-2])
+	assert.NoError(t, err)
+	assert.Equal(t, l, out)
+
+	master, err := l.NewMasterKey(9)
+	assert.NoError(t, err)
+	assert.Equal(t, 9, int(master.Master()))
 }
 
-func TestNotifyError(t *testing.T) {
-	pipe, conn := newTestConn()
-	assert.NotNil(t, pipe)
-
-	go func() {
-		conn.notifyError(ErrUnauthorized, 1)
-		conn.Close()
-	}()
-
-	b, err := ioutil.ReadAll(pipe.Server)
-	assert.Contains(t, string(b), ErrUnauthorized.Message)
+func TestParseV2(t *testing.T) {
+	l, err := Parse("RfBEIO9PA3cczC6bZQGnEeX8zbgKhm5Gw4ZlJSFJsaChuGStGCKNZ-8LTxKwiD7wK8EOAhrmleUY7PbLHrmCkokB0NaYgAEB:2")
 	assert.NoError(t, err)
+	assert.Equal(t, uint32(0x11248139), l.Contract())
+	assert.Equal(t, uint32(0x10062b50), l.Signature())
+	assert.Equal(t, uint32(0x1), l.Master())
+}
+
+func TestParseV2_Invalid(t *testing.T) {
+	_, err := Parse("``````````:2")
+	assert.Error(t, err)
+
+	_, err = Parse("xxxxxx:2")
+	assert.Error(t, err)
 }

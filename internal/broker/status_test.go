@@ -19,13 +19,13 @@ import (
 
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/message"
-	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/security/license"
 	"github.com/emitter-io/stats"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_sendStats(t *testing.T) {
-	license, _ := security.ParseLicense(testLicense)
+	license, _ := license.Parse(testLicense)
 
 	assert.NotPanics(t, func() {
 		s := &Service{

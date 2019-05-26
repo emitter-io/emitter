@@ -24,6 +24,7 @@ import (
 	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/security/license"
 	"github.com/emitter-io/stats"
 	"github.com/kelindar/binary"
 	"github.com/stretchr/testify/assert"
@@ -59,7 +60,7 @@ func TestHandlers_onLink(t *testing.T) {
 			contract := new(secmock.Contract)
 			contract.On("Validate", mock.Anything).Return(true)
 			provider.On("Get", mock.Anything).Return(contract, true)
-			license, _ := security.ParseLicense(testLicense)
+			license, _ := license.Parse(testLicense)
 			s := &Service{
 				contracts:     provider,
 				subscriptions: message.NewTrie(),
@@ -81,7 +82,7 @@ func TestHandlers_onLink(t *testing.T) {
 }
 
 func TestHandlers_onMe(t *testing.T) {
-	license, _ := security.ParseLicense(testLicense)
+	license, _ := license.Parse(testLicense)
 	s := &Service{
 		subscriptions: message.NewTrie(),
 		License:       license,
@@ -100,7 +101,7 @@ func TestHandlers_onMe(t *testing.T) {
 }
 
 func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
-	license, _ := security.ParseLicense(testLicense)
+	license, _ := license.Parse(testLicense)
 	tests := []struct {
 		channel       string
 		subCount      int
@@ -233,7 +234,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 }
 
 func TestHandlers_onPublish(t *testing.T) {
-	license, _ := security.ParseLicense(testLicense)
+	license, _ := license.Parse(testLicense)
 	tests := []struct {
 		channel       string
 		payload       string
@@ -349,7 +350,7 @@ func TestHandlers_onPresence(t *testing.T) {
 	// TODO :
 	// - valid key for the right channel, but no presence right.
 	// - test Who
-	license, _ := security.ParseLicense(testLicense)
+	license, _ := license.Parse(testLicense)
 	tests := []struct {
 		channel       string
 		payload       string
@@ -444,7 +445,7 @@ func TestHandlers_onPresence(t *testing.T) {
 }
 
 func TestHandlers_onKeygen(t *testing.T) {
-	license, _ := security.ParseLicense("N7XxQbUEPxJ_RIj4muLUdLGYtR1kdKe2AAAAAAAAAAI")
+	license, _ := license.Parse("N7XxQbUEPxJ_RIj4muLUdLGYtR1kdKe2AAAAAAAAAAI")
 	tests := []struct {
 		payload       string
 		contractValid bool

@@ -43,6 +43,7 @@ import (
 	"github.com/emitter-io/emitter/internal/provider/storage"
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/security/license"
 	"github.com/emitter-io/stats"
 	"github.com/kelindar/tcp"
 )
@@ -51,8 +52,8 @@ import (
 type Service struct {
 	context       context.Context      // The context for the service.
 	cancel        context.CancelFunc   // The cancellation function.
-	Cipher        *security.Cipher     // The cipher to use for decoding and encoding keys.
-	License       *security.License    // The licence for this emitter server.
+	Cipher        license.Cipher       // The cipher to use for decoding and encoding keys.
+	License       license.License      // The licence for this emitter server.
 	Config        *config.Config       // The configuration for the service.
 	subscriptions *message.Trie        // The subscription matching trie.
 	http          *http.Server         // The underlying HTTP server.
@@ -101,7 +102,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	s.querier = newQueryManager(s)
 
 	// Parse the license
-	if s.License, err = security.ParseLicense(cfg.License); err != nil {
+	if s.License, err = license.Parse(cfg.License); err != nil {
 		return nil, err
 	}
 
@@ -446,7 +447,7 @@ func (s *Service) selfPublish(channelName string, payload []byte) {
 	channel := security.ParseChannel([]byte("emitter/" + channelName))
 	if channel.ChannelType == security.ChannelStatic {
 		s.publish(message.New(
-			message.NewSsid(s.License.Contract, channel.Query),
+			message.NewSsid(s.License.Contract(), channel.Query),
 			channel.Channel,
 			payload,
 		), "")

@@ -33,6 +33,7 @@ func newSampler(s *Service, m stats.Measurer) stats.Snapshotter {
 	}
 }
 
+
 // Snapshot creates the stats snapshot.
 func (s *sampler) Snapshot() (snapshot []byte) {
 	stat := s.service.measurer
@@ -59,3 +60,4 @@ func (s *sampler) Snapshot() (snapshot []byte) {
 	}
 	return
 }
+

@@ -22,6 +22,12 @@ import (
 	"github.com/emitter-io/emitter/internal/security/hash"
 )
 
+// Gets the beginning of time for the timestamp, which is 2010/1/1 00:00:00
+const timeOffset = int64(1262304000)
+
+// The beginning of time...
+var timeZero = time.Unix(0, 0)
+
 // Access types for a security key.
 const (
 	AllowNone      = uint8(0)               // Key has no privileges.
