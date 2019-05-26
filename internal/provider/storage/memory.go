@@ -16,8 +16,6 @@ package storage
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -73,20 +71,19 @@ func (s *InMemory) Store(m *message.Message) error {
 	}
 
 	// Get the string version of the SSID trunk
-	key := m.Ssid().Encode()
 	msg := string(m.Encode())
-	trunk := key[:16]
+	idx := fmt.Sprintf("%x", m.ID[:4])
 
 	// Make sure we have an index
-	if _, loaded := s.index.LoadOrStore(trunk, true); !loaded {
+	if _, loaded := s.index.LoadOrStore(idx, true); !loaded {
 		s.db.Update(func(tx *buntdb.Tx) error {
-			return tx.CreateIndex(trunk, fmt.Sprintf("%s:*", trunk), indexMessage)
+			return tx.CreateIndex(idx, fmt.Sprintf("%s:*", idx), indexMessage)
 		})
 	}
 
 	// Write the message
 	return s.db.Update(func(tx *buntdb.Tx) error {
-		tx.Set(fmt.Sprintf("%s:%d:%s", trunk, m.Time(), key), msg, &buntdb.SetOptions{
+		tx.Set(fmt.Sprintf("%s:%s", idx, m.ID), msg, &buntdb.SetOptions{
 			Expires: m.TTL > 0,
 			TTL:     time.Second * time.Duration(m.TTL),
 		})
@@ -147,34 +144,30 @@ func (s *InMemory) OnSurvey(surveyType string, payload []byte) ([]byte, bool) {
 
 // Lookup performs a against the cache.
 func (s *InMemory) lookup(q lookupQuery) (matches message.Frame) {
+	prefix := message.NewPrefix(q.Ssid, q.From)
+	idx := fmt.Sprintf("%x", prefix[:4])
+
 	matches = make(message.Frame, 0, q.Limit)
 	matchCount := 0
+	s.db.View(func(tx *buntdb.Tx) error {
+		tx.Ascend(idx, func(key, value string) bool {
+			id := message.ID(key[9:])
+			if id.Match(q.Ssid, q.From, q.Until){
+				if msg, err := message.DecodeMessage([]byte(value)); err == nil {
 
-	// Get the string version of the SSID trunk
-	key := message.Ssid(q.Ssid).Encode()
-	trunk := key[:16]
-
-	if query, err := regexp.Compile(key + ".*"); err == nil {
-		s.db.View(func(tx *buntdb.Tx) error {
-			tx.Ascend(trunk, func(key, value string) bool {
-
-				// Match using regular expression
-				if k := strings.SplitN(key, ":", 3); len(k) == 3 && query.MatchString(k[2]) {
-					if msg, err := message.DecodeMessage([]byte(value)); err == nil {
-
-						matchCount++
-						matches = append(matches, msg)
-						if matchCount >= q.Limit {
-							return false
-						}
+					matchCount++
+					matches = append(matches, msg)
+					if matchCount >= q.Limit {
+						return false
 					}
 				}
+			}
 
-				return true
-			})
-			return nil
+			return true
 		})
-	}
+		return nil
+	})
+	
 
 	// Return the matching messages we found
 	return
