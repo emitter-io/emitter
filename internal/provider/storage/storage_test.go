@@ -110,6 +110,34 @@ func testRetained(t *testing.T, store Storage) {
 	assert.Equal(t, "9", string(f[0].Payload))
 }
 
+func testRange(t *testing.T, store Storage) {
+	var t0, t1 int64
+	for i := int64(0); i < 100; i++ {
+		msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), []byte(fmt.Sprintf("%d", i)))
+		msg.ID.SetTime(msg.ID.Time() + (i * 10000))
+		if i == 50 {
+			t0 = msg.ID.Time()
+		}
+		if i == 60 {
+			t1 = msg.ID.Time()
+		}
+
+		assert.NoError(t, store.Store(msg))
+	}
+
+	// Issue a query
+	f, err := store.Query([]uint32{0, 1, 2}, time.Unix(t0, 0), time.Unix(t1, 0), 5)
+	assert.NoError(t, err)
+
+	assert.Len(t, f, 5)
+	assert.Equal(t, message.Ssid{0, 1, 2}, f[0].Ssid())
+	assert.Equal(t, "56", string(f[0].Payload))
+	assert.Equal(t, "57", string(f[1].Payload))
+	assert.Equal(t, "58", string(f[2].Payload))
+	assert.Equal(t, "59", string(f[3].Payload))
+	assert.Equal(t, "60", string(f[4].Payload))
+}
+
 func Test_configUint32(t *testing.T) {
 	raw := `{
 		"provider": "memory",
