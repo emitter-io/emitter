@@ -18,8 +18,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/emitter-io/emitter/internal/collection"
-
 	"github.com/golang/snappy"
 	"github.com/kelindar/binary"
 )
@@ -71,9 +69,41 @@ func (m *Message) Expires() time.Time {
 	return time.Unix(m.Time(), 0).Add(time.Second * time.Duration(m.TTL))
 }
 
-// ------------------------------------------------------------------------------------
+// GetBinaryCodec retrieves a custom binary codec.
+func (m *Message) GetBinaryCodec() binary.Codec {
+	return new(messageCodec)
+}
 
-var bufferPool = collection.NewBufferPool(64 * 1024)
+// Encode encodes the message into a binary & compressed representation.
+func (m *Message) Encode() (out []byte) {
+
+	// Use a buffer pool to avoid allocating memory over and over again. It's safe here since
+	// we're using snappy right away which would perform a memory copy
+	buffer := bufferPool.Get()
+	defer bufferPool.Put(buffer)
+
+	// Encode into a temporary buffer
+	encoder := binary.NewEncoder(buffer)
+	if err := encoder.Encode(m); err != nil {
+		panic(err)
+	}
+
+	return snappy.Encode(out, buffer.Bytes())
+}
+
+// DecodeMessage decodes the message from the decoder.
+func DecodeMessage(buf []byte) (out Message, err error) {
+
+	// We need to allocate, given that the unmarshal is now no-copy
+	dst := make([]byte, 0, len(buf))
+	if buf, err = snappy.Decode(dst, buf); err == nil {
+		err = binary.Unmarshal(buf, &out)
+	}
+
+	return
+}
+
+// ------------------------------------------------------------------------------------
 
 // Frame represents a message frame which is sent through the wire to the
 // remote server and contains a set of messages.
@@ -116,10 +146,10 @@ func (f *Frame) Encode() (out []byte) {
 
 // DecodeFrame decodes the message frame from the decoder.
 func DecodeFrame(buf []byte) (out Frame, err error) {
-	buffer := bufferPool.Get()
-	defer bufferPool.Put(buffer)
 
-	if buf, err = snappy.Decode(buffer.Bytes(), buf); err == nil {
+	// We need to allocate, given that the unmarshal is now no-copy
+	dst := make([]byte, 0, len(buf))
+	if buf, err = snappy.Decode(dst, buf); err == nil {
 		err = binary.Unmarshal(buf, &out)
 	}
 	return

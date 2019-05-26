@@ -118,13 +118,11 @@ func (s *SSD) storeFrame(msgs message.Frame) error {
 func encodeFrame(msgs message.Frame) []*badger.Entry {
 	entries := make([]*badger.Entry, 0, len(msgs))
 	for _, m := range msgs {
-		if val, err := binary.Marshal(m); err == nil {
-			entries = append(entries, &badger.Entry{
-				Key:       m.ID,
-				Value:     val,
-				ExpiresAt: uint64(m.Expires().Unix()),
-			})
-		}
+		entries = append(entries, &badger.Entry{
+			Key:       m.ID,
+			Value:     m.Encode(),
+			ExpiresAt: uint64(m.Expires().Unix()),
+		})
 	}
 	return entries
 }
@@ -221,12 +219,13 @@ func (s *SSD) Close() error {
 }
 
 // LoadMessage loads the message from badger item.
-func loadMessage(item *badger.Item) (msg message.Message, err error) {
-	var data []byte
-	if data, err = item.ValueCopy(nil); err == nil {
-		err = binary.Unmarshal(data, &msg)
+func loadMessage(item *badger.Item) (message.Message, error) {
+	data, err := item.ValueCopy(nil)
+	if err != nil {
+		return message.Message{}, err
 	}
-	return
+
+	return message.DecodeMessage(data)
 }
 
 // Restore loads a previous snapshot

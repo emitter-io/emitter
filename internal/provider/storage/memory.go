@@ -72,26 +72,21 @@ func (s *InMemory) Store(m *message.Message) error {
 		m.TTL = s.retain
 	}
 
-	// Marshal the message
-	encoded, err := binary.Marshal(m)
-	if err != nil {
-		return err
-	}
-
 	// Get the string version of the SSID trunk
 	key := m.Ssid().Encode()
+	msg := string(m.Encode())
 	trunk := key[:16]
 
 	// Make sure we have an index
 	if _, loaded := s.index.LoadOrStore(trunk, true); !loaded {
 		s.db.Update(func(tx *buntdb.Tx) error {
-			return tx.CreateIndex(trunk, fmt.Sprintf("%s:*", trunk), buntdb.IndexBinary)
+			return tx.CreateIndex(trunk, fmt.Sprintf("%s:*", trunk), indexMessage)
 		})
 	}
 
 	// Write the message
 	return s.db.Update(func(tx *buntdb.Tx) error {
-		tx.Set(fmt.Sprintf("%s:%d:%s", trunk, m.Time(), key), string(encoded), &buntdb.SetOptions{
+		tx.Set(fmt.Sprintf("%s:%d:%s", trunk, m.Time(), key), msg, &buntdb.SetOptions{
 			Expires: m.TTL > 0,
 			TTL:     time.Second * time.Duration(m.TTL),
 		})
@@ -165,8 +160,8 @@ func (s *InMemory) lookup(q lookupQuery) (matches message.Frame) {
 
 				// Match using regular expression
 				if k := strings.SplitN(key, ":", 3); len(k) == 3 && query.MatchString(k[2]) {
-					var msg message.Message
-					if err := binary.Unmarshal([]byte(value), &msg); err == nil {
+					if msg, err := message.DecodeMessage([]byte(value)); err == nil {
+
 						matchCount++
 						matches = append(matches, msg)
 						if matchCount >= q.Limit {
@@ -190,3 +185,10 @@ func (s *InMemory) lookup(q lookupQuery) (matches message.Frame) {
 func (s *InMemory) Close() error {
 	return nil
 }
+
+
+// indexMessage sorts two buntdb messages.
+func indexMessage(a, b string) bool {
+	return true // Do not sort by value
+}
+

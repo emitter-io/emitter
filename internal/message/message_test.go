@@ -17,7 +17,6 @@ package message
 import (
 	"testing"
 
-	"github.com/kelindar/binary"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,9 +33,6 @@ func TestDecodeFrame(t *testing.T) {
 		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
 		newTestMessage(Ssid{1, 2, 3}, "a/b/", "hello ab"),
 	}
-
-	// Append
-	//frame.Append(0, Ssid{1, 2, 3}, []byte("a/b/c/"), []byte("hello abc"))
 
 	// Encode
 	buffer := frame.Encode()
@@ -63,36 +59,46 @@ func TestNewFrame(t *testing.T) {
 	assert.Equal(t, 64, cap(f))
 }
 
-// BenchmarkEncode-8   	 2000000	       577 ns/op	     320 B/op	       2 allocs/op
-// BenchmarkEncode-8   	 3000000	       535 ns/op	     320 B/op	       3 allocs/op
-func BenchmarkEncode(b *testing.B) {
-	m := Frame{
-		newTestMessage(Ssid{1, 2, 3}, "tweet/canada/english/", "This is a random tweet en english so we can test the payload. #emitter"),
-	}
+// BenchmarkCodec/Encode-8         	 2000000	       635 ns/op	     224 B/op	       2 allocs/op
+// BenchmarkCodec/Decode-8         	 2000000	       580 ns/op	     416 B/op	       4 allocs/op
+func BenchmarkCodec(b *testing.B) {
+	m := newTestMessage(Ssid{1, 2, 3}, "tweet/canada/english/", "This is a random tweet en english so we can test the payload. #emitter")
+	enc := m.Encode()
+	b.Run("Encode", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			m.Encode()
+		}
+	})
 
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		binary.Marshal(&m)
-	}
+	b.Run("Decode", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			DecodeMessage(enc)
+		}
+	})
 }
 
-// BenchmarkEncodeWithSnappy-8   	 2000000	       799 ns/op	     480 B/op	       3 allocs/op
-// BenchmarkEncodeWithSnappy-8   	 2000000	       628 ns/op	     224 B/op	       2 allocs/op
+// BenchmarkEncodeWithSnappy-8   	   10000	    193539 ns/op	   57414 B/op	       2 allocs/op
+// BenchmarkEncodeWithSnappy-8   	   10000	    187242 ns/op	   57414 B/op	       2 allocs/op
 func BenchmarkEncodeWithSnappy(b *testing.B) {
-	m := Frame{
-		newTestMessage(Ssid{1, 2, 3}, "tweet/canada/english/", "This is a random tweet en english so we can test the payload. #emitter"),
+	var frame Frame
+	for m := 0; m < 1000; m++ {
+		frame = append(frame, newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"))
 	}
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.Encode()
+		frame.Encode()
 	}
 }
 
 // Benchmark_DecodeFrame-8   	    3000	    487375 ns/op	  280592 B/op	    6005 allocs/op
 // Benchmark_DecodeFrame-8   	    3000	    488361 ns/op	  275317 B/op	    6004 allocs/op
+// Benchmark_DecodeFrame-8   	    5000	    296491 ns/op	  216573 B/op	    1005 allocs/op
 func Benchmark_DecodeFrame(b *testing.B) {
 	var frame Frame
 	for m := 0; m < 1000; m++ {
