@@ -85,7 +85,7 @@ func (m *Message) Encode() (out []byte) {
 	// Encode into a temporary buffer
 	encoder := binary.NewEncoder(buffer)
 	if err := encoder.Encode(m); err != nil {
-		panic(err)
+		panic(err) // Should never panic
 	}
 
 	return snappy.Encode(out, buffer.Bytes())

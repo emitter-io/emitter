@@ -31,7 +31,7 @@ import (
 	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
 	"github.com/emitter-io/emitter/internal/provider/storage"
 	"github.com/emitter-io/emitter/internal/provider/usage"
-	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/security/license"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -39,7 +39,7 @@ import (
 const testLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
 
 func Test_onHTTPPresence(t *testing.T) {
-	license, _ := security.ParseLicense(testLicense)
+	license, _ := license.Parse(testLicense)
 
 	tests := []struct {
 		payload       string
