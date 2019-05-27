@@ -11,7 +11,7 @@ import (
 	"github.com/emitter-io/emitter/internal/broker"
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/provider/logging"
-	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/security/license"
 )
 
 //go:generate go run internal/broker/generate/assets_gen.go
@@ -34,7 +34,7 @@ func main() {
 
 	// Generate a new license if none was provided
 	if cfg.License == "" {
-		license, secret := security.NewLicenseAndMaster()
+		license, secret := license.New()
 		logging.LogAction("service", "unable to find a license, make sure 'license' "+
 			"value is set in the config file or EMITTER_LICENSE environment variable")
 		logging.LogAction("service", fmt.Sprintf("generated new license: %v", license))

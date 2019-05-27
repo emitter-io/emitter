@@ -337,63 +337,6 @@ func (c *Conn) onMe() (response, bool) {
 
 // ------------------------------------------------------------------------------------
 
-// onKeyGen processes a keygen request.
-func (c *Conn) onKeyGen(payload []byte) (response, bool) {
-	// Deserialize the payload.
-	message := keyGenRequest{}
-	if err := json.Unmarshal(payload, &message); err != nil {
-		return ErrBadRequest, false
-	}
-
-	key, err := c.service.generateKey(message.Key, message.Channel, message.access(), message.expires())
-	if err != nil {
-		return err, false
-	}
-
-	// Success, return the response
-	return &keyGenResponse{
-		Status:  200,
-		Key:     key,
-		Channel: message.Channel,
-	}, true
-}
-
-func (s *Service) generateKey(rawMasterKey string, channel string, access uint8, expires time.Time) (string, *Error) {
-	// Attempt to parse the key, this should be a master key
-	masterKey, err := s.Cipher.DecryptKey([]byte(rawMasterKey))
-	if err != nil || !masterKey.IsMaster() || masterKey.IsExpired() {
-		return "", ErrUnauthorized
-	}
-
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := s.contracts.Get(masterKey.Contract())
-	if !contractFound {
-		return "", ErrNotFound
-	}
-
-	// Validate the contract
-	if !contract.Validate(masterKey) {
-		return "", ErrUnauthorized
-	}
-
-	// Use the cipher to generate the key
-	key, err := s.Cipher.GenerateKey(masterKey, channel, access, expires, -1)
-	if err != nil {
-		switch err {
-		case security.ErrTargetInvalid:
-			return "", ErrTargetInvalid
-		case security.ErrTargetTooLong:
-			return "", ErrTargetTooLong
-		default:
-			return "", ErrServerError
-		}
-	}
-
-	return key, nil
-}
-
-// ------------------------------------------------------------------------------------
-
 // OnSurvey handles an incoming presence query.
 func (s *Service) OnSurvey(queryType string, payload []byte) ([]byte, bool) {
 	if queryType != "presence" {

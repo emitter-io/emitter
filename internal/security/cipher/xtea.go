@@ -12,16 +12,13 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package security
+package cipher
 
 import (
-	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"math"
-	"math/big"
-	"strconv"
-	"time"
+
+	"github.com/emitter-io/emitter/internal/security"
 )
 
 const (
@@ -30,43 +27,23 @@ const (
 	xteaSum    = uint32(0xC6EF3720) // should be delta * rounds
 )
 
-// The map used for base64 decode.
-var decodeMap [256]byte
-
-type corruptInputError int64
-
-func (e corruptInputError) Error() string {
-	return "illegal base64 data at input byte " + strconv.FormatInt(int64(e), 10)
-}
-
-// Init prepares the lookup table.
-func init() {
-	encoder := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-	for i := 0; i < len(decodeMap); i++ {
-		decodeMap[i] = 0xFF
-	}
-	for i := 0; i < len(encoder); i++ {
-		decodeMap[encoder[i]] = byte(i)
-	}
-}
-
-// Cipher represents a security cipher which can encrypt/decrypt security keys.
-type Cipher struct {
+// Xtea represents a security cipher which can encrypt/decrypt security keys.
+type Xtea struct {
 	key [4]uint32 // The cryptographic key used by the encryption algorithm.
 }
 
-// NewCipher creates a new cipher.
-func NewCipher(value string) (*Cipher, error) {
+// NewXtea creates a new cipher.
+func NewXtea(value string) (*Xtea, error) {
 	data, err := base64.RawURLEncoding.DecodeString(value)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(value) != 22 || len(data) != 16 {
-		return nil, errors.New("Key provided is invalid")
+		return nil, errors.New("xtea: invalid cryptographic key")
 	}
 
-	cipher := new(Cipher)
+	cipher := new(Xtea)
 	for i := 0; i < 4; i++ {
 		cipher.key[i] = uint32((uint32(data[(4*i)+0]) << 24) |
 			(uint32(data[(4*i)+1]) << 16) |
@@ -78,9 +55,9 @@ func NewCipher(value string) (*Cipher, error) {
 }
 
 // DecryptKey decrypts the security key from a base64 encoded string.
-func (c *Cipher) DecryptKey(buffer []byte) (Key, error) {
+func (c *Xtea) DecryptKey(buffer []byte) (security.Key, error) {
 	if len(buffer) != 32 {
-		return nil, errors.New("Key provided is invalid")
+		return nil, errors.New("cipher: the key provided is not valid")
 	}
 
 	// Warning: we do a base64 decode in the same underlying buffer, to save up
@@ -105,11 +82,11 @@ func (c *Cipher) DecryptKey(buffer []byte) (Key, error) {
 	}
 
 	// Return the key on the decrypted buffer.
-	return Key(buffer), nil
+	return security.Key(buffer), nil
 }
 
 // EncryptKey encrypts the key and return a base-64 encoded string.
-func (c *Cipher) EncryptKey(k Key) (string, error) {
+func (c *Xtea) EncryptKey(k security.Key) (string, error) {
 	buffer := make([]byte, 24)
 	buffer[0] = k[0]
 	buffer[1] = k[1]
@@ -126,33 +103,9 @@ func (c *Cipher) EncryptKey(k Key) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(buffer), err
 }
 
-// GenerateKey generates a new key.
-func (c *Cipher) GenerateKey(masterKey Key, channel string, permissions uint8, expires time.Time, maxRandSalt int16) (string, error) {
-	if maxRandSalt <= 0 {
-		maxRandSalt = math.MaxInt16
-	}
-	n, err := rand.Int(rand.Reader, big.NewInt(int64(maxRandSalt)))
-	if err != nil {
-		return "", err
-	}
-
-	key := Key(make([]byte, 24))
-	key.SetSalt(uint16(n.Uint64()))
-	key.SetMaster(masterKey.Master())
-	key.SetContract(masterKey.Contract())
-	key.SetSignature(masterKey.Signature())
-	key.SetPermissions(permissions)
-	key.SetExpires(expires)
-	if err := key.SetTarget(channel); err != nil {
-		return "", err
-	}
-
-	return c.EncryptKey(key)
-}
-
 // encrypt encrypts the data. This is done in-place and it's actually
 // going to modify the underlying buffer.
-func (c *Cipher) encrypt(data []byte) error {
+func (c *Xtea) encrypt(data []byte) error {
 	if len(data) != 24 {
 		return errors.New("The security key should be 24-bytes long")
 	}
@@ -187,7 +140,7 @@ func (c *Cipher) encrypt(data []byte) error {
 
 // decrypt decrypts the data. This is done in-place and it's actually
 // going to modify the underlying buffer.
-func (c *Cipher) decrypt(data []byte) {
+func (c *Xtea) decrypt(data []byte) {
 	key := &c.key
 	for i := 0; i < 24; i += 8 {
 		y := uint32(data[i])<<24 | uint32(data[i+1])<<16 | uint32(data[i+2])<<8 | uint32(data[i+3])
@@ -211,54 +164,4 @@ func (c *Cipher) decrypt(data []byte) {
 		data[i+6] = (byte)(z >> 8)
 		data[i+7] = (byte)(z)
 	}
-}
-
-// decodeKey decodes the key from base64 string, url-encoded with no
-// padding. This is 2x faster than the built-in function as we trimmed
-// it significantly.
-func decodeKey(dst, src []byte) (n int, err error) {
-	var idx int
-	for idx < len(src) {
-		var dbuf [4]byte
-		dinc, dlen := 3, 4
-
-		for j := range dbuf {
-			if len(src) == idx {
-				if j < 2 {
-					return n, corruptInputError(idx - j)
-				}
-				dinc, dlen = j-1, j
-				break
-			}
-
-			in := src[idx]
-			idx++
-
-			dbuf[j] = decodeMap[in]
-			if dbuf[j] == 0xFF {
-				return n, corruptInputError(idx - 1)
-			}
-		}
-
-		// Convert 4x 6bit source bytes into 3 bytes
-		val := uint(dbuf[0])<<18 | uint(dbuf[1])<<12 | uint(dbuf[2])<<6 | uint(dbuf[3])
-		dbuf[2], dbuf[1], dbuf[0] = byte(val>>0), byte(val>>8), byte(val>>16)
-		switch dlen {
-		case 4:
-			dst[2] = dbuf[2]
-			dbuf[2] = 0
-			fallthrough
-		case 3:
-			dst[1] = dbuf[1]
-			dbuf[1] = 0
-			fallthrough
-		case 2:
-			dst[0] = dbuf[0]
-		}
-
-		dst = dst[dinc:]
-		n += dlen - 1
-	}
-
-	return n, err
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/security/license"
 )
 
 // The contract's state possible values.
@@ -117,15 +118,15 @@ type SingleContractProvider struct {
 }
 
 // NewSingleContractProvider creates a new single contract provider.
-func NewSingleContractProvider(license *security.License, metering usage.Metering) *SingleContractProvider {
+func NewSingleContractProvider(license license.License, metering usage.Metering) *SingleContractProvider {
 	p := new(SingleContractProvider)
 	p.owner = new(contract)
 	p.owner.MasterID = 1
-	p.owner.ID = license.Contract
-	p.owner.Signature = license.Signature
+	p.owner.ID = license.Contract()
+	p.owner.Signature = license.Signature()
 	p.owner.State = ContractStateAllowed
 	p.usage = metering
-	p.owner.stats = p.usage.Get(license.Contract).(usage.Meter)
+	p.owner.stats = p.usage.Get(license.Contract()).(usage.Meter)
 	return p
 }
 
@@ -170,12 +171,12 @@ type HTTPContractProvider struct {
 }
 
 // NewHTTPContractProvider creates a new single contract provider.
-func NewHTTPContractProvider(license *security.License, metering usage.Metering) *HTTPContractProvider {
+func NewHTTPContractProvider(license license.License, metering usage.Metering) *HTTPContractProvider {
 	p := HTTPContractProvider{}
 	p.owner = new(contract)
 	p.owner.MasterID = 1
-	p.owner.ID = license.Contract
-	p.owner.Signature = license.Signature
+	p.owner.ID = license.Contract()
+	p.owner.Signature = license.Signature()
 	p.cache = new(sync.Map)
 	p.usage = metering
 	return &p

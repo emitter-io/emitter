@@ -21,18 +21,19 @@ import (
 	"github.com/emitter-io/emitter/internal/network/http"
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/security/license"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-func testNewSingleContractProvider() (*SingleContractProvider, *security.License) {
-	license, _ := security.ParseLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
-	return NewSingleContractProvider(license, new(usage.NoopStorage)), license
+func testNewSingleContractProvider() (*SingleContractProvider, license.License) {
+	l, _ := license.Parse("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
+	return NewSingleContractProvider(l, new(usage.NoopStorage)), l
 }
 
-func testNewHTTPContractProvider() (*HTTPContractProvider, *security.License) {
-	license, _ := security.ParseLicense("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
-	return NewHTTPContractProvider(license, new(usage.NoopStorage)), license
+func testNewHTTPContractProvider() (*HTTPContractProvider, license.License) {
+	l, _ := license.Parse("zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI")
+	return NewHTTPContractProvider(l, new(usage.NoopStorage)), l
 }
 
 func TestSingleContractProvider_Name(t *testing.T) {
@@ -44,8 +45,8 @@ func TestNewSingleContractProvider(t *testing.T) {
 	p, license := testNewSingleContractProvider()
 
 	assert.EqualValues(t, p.owner.MasterID, 1)
-	assert.EqualValues(t, p.owner.Signature, license.Signature)
-	assert.EqualValues(t, p.owner.ID, license.Contract)
+	assert.EqualValues(t, p.owner.Signature, license.Signature())
+	assert.EqualValues(t, p.owner.ID, license.Contract())
 	assert.NotNil(t, p.owner.Stats())
 }
 
@@ -62,7 +63,7 @@ func TestSingleContractProvider_Create(t *testing.T) {
 
 func TestSingleContractProvider_Get(t *testing.T) {
 	p, license := testNewSingleContractProvider()
-	contractByID, ok1 := p.Get(license.Contract)
+	contractByID, ok1 := p.Get(license.Contract())
 	assert.True(t, ok1)
 	assert.NotNil(t, contractByID)
 
@@ -73,13 +74,13 @@ func TestSingleContractProvider_Get(t *testing.T) {
 
 func TestSingleContractProvider_Validate(t *testing.T) {
 	p, license := testNewSingleContractProvider()
-	contract, ok := p.Get(license.Contract)
+	contract, ok := p.Get(license.Contract())
 	assert.True(t, ok)
 
 	key := security.Key(make([]byte, 24))
 	key.SetMaster(1)
-	key.SetContract(license.Contract)
-	key.SetSignature(license.Signature)
+	key.SetContract(license.Contract())
+	key.SetSignature(license.Signature())
 
 	assert.True(t, contract.Validate(key))
 }
@@ -88,8 +89,8 @@ func TestNewHTTPContractProvider(t *testing.T) {
 	p, license := testNewHTTPContractProvider()
 
 	assert.EqualValues(t, p.owner.MasterID, 1)
-	assert.EqualValues(t, p.owner.Signature, license.Signature)
-	assert.EqualValues(t, p.owner.ID, license.Contract)
+	assert.EqualValues(t, p.owner.Signature, license.Signature())
+	assert.EqualValues(t, p.owner.ID, license.Contract())
 }
 
 func TestHTTPContractProvider_Create(t *testing.T) {
