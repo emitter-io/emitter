@@ -143,8 +143,11 @@ func Test_onHTTPPresence(t *testing.T) {
 }
 
 func TestPubsub(t *testing.T) {
-	broker, cli := brokerAndClient(9996)
+	const port = 9996
+	broker := newTestBroker(port)
 	defer broker.Close()
+
+	cli := newTestClient(port)
 	defer cli.Close()
 
 	{ // Connect to the broker
