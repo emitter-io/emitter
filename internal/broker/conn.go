@@ -61,7 +61,7 @@ func (s *Service) newConn(t net.Conn) *Conn {
 
 	// Generate a globally unique id as well
 	c.guid = c.luid.Unique(uint64(address.GetHardware()), "emitter")
-	logging.LogTarget("conn", "created", c.guid)
+	//logging.LogTarget("conn", "created", c.guid)
 
 	// Increment the connection counter
 	atomic.AddInt64(&s.connections, 1)
@@ -295,6 +295,6 @@ func (c *Conn) Close() error {
 
 	// Close the transport and decrement the connection counter
 	atomic.AddInt64(&c.service.connections, -1)
-	logging.LogTarget("conn", "closed", c.guid)
+	//logging.LogTarget("conn", "closed", c.guid)
 	return c.socket.Close()
 }

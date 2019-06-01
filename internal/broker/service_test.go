@@ -15,21 +15,15 @@
 package broker
 
 import (
-	"context"
 	"encoding/json"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	conf "github.com/emitter-io/config"
-	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
-	"github.com/emitter-io/emitter/internal/provider/contract"
 	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
-	"github.com/emitter-io/emitter/internal/provider/storage"
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security/license"
 	"github.com/stretchr/testify/assert"
@@ -149,24 +143,8 @@ func Test_onHTTPPresence(t *testing.T) {
 }
 
 func TestPubsub(t *testing.T) {
-	cfg := config.NewDefault().(*config.Config)
-	cfg.License = testLicense
-	cfg.ListenAddr = "127.0.0.1:9998"
-	cfg.Cluster = nil
-	cfg.TLS = &conf.TLSConfig{}
-
-	// Start the broker asynchronously
-	broker, svcErr := NewService(context.Background(), cfg)
-	broker.contracts = contract.NewSingleContractProvider(broker.License, usage.NewNoop())
-	broker.storage = storage.NewInMemory(broker)
-	broker.storage.Configure(nil)
-	assert.NoError(t, svcErr)
+	broker, cli := brokerAndClient(9996)
 	defer broker.Close()
-	go broker.Listen()
-
-	// Create a client
-	cli, dialErr := net.Dial("tcp", "127.0.0.1:9998")
-	assert.NoError(t, dialErr)
 	defer cli.Close()
 
 	{ // Connect to the broker
