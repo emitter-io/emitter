@@ -12,24 +12,30 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package collection
+package mqtt
 
 import (
-	"bytes"
 	"sync"
 )
 
-// BufferPool represents a thread safe buffer pool
-type BufferPool struct {
+// smallBufferSize is an initial allocation minimal capacity.
+const smallBufferSize = 64
+const maxInt = int(^uint(0) >> 1)
+
+// buffers are reusable fixed-side buffers for faster encoding.
+var buffers = newBufferPool(maxMessageSize)
+
+// bufferPool represents a thread safe buffer pool
+type bufferPool struct {
 	sync.Pool
 }
 
-// NewBufferPool creates a new BufferPool bounded to the given size.
-func NewBufferPool(bufferSize int) (bp *BufferPool) {
-	return &BufferPool{
+// newBufferPool creates a new BufferPool bounded to the given size.
+func newBufferPool(bufferSize int) (bp *bufferPool) {
+	return &bufferPool{
 		sync.Pool{
 			New: func() interface{} {
-				return bytes.NewBuffer(make([]byte, 0, bufferSize))
+				return &byteBuffer{buf: make([]byte, bufferSize)}
 			},
 		},
 	}
@@ -37,12 +43,35 @@ func NewBufferPool(bufferSize int) (bp *BufferPool) {
 
 // Get gets a Buffer from the SizedBufferPool, or creates a new one if none are
 // available in the pool. Buffers have a pre-allocated capacity.
-func (bp *BufferPool) Get() *bytes.Buffer {
-	return bp.Pool.Get().(*bytes.Buffer)
+func (bp *bufferPool) Get() *byteBuffer {
+	return bp.Pool.Get().(*byteBuffer)
 }
 
 // Put returns the given Buffer to the SizedBufferPool.
-func (bp *BufferPool) Put(b *bytes.Buffer) {
-	b.Reset()
+func (bp *bufferPool) Put(b *byteBuffer) {
 	bp.Pool.Put(b)
+}
+
+type byteBuffer struct {
+	buf []byte
+}
+
+// Bytes gets a byte slice of a specified size.
+func (b *byteBuffer) Bytes(n int) []byte {
+	if n == 0 { // Return max size
+		return b.buf
+	}
+
+	return b.buf[:n]
+}
+
+// Slice returns a slice at an offset.
+func (b *byteBuffer) Slice(from, until int) []byte {
+	return b.buf[from:until]
+}
+
+// Split splits the bufer in two.
+func (b *byteBuffer) Split(n int) ([]byte, []byte) {
+	buffer := b.Bytes(0)
+	return buffer[:n], buffer[n:]
 }
