@@ -379,7 +379,6 @@ func (s *Service) onSubscribe(ssid message.Ssid, sub message.Subscriber) bool {
 		return false // Unable to subscribe
 	}
 
-	//logging.LogTarget("service", "subscribe", ssid)
 	return true
 }
 
@@ -388,8 +387,6 @@ func (s *Service) onUnsubscribe(ssid message.Ssid, sub message.Subscriber) (ok b
 	subscribers := s.subscriptions.Lookup(ssid, nil)
 	if ok = subscribers.Contains(sub); ok {
 		s.subscriptions.Unsubscribe(ssid, sub)
-
-		//logging.LogTarget("service", "unsubscribe", ssid)
 	}
 	return
 }
