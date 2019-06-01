@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"io"
 	"log"
-	"reflect"
 	"sync"
 	"testing"
 
@@ -31,79 +30,8 @@ func (dn devNull) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func BenchmarkPublishEncode(b *testing.B) {
-	benchmarkPacketEncode(b, &Publish{
-		Header: Header{
-			QOS:    1,
-			Retain: false,
-			DUP:    false,
-		},
-		Payload:   []byte("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum mattis enim nec lacinia pharetra. Fusce a nibh augue. Donec lectus felis, feugiat id pellentesque semper, tincidunt in mi. Nunc molestie facilisis magna, eget imperdiet enim pulvinar sed. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus hendrerit nibh at vestibulum imperdiet. Vivamus ac blandit augue, at fermentum felis. Praesent elementum eu nisl vel egestas. Cras vestibulum suscipit pulvinar. Praesent vel quam id risus dictum suscipit. Nunc porta massa eget rhoncus varius. Nam sed lorem orci. Quisque odio mi, pretium in eros id, convallis luctus purus. Curabitur in placerat dolor. Duis sit amet tellus molestie, auctor nibh placerat, condimentum nunc. Etiam placerat leo dapibus cursus laoreet."),
-		Topic:     []byte("a/b/c"),
-		MessageID: 1,
-	})
-}
-
-func benchmarkPacketEncode(b *testing.B, packet Message) {
-	w := devNull{}
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = packet.EncodeTo(w)
-	}
-}
-
-// BenchmarkPublishDecode-8   	 5000000	       243 ns/op	     960 B/op	       2 allocs/op
-func BenchmarkPublishDecode(b *testing.B) {
-	benchmarkPacketDecode(b, &Publish{
-		Header: Header{
-			QOS:    1,
-			Retain: false,
-			DUP:    false,
-		},
-		Payload:   []byte("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum mattis enim nec lacinia pharetra. Fusce a nibh augue. Donec lectus felis, feugiat id pellentesque semper, tincidunt in mi. Nunc molestie facilisis magna, eget imperdiet enim pulvinar sed. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus hendrerit nibh at vestibulum imperdiet. Vivamus ac blandit augue, at fermentum felis. Praesent elementum eu nisl vel egestas. Cras vestibulum suscipit pulvinar. Praesent vel quam id risus dictum suscipit. Nunc porta massa eget rhoncus varius. Nam sed lorem orci. Quisque odio mi, pretium in eros id, convallis luctus purus. Curabitur in placerat dolor. Duis sit amet tellus molestie, auctor nibh placerat, condimentum nunc. Etiam placerat leo dapibus cursus laoreet."),
-		Topic:     []byte("a/b/c"),
-		MessageID: 1,
-	})
-}
-
-func BenchmarkConnectDecode(b *testing.B) {
-	benchmarkPacketDecode(b, &Connect{
-		ProtoName:      []byte("MQTsdp"),
-		Version:        3,
-		UsernameFlag:   false,
-		PasswordFlag:   false,
-		WillRetainFlag: false,
-		WillQOS:        0,
-		WillFlag:       false,
-		CleanSeshFlag:  true,
-		KeepAlive:      30,
-		ClientID:       []byte("13241"),
-		WillTopic:      []byte("a/b/c"),
-		WillMessage:    []byte("tommy this and tommy that and tommy ow's yer soul"),
-		Username:       []byte("Username"),
-		Password:       []byte("Password"),
-	})
-}
-
-func benchmarkPacketDecode(b *testing.B, packet Message) {
-	slc := bytes.NewBuffer([]byte{})
-	_, _ = packet.EncodeTo(slc)
-	reader := bytes.NewReader(slc.Bytes())
-
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		reader.Seek(0, io.SeekStart)
-		_, err := DecodePacket(reader, 65536)
-		if err != nil {
-			b.Error(err)
-		}
-	}
-}
-
 func Test_LargePacket(t *testing.T) {
-	pay := make([]byte, 65536-10)
+	pay := make([]byte, 65536-13)
 	for i := range pay {
 		pay[i] = 0x0f
 	}
@@ -134,14 +62,35 @@ func Test_LargePacket(t *testing.T) {
 	wg.Wait()
 }
 
-func encodeTestHelper(toEncode Message) bool {
+func Test_TooBig(t *testing.T) {
+	pay := make([]byte, 65536)
+	for i := range pay {
+		pay[i] = 0x0f
+	}
+
+	pub := &Publish{
+		Header: Header{
+			QOS:    0,
+			Retain: false,
+			DUP:    false,
+		},
+		Payload:   pay,
+		Topic:     []byte("a/b/c"),
+		MessageID: 69,
+	}
+
+	slc := bytes.NewBuffer([]byte{})
+	_, err := pub.EncodeTo(slc)
+	assert.Equal(t, ErrMessageTooLarge, err)
+
+}
+
+func assertMessage(t *testing.T, toEncode Message) bool {
 	buf := bytes.NewBuffer([]byte{})
 	_, _ = toEncode.EncodeTo(buf)
 	msg, err := DecodePacket(buf, 65536)
-	if err != nil {
-		log.Printf("error in here %+v\n", err.Error())
-		return false
-	}
+	assert.NoError(t, err)
+
 	match := false
 	switch msg.(type) {
 	case *Connect:
@@ -176,7 +125,8 @@ func encodeTestHelper(toEncode Message) bool {
 	if match != true {
 		return false
 	}
-	return reflect.DeepEqual(toEncode, msg)
+
+	return assert.Equal(t, toEncode, msg)
 }
 
 func Test_Connect(t *testing.T) {
@@ -198,7 +148,7 @@ func Test_Connect(t *testing.T) {
 	}
 
 	assert.Equal(t, "connect", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode connect failed")
 	}
 }
@@ -209,7 +159,7 @@ func Test_Connack(t *testing.T) {
 	}
 
 	assert.Equal(t, "connack", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode connack failed")
 	}
 }
@@ -227,7 +177,7 @@ func Test_Publish(t *testing.T) {
 	}
 
 	assert.Equal(t, "pub", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode publish failed")
 	}
 }
@@ -278,15 +228,8 @@ func Test_Publish_WithUnicodeDecoding(t *testing.T) {
 		t.Error("Encode/decode failed on test publish 2")
 	}
 
-	if !bytes.Equal(msg.(*Publish).Payload, pay) {
-		log.Println(pay)
-		log.Println(msg.(*Publish).Payload)
-
-		log.Println(string(pay))
-		log.Println(string(msg.(*Publish).Payload))
-
-		t.Error("Invalid encoding")
-	}
+	assert.Equal(t, testPkt, msg)
+	assert.Equal(t, pay, msg.(*Publish).Payload)
 }
 
 func Test_Puback(t *testing.T) {
@@ -295,7 +238,7 @@ func Test_Puback(t *testing.T) {
 	}
 
 	assert.Equal(t, "puback", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode puback failed")
 	}
 }
@@ -306,7 +249,7 @@ func Test_Pubrec(t *testing.T) {
 	}
 
 	assert.Equal(t, "pubrec", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode pubrec failed")
 	}
 }
@@ -322,7 +265,7 @@ func Test_Pubrel(t *testing.T) {
 	}
 
 	assert.Equal(t, "pubrel", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode pubrel failed")
 	}
 }
@@ -333,7 +276,7 @@ func Test_Pubcomp(t *testing.T) {
 	}
 
 	assert.Equal(t, "pubcomp", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode pubcomp failed")
 	}
 }
@@ -355,7 +298,7 @@ func Test_Subscribe(t *testing.T) {
 	}
 
 	assert.Equal(t, "sub", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode subscribe failed")
 	}
 }
@@ -367,7 +310,7 @@ func Test_Suback(t *testing.T) {
 	}
 
 	assert.Equal(t, "suback", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode suback failed")
 	}
 }
@@ -389,7 +332,7 @@ func Test_UnSubscribe(t *testing.T) {
 	}
 
 	assert.Equal(t, "unsub", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode unsubscribe failed")
 	}
 }
@@ -400,7 +343,7 @@ func Test_Unsuback(t *testing.T) {
 	}
 
 	assert.Equal(t, "unsuback", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode unsuback failed")
 	}
 }
@@ -408,7 +351,7 @@ func Test_Unsuback(t *testing.T) {
 func Test_PingReq(t *testing.T) {
 	testPkt := &Pingreq{}
 	assert.Equal(t, "pingreq", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode pingreq failed")
 	}
 }
@@ -416,7 +359,7 @@ func Test_PingReq(t *testing.T) {
 func Test_PingResp(t *testing.T) {
 	testPkt := &Pingresp{}
 	assert.Equal(t, "pingresp", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode pingresp failed")
 	}
 }
@@ -424,7 +367,7 @@ func Test_PingResp(t *testing.T) {
 func Test_Disconnect(t *testing.T) {
 	testPkt := &Disconnect{}
 	assert.Equal(t, "disconnect", testPkt.String())
-	if !encodeTestHelper(testPkt) {
+	if !assertMessage(t, testPkt) {
 		t.Error("encode/decode disconnect failed")
 	}
 }

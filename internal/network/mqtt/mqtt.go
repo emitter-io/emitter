@@ -15,19 +15,18 @@
 package mqtt
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
 	"io"
-
-	"github.com/emitter-io/emitter/internal/collection"
-	"github.com/emitter-io/emitter/internal/config"
 )
 
-// buffers are reusable fixed-side buffers for faster encoding.
-var buffers = collection.NewBufferPool(config.EncodingBufferSize)
+const (
+	maxHeaderSize  = 6     // max MQTT header size
+	maxMessageSize = 65536 // max MQTT message size is impossible to increase as per protocol (uint16 len)
+)
 
-// reserveForHeader reserves the bytes for a header.
-var reserveForHeader = []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
+// ErrMessageTooLarge occurs when a message encoded/decoded is larger than max MQTT frame.
+var ErrMessageTooLarge = errors.New("mqtt: message size exceeds 64K")
 
 //Message is the interface all our packets will be implementing
 type Message interface {
@@ -35,6 +34,12 @@ type Message interface {
 
 	Type() uint8
 	EncodeTo(w io.Writer) (int, error)
+}
+
+// Reader is the requied reader for an efficient decoding.
+type Reader interface {
+	io.Reader
+	ReadByte() (byte, error)
 }
 
 // MQTT message types
@@ -168,12 +173,6 @@ type TopicQOSTuple struct {
 	Topic []byte
 }
 
-// Reader is the requied reader for an efficient decoding.
-type Reader interface{
-	io.Reader
-	ReadByte() (byte, error) 
-}
-
 // DecodePacket decodes the packet from the provided reader.
 func DecodePacket(rdr Reader, maxMessageSize int64) (Message, error) {
 	hdr, sizeOf, messageType, err := decodeHeader(rdr)
@@ -193,7 +192,7 @@ func DecodePacket(rdr Reader, maxMessageSize int64) (Message, error) {
 
 	//check to make sure packet isn't above size limit
 	if int64(sizeOf) > maxMessageSize {
-		return nil, fmt.Errorf("Message size is too large")
+		return nil, ErrMessageTooLarge
 	}
 
 	// Now we can decode the buffer. The problem here is that we have to create
@@ -237,44 +236,17 @@ func DecodePacket(rdr Reader, maxMessageSize int64) (Message, error) {
 	return msg, nil
 }
 
-// encodeParts sews the whole packet together
-func encodeParts(msgType uint8, buf *bytes.Buffer, h *Header) []byte {
-	var firstByte byte
-	firstByte |= msgType << 4
-	if h != nil {
-		firstByte |= boolToUInt8(h.DUP) << 3
-		firstByte |= h.QOS << 1
-		firstByte |= boolToUInt8(h.Retain)
-	}
-
-	// get the length first
-	numBytes, bitField := encodeLength(uint32(buf.Len()) - 6)
-	offset := 6 - numBytes - 1 //to account for the first byte
-	byteBuf := buf.Bytes()
-
-	// now we blit it in
-	byteBuf[offset] = byte(firstByte)
-	for i := offset + 1; i < 6; i++ {
-		//coercing to byte selects the last 8 bits
-		byteBuf[i] = byte(bitField >> ((numBytes - 1) * 8))
-		numBytes--
-	}
-
-	//and return a slice from the offset
-	return byteBuf[offset:]
-}
-
 // EncodeTo writes the encoded message to the underlying writer.
 func (c *Connect) EncodeTo(w io.Writer) (int, error) {
-	buf := buffers.Get()
-	defer buffers.Put(buf)
+	array := buffers.Get()
+	defer buffers.Put(array)
 
-	//write some buffer space in the beginning for the maximum number of bytes static header + legnth encoding can take
-	buf.Write(reserveForHeader)
+	// Calculate the max length
+	head, buf := array.Split(maxHeaderSize)
 
 	// pack the proto name and version
-	writeString(buf, c.ProtoName)
-	buf.WriteByte(c.Version)
+	offset := writeString(buf, c.ProtoName)
+	offset += writeUint8(buf[offset:], c.Version)
 
 	// pack the flags
 	var flagByte byte
@@ -284,26 +256,27 @@ func (c *Connect) EncodeTo(w io.Writer) (int, error) {
 	flagByte |= byte(c.WillQOS) << 3
 	flagByte |= byte(boolToUInt8(c.WillFlag)) << 2
 	flagByte |= byte(boolToUInt8(c.CleanSeshFlag)) << 1
-	buf.WriteByte(flagByte)
 
-	writeUint16(buf, c.KeepAlive)
-	writeString(buf, c.ClientID)
+	offset += writeUint8(buf[offset:], flagByte)
+	offset += writeUint16(buf[offset:], c.KeepAlive)
+	offset += writeString(buf[offset:], c.ClientID)
 
 	if c.WillFlag {
-		writeString(buf, c.WillTopic)
-		writeString(buf, c.WillMessage)
+		offset += writeString(buf[offset:], c.WillTopic)
+		offset += writeString(buf[offset:], c.WillMessage)
 	}
 
 	if c.UsernameFlag {
-		writeString(buf, c.Username)
+		offset += writeString(buf[offset:], c.Username)
 	}
 
 	if c.PasswordFlag {
-		writeString(buf, c.Password)
+		offset += writeString(buf[offset:], c.Password)
 	}
 
-	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfConnect, buf, nil))
+	// Write the header in front and return the buffer
+	start := writeHeader(head, TypeOfConnect, nil, offset)
+	return w.Write(array.Slice(start, maxHeaderSize+offset))
 }
 
 // Type returns the MQTT message type.
@@ -318,16 +291,17 @@ func (c *Connect) String() string {
 
 // EncodeTo writes the encoded message to the underlying writer.
 func (c *Connack) EncodeTo(w io.Writer) (int, error) {
-	buf := buffers.Get()
-	defer buffers.Put(buf)
+	array := buffers.Get()
+	defer buffers.Put(array)
 
 	//write padding
-	buf.Write(reserveForHeader)
-	buf.WriteByte(byte(0))
-	buf.WriteByte(byte(c.ReturnCode))
+	head, buf := array.Split(maxHeaderSize)
+	offset := writeUint8(buf, byte(0))
+	offset += writeUint8(buf[offset:], byte(c.ReturnCode))
 
-	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfConnack, buf, nil))
+	// Write the header in front and return the buffer
+	start := writeHeader(head, TypeOfConnack, nil, offset)
+	return w.Write(array.Slice(start, maxHeaderSize+offset))
 }
 
 // Type returns the MQTT message type.
@@ -342,18 +316,31 @@ func (c *Connack) String() string {
 
 // EncodeTo writes the encoded message to the underlying writer.
 func (p *Publish) EncodeTo(w io.Writer) (int, error) {
-	buf := buffers.Get()
-	defer buffers.Put(buf)
+	array := buffers.Get()
+	defer buffers.Put(array)
 
-	buf.Write(reserveForHeader)
-	writeString(buf, p.Topic)
-	if p.Header.QOS > 0 {
-		writeUint16(buf, p.MessageID)
+	head, buf := array.Split(maxHeaderSize)
+	length := 2 + len(p.Topic) + len(p.Payload)
+	if p.QOS > 0 {
+		length += 2
 	}
-	buf.Write(p.Payload)
 
-	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfPublish, buf, &p.Header))
+	if length > maxMessageSize {
+		return 0, ErrMessageTooLarge
+	}
+
+	// Write the packet
+	offset := writeString(buf, p.Topic)
+	if p.Header.QOS > 0 {
+		offset += writeUint16(buf[offset:], p.MessageID)
+	}
+
+	copy(buf[offset:], p.Payload)
+	offset += len(p.Payload)
+
+	// Write the header in front and return the buffer
+	start := writeHeader(head, TypeOfPublish, &p.Header, offset)
+	return w.Write(array.Slice(start, maxHeaderSize+offset))
 }
 
 // Type returns the MQTT message type.
@@ -368,14 +355,15 @@ func (p *Publish) String() string {
 
 // EncodeTo writes the encoded message to the underlying writer.
 func (p *Puback) EncodeTo(w io.Writer) (int, error) {
-	buf := buffers.Get()
-	defer buffers.Put(buf)
+	array := buffers.Get()
+	defer buffers.Put(array)
 
-	buf.Write(reserveForHeader)
-	writeUint16(buf, p.MessageID)
+	head, buf := array.Split(maxHeaderSize)
+	offset := writeUint16(buf, p.MessageID)
 
-	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfPuback, buf, nil))
+	// Write the header in front and return the buffer
+	start := writeHeader(head, TypeOfPuback, nil, offset)
+	return w.Write(array.Slice(start, maxHeaderSize+offset))
 }
 
 // Type returns the MQTT message type.
@@ -390,14 +378,15 @@ func (p *Puback) String() string {
 
 // EncodeTo writes the encoded message to the underlying writer.
 func (p *Pubrec) EncodeTo(w io.Writer) (int, error) {
-	buf := buffers.Get()
-	defer buffers.Put(buf)
+	array := buffers.Get()
+	defer buffers.Put(array)
 
-	buf.Write(reserveForHeader)
-	writeUint16(buf, p.MessageID)
+	head, buf := array.Split(maxHeaderSize)
+	offset := writeUint16(buf, p.MessageID)
 
-	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfPubrec, buf, nil))
+	// Write the header in front and return the buffer
+	start := writeHeader(head, TypeOfPubrec, nil, offset)
+	return w.Write(array.Slice(start, maxHeaderSize+offset))
 }
 
 // Type returns the MQTT message type.
@@ -412,14 +401,15 @@ func (p *Pubrec) String() string {
 
 // EncodeTo writes the encoded message to the underlying writer.
 func (p *Pubrel) EncodeTo(w io.Writer) (int, error) {
-	buf := buffers.Get()
-	defer buffers.Put(buf)
+	array := buffers.Get()
+	defer buffers.Put(array)
 
-	buf.Write(reserveForHeader)
-	writeUint16(buf, p.MessageID)
+	head, buf := array.Split(maxHeaderSize)
+	offset := writeUint16(buf, p.MessageID)
 
-	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfPubrel, buf, &p.Header))
+	// Write the header in front and return the buffer
+	start := writeHeader(head, TypeOfPubrel, &p.Header, offset)
+	return w.Write(array.Slice(start, maxHeaderSize+offset))
 }
 
 // Type returns the MQTT message type.
@@ -434,14 +424,15 @@ func (p *Pubrel) String() string {
 
 // EncodeTo writes the encoded message to the underlying writer.
 func (p *Pubcomp) EncodeTo(w io.Writer) (int, error) {
-	buf := buffers.Get()
-	defer buffers.Put(buf)
+	array := buffers.Get()
+	defer buffers.Put(array)
 
-	buf.Write(reserveForHeader)
-	writeUint16(buf, p.MessageID)
+	head, buf := array.Split(maxHeaderSize)
+	offset := writeUint16(buf, p.MessageID)
 
-	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfPubcomp, buf, nil))
+	// Write the header in front and return the buffer
+	start := writeHeader(head, TypeOfPubcomp, nil, offset)
+	return w.Write(array.Slice(start, maxHeaderSize+offset))
 }
 
 // Type returns the MQTT message type.
@@ -456,18 +447,19 @@ func (p *Pubcomp) String() string {
 
 // EncodeTo writes the encoded message to the underlying writer.
 func (s *Subscribe) EncodeTo(w io.Writer) (int, error) {
-	buf := buffers.Get()
-	defer buffers.Put(buf)
+	array := buffers.Get()
+	defer buffers.Put(array)
 
-	buf.Write(reserveForHeader)
-	writeUint16(buf, s.MessageID)
+	head, buf := array.Split(maxHeaderSize)
+	offset := writeUint16(buf, s.MessageID)
 	for _, t := range s.Subscriptions {
-		writeString(buf, t.Topic)
-		buf.WriteByte(byte(t.Qos))
+		offset += writeString(buf[offset:], t.Topic)
+		offset += writeUint8(buf[offset:], byte(t.Qos))
 	}
 
-	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfSubscribe, buf, &s.Header))
+	// Write the header in front and return the buffer
+	start := writeHeader(head, TypeOfSubscribe, &s.Header, offset)
+	return w.Write(array.Slice(start, maxHeaderSize+offset))
 }
 
 // Type returns the MQTT message type.
@@ -482,17 +474,18 @@ func (s *Subscribe) String() string {
 
 // EncodeTo writes the encoded message to the underlying writer.
 func (s *Suback) EncodeTo(w io.Writer) (int, error) {
-	buf := buffers.Get()
-	defer buffers.Put(buf)
+	array := buffers.Get()
+	defer buffers.Put(array)
 
-	buf.Write(reserveForHeader)
-	writeUint16(buf, s.MessageID)
+	head, buf := array.Split(maxHeaderSize)
+	offset := writeUint16(buf, s.MessageID)
 	for _, q := range s.Qos {
-		buf.WriteByte(byte(q))
+		offset += writeUint8(buf[offset:], byte(q))
 	}
 
-	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfSuback, buf, nil))
+	// Write the header in front and return the buffer
+	start := writeHeader(head, TypeOfSuback, nil, offset)
+	return w.Write(array.Slice(start, maxHeaderSize+offset))
 }
 
 // Type returns the MQTT message type.
@@ -507,17 +500,18 @@ func (s *Suback) String() string {
 
 // EncodeTo writes the encoded message to the underlying writer.
 func (u *Unsubscribe) EncodeTo(w io.Writer) (int, error) {
-	buf := buffers.Get()
-	defer buffers.Put(buf)
+	array := buffers.Get()
+	defer buffers.Put(array)
 
-	buf.Write(reserveForHeader)
-	writeUint16(buf, u.MessageID)
+	head, buf := array.Split(maxHeaderSize)
+	offset := writeUint16(buf, u.MessageID)
 	for _, toptup := range u.Topics {
-		writeString(buf, toptup.Topic)
+		offset += writeString(buf[offset:], toptup.Topic)
 	}
 
-	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfUnsubscribe, buf, &u.Header))
+	// Write the header in front and return the buffer
+	start := writeHeader(head, TypeOfUnsubscribe, &u.Header, offset)
+	return w.Write(array.Slice(start, maxHeaderSize+offset))
 }
 
 // Type returns the MQTT message type.
@@ -532,14 +526,15 @@ func (u *Unsubscribe) String() string {
 
 // EncodeTo writes the encoded message to the underlying writer.
 func (u *Unsuback) EncodeTo(w io.Writer) (int, error) {
-	buf := buffers.Get()
-	defer buffers.Put(buf)
+	array := buffers.Get()
+	defer buffers.Put(array)
 
-	buf.Write(reserveForHeader)
-	writeUint16(buf, u.MessageID)
+	head, buf := array.Split(maxHeaderSize)
+	offset := writeUint16(buf, u.MessageID)
 
-	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfUnsuback, buf, nil))
+	// Write the header in front and return the buffer
+	start := writeHeader(head, TypeOfUnsuback, nil, offset)
+	return w.Write(array.Slice(start, maxHeaderSize+offset))
 }
 
 // Type returns the MQTT message type.
@@ -600,7 +595,7 @@ func (d *Disconnect) String() string {
 // decodeHeader decodes the header
 func decodeHeader(rdr Reader) (hdr Header, length uint32, messageType uint8, err error) {
 	firstByte, err := rdr.ReadByte()
-	if err != nil{
+	if err != nil {
 		return Header{}, 0, 0, err
 	}
 
@@ -626,7 +621,7 @@ func decodeHeader(rdr Reader) (hdr Header, length uint32, messageType uint8, err
 	// Read the length
 	for (digit & 0x80) != 0 {
 		b, err := rdr.ReadByte()
-		if err != nil{
+		if err != nil {
 			return Header{}, 0, 0, err
 		}
 
@@ -814,15 +809,47 @@ func decodeDisconnect() Message {
 }
 
 // -------------------------------------------------------------
-func writeString(buf *bytes.Buffer, s []byte) {
-	strlen := uint16(len(s))
-	writeUint16(buf, strlen)
-	buf.Write(s)
+
+// encodeParts sews the whole packet together
+func writeHeader(buf []byte, msgType uint8, h *Header, length int) int {
+	var firstByte byte
+	firstByte |= msgType << 4
+	if h != nil {
+		firstByte |= boolToUInt8(h.DUP) << 3
+		firstByte |= h.QOS << 1
+		firstByte |= boolToUInt8(h.Retain)
+	}
+
+	// get the length first
+	numBytes, bitField := encodeLength(uint32(length))
+	offset := 6 - numBytes - 1 //to account for the first byte
+
+	// now we blit it in
+	buf[offset] = byte(firstByte)
+	for i := offset + 1; i < 6; i++ {
+		buf[i] = byte(bitField >> ((numBytes - 1) * 8))
+		numBytes--
+	}
+
+	return int(offset)
 }
 
-func writeUint16(buf *bytes.Buffer, tupac uint16) {
-	buf.WriteByte(byte((tupac & 0xff00) >> 8))
-	buf.WriteByte(byte(tupac & 0x00ff))
+func writeString(buf, v []byte) int {
+	length := len(v)
+	writeUint16(buf, uint16(length))
+	copy(buf[2:], v)
+	return 2 + length
+}
+
+func writeUint16(buf []byte, v uint16) int {
+	buf[0] = byte((v & 0xff00) >> 8)
+	buf[1] = byte(v & 0x00ff)
+	return 2
+}
+
+func writeUint8(buf []byte, v uint8) int {
+	buf[0] = v
+	return 1
 }
 
 func readString(b []byte, startsAt *uint32) []byte {
