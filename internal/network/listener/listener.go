@@ -244,29 +244,30 @@ func (l muxListener) Accept() (net.Conn, error) {
 // Conn wraps a net.Conn and provides transparent sniffing of connection data.
 type Conn struct {
 	net.Conn
-	buffer sniffer
+	reader sniffer
 }
 
 // NewConn creates a new sniffed connection.
 func newConn(c net.Conn) *Conn {
-	return &Conn{
+	conn := &Conn{
 		Conn:   c,
-		buffer: sniffer{source: c},
+		reader: sniffer{source: c},
 	}
+	return conn
 }
 
 // Read reads the block of data from the underlying buffer.
 func (m *Conn) Read(p []byte) (int, error) {
-	return m.buffer.Read(p)
+	return m.reader.Read(p)
 }
 
 func (m *Conn) startSniffing() io.Reader {
-	m.buffer.reset(true)
-	return &m.buffer
+	m.reader.reset(true)
+	return &m.reader
 }
 
 func (m *Conn) doneSniffing() {
-	m.buffer.reset(false)
+	m.reader.reset(false)
 }
 
 // ------------------------------------------------------------------------------------
