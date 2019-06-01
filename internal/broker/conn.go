@@ -214,7 +214,7 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 func (c *Conn) Send(m *message.Message) (err error) {
 	defer c.MeasureElapsed("send.pub", time.Now())
 	packet := mqtt.Publish{
-		Header:  &mqtt.StaticHeader{QOS: 0},
+		Header:  mqtt.StaticHeader{QOS: 0},
 		Topic:   m.Channel, // The channel for this message.
 		Payload: m.Payload, // The payload for this message.
 	}
