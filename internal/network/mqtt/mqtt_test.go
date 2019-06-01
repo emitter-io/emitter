@@ -33,7 +33,7 @@ func (dn devNull) Write(p []byte) (n int, err error) {
 
 func BenchmarkPublishEncode(b *testing.B) {
 	benchmarkPacketEncode(b, &Publish{
-		Header: &StaticHeader{
+		Header: StaticHeader{
 			QOS:    1,
 			Retain: false,
 			DUP:    false,
@@ -53,10 +53,10 @@ func benchmarkPacketEncode(b *testing.B, packet Message) {
 	}
 }
 
-// BenchmarkPublishDecode-8   	 3000000	       534 ns/op	     963 B/op	       3 allocs/op
+// BenchmarkPublishDecode-8   	 5000000	       243 ns/op	     960 B/op	       2 allocs/op
 func BenchmarkPublishDecode(b *testing.B) {
 	benchmarkPacketDecode(b, &Publish{
-		Header: &StaticHeader{
+		Header: StaticHeader{
 			QOS:    1,
 			Retain: false,
 			DUP:    false,
@@ -109,7 +109,7 @@ func Test_LargePacket(t *testing.T) {
 	}
 
 	pub := &Publish{
-		Header: &StaticHeader{
+		Header: StaticHeader{
 			QOS:    0,
 			Retain: false,
 			DUP:    false,
@@ -216,7 +216,7 @@ func Test_Connack(t *testing.T) {
 
 func Test_Publish(t *testing.T) {
 	testPkt := &Publish{
-		Header: &StaticHeader{
+		Header: StaticHeader{
 			QOS:    1,
 			Retain: false,
 			DUP:    false,
@@ -234,7 +234,7 @@ func Test_Publish(t *testing.T) {
 
 func Test_Publish2(t *testing.T) {
 	testPkt := &Publish{
-		Header: &StaticHeader{
+		Header: StaticHeader{
 			QOS:    2,
 			Retain: false,
 			DUP:    false,
@@ -257,7 +257,7 @@ func Test_Publish2(t *testing.T) {
 func Test_Publish_WithUnicodeDecoding(t *testing.T) {
 	pay := []byte("hello earth 😁, good evening")
 	testPkt := &Publish{
-		Header: &StaticHeader{
+		Header: StaticHeader{
 			QOS:    2,
 			Retain: false,
 			DUP:    false,
@@ -314,7 +314,7 @@ func Test_Pubrec(t *testing.T) {
 func Test_Pubrel(t *testing.T) {
 	testPkt := &Pubrel{
 		MessageID: 0xbeef,
-		Header: &StaticHeader{
+		Header: StaticHeader{
 			QOS:    1,
 			Retain: false,
 			DUP:    false,
@@ -341,7 +341,7 @@ func Test_Pubcomp(t *testing.T) {
 func Test_Subscribe(t *testing.T) {
 	testPkt := &Subscribe{
 		MessageID: 0xbeef,
-		Header: &StaticHeader{
+		Header: StaticHeader{
 			QOS:    1,
 			Retain: false,
 			DUP:    false,
@@ -375,7 +375,7 @@ func Test_Suback(t *testing.T) {
 func Test_UnSubscribe(t *testing.T) {
 	testPkt := &Unsubscribe{
 		MessageID: 0xbeef,
-		Header: &StaticHeader{
+		Header: StaticHeader{
 			QOS:    1,
 			Retain: false,
 			DUP:    false,
