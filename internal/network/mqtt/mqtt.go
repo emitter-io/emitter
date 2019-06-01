@@ -168,8 +168,14 @@ type TopicQOSTuple struct {
 	Topic []byte
 }
 
+// Reader is the requied reader for an efficient decoding.
+type Reader interface{
+	io.Reader
+	ReadByte() (byte, error) 
+}
+
 // DecodePacket decodes the packet from the provided reader.
-func DecodePacket(rdr io.Reader, maxMessageSize int64) (Message, error) {
+func DecodePacket(rdr Reader, maxMessageSize int64) (Message, error) {
 	hdr, sizeOf, messageType, err := decodeStaticHeader(rdr)
 	if err != nil {
 		return nil, err
@@ -592,13 +598,12 @@ func (d *Disconnect) String() string {
 }
 
 // decodeStaticHeader decodes the header
-func decodeStaticHeader(rdr io.Reader) (hdr *StaticHeader, length uint32, messageType uint8, err error) {
-	b := make([]byte, 1)
-	if _, err = io.ReadFull(rdr, b); err != nil {
+func decodeStaticHeader(rdr Reader) (hdr *StaticHeader, length uint32, messageType uint8, err error) {
+	firstByte, err := rdr.ReadByte()
+	if err != nil{
 		return nil, 0, 0, err
 	}
 
-	firstByte := b[0]
 	messageType = (firstByte & 0xf0) >> 4
 
 	// Set the header depending on the message type
@@ -615,17 +620,17 @@ func decodeStaticHeader(rdr io.Reader) (hdr *StaticHeader, length uint32, messag
 		}
 	}
 
-	b[0] = 0x0 //b[0] ^= b[0]
 	multiplier := uint32(1)
 	digit := byte(0x80)
 
 	// Read the length
 	for (digit & 0x80) != 0 {
-		if _, err = io.ReadFull(rdr, b); err != nil {
+		b, err := rdr.ReadByte()
+		if err != nil{
 			return nil, 0, 0, err
 		}
 
-		digit = b[0]
+		digit = b
 		length += uint32(digit&0x7f) * multiplier
 		multiplier *= 128
 	}

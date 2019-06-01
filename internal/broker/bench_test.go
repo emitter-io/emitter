@@ -17,6 +17,7 @@ package broker
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"testing"
@@ -69,7 +70,7 @@ func BenchmarkFanOut(b *testing.B) {
 
 	for n := 8; n <= 128; n *= 2 {
 		b.Run(fmt.Sprintf("%d-Clients", n), func(b *testing.B) {
-			var clients []net.Conn
+			var clients []*testConn
 			for i := 0; i < n; i++ {
 				cli := newBenchClient(port)
 				clients = append(clients, cli)
@@ -107,7 +108,7 @@ func BenchmarkFanOut(b *testing.B) {
 	}
 }
 
-func responseOf(mqttType uint8, cli net.Conn) {
+func responseOf(mqttType uint8, cli *testConn) {
 	pkt, err := mqtt.DecodePacket(cli, 65536)
 	if err != nil {
 		panic(err)
@@ -123,7 +124,7 @@ func check(_ int, err error) {
 	}
 }
 
-func newBenchClient(port int) net.Conn {
+func newBenchClient(port int) *testConn {
 	cli := newTestClient(port)
 	connect := mqtt.Connect{ClientID: []byte("test")}
 	check(connect.EncodeTo(cli))
@@ -162,10 +163,22 @@ func newTestBroker(port int) *Service {
 	return broker
 }
 
-func newTestClient(port int) net.Conn {
+func newTestClient(port int) *testConn {
 	cli, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		panic(err)
 	}
-	return cli
+	return &testConn{cli}
+}
+
+type testConn struct {
+	net.Conn
+}
+
+func (c *testConn) ReadByte() (byte, error) {
+	b := make([]byte, 1)
+	if _, err := io.ReadFull(c.Conn, b); err != nil {
+		return 0, err
+	}
+	return b[0], nil
 }
