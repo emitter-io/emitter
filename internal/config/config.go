@@ -27,9 +27,8 @@ import (
 
 // Constants used throughout the service.
 const (
-	ChannelSeparator   = '/'   // The separator character.
-	maxMessageSize     = 65536 // Default Maximum message size allowed from/to the peer.
-	EncodingBufferSize = 65536 // Initial buffer size for encoding buffers
+	ChannelSeparator = '/'   // The separator character.
+	maxMessageSize   = 65536 // Default Maximum message size allowed from/to the peer.
 )
 
 // VaultUser is the vault user to use for authentication
@@ -100,9 +99,9 @@ type Config struct {
 	certCaches []cfg.CertCacher // The certificate caches configured.
 }
 
+// MaxMessageBytes returns the configured max message size, must be smaller than 64K.
 func (c *Config) MaxMessageBytes() int64 {
-	//return default if not configured
-	if c.Limit == nil || c.Limit.MessageSize <= 0 {
+	if c.Limit == nil || c.Limit.MessageSize <= 0 || c.Limit.MessageSize > maxMessageSize {
 		return maxMessageSize
 	}
 	return int64(c.Limit.MessageSize)
@@ -158,7 +157,7 @@ type ClusterConfig struct {
 	Passphrase string `json:"passphrase,omitempty"`
 }
 
-//Limit represent various limit configurations - such as message size.
+// LimitConfig represents various limit configurations - such as message size.
 type LimitConfig struct {
 	//Maximum message size allowed from/to the peer. Default if not specified is 64kB.
 	MessageSize int `json:"messageSize,omitempty"`
