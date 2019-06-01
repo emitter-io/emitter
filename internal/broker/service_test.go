@@ -30,7 +30,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-const testLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
+const (
+	testLicense   = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
+	testLicenseV2 = "RfBEIIFz1nNLf12JYRpoEUqFPLb3na0X_xbP_h3PM_CqDUVBGJfEV3WalW2maauQd48o-TcTM_61BfEsELfk0qMDqrCTswkB:2"
+)
 
 func Test_onHTTPPresence(t *testing.T) {
 	license, _ := license.Parse(testLicense)
@@ -144,7 +147,7 @@ func Test_onHTTPPresence(t *testing.T) {
 
 func TestPubsub(t *testing.T) {
 	const port = 9996
-	broker := newTestBroker(port)
+	broker := newTestBroker(port, 1)
 	defer broker.Close()
 
 	cli := newTestClient(port)
