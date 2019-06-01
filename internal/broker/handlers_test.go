@@ -337,7 +337,6 @@ func TestHandlers_onPublish(t *testing.T) {
 		s.Cipher, _ = s.License.Cipher()
 
 		err := nc.onPublish(&mqtt.Publish{
-			Header:  mqtt.StaticHeader{},
 			Topic:   []byte(tc.channel),
 			Payload: []byte(tc.payload),
 		})

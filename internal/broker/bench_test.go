@@ -44,7 +44,7 @@ func BenchmarkSerial(b *testing.B) {
 	defer cli.Close()
 
 	msg := mqtt.Publish{
-		Header:  mqtt.StaticHeader{QOS: 0},
+		Header:  mqtt.Header{QOS: 0},
 		Topic:   []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"),
 		Payload: []byte("hello world"),
 	}
@@ -78,7 +78,7 @@ func BenchmarkFanOut(b *testing.B) {
 
 			// Prepare a message for the benchmark
 			msg := mqtt.Publish{
-				Header:  mqtt.StaticHeader{QOS: 0},
+				Header:  mqtt.Header{QOS: 0},
 				Topic:   []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"),
 				Payload: []byte("hello world"),
 			}
@@ -132,7 +132,7 @@ func newBenchClient(port int) *testConn {
 
 	// Subscribe to a topic
 	sub := mqtt.Subscribe{
-		Header: mqtt.StaticHeader{QOS: 0},
+		Header: mqtt.Header{QOS: 0},
 		Subscriptions: []mqtt.TopicQOSTuple{
 			{Topic: []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"), Qos: 0},
 		},
@@ -182,4 +182,3 @@ func (c *testConn) ReadByte() (byte, error) {
 	}
 	return b[0], nil
 }
-

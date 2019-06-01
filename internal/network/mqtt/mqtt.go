@@ -55,8 +55,8 @@ const (
 	TypeOfDisconnect
 )
 
-// StaticHeader as defined in http://public.dhe.ibm.com/software/dw/webservices/ws-mqtt/mqtt-v3r1.html#fixed-header
-type StaticHeader struct {
+// Header as defined in http://public.dhe.ibm.com/software/dw/webservices/ws-mqtt/mqtt-v3r1.html#fixed-header
+type Header struct {
 	DUP    bool
 	Retain bool
 	QOS    uint8
@@ -93,7 +93,7 @@ type Connack struct {
 
 // Publish represents an MQTT publish packet.
 type Publish struct {
-	Header    StaticHeader
+	Header
 	Topic     []byte
 	MessageID uint16
 	Payload   []byte
@@ -115,7 +115,7 @@ type Pubrec struct {
 type Pubrel struct {
 	MessageID uint16
 	//QOS1
-	Header StaticHeader
+	Header Header
 }
 
 //Pubcomp is for saying is in response to a pubrel sent by the publisher
@@ -126,7 +126,7 @@ type Pubcomp struct {
 
 //Subscribe tells the server which topics the client would like to subscribe to
 type Subscribe struct {
-	Header        StaticHeader
+	Header
 	MessageID     uint16
 	Subscriptions []TopicQOSTuple
 }
@@ -139,7 +139,7 @@ type Suback struct {
 
 //Unsubscribe is the message to send if you don't want to subscribe to a topic anymore
 type Unsubscribe struct {
-	Header    StaticHeader
+	Header
 	MessageID uint16
 	Topics    []TopicQOSTuple
 }
@@ -176,7 +176,7 @@ type Reader interface{
 
 // DecodePacket decodes the packet from the provided reader.
 func DecodePacket(rdr Reader, maxMessageSize int64) (Message, error) {
-	hdr, sizeOf, messageType, err := decodeStaticHeader(rdr)
+	hdr, sizeOf, messageType, err := decodeHeader(rdr)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +238,7 @@ func DecodePacket(rdr Reader, maxMessageSize int64) (Message, error) {
 }
 
 // encodeParts sews the whole packet together
-func encodeParts(msgType uint8, buf *bytes.Buffer, h *StaticHeader) []byte {
+func encodeParts(msgType uint8, buf *bytes.Buffer, h *Header) []byte {
 	var firstByte byte
 	firstByte |= msgType << 4
 	if h != nil {
@@ -597,11 +597,11 @@ func (d *Disconnect) String() string {
 	return "disconnect"
 }
 
-// decodeStaticHeader decodes the header
-func decodeStaticHeader(rdr Reader) (hdr StaticHeader, length uint32, messageType uint8, err error) {
+// decodeHeader decodes the header
+func decodeHeader(rdr Reader) (hdr Header, length uint32, messageType uint8, err error) {
 	firstByte, err := rdr.ReadByte()
 	if err != nil{
-		return StaticHeader{}, 0, 0, err
+		return Header{}, 0, 0, err
 	}
 
 	messageType = (firstByte & 0xf0) >> 4
@@ -613,7 +613,7 @@ func decodeStaticHeader(rdr Reader) (hdr StaticHeader, length uint32, messageTyp
 		QOS := firstByte & 0x06 >> 1
 		retain := firstByte&0x01 > 0
 
-		hdr = StaticHeader{
+		hdr = Header{
 			DUP:    DUP,
 			QOS:    QOS,
 			Retain: retain,
@@ -627,7 +627,7 @@ func decodeStaticHeader(rdr Reader) (hdr StaticHeader, length uint32, messageTyp
 	for (digit & 0x80) != 0 {
 		b, err := rdr.ReadByte()
 		if err != nil{
-			return StaticHeader{}, 0, 0, err
+			return Header{}, 0, 0, err
 		}
 
 		digit = b
@@ -677,7 +677,7 @@ func decodeConnect(data []byte) Message {
 	return connect
 }
 
-func decodeConnack(data []byte, _ StaticHeader) Message {
+func decodeConnack(data []byte, _ Header) Message {
 	//first byte is weird in connack
 	bookmark := uint32(1)
 	retcode := data[bookmark]
@@ -687,7 +687,7 @@ func decodeConnack(data []byte, _ StaticHeader) Message {
 	}
 }
 
-func decodePublish(data []byte, hdr StaticHeader) Message {
+func decodePublish(data []byte, hdr Header) Message {
 	bookmark := uint32(0)
 	topic := readString(data, &bookmark)
 	var msgID uint16
@@ -719,7 +719,7 @@ func decodePubrec(data []byte) Message {
 	}
 }
 
-func decodePubrel(data []byte, hdr StaticHeader) Message {
+func decodePubrel(data []byte, hdr Header) Message {
 	bookmark := uint32(0)
 	msgID := readUint16(data, &bookmark)
 	return &Pubrel{
@@ -736,7 +736,7 @@ func decodePubcomp(data []byte) Message {
 	}
 }
 
-func decodeSubscribe(data []byte, hdr StaticHeader) Message {
+func decodeSubscribe(data []byte, hdr Header) Message {
 	bookmark := uint32(0)
 	msgID := readUint16(data, &bookmark)
 	var topics []TopicQOSTuple
@@ -773,7 +773,7 @@ func decodeSuback(data []byte) Message {
 	}
 }
 
-func decodeUnsubscribe(data []byte, hdr StaticHeader) Message {
+func decodeUnsubscribe(data []byte, hdr Header) Message {
 	bookmark := uint32(0)
 	var topics []TopicQOSTuple
 	msgID := readUint16(data, &bookmark)
