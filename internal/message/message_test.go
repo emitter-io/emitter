@@ -59,8 +59,8 @@ func TestNewFrame(t *testing.T) {
 	assert.Equal(t, 64, cap(f))
 }
 
-// BenchmarkCodec/Encode-8         	 2000000	       635 ns/op	     224 B/op	       2 allocs/op
-// BenchmarkCodec/Decode-8         	 2000000	       580 ns/op	     416 B/op	       4 allocs/op
+// BenchmarkCodec/Encode-8         	 3000000	       509 ns/op	     176 B/op	       1 allocs/op
+// BenchmarkCodec/Decode-8         	 3000000	       496 ns/op	     288 B/op	       3 allocs/op
 func BenchmarkCodec(b *testing.B) {
 	m := newTestMessage(Ssid{1, 2, 3}, "tweet/canada/english/", "This is a random tweet en english so we can test the payload. #emitter")
 	enc := m.Encode()
@@ -81,8 +81,7 @@ func BenchmarkCodec(b *testing.B) {
 	})
 }
 
-// BenchmarkEncodeWithSnappy-8   	   10000	    193539 ns/op	   57414 B/op	       2 allocs/op
-// BenchmarkEncodeWithSnappy-8   	   10000	    187242 ns/op	   57414 B/op	       2 allocs/op
+// BenchmarkEncodeWithSnappy-8   	   10000	    188831 ns/op	   57374 B/op	       1 allocs/op
 func BenchmarkEncodeWithSnappy(b *testing.B) {
 	var frame Frame
 	for m := 0; m < 1000; m++ {
@@ -96,9 +95,7 @@ func BenchmarkEncodeWithSnappy(b *testing.B) {
 	}
 }
 
-// Benchmark_DecodeFrame-8   	    3000	    487375 ns/op	  280592 B/op	    6005 allocs/op
-// Benchmark_DecodeFrame-8   	    3000	    488361 ns/op	  275317 B/op	    6004 allocs/op
-// Benchmark_DecodeFrame-8   	    5000	    296491 ns/op	  216573 B/op	    1005 allocs/op
+// Benchmark_DecodeFrame-8   	    5000	    284238 ns/op	  211217 B/op	    1004 allocs/op
 func Benchmark_DecodeFrame(b *testing.B) {
 	var frame Frame
 	for m := 0; m < 1000; m++ {
