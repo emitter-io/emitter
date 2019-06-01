@@ -71,7 +71,7 @@ func newMessage(topic string, size int) mqtt.Publish {
 	}
 
 	return mqtt.Publish{
-		Header:  &mqtt.StaticHeader{QOS: 0},
+		Header:  mqtt.Header{QOS: 0},
 		Topic:   []byte(topic),
 		Payload: make([]byte, size),
 	}
@@ -99,7 +99,7 @@ func newConn(hostAndPort, key, channel string) (*conn, error) {
 
 	// Subscribe to the topic
 	sub := mqtt.Subscribe{
-		Header: &mqtt.StaticHeader{QOS: 0},
+		Header: mqtt.Header{QOS: 0},
 		Subscriptions: []mqtt.TopicQOSTuple{
 			{Topic: []byte(cli.topic), Qos: 0},
 		},
