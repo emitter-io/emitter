@@ -28,13 +28,13 @@ func TestLicenseEncode(t *testing.T) {
 	}{
 		{expected: "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAFCDVAAAAAAI:1", license: &V1{
 			EncryptionKey: "zT83oDV0DWY5_JysbSTPTA",
-			User:      989603869,
+			User:          989603869,
 			Expires:       time.Unix(1600000000, 0),
 			Type:          2,
 		}},
 		{expected: "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI:1", license: &V1{
 			EncryptionKey: "zT83oDV0DWY5_JysbSTPTA",
-			User:      989603869,
+			User:          989603869,
 			Expires:       time.Unix(0, 0),
 			Type:          2,
 		}},
@@ -58,13 +58,14 @@ func TestLicenseEncode(t *testing.T) {
 }
 
 func TestNewLicenseAndMaster(t *testing.T) {
+	// license: RfBEIIFz1nNLf12JYRpoEUqFPLb3na0X_xbP_h3PM_CqDUVBGJfEV3WalW2maauQd48o-TcTM_61BfEsELfk0qMDqrCTswkB:2
+	// secret:  wnLJv3TMhYTg6lLkGfQoazo1-k7gjFPk
 	assert.NotPanics(t, func() {
 		l, m := New()
 		assert.NotEmpty(t, l)
 		assert.NotEmpty(t, m)
 	})
 }
-
 
 func TestParseLicense(t *testing.T) {
 	tests := []struct {
@@ -76,13 +77,13 @@ func TestParseLicense(t *testing.T) {
 		{license: "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI#", err: true},
 		{license: "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAFCDVAAAAAAI", expected: &V1{
 			EncryptionKey: "zT83oDV0DWY5_JysbSTPTA",
-			User:      989603869,
+			User:          989603869,
 			Expires:       time.Unix(1600000000, 0),
 			Type:          2,
 		}},
-		{license: "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI9", expected:  &V1{
+		{license: "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI9", expected: &V1{
 			EncryptionKey: "zT83oDV0DWY5_JysbSTPTA",
-			User:      989603869,
+			User:          989603869,
 			Expires:       time.Unix(0, 0),
 			Type:          2,
 		}},
