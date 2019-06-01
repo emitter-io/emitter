@@ -57,6 +57,33 @@ func BenchmarkSerial(b *testing.B) {
 	}
 }
 
+// BenchmarkParallel-8   	  300000	     12459 ns/op	     919 B/op	      10 allocs/op
+func BenchmarkParallel(b *testing.B) {
+	const port = 9995
+	benchInit.Do(func() {
+		newTestBroker(port, 2)
+	})
+
+	// Prepare a message for the benchmark
+	cli := newBenchClient(port)
+	defer cli.Close()
+	msg := mqtt.Publish{
+		Header:  mqtt.Header{QOS: 0},
+		Topic:   []byte("4kzJv3TMhYTg6lLk6fQoFG2KCe7gjFPk/a/b/c/"),
+		Payload: []byte("hello world"),
+	}
+
+	go cli.Drain()
+
+	
+	//defer profile.Start().Stop()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		check(msg.EncodeTo(cli))
+	}
+}
+
 // BenchmarkFanOut/8-Clients-8                10000            160866 ns/op            2505 B/op         48 allocs/op
 // BenchmarkFanOut/16-Clients-8                5000            278455 ns/op            3488 B/op         80 allocs/op
 // BenchmarkFanOut/32-Clients-8                2000            552022 ns/op            6906 B/op        146 allocs/op
@@ -86,6 +113,7 @@ func BenchmarkFanOut(b *testing.B) {
 			for _, cli := range clients {
 				cli := cli
 				defer cli.Close()
+				go cli.Drain()
 			}
 
 			b.ReportAllocs()
@@ -172,17 +200,30 @@ func newTestClient(port int) *testConn {
 	if err != nil {
 		panic(err)
 	}
-	return &testConn{cli}
+	return &testConn{
+		Conn:    cli,
+		buffer:  make([]byte, 8*1024),
+		scratch: make([]byte, 1),
+	}
 }
 
 type testConn struct {
 	net.Conn
+	buffer  []byte
+	scratch []byte
 }
 
 func (c *testConn) ReadByte() (byte, error) {
-	b := make([]byte, 1)
-	if _, err := io.ReadFull(c.Conn, b); err != nil {
+	if _, err := io.ReadFull(c.Conn, c.scratch); err != nil {
 		return 0, err
 	}
-	return b[0], nil
+	return c.scratch[0], nil
+}
+
+func (c *testConn) Drain() {
+	for {
+		if _, err := io.ReadFull(c.Conn, c.buffer); err != nil {
+			return
+		}
+	}
 }
