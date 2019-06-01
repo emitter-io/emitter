@@ -32,11 +32,11 @@ import (
 
 var benchInit sync.Once
 
-// BenchmarkSerial-8          30000             46242 ns/op            1604 B/op         21 allocs/op
+// BenchmarkSerial-8          30000             44349 ns/op            1574 B/op         19 allocs/op
 func BenchmarkSerial(b *testing.B) {
 	const port = 9995
 	benchInit.Do(func() {
-		newTestBroker(port)
+		newTestBroker(port, 2)
 	})
 
 	// Prepare a message for the benchmark
@@ -45,7 +45,7 @@ func BenchmarkSerial(b *testing.B) {
 
 	msg := mqtt.Publish{
 		Header:  mqtt.Header{QOS: 0},
-		Topic:   []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"),
+		Topic:   []byte("4kzJv3TMhYTg6lLk6fQoFG2KCe7gjFPk/a/b/c/"),
 		Payload: []byte("hello world"),
 	}
 
@@ -57,15 +57,15 @@ func BenchmarkSerial(b *testing.B) {
 	}
 }
 
-// BenchmarkFanOut/8-Clients-8                10000            158373 ns/op            2524 B/op         50 allocs/op
-// BenchmarkFanOut/16-Clients-8                5000            277052 ns/op            3511 B/op         82 allocs/op
-// BenchmarkFanOut/32-Clients-8                2000            552503 ns/op            6934 B/op        148 allocs/op
-// BenchmarkFanOut/64-Clients-8                1000           1042210 ns/op           13982 B/op        280 allocs/op
-// BenchmarkFanOut/128-Clients-8               1000           1943800 ns/op           27658 B/op        540 allocs/op
+// BenchmarkFanOut/8-Clients-8                10000            160866 ns/op            2505 B/op         48 allocs/op
+// BenchmarkFanOut/16-Clients-8                5000            278455 ns/op            3488 B/op         80 allocs/op
+// BenchmarkFanOut/32-Clients-8                2000            552022 ns/op            6906 B/op        146 allocs/op
+// BenchmarkFanOut/64-Clients-8                1000           1029245 ns/op           13961 B/op        278 allocs/op
+// BenchmarkFanOut/128-Clients-8               1000           1947789 ns/op           28034 B/op        538 allocs/op
 func BenchmarkFanOut(b *testing.B) {
 	const port = 9995
 	benchInit.Do(func() {
-		newTestBroker(port)
+		newTestBroker(port, 2)
 	})
 
 	for n := 8; n <= 128; n *= 2 {
@@ -79,7 +79,7 @@ func BenchmarkFanOut(b *testing.B) {
 			// Prepare a message for the benchmark
 			msg := mqtt.Publish{
 				Header:  mqtt.Header{QOS: 0},
-				Topic:   []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"),
+				Topic:   []byte("4kzJv3TMhYTg6lLk6fQoFG2KCe7gjFPk/a/b/c/"),
 				Payload: []byte("hello world"),
 			}
 
@@ -134,7 +134,7 @@ func newBenchClient(port int) *testConn {
 	sub := mqtt.Subscribe{
 		Header: mqtt.Header{QOS: 0},
 		Subscriptions: []mqtt.TopicQOSTuple{
-			{Topic: []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"), Qos: 0},
+			{Topic: []byte("4kzJv3TMhYTg6lLk6fQoFG2KCe7gjFPk/a/b/c/"), Qos: 0},
 		},
 	}
 	check(sub.EncodeTo(cli))
@@ -142,9 +142,13 @@ func newBenchClient(port int) *testConn {
 	return cli
 }
 
-func newTestBroker(port int) *Service {
+func newTestBroker(port int, licenseVersion int) *Service {
 	cfg := config.NewDefault().(*config.Config)
 	cfg.License = testLicense
+	if licenseVersion == 2 {
+		cfg.License = testLicenseV2
+	}
+
 	cfg.ListenAddr = fmt.Sprintf("127.0.0.1:%d", port)
 	cfg.Cluster = nil
 	cfg.TLS = &conf.TLSConfig{}
