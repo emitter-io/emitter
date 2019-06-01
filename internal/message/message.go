@@ -15,6 +15,7 @@
 package message
 
 import (
+	"bytes"
 	"sort"
 	"time"
 
@@ -75,28 +76,31 @@ func (m *Message) GetBinaryCodec() binary.Codec {
 }
 
 // Encode encodes the message into a binary & compressed representation.
-func (m *Message) Encode() (out []byte) {
+func (m *Message) Encode() []byte {
 
 	// Use a buffer pool to avoid allocating memory over and over again. It's safe here since
 	// we're using snappy right away which would perform a memory copy
-	buffer := bufferPool.Get()
-	defer bufferPool.Put(buffer)
+	encoder := encoders.Get().(*binary.Encoder)
+	defer encoders.Put(encoder)
+
+	buffer := encoder.Buffer().(*bytes.Buffer)
+	buffer.Reset()
 
 	// Encode into a temporary buffer
-	encoder := binary.NewEncoder(buffer)
 	if err := encoder.Encode(m); err != nil {
 		panic(err) // Should never panic
 	}
 
-	return snappy.Encode(out, buffer.Bytes())
+	// Decode from snappy with an allocation done by providing 'nil' destination.
+	return snappy.Encode(nil, buffer.Bytes())
 }
 
 // DecodeMessage decodes the message from the decoder.
 func DecodeMessage(buf []byte) (out Message, err error) {
 
-	// We need to allocate, given that the unmarshal is now no-copy
-	dst := make([]byte, 0, len(buf))
-	if buf, err = snappy.Decode(dst, buf); err == nil {
+	// We need to allocate, given that the unmarshal is now no-copy. By using 'nil' as destination
+	// we make sure that the underlying buffer is calculated based on the decoded length.
+	if buf, err = snappy.Decode(nil, buf); err == nil {
 		err = binary.Unmarshal(buf, &out)
 	}
 
@@ -128,28 +132,31 @@ func (f *Frame) Limit(n int) {
 }
 
 // Encode encodes the message frame
-func (f *Frame) Encode() (out []byte) {
+func (f *Frame) Encode() []byte {
 
 	// Use a buffer pool to avoid allocating memory over and over again. It's safe here since
 	// we're using snappy right away which would perform a memory copy
-	buffer := bufferPool.Get()
-	defer bufferPool.Put(buffer)
+	encoder := encoders.Get().(*binary.Encoder)
+	defer encoders.Put(encoder)
+
+	buffer := encoder.Buffer().(*bytes.Buffer)
+	buffer.Reset()
 
 	// Encode into a temporary buffer
-	encoder := binary.NewEncoder(buffer)
 	if err := encoder.Encode(f); err != nil {
 		panic(err) // This should never happen unless there's some terrible bug in the encoder
 	}
 
-	return snappy.Encode(out, buffer.Bytes())
+	// Decode from snappy with an allocation done by providing 'nil' destination.
+	return snappy.Encode(nil, buffer.Bytes())
 }
 
 // DecodeFrame decodes the message frame from the decoder.
 func DecodeFrame(buf []byte) (out Frame, err error) {
 
-	// We need to allocate, given that the unmarshal is now no-copy
-	dst := make([]byte, 0, len(buf))
-	if buf, err = snappy.Decode(dst, buf); err == nil {
+	// We need to allocate, given that the unmarshal is now no-copy. By using 'nil' as destination
+	// we make sure that the underlying buffer is calculated based on the decoded length.
+	if buf, err = snappy.Decode(nil, buf); err == nil {
 		err = binary.Unmarshal(buf, &out)
 	}
 	return
