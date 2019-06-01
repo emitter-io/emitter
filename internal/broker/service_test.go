@@ -178,7 +178,7 @@ func TestPubsub(t *testing.T) {
 
 	{ // Publish a retained message
 		msg := mqtt.Publish{
-			Header:  &mqtt.StaticHeader{QOS: 0, Retain: true},
+			Header:  mqtt.StaticHeader{QOS: 0, Retain: true},
 			Topic:   []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"),
 			Payload: []byte("retained message"),
 		}
@@ -188,7 +188,7 @@ func TestPubsub(t *testing.T) {
 
 	{ // Subscribe to a topic
 		sub := mqtt.Subscribe{
-			Header: &mqtt.StaticHeader{QOS: 0},
+			Header: mqtt.StaticHeader{QOS: 0},
 			Subscriptions: []mqtt.TopicQOSTuple{
 				{Topic: []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"), Qos: 0},
 			},
@@ -202,7 +202,7 @@ func TestPubsub(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
 		assert.Equal(t, &mqtt.Publish{
-			Header:  &mqtt.StaticHeader{QOS: 0},
+			Header:  mqtt.StaticHeader{QOS: 0},
 			Topic:   []byte("a/b/c/"),
 			Payload: []byte("retained message"),
 		}, pkt)
@@ -216,7 +216,7 @@ func TestPubsub(t *testing.T) {
 
 	{ // Publish a message
 		msg := mqtt.Publish{
-			Header:  &mqtt.StaticHeader{QOS: 0},
+			Header:  mqtt.StaticHeader{QOS: 0},
 			Topic:   []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"),
 			Payload: []byte("hello world"),
 		}
@@ -229,7 +229,7 @@ func TestPubsub(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
 		assert.Equal(t, &mqtt.Publish{
-			Header:  &mqtt.StaticHeader{QOS: 0},
+			Header:  mqtt.StaticHeader{QOS: 0},
 			Topic:   []byte("a/b/c/"),
 			Payload: []byte("hello world"),
 		}, pkt)
@@ -237,7 +237,7 @@ func TestPubsub(t *testing.T) {
 
 	{ // Publish a message but ignore ourselves
 		msg := mqtt.Publish{
-			Header:  &mqtt.StaticHeader{QOS: 0},
+			Header:  mqtt.StaticHeader{QOS: 0},
 			Topic:   []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/?me=0"),
 			Payload: []byte("hello world"),
 		}
@@ -247,7 +247,7 @@ func TestPubsub(t *testing.T) {
 
 	{ // Unsubscribe from the topic
 		sub := mqtt.Unsubscribe{
-			Header: &mqtt.StaticHeader{QOS: 0},
+			Header: mqtt.StaticHeader{QOS: 0},
 			Topics: []mqtt.TopicQOSTuple{
 				{Topic: []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"), Qos: 0},
 			},
@@ -264,7 +264,7 @@ func TestPubsub(t *testing.T) {
 
 	{ // Create a private link
 		msg := mqtt.Publish{
-			Header:  &mqtt.StaticHeader{QOS: 0},
+			Header:  mqtt.StaticHeader{QOS: 0},
 			Topic:   []byte("emitter/link/?req=1"),
 			Payload: []byte(`{ "name": "hi", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true }`),
 		}
@@ -280,7 +280,7 @@ func TestPubsub(t *testing.T) {
 
 	{ // Publish a message to a link
 		msg := mqtt.Publish{
-			Header:  &mqtt.StaticHeader{QOS: 0},
+			Header:  mqtt.StaticHeader{QOS: 0},
 			Topic:   []byte("hi"),
 			Payload: []byte("hello world"),
 		}

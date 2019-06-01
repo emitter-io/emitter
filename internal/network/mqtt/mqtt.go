@@ -93,7 +93,7 @@ type Connack struct {
 
 // Publish represents an MQTT publish packet.
 type Publish struct {
-	Header    *StaticHeader
+	Header    StaticHeader
 	Topic     []byte
 	MessageID uint16
 	Payload   []byte
@@ -115,7 +115,7 @@ type Pubrec struct {
 type Pubrel struct {
 	MessageID uint16
 	//QOS1
-	Header *StaticHeader
+	Header StaticHeader
 }
 
 //Pubcomp is for saying is in response to a pubrel sent by the publisher
@@ -126,7 +126,7 @@ type Pubcomp struct {
 
 //Subscribe tells the server which topics the client would like to subscribe to
 type Subscribe struct {
-	Header        *StaticHeader
+	Header        StaticHeader
 	MessageID     uint16
 	Subscriptions []TopicQOSTuple
 }
@@ -139,7 +139,7 @@ type Suback struct {
 
 //Unsubscribe is the message to send if you don't want to subscribe to a topic anymore
 type Unsubscribe struct {
-	Header    *StaticHeader
+	Header    StaticHeader
 	MessageID uint16
 	Topics    []TopicQOSTuple
 }
@@ -209,27 +209,27 @@ func DecodePacket(rdr Reader, maxMessageSize int64) (Message, error) {
 	var msg Message
 	switch messageType {
 	case TypeOfConnect:
-		msg = decodeConnect(buffer, hdr)
+		msg = decodeConnect(buffer)
 	case TypeOfConnack:
 		msg = decodeConnack(buffer, hdr)
 	case TypeOfPublish:
 		msg = decodePublish(buffer, hdr)
 	case TypeOfPuback:
-		msg = decodePuback(buffer, hdr)
+		msg = decodePuback(buffer)
 	case TypeOfPubrec:
-		msg = decodePubrec(buffer, hdr)
+		msg = decodePubrec(buffer)
 	case TypeOfPubrel:
 		msg = decodePubrel(buffer, hdr)
 	case TypeOfPubcomp:
-		msg = decodePubcomp(buffer, hdr)
+		msg = decodePubcomp(buffer)
 	case TypeOfSubscribe:
 		msg = decodeSubscribe(buffer, hdr)
 	case TypeOfSuback:
-		msg = decodeSuback(buffer, hdr)
+		msg = decodeSuback(buffer)
 	case TypeOfUnsubscribe:
 		msg = decodeUnsubscribe(buffer, hdr)
 	case TypeOfUnsuback:
-		msg = decodeUnsuback(buffer, hdr)
+		msg = decodeUnsuback(buffer)
 	default:
 		return nil, fmt.Errorf("Invalid zero-length packet with type %d", messageType)
 	}
@@ -353,7 +353,7 @@ func (p *Publish) EncodeTo(w io.Writer) (int, error) {
 	buf.Write(p.Payload)
 
 	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfPublish, buf, p.Header))
+	return w.Write(encodeParts(TypeOfPublish, buf, &p.Header))
 }
 
 // Type returns the MQTT message type.
@@ -419,7 +419,7 @@ func (p *Pubrel) EncodeTo(w io.Writer) (int, error) {
 	writeUint16(buf, p.MessageID)
 
 	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfPubrel, buf, p.Header))
+	return w.Write(encodeParts(TypeOfPubrel, buf, &p.Header))
 }
 
 // Type returns the MQTT message type.
@@ -467,7 +467,7 @@ func (s *Subscribe) EncodeTo(w io.Writer) (int, error) {
 	}
 
 	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfSubscribe, buf, s.Header))
+	return w.Write(encodeParts(TypeOfSubscribe, buf, &s.Header))
 }
 
 // Type returns the MQTT message type.
@@ -517,7 +517,7 @@ func (u *Unsubscribe) EncodeTo(w io.Writer) (int, error) {
 	}
 
 	// Write to the underlying buffer
-	return w.Write(encodeParts(TypeOfUnsubscribe, buf, u.Header))
+	return w.Write(encodeParts(TypeOfUnsubscribe, buf, &u.Header))
 }
 
 // Type returns the MQTT message type.
@@ -598,10 +598,10 @@ func (d *Disconnect) String() string {
 }
 
 // decodeStaticHeader decodes the header
-func decodeStaticHeader(rdr Reader) (hdr *StaticHeader, length uint32, messageType uint8, err error) {
+func decodeStaticHeader(rdr Reader) (hdr StaticHeader, length uint32, messageType uint8, err error) {
 	firstByte, err := rdr.ReadByte()
 	if err != nil{
-		return nil, 0, 0, err
+		return StaticHeader{}, 0, 0, err
 	}
 
 	messageType = (firstByte & 0xf0) >> 4
@@ -613,7 +613,7 @@ func decodeStaticHeader(rdr Reader) (hdr *StaticHeader, length uint32, messageTy
 		QOS := firstByte & 0x06 >> 1
 		retain := firstByte&0x01 > 0
 
-		hdr = &StaticHeader{
+		hdr = StaticHeader{
 			DUP:    DUP,
 			QOS:    QOS,
 			Retain: retain,
@@ -627,7 +627,7 @@ func decodeStaticHeader(rdr Reader) (hdr *StaticHeader, length uint32, messageTy
 	for (digit & 0x80) != 0 {
 		b, err := rdr.ReadByte()
 		if err != nil{
-			return nil, 0, 0, err
+			return StaticHeader{}, 0, 0, err
 		}
 
 		digit = b
@@ -638,7 +638,7 @@ func decodeStaticHeader(rdr Reader) (hdr *StaticHeader, length uint32, messageTy
 	return hdr, uint32(length), messageType, nil
 }
 
-func decodeConnect(data []byte, hdr *StaticHeader) Message {
+func decodeConnect(data []byte) Message {
 	//TODO: Decide how to recover rom invalid packets (offsets don't equal actual reading?)
 	bookmark := uint32(0)
 
@@ -677,7 +677,7 @@ func decodeConnect(data []byte, hdr *StaticHeader) Message {
 	return connect
 }
 
-func decodeConnack(data []byte, hdr *StaticHeader) Message {
+func decodeConnack(data []byte, _ StaticHeader) Message {
 	//first byte is weird in connack
 	bookmark := uint32(1)
 	retcode := data[bookmark]
@@ -687,7 +687,7 @@ func decodeConnack(data []byte, hdr *StaticHeader) Message {
 	}
 }
 
-func decodePublish(data []byte, hdr *StaticHeader) Message {
+func decodePublish(data []byte, hdr StaticHeader) Message {
 	bookmark := uint32(0)
 	topic := readString(data, &bookmark)
 	var msgID uint16
@@ -696,14 +696,14 @@ func decodePublish(data []byte, hdr *StaticHeader) Message {
 	}
 
 	return &Publish{
-		Topic:     topic,
 		Header:    hdr,
+		Topic:     topic,
 		Payload:   data[bookmark:],
 		MessageID: msgID,
 	}
 }
 
-func decodePuback(data []byte, hdr *StaticHeader) Message {
+func decodePuback(data []byte) Message {
 	bookmark := uint32(0)
 	msgID := readUint16(data, &bookmark)
 	return &Puback{
@@ -711,7 +711,7 @@ func decodePuback(data []byte, hdr *StaticHeader) Message {
 	}
 }
 
-func decodePubrec(data []byte, hdr *StaticHeader) Message {
+func decodePubrec(data []byte) Message {
 	bookmark := uint32(0)
 	msgID := readUint16(data, &bookmark)
 	return &Pubrec{
@@ -719,7 +719,7 @@ func decodePubrec(data []byte, hdr *StaticHeader) Message {
 	}
 }
 
-func decodePubrel(data []byte, hdr *StaticHeader) Message {
+func decodePubrel(data []byte, hdr StaticHeader) Message {
 	bookmark := uint32(0)
 	msgID := readUint16(data, &bookmark)
 	return &Pubrel{
@@ -728,7 +728,7 @@ func decodePubrel(data []byte, hdr *StaticHeader) Message {
 	}
 }
 
-func decodePubcomp(data []byte, hdr *StaticHeader) Message {
+func decodePubcomp(data []byte) Message {
 	bookmark := uint32(0)
 	msgID := readUint16(data, &bookmark)
 	return &Pubcomp{
@@ -736,7 +736,7 @@ func decodePubcomp(data []byte, hdr *StaticHeader) Message {
 	}
 }
 
-func decodeSubscribe(data []byte, hdr *StaticHeader) Message {
+func decodeSubscribe(data []byte, hdr StaticHeader) Message {
 	bookmark := uint32(0)
 	msgID := readUint16(data, &bookmark)
 	var topics []TopicQOSTuple
@@ -756,7 +756,7 @@ func decodeSubscribe(data []byte, hdr *StaticHeader) Message {
 	}
 }
 
-func decodeSuback(data []byte, hdr *StaticHeader) Message {
+func decodeSuback(data []byte) Message {
 	bookmark := uint32(0)
 	msgID := readUint16(data, &bookmark)
 	var qoses []uint8
@@ -773,7 +773,7 @@ func decodeSuback(data []byte, hdr *StaticHeader) Message {
 	}
 }
 
-func decodeUnsubscribe(data []byte, hdr *StaticHeader) Message {
+func decodeUnsubscribe(data []byte, hdr StaticHeader) Message {
 	bookmark := uint32(0)
 	var topics []TopicQOSTuple
 	msgID := readUint16(data, &bookmark)
@@ -793,7 +793,7 @@ func decodeUnsubscribe(data []byte, hdr *StaticHeader) Message {
 	}
 }
 
-func decodeUnsuback(data []byte, hdr *StaticHeader) Message {
+func decodeUnsuback(data []byte) Message {
 	bookmark := uint32(0)
 	msgID := readUint16(data, &bookmark)
 	return &Unsuback{
@@ -801,15 +801,15 @@ func decodeUnsuback(data []byte, hdr *StaticHeader) Message {
 	}
 }
 
-func decodePingreq(data []byte, hdr *StaticHeader) Message {
+func decodePingreq() Message {
 	return &Pingreq{}
 }
 
-func decodePingresp(data []byte, hdr *StaticHeader) Message {
+func decodePingresp() Message {
 	return &Pingresp{}
 }
 
-func decodeDisconnect(data []byte, hdr *StaticHeader) Message {
+func decodeDisconnect() Message {
 	return &Disconnect{}
 }
 
@@ -833,11 +833,11 @@ func readString(b []byte, startsAt *uint32) []byte {
 }
 
 func readUint16(b []byte, startsAt *uint32) uint16 {
-	fst := uint16(b[*startsAt])
-	*startsAt++
-	snd := uint16(b[*startsAt])
-	*startsAt++
-	return (fst << 8) + snd
+	b0 := uint16(b[*startsAt])
+	b1 := uint16(b[*startsAt+1])
+	*startsAt += 2
+
+	return (b0 << 8) + b1
 }
 
 func boolToUInt8(v bool) uint8 {
