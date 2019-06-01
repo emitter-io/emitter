@@ -16,6 +16,8 @@ require (
 	github.com/jawher/mow.cli v1.1.0
 	github.com/kelindar/binary v1.0.7
 	github.com/kelindar/rate v1.0.0
+	github.com/jawher/mow.cli v1.1.0
+	github.com/kelindar/binary v1.0.7
 	github.com/kelindar/tcp v1.0.0
 	github.com/klauspost/compress v1.5.0 // indirect
 	github.com/klauspost/cpuid v1.2.1 // indirect
@@ -23,6 +25,7 @@ require (
 	github.com/prometheus/client_golang v0.9.2
 	github.com/shurcooL/httpfs v0.0.0-20181222201310-74dc9339e414 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd // indirect
+	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/tidwall/btree v0.0.0-20170113224114-9876f1454cf0 // indirect
 	github.com/tidwall/buntdb v1.1.0
