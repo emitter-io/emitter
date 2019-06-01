@@ -15,14 +15,19 @@
 package message
 
 import (
+	"bytes"
 	"reflect"
+	"sync"
 
-	"github.com/emitter-io/emitter/internal/collection"
 	"github.com/kelindar/binary"
 )
 
-// Reusable buffer pool.
-var bufferPool = collection.NewBufferPool(64 * 1024)
+// Reusable long-lived encoder pool.
+var encoders = &sync.Pool{New: func() interface{} {
+	return binary.NewEncoder(
+		bytes.NewBuffer(make([]byte, 0, 8*1024)),
+	)
+}}
 
 type messageCodec struct{}
 
