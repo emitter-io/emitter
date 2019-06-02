@@ -55,7 +55,7 @@ func (s *Self) Name() string {
 func (s *Self) Configure(config map[string]interface{}) error {
 
 	// Get the interval from the provider configuration
-	interval := defaultInterval
+	interval := time.Second
 	if v, ok := config["interval"]; ok {
 		if i, ok := v.(float64); ok {
 			interval = time.Duration(i) * time.Millisecond

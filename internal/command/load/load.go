@@ -15,12 +15,15 @@
 package load
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
+	"sync/atomic"
 	"time"
 
+	"github.com/emitter-io/emitter/internal/async"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/jawher/mow.cli"
@@ -54,6 +57,7 @@ func Run(cmd *cli.Cmd) {
 		msg := newMessage(cli.topic, *size)
 		for {
 			for i := 0; i < *batch; i++ {
+				atomic.AddUint64(&cli.sent, 1)
 				if _, err := msg.EncodeTo(cli); err != nil {
 					logging.LogError("client", "tcp send", err)
 					return
@@ -120,6 +124,7 @@ type conn struct {
 	net.Conn
 	scratch []byte
 	topic   string
+	sent    uint64
 }
 
 // ReadByte reads a single byte.
@@ -132,6 +137,12 @@ func (c *conn) ReadByte() (byte, error) {
 
 // Drain continously drains the connection.
 func (c *conn) Drain() {
+	async.Repeat(context.Background(), time.Second, func() {
+		sent := atomic.LoadUint64(&c.sent)
+		atomic.StoreUint64(&c.sent, 0)
+		logging.LogTarget("client", "messages sent", sent)
+	})
+
 	for {
 		if _, err := io.Copy(ioutil.Discard, c.Conn); err != nil {
 			return
