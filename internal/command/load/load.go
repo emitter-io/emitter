@@ -28,6 +28,8 @@ import (
 
 const maxMessageSize = 64000
 
+var dial = net.Dial
+
 // Run runs a benchmark command.
 func Run(cmd *cli.Cmd) {
 	cmd.Spec = "KEY [ -h=<host> ] [ -c=<channel> ] [ -b=<batch> ] [ -s=<size> ]"
@@ -79,7 +81,7 @@ func newMessage(topic string, size int) mqtt.Publish {
 
 // NewConn creates a new connection for the load test.
 func newConn(hostAndPort, key, channel string) (*conn, error) {
-	socket, err := net.Dial("tcp", hostAndPort)
+	socket, err := dial("tcp", hostAndPort)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +91,7 @@ func newConn(hostAndPort, key, channel string) (*conn, error) {
 		scratch: make([]byte, 1),
 		topic:   fmt.Sprintf("%s/%s", key, channel),
 	}
+	cli.Skip(mqtt.TypeOfConnack)
 
 	// Connect to the broker
 	logging.LogTarget("client", "connecting to the broker", hostAndPort)
