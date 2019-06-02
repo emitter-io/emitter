@@ -91,7 +91,6 @@ func newConn(hostAndPort, key, channel string) (*conn, error) {
 		scratch: make([]byte, 1),
 		topic:   fmt.Sprintf("%s/%s", key, channel),
 	}
-	cli.Skip(mqtt.TypeOfConnack)
 
 	// Connect to the broker
 	logging.LogTarget("client", "connecting to the broker", hostAndPort)
@@ -99,6 +98,7 @@ func newConn(hostAndPort, key, channel string) (*conn, error) {
 	if _, err := connect.EncodeTo(cli); err != nil {
 		return nil, err
 	}
+	cli.Skip(mqtt.TypeOfConnack)
 
 	// Subscribe to the topic
 	sub := mqtt.Subscribe{
