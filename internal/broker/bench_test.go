@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"sync"
 	"testing"
@@ -32,7 +33,7 @@ import (
 
 var benchInit sync.Once
 
-// BenchmarkSerial-8          30000             44349 ns/op            1574 B/op         19 allocs/op
+// BenchmarkSerial-8   	     100	  10084435 ns/op	    2183 B/op	      19 allocs/op
 func BenchmarkSerial(b *testing.B) {
 	const port = 9995
 	benchInit.Do(func() {
@@ -43,6 +44,9 @@ func BenchmarkSerial(b *testing.B) {
 	cli := newBenchClient(port)
 	defer cli.Close()
 
+	responseOf(mqtt.TypeOfConnack, cli)
+	responseOf(mqtt.TypeOfSuback, cli)
+
 	msg := mqtt.Publish{
 		Header:  mqtt.Header{QOS: 0},
 		Topic:   []byte("4kzJv3TMhYTg6lLk6fQoFG2KCe7gjFPk/a/b/c/"),
@@ -52,12 +56,15 @@ func BenchmarkSerial(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+
+		// Since this is serial, we should get the same rate as the underlying
+		// rate limiting on the socket.
 		check(msg.EncodeTo(cli))
 		responseOf(mqtt.TypeOfPublish, cli)
 	}
 }
 
-// BenchmarkParallel-8   	  300000	     12459 ns/op	     919 B/op	      10 allocs/op
+// BenchmarkParallel-8   	  200000	      6801 ns/op	    1488 B/op	      16 allocs/op
 func BenchmarkParallel(b *testing.B) {
 	const port = 9995
 	benchInit.Do(func() {
@@ -75,7 +82,6 @@ func BenchmarkParallel(b *testing.B) {
 
 	go cli.Drain()
 
-	
 	//defer profile.Start().Stop()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -84,11 +90,11 @@ func BenchmarkParallel(b *testing.B) {
 	}
 }
 
-// BenchmarkFanOut/8-Clients-8                10000            160866 ns/op            2505 B/op         48 allocs/op
-// BenchmarkFanOut/16-Clients-8                5000            278455 ns/op            3488 B/op         80 allocs/op
-// BenchmarkFanOut/32-Clients-8                2000            552022 ns/op            6906 B/op        146 allocs/op
-// BenchmarkFanOut/64-Clients-8                1000           1029245 ns/op           13961 B/op        278 allocs/op
-// BenchmarkFanOut/128-Clients-8               1000           1947789 ns/op           28034 B/op        538 allocs/op
+// BenchmarkFanOut/8-Clients-8         	  300000	      5197 ns/op	    1096 B/op	      12 allocs/op
+// BenchmarkFanOut/16-Clients-8        	  300000	      5155 ns/op	     792 B/op	       9 allocs/op
+// BenchmarkFanOut/32-Clients-8        	  300000	     15266 ns/op	    2750 B/op	      16 allocs/op
+// BenchmarkFanOut/64-Clients-8        	  300000	     30667 ns/op	    6224 B/op	      21 allocs/op
+// BenchmarkFanOut/128-Clients-8       	  300000	     55146 ns/op	   10690 B/op	      20 allocs/op
 func BenchmarkFanOut(b *testing.B) {
 	const port = 9995
 	benchInit.Do(func() {
@@ -120,17 +126,6 @@ func BenchmarkFanOut(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				check(msg.EncodeTo(clients[0]))
-
-				wg := new(sync.WaitGroup)
-				wg.Add(len(clients))
-				for _, cli := range clients {
-					cli := cli
-					go func() {
-						responseOf(mqtt.TypeOfPublish, cli)
-						wg.Done()
-					}()
-				}
-				wg.Wait()
 			}
 		})
 	}
@@ -156,7 +151,6 @@ func newBenchClient(port int) *testConn {
 	cli := newTestClient(port)
 	connect := mqtt.Connect{ClientID: []byte("test")}
 	check(connect.EncodeTo(cli))
-	responseOf(mqtt.TypeOfConnack, cli)
 
 	// Subscribe to a topic
 	sub := mqtt.Subscribe{
@@ -166,7 +160,6 @@ func newBenchClient(port int) *testConn {
 		},
 	}
 	check(sub.EncodeTo(cli))
-	responseOf(mqtt.TypeOfSuback, cli)
 	return cli
 }
 
@@ -222,7 +215,7 @@ func (c *testConn) ReadByte() (byte, error) {
 
 func (c *testConn) Drain() {
 	for {
-		if _, err := io.ReadFull(c.Conn, c.buffer); err != nil {
+		if _, err := io.Copy(ioutil.Discard, c.Conn); err != nil {
 			return
 		}
 	}
