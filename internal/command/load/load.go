@@ -34,11 +34,11 @@ var dial = net.Dial
 func Run(cmd *cli.Cmd) {
 	cmd.Spec = "KEY [ -h=<host> ] [ -c=<channel> ] [ -b=<batch> ] [ -s=<size> ]"
 	var (
-		key     = cmd.StringArg("KEY", "", "Key for the channel (by default a key for the `load/` channel)")
-		host    = cmd.StringOpt("h host", "127.0.0.1:8080", "Host name")
-		channel = cmd.StringOpt("c channel", "load/", "The channel for load testing")
-		batch   = cmd.IntOpt("b batch", 10, "The size of the batch to send")
-		size    = cmd.IntOpt("s size", 64, "The size of the message to send")
+		key     = cmd.StringArg("KEY", "", "Specifies the key for the channel (by default a key for the `load/` channel).")
+		host    = cmd.StringOpt("h host", "127.0.0.1:8080", "Specifies the broker host name and port. This must follow the <ip:port> format.")
+		channel = cmd.StringOpt("c channel", "load/", "Specifies the channel for load testing.")
+		batch   = cmd.IntOpt("b batch", 10, "Specifies the number of messages to send at once to the broker at once.")
+		size    = cmd.IntOpt("s size", 64, "Specifies the size of the message to send in bytes.")
 	)
 	cmd.Action = func() {
 		logging.LogAction("client", "starting a load test...")
