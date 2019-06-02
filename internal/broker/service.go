@@ -429,7 +429,6 @@ func (s *Service) publish(m *message.Message, exclude string) (n int64) {
 		return s.ID() != exclude
 	}
 
-	// Run the lookup and send the message
 	for _, subscriber := range s.subscriptions.Lookup(m.Ssid(), filter) {
 		subscriber.Send(m)
 		if subscriber.Type() == message.SubscriberDirect {
