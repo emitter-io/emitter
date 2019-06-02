@@ -219,7 +219,6 @@ func (c *Conn) Send(m *message.Message) (err error) {
 		Payload: m.Payload, // The payload for this message.
 	}
 
-	// Acknowledge the publication
 	_, err = packet.EncodeTo(c.socket)
 	return
 }

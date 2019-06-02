@@ -15,7 +15,6 @@
 package listener
 
 import (
-	"bytes"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -237,74 +236,4 @@ func (l muxListener) Accept() (net.Conn, error) {
 		return nil, ErrListenerClosed
 	}
 	return c, nil
-}
-
-// ------------------------------------------------------------------------------------
-
-// Conn wraps a net.Conn and provides transparent sniffing of connection data.
-type Conn struct {
-	net.Conn
-	reader sniffer
-}
-
-// NewConn creates a new sniffed connection.
-func newConn(c net.Conn) *Conn {
-	conn := &Conn{
-		Conn:   c,
-		reader: sniffer{source: c},
-	}
-	return conn
-}
-
-// Read reads the block of data from the underlying buffer.
-func (m *Conn) Read(p []byte) (int, error) {
-	return m.reader.Read(p)
-}
-
-func (m *Conn) startSniffing() io.Reader {
-	m.reader.reset(true)
-	return &m.reader
-}
-
-func (m *Conn) doneSniffing() {
-	m.reader.reset(false)
-}
-
-// ------------------------------------------------------------------------------------
-
-// Sniffer represents a io.Reader which can peek incoming bytes and reset back to normal.
-type sniffer struct {
-	source     io.Reader
-	buffer     bytes.Buffer
-	bufferRead int
-	bufferSize int
-	sniffing   bool
-	lastErr    error
-}
-
-// Read reads data from the buffer.
-func (s *sniffer) Read(p []byte) (int, error) {
-	if s.bufferSize > s.bufferRead {
-		bn := copy(p, s.buffer.Bytes()[s.bufferRead:s.bufferSize])
-		s.bufferRead += bn
-		return bn, s.lastErr
-	} else if !s.sniffing && s.buffer.Cap() != 0 {
-		s.buffer = bytes.Buffer{}
-	}
-
-	sn, sErr := s.source.Read(p)
-	if sn > 0 && s.sniffing {
-		s.lastErr = sErr
-		if wn, wErr := s.buffer.Write(p[:sn]); wErr != nil {
-			return wn, wErr
-		}
-	}
-	return sn, sErr
-}
-
-// Reset resets the buffer.
-func (s *sniffer) reset(snif bool) {
-	s.sniffing = snif
-	s.bufferRead = 0
-	s.bufferSize = s.buffer.Len()
 }
