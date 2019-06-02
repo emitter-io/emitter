@@ -45,6 +45,8 @@ github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8/go.mod h1:Nht
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af h1:pmfjZENx5imkbgOkpRUYLnmbU7UEFbjtDA2hxJ1ichM=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
 github.com/kelindar/binary v1.0.1/go.mod h1:wMMTJccK3HLFh6eH9bD4VRIjUTFVW7pC1q0vTUQ7vV8=
+github.com/kelindar/binary v1.0.4 h1:5g1sVU2bupKg8RMl74oymit3KZqiiDcR0hlsv2pYiGI=
+github.com/kelindar/binary v1.0.4/go.mod h1:wMMTJccK3HLFh6eH9bD4VRIjUTFVW7pC1q0vTUQ7vV8=
 github.com/kelindar/binary v1.0.7 h1:f3b82x6M4QZ0vJzVHyoUefKEzBTjPFHZ8c7JraeS8bY=
 github.com/kelindar/binary v1.0.7/go.mod h1:wMMTJccK3HLFh6eH9bD4VRIjUTFVW7pC1q0vTUQ7vV8=
 github.com/kelindar/process v0.0.0-20170730150328-69a29e249ec3 h1:6If+E1dikQbdT7DlhZqLplfGkEt6dSoz7+MK+TFC7+U=
