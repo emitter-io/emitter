@@ -2,35 +2,35 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 
 	"github.com/emitter-io/config/dynamo"
 	"github.com/emitter-io/config/vault"
 	"github.com/emitter-io/emitter/internal/broker"
+	"github.com/emitter-io/emitter/internal/command/load"
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security/license"
+	"github.com/jawher/mow.cli"
 )
 
 //go:generate go run internal/broker/generate/assets_gen.go
 
 func main() {
-	// Process command-line arguments
-	argConfig := flag.String("config", "emitter.conf", "The configuration file to use for the broker.")
-	argHelp := flag.Bool("help", false, "Shows the help and usage instead of running the broker.")
-	flag.Parse()
-	if *argHelp {
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
+	app := cli.App("emitter", "Emitter: the high performance, distributed and low latency publish-subscribe platform.")
+	app.Spec = "[ -c=<configuration path> ] "
+	confPath := app.StringOpt("c config", "emitter.conf", "The configuration file to use for the broker.")
+	app.Action = func() { run(confPath) }
 
-	// Read the configuration
-	cfg := config.New(*argConfig,
-		dynamo.NewProvider(),
-		vault.NewProvider(config.VaultUser),
-	)
+	// Register sub-commands
+	app.Command("load", "Runs the load testing client for emitter.", load.Run)
+	app.Run(os.Args)
+
+}
+
+func run(conf *string) {
+	cfg := config.New(*conf, dynamo.NewProvider(), vault.NewProvider(config.VaultUser))
 
 	// Generate a new license if none was provided
 	if cfg.License == "" {
