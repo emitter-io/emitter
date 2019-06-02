@@ -45,6 +45,7 @@ github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8/go.mod h1:Nht
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af h1:pmfjZENx5imkbgOkpRUYLnmbU7UEFbjtDA2hxJ1ichM=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
 github.com/kelindar/binary v1.0.1/go.mod h1:wMMTJccK3HLFh6eH9bD4VRIjUTFVW7pC1q0vTUQ7vV8=
+github.com/kelindar/binary v1.0.4/go.mod h1:wMMTJccK3HLFh6eH9bD4VRIjUTFVW7pC1q0vTUQ7vV8=
 github.com/kelindar/binary v1.0.7 h1:f3b82x6M4QZ0vJzVHyoUefKEzBTjPFHZ8c7JraeS8bY=
 github.com/kelindar/binary v1.0.7/go.mod h1:wMMTJccK3HLFh6eH9bD4VRIjUTFVW7pC1q0vTUQ7vV8=
 github.com/kelindar/process v0.0.0-20170730150328-69a29e249ec3 h1:6If+E1dikQbdT7DlhZqLplfGkEt6dSoz7+MK+TFC7+U=
@@ -78,6 +79,8 @@ github.com/prometheus/common v0.0.0-20181126121408-4724e9255275 h1:PnBWHBf+6L0jO
 github.com/prometheus/common v0.0.0-20181126121408-4724e9255275/go.mod h1:daVV7qP5qjZbuso7PdcryaAu0sAZbrN9i7WWcTMWvro=
 github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a h1:9a8MnZMP0X2nLJdBg+pBmGgkJlSaKC2KaQmTCk1XDtE=
 github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
+github.com/shurcooL/httpfs v0.0.0-20181222201310-74dc9339e414/go.mod h1:ZY1cvUeJuFPAdZ/B6v7RHavJWZn2YPVFQ1OSXhCGOkg=
+github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd/go.mod h1:TrYk7fJVaAttu97ZZKrO9UbRa8izdowaMIZcxYMbVaw=
 github.com/stretchr/objx v0.0.0-20180825064932-ef50b0de2877 h1:Uk9JZ6L7yGoJ0V/gy05d5cSnPGf4bEP7AN1DeEJuX4E=
 github.com/stretchr/objx v0.0.0-20180825064932-ef50b0de2877/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
