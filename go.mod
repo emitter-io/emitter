@@ -18,6 +18,7 @@ require (
 	github.com/kelindar/rate v1.0.0
 	github.com/jawher/mow.cli v1.1.0
 	github.com/kelindar/binary v1.0.7
+	github.com/kelindar/rate v1.0.0
 	github.com/kelindar/tcp v1.0.0
 	github.com/klauspost/compress v1.5.0 // indirect
 	github.com/klauspost/cpuid v1.2.1 // indirect
