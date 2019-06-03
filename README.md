@@ -27,6 +27,11 @@ The following [set of videos](https://www.youtube.com/playlist?list=PLhFXrq-2gEb
 [![Monitor with eTop](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-etop.png)](https://www.youtube.com/watch?v=EOlOk9JPSyA)
 [![StatsD and DataDog](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-datadog.png)](https://www.youtube.com/watch?v=bi77Wb7cqEc)
 [![Links & Private Links](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-links.png)](https://www.youtube.com/watch?v=_FgKiUlEb_s)
+[![Building a Client-Server app with Publish-Subscribe in Go](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-golang.png)](https://www.youtube.com/watch?v=SHPkJ6ESnpw)
+[![Distributed Actor Model with Publish/Subscribe and Golang](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-actor.png)](https://www.youtube.com/watch?v=nWPKlopWOss)
+[![Online Multiplayer Platformer Game with Emitter](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-platformer.png)](https://www.youtube.com/watch?v=UIzMTyfLq7Y)
+[![Keeping one Last Message per Channel using MQTT Retain](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-retain.png)](https://www.youtube.com/watch?v=w3BXfYqYAvg)
+[![Load-balance Messages using Subscriber Groups](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-share.png)](https://www.youtube.com/watch?v=Vl7iGKEQrTg)
 
 ## How to Deploy
 [![Local Emitter Cluster](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-win.png)](https://www.youtube.com/watch?v=byq70fHeH-I)
