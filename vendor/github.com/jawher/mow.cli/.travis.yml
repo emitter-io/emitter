@@ -1,0 +1,22 @@
+language: go
+go:
+- "1.12"
+- "1.11"
+
+sudo: false
+
+env:
+  - GO111MODULE=on
+
+install: make setup
+
+script: make check test-cover
+
+deploy:
+  provider: releases
+  api_key:
+    secure: D2fwuS7n54ZkjfRmLMEAnwR2lQLa5xd+4s0l65pI6UN4ljVfQwQiFdZXaZWFr8PYSTKTm0UPj6Iqqw7VOl8I6iDzcaOqN3hoh5mDaJ7kyo7GZRPodwK9MKdOp5dPw459L2Atll8kxb4iYmfnjmcl0lDCUuWvMxXx+zgiFTB7BO0=
+  skip_cleanup: true
+  on:
+    tags: true
+    go: "1.12"

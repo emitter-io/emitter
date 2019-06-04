@@ -41,6 +41,7 @@ type Decoder struct {
 	r       Reader
 	s       *reader // Not using the interface for better inlining
 	scratch [10]byte
+	schemas map[reflect.Type]Codec
 }
 
 // NewDecoder creates a binary decoder.
@@ -51,8 +52,9 @@ func NewDecoder(r Reader) *Decoder {
 	}
 
 	return &Decoder{
-		r: r,
-		s: slicer,
+		r:       r,
+		s:       slicer,
+		schemas: make(map[reflect.Type]Codec),
 	}
 }
 
@@ -65,7 +67,7 @@ func (d *Decoder) Decode(v interface{}) (err error) {
 
 	// Scan the type (this will load from cache)
 	var c Codec
-	if c, err = scan(rv.Type()); err == nil {
+	if c, err = scanToCache(rv.Type(), d.schemas); err == nil {
 		err = c.DecodeTo(d, rv)
 	}
 
