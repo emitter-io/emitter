@@ -1,0 +1,8 @@
+run:
+  skip-files:
+    - "examples_.*.go"
+
+linters:
+  enable:
+    - goimports
+    - golint

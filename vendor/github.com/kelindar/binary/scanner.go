@@ -12,6 +12,21 @@ import (
 // Map of all the schemas we've encountered so far
 var schemas = new(sync.Map)
 
+// scanToCache scans the type and caches in the local cache.
+func scanToCache(t reflect.Type, cache map[reflect.Type]Codec) (Codec, error) {
+	if c, ok := cache[t]; ok {
+		return c, nil
+	}
+
+	c, err := scan(t)
+	if err != nil {
+		return nil, err
+	}
+
+	cache[t] = c
+	return c, nil
+}
+
 // Scan gets a codec for the type and uses a cached schema if the type was
 // previously scanned.
 func scan(t reflect.Type) (c Codec, err error) {

@@ -66,13 +66,24 @@ github.com/golang/protobuf/proto
 github.com/golang/snappy
 # github.com/gorilla/websocket v1.4.0
 github.com/gorilla/websocket
+# github.com/jawher/mow.cli v1.1.0
+github.com/jawher/mow.cli
+github.com/jawher/mow.cli/internal/container
+github.com/jawher/mow.cli/internal/flow
+github.com/jawher/mow.cli/internal/fsm
+github.com/jawher/mow.cli/internal/lexer
+github.com/jawher/mow.cli/internal/parser
+github.com/jawher/mow.cli/internal/values
+github.com/jawher/mow.cli/internal/matcher
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
 github.com/jmespath/go-jmespath
-# github.com/kelindar/binary v1.0.4
+# github.com/kelindar/binary v1.0.7
 github.com/kelindar/binary
 github.com/kelindar/binary/sorted
 # github.com/kelindar/process v0.0.0-20170730150328-69a29e249ec3
 github.com/kelindar/process
+# github.com/kelindar/rate v1.0.0
+github.com/kelindar/rate
 # github.com/kelindar/tcp v1.0.0
 github.com/kelindar/tcp
 # github.com/klauspost/compress v1.5.0
@@ -134,12 +145,12 @@ github.com/valyala/fasthttp/stackless
 github.com/weaveworks/mesh
 # golang.org/x/crypto v0.0.0-20190513172903-22d7a77e9e5f
 golang.org/x/crypto/pbkdf2
+golang.org/x/crypto/salsa20/salsa
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/nacl/box
 golang.org/x/crypto/nacl/secretbox
 golang.org/x/crypto/acme
 golang.org/x/crypto/curve25519
-golang.org/x/crypto/salsa20/salsa
 golang.org/x/crypto/internal/subtle
 golang.org/x/crypto/poly1305
 # golang.org/x/net v0.0.0-20190522155817-f3200d17e092

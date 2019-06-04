@@ -14,7 +14,9 @@ import (
 
 // Reusable long-lived encoder pool.
 var encoders = &sync.Pool{New: func() interface{} {
-	return new(Encoder)
+	return &Encoder{
+		schemas: make(map[reflect.Type]Codec),
+	}
 }}
 
 // Marshal encodes the payload into binary format.
@@ -23,8 +25,7 @@ func Marshal(v interface{}) (output []byte, err error) {
 
 	// Get the encoder from the pool, reset it
 	e := encoders.Get().(*Encoder)
-	e.out = &buffer
-	e.err = nil
+	e.Reset(&buffer)
 
 	// Encode and set the buffer if successful
 	if err = e.Encode(v); err == nil {
@@ -39,6 +40,7 @@ func Marshal(v interface{}) (output []byte, err error) {
 // Encoder represents a binary encoder.
 type Encoder struct {
 	scratch [10]byte
+	schemas map[reflect.Type]Codec
 	out     io.Writer
 	err     error
 }
@@ -46,8 +48,20 @@ type Encoder struct {
 // NewEncoder creates a new encoder.
 func NewEncoder(out io.Writer) *Encoder {
 	return &Encoder{
-		out: out,
+		out:     out,
+		schemas: make(map[reflect.Type]Codec),
 	}
+}
+
+// Reset resets the encoder and makes it ready to be reused.
+func (e *Encoder) Reset(out io.Writer) {
+	e.out = out
+	e.err = nil
+}
+
+// Buffer returns the underlying writer.
+func (e *Encoder) Buffer() io.Writer {
+	return e.out
 }
 
 // Encode encodes the value to the binary format.
@@ -56,7 +70,7 @@ func (e *Encoder) Encode(v interface{}) (err error) {
 	// Scan the type (this will load from cache)
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	var c Codec
-	if c, err = scan(rv.Type()); err != nil {
+	if c, err = scanToCache(rv.Type(), e.schemas); err != nil {
 		return
 	}
 
