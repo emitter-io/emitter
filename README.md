@@ -17,7 +17,7 @@ Emitter can be used for online gaming and mobile apps by satisfying the requirem
 
 The following [set of videos](https://www.youtube.com/playlist?list=PLhFXrq-2gEb0ygxR477GJLngjYu-FcSVq) demonstrates various features of Emitter broker in action.
 
-[![FOSDEM 2018](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-fosdem2017.png)](https://www.youtube.com/watch?v=M8VhWckhZoM)
+[![FOSDEM 2018](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-fosdem2018.png)](https://www.youtube.com/watch?v=M8VhWckhZoM)
 [![FOSDEM 2019](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-fosdem2019.png)](https://www.youtube.com/watch?v=GZDgN8XHy7g)
 [![PubSub in Go](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-golang.png)](https://www.youtube.com/watch?v=ggFqj5P4W38)
 [![Message Storage](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/thumb/emitter-storage.png)](https://www.youtube.com/watch?v=14cIxnR0Akc)
