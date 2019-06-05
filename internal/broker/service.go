@@ -223,7 +223,7 @@ func (s *Service) listen(addr *net.TCPAddr, conf *tls.Config) {
 	// Create new listener
 	logging.LogTarget("service", "starting the listener", addr)
 	l, err := listener.New(addr.String(), listener.Config{
-		WriteRate: s.Config.Limit.WriteRate,
+		FlushRate: s.Config.Limit.FlushRate,
 		TLS:       conf,
 	})
 	if err != nil {
@@ -291,7 +291,7 @@ func (s *Service) notifyUnsubscribe(conn *Conn, ssid message.Ssid, channel []byt
 
 // Occurs when a new client connection is accepted.
 func (s *Service) onAcceptConn(t net.Conn) {
-	conn := s.newConn(t)
+	conn := s.newConn(t, s.Config.Limit.ReadRate)
 	go conn.Process()
 }
 

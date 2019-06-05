@@ -69,7 +69,7 @@ var noTimeout time.Duration
 // Config represents the configuration of the listener.
 type Config struct {
 	TLS       *tls.Config // The TLS/SSL configuration.
-	WriteRate int         // The maximum write rate (QPS) per connection.
+	FlushRate int         // The maximum flush rate (QPS) per connection.
 }
 
 // New announces on the local network address laddr. The syntax of laddr is
@@ -175,7 +175,7 @@ func (m *Listener) Serve() error {
 func (m *Listener) serve(c net.Conn, donec <-chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	muc := newConn(c, m.config.WriteRate)
+	muc := newConn(c, m.config.FlushRate)
 	if m.readTimeout > noTimeout {
 		_ = c.SetReadDeadline(time.Now().Add(m.readTimeout))
 	}
