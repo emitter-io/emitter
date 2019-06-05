@@ -33,7 +33,7 @@ import (
 
 var benchInit sync.Once
 
-// BenchmarkSerial-8   	     100	  10084435 ns/op	    2183 B/op	      19 allocs/op
+// BenchmarkSerial-8   	     100	  10007938 ns/op	    2172 B/op	      17 allocs/op
 func BenchmarkSerial(b *testing.B) {
 	const port = 9995
 	benchInit.Do(func() {
@@ -64,7 +64,7 @@ func BenchmarkSerial(b *testing.B) {
 	}
 }
 
-// BenchmarkParallel-8   	  200000	      6801 ns/op	    1488 B/op	      16 allocs/op
+// BenchmarkParallel-8   	  200000	      8068 ns/op	    1331 B/op	      13 allocs/op
 func BenchmarkParallel(b *testing.B) {
 	const port = 9995
 	benchInit.Do(func() {
