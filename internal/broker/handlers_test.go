@@ -70,7 +70,7 @@ func TestHandlers_onLink(t *testing.T) {
 
 			s.Cipher, _ = s.License.Cipher()
 			conn := netmock.NewConn()
-			nc := s.newConn(conn.Client)
+			nc := s.newConn(conn.Client, 0)
 
 			resp, ok := nc.onLink([]byte(tc.packet))
 			assert.Equal(t, tc.success, ok)
@@ -89,7 +89,7 @@ func TestHandlers_onMe(t *testing.T) {
 	}
 
 	conn := netmock.NewConn()
-	nc := s.newConn(conn.Client)
+	nc := s.newConn(conn.Client, 0)
 	nc.links["0"] = "key/a/b/c/"
 	resp, success := nc.onMe()
 	meResp := resp.(*meResponse)
@@ -208,7 +208,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 			}
 
 			conn := netmock.NewConn()
-			nc := s.newConn(conn.Client)
+			nc := s.newConn(conn.Client, 0)
 			s.Cipher, _ = s.License.Cipher()
 
 			// Subscribe and check for error.
@@ -333,7 +333,7 @@ func TestHandlers_onPublish(t *testing.T) {
 		}
 
 		conn := netmock.NewConn()
-		nc := s.newConn(conn.Client)
+		nc := s.newConn(conn.Client, 0)
 		s.Cipher, _ = s.License.Cipher()
 
 		err := nc.onPublish(&mqtt.Publish{
@@ -431,7 +431,7 @@ func TestHandlers_onPresence(t *testing.T) {
 		}
 
 		conn := netmock.NewConn()
-		nc := s.newConn(conn.Client)
+		nc := s.newConn(conn.Client, 0)
 		s.Cipher, _ = s.License.Cipher()
 
 		resp, success := nc.onPresence([]byte(tc.payload))
@@ -518,7 +518,7 @@ func TestHandlers_onKeygen(t *testing.T) {
 			}
 
 			conn := netmock.NewConn()
-			nc := s.newConn(conn.Client)
+			nc := s.newConn(conn.Client, 0)
 			s.Cipher, _ = s.License.Cipher()
 
 			//resp
@@ -590,7 +590,7 @@ func TestHandlers_onEmitterRequest(t *testing.T) {
 				measurer:      stats.NewNoop(),
 			}
 
-			nc := s.newConn(netmock.NewNoop())
+			nc := s.newConn(netmock.NewNoop(), 0)
 			ok := nc.onEmitterRequest(channel, []byte(tc.payload), 0)
 			assert.Equal(t, tc.success, ok, tc.channel)
 		})
@@ -640,7 +640,7 @@ func TestHandlers_lookupPresence(t *testing.T) {
 		measurer:      stats.NewNoop(),
 	}
 
-	s.subscriptions.Subscribe(message.Ssid{1, 2, 3}, s.newConn(netmock.NewNoop()))
+	s.subscriptions.Subscribe(message.Ssid{1, 2, 3}, s.newConn(netmock.NewNoop(), 0))
 	presence := s.lookupPresence(message.Ssid{1, 2, 3})
 	assert.NotEmpty(t, presence)
 }

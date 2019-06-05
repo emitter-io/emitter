@@ -34,7 +34,7 @@ func newTestConn() (pipe *netmock.Conn, conn *Conn) {
 	}
 
 	pipe = netmock.NewConn()
-	conn = s.newConn(pipe.Client)
+	conn = s.newConn(pipe.Client, 0)
 	return
 }
 
