@@ -22,22 +22,22 @@ import (
 )
 
 func BenchmarkParseChannelWithOptions(b *testing.B) {
-	in := "xm54Sj0srWlSEctra-yU6ZA6Z2e6pp7c/a/roman/is/da/best/?opt1=true&opt2=false"
+	in := []byte("xm54Sj0srWlSEctra-yU6ZA6Z2e6pp7c/a/roman/is/da/best/?opt1=true&opt2=false")
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = ParseChannel([]byte(in))
+		_ = ParseChannel(in)
 	}
 }
 
 func BenchmarkParseChannelStatic(b *testing.B) {
-	in := "xm54Sj0srWlSEctra-yU6ZA6Z2e6pp7c/a/roman/is/da/best/"
+	in := []byte("xm54Sj0srWlSEctra-yU6ZA6Z2e6pp7c/a/roman/is/da/best/")
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = ParseChannel([]byte(in))
+		_ = ParseChannel(in)
 	}
 }
 

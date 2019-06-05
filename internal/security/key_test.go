@@ -26,6 +26,19 @@ func TestKeyIsEmpty(t *testing.T) {
 	assert.True(t, true, key.IsEmpty())
 }
 
+// BenchmarkValidateChannel-8   	10000000	       126 ns/op	      48 B/op	       1 allocs/op
+func BenchmarkValidateChannel(b *testing.B) {
+	key := Key(make([]byte, 24))
+	key.SetTarget("a/")
+	v := ParseChannel([]byte(string(key) + "a/b/c/d/"))
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		key.ValidateChannel(v)
+	}
+}
+
 func validateChannel(k Key, c string) bool {
 	return k.ValidateChannel(&Channel{Channel: []byte(c)})
 }
