@@ -24,7 +24,7 @@ import (
 )
 
 func TestConn(t *testing.T) {
-	conn := newConn(new(fakeConn))
+	conn := newConn(new(fakeConn), 0)
 	defer conn.Close()
 
 	assert.Equal(t, 0, conn.Len())
