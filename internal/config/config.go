@@ -84,7 +84,7 @@ func New(filename string, stores ...cfg.SecretStore) *Config {
 type Config struct {
 	ListenAddr string              `json:"listen"`             // The API port used for TCP & Websocket communication.
 	License    string              `json:"license"`            // The license file to use for the broker.
-	Limit      *LimitConfig        `json:"limit,omitempty"`    // Configuration for various limits such as message size.
+	Limit      LimitConfig         `json:"limit,omitempty"`    // Configuration for various limits such as message size.
 	TLS        *cfg.TLSConfig      `json:"tls,omitempty"`      // The API port used for Secure TCP & Websocket communication.
 	Cluster    *ClusterConfig      `json:"cluster,omitempty"`  // The configuration for the clustering.
 	Storage    *cfg.ProviderConfig `json:"storage,omitempty"`  // The configuration for the storage provider.
@@ -101,7 +101,7 @@ type Config struct {
 
 // MaxMessageBytes returns the configured max message size, must be smaller than 64K.
 func (c *Config) MaxMessageBytes() int64 {
-	if c.Limit == nil || c.Limit.MessageSize <= 0 || c.Limit.MessageSize > maxMessageSize {
+	if c.Limit.MessageSize <= 0 || c.Limit.MessageSize > maxMessageSize {
 		return maxMessageSize
 	}
 	return int64(c.Limit.MessageSize)
@@ -159,8 +159,13 @@ type ClusterConfig struct {
 
 // LimitConfig represents various limit configurations - such as message size.
 type LimitConfig struct {
-	//Maximum message size allowed from/to the peer. Default if not specified is 64kB.
+
+	// Maximum message size allowed from/to the peer. Default if not specified is 64kB.
 	MessageSize int `json:"messageSize,omitempty"`
+
+	// The maximum socket write rate per connection. This does not limit QpS but instead
+	// can be used to scale throughput. Defaults to 60.
+	WriteRate int `json:"writeRate,omitempty"`
 }
 
 // LoadProvider loads a provider from the configuration or panics if the configuration is
