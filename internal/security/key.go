@@ -117,6 +117,10 @@ func (k Key) SetPermissions(value uint8) {
 
 // ValidateChannel validates the channel string.
 func (k Key) ValidateChannel(ch *Channel) bool {
+	topic := ch.Channel
+	if len(topic) == 0 {
+		return false
+	}
 
 	// Bytes 16-17-18-19 contains target hash
 	target := uint32(k[16])<<24 | uint32(k[17])<<16 | uint32(k[18])<<8 | uint32(k[19])
@@ -130,8 +134,13 @@ func (k Key) ValidateChannel(ch *Channel) bool {
 		return target == ch.Target()
 	}
 
-	channel := string(ch.Channel)
-	channel = strings.TrimRight(channel, "/")
+	// Trim right `/`
+	if topic[len(topic)-1] == '/' {
+		topic = topic[:len(topic)-1]
+	}
+
+	// Split by `/`
+	channel := binaryToString(&topic)
 	parts := strings.Split(channel, "/")
 	wc := parts[len(parts)-1] == "#"
 	if wc {
