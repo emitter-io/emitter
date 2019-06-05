@@ -222,7 +222,10 @@ func (s *Service) listen(addr *net.TCPAddr, conf *tls.Config) {
 
 	// Create new listener
 	logging.LogTarget("service", "starting the listener", addr)
-	l, err := listener.New(addr.String(), conf)
+	l, err := listener.New(addr.String(), listener.Config{
+		WriteRate: s.Config.Limit.WriteRate,
+		TLS:       conf,
+	})
 	if err != nil {
 		panic(err)
 	}

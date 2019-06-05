@@ -37,11 +37,15 @@ type Conn struct {
 }
 
 // NewConn creates a new sniffed connection.
-func newConn(c net.Conn) *Conn {
+func newConn(c net.Conn, writeRate int) *Conn {
+	if writeRate <= 0 || writeRate > 1000 {
+		writeRate = 60
+	}
+
 	conn := &Conn{
 		socket: c,
 		reader: sniffer{source: c},
-		limit:  rate.New(100, time.Second),
+		limit:  rate.New(writeRate, time.Second),
 	}
 
 	// TODO: see if we can get rid of this goroutine per connection

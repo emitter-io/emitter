@@ -66,20 +66,26 @@ var ErrListenerClosed = errListenerClosed("mux: listener closed")
 // for readability of readTimeout
 var noTimeout time.Duration
 
+// Config represents the configuration of the listener.
+type Config struct {
+	TLS       *tls.Config // The TLS/SSL configuration.
+	WriteRate int         // The maximum write rate (QPS) per connection.
+}
+
 // New announces on the local network address laddr. The syntax of laddr is
 // "host:port", like "127.0.0.1:8080". If host is omitted, as in ":8080",
 // New listens on all available interfaces instead of just the interface
 // with the given host address. Listening on a hostname is not recommended
 // because this creates a socket for at most one of its IP addresses.
-func New(address string, config *tls.Config) (*Listener, error) {
+func New(address string, config Config) (*Listener, error) {
 	l, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, err
 	}
 
 	// If we have a TLS configuration provided, wrap the listener in TLS
-	if config != nil {
-		l = tls.NewListener(l, config)
+	if config.TLS != nil {
+		l = tls.NewListener(l, config.TLS)
 	}
 
 	return &Listener{
@@ -88,6 +94,7 @@ func New(address string, config *tls.Config) (*Listener, error) {
 		errorHandler: func(_ error) bool { return true },
 		closing:      make(chan struct{}),
 		readTimeout:  noTimeout,
+		config:       config,
 	}, nil
 }
 
@@ -104,6 +111,7 @@ type Listener struct {
 	closing      chan struct{}
 	matchers     []processor
 	readTimeout  time.Duration
+	config       Config
 }
 
 // Accept waits for and returns the next connection to the listener.
@@ -167,7 +175,7 @@ func (m *Listener) Serve() error {
 func (m *Listener) serve(c net.Conn, donec <-chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	muc := newConn(c)
+	muc := newConn(c, m.config.WriteRate)
 	if m.readTimeout > noTimeout {
 		_ = c.SetReadDeadline(time.Now().Add(m.readTimeout))
 	}
