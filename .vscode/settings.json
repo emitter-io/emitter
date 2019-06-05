@@ -3,14 +3,14 @@
         "**/.git": true,
         "**/.DS_Store": true,
         ".gitignore": true,
-       // "vendor/": true,
+        "vendor/": true,
+        ".github/": true,
         ".vscode": true,
         "build*": true,
         "LICENSE": true,
         "appveyor.yml": true,
         "Dockerfile": true
     },
-    
     "go.formatTool": "gofmt",
     "go.formatFlags": [
         "-s"

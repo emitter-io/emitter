@@ -160,12 +160,16 @@ type ClusterConfig struct {
 // LimitConfig represents various limit configurations - such as message size.
 type LimitConfig struct {
 
-	// Maximum message size allowed from/to the peer. Default if not specified is 64kB.
+	// Maximum message size allowed from/to the client. Default if not specified is 64kB.
 	MessageSize int `json:"messageSize,omitempty"`
+
+	// The maximum messages per second allowed to be processed per client connection. This
+	// effectively restricts the QpS for an individual connection.
+	ReadRate int `json:"readRate,omitempty"`
 
 	// The maximum socket write rate per connection. This does not limit QpS but instead
 	// can be used to scale throughput. Defaults to 60.
-	WriteRate int `json:"writeRate,omitempty"`
+	FlushRate int `json:"flushRate,omitempty"`
 }
 
 // LoadProvider loads a provider from the configuration or panics if the configuration is

@@ -31,7 +31,10 @@ import (
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/stats"
+	"github.com/kelindar/rate"
 )
+
+const defaultReadRate = 100000
 
 // Conn represents an incoming connection.
 type Conn struct {
@@ -45,10 +48,11 @@ type Conn struct {
 	subs     *message.Counters // The subscriptions for this connection.
 	measurer stats.Measurer    // The measurer to use for monitoring.
 	links    map[string]string // The map of all pre-authorized links.
+	limit    *rate.Limiter     // The read rate limiter.
 }
 
 // NewConn creates a new connection.
-func (s *Service) newConn(t net.Conn) *Conn {
+func (s *Service) newConn(t net.Conn, readRate int) *Conn {
 	c := &Conn{
 		tracked:  0,
 		luid:     security.NewID(),
@@ -61,7 +65,11 @@ func (s *Service) newConn(t net.Conn) *Conn {
 
 	// Generate a globally unique id as well
 	c.guid = c.luid.Unique(uint64(address.GetHardware()), "emitter")
-	//logging.LogTarget("conn", "created", c.guid)
+	if readRate == 0 {
+		readRate = defaultReadRate
+	}
+
+	c.limit = rate.New(readRate, time.Second)
 
 	// Increment the connection counter
 	atomic.AddInt64(&s.connections, 1)
@@ -103,13 +111,17 @@ func (c *Conn) track(contract contract.Contract) {
 func (c *Conn) Process() error {
 	defer c.Close()
 	reader := bufio.NewReaderSize(c.socket, 65536)
-	limit := c.service.Config.MaxMessageBytes()
+	maxSize := c.service.Config.MaxMessageBytes()
 	for {
 		// Set read/write deadlines so we can close dangling connections
 		c.socket.SetDeadline(time.Now().Add(time.Second * 120))
+		if c.limit.Limit() {
+			time.Sleep(50 * time.Millisecond)
+			continue
+		}
 
 		// Decode an incoming MQTT packet
-		msg, err := mqtt.DecodePacket(reader, limit)
+		msg, err := mqtt.DecodePacket(reader, maxSize)
 		if err != nil {
 			return err
 		}
