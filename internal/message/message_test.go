@@ -123,3 +123,24 @@ func TestFrameLimit(t *testing.T) {
 	assert.Equal(t, "a/b/c/", string(f[0].Channel))
 	assert.Equal(t, "a/b/d/", string(f[1].Channel))
 }
+
+func TestFrameSplit(t *testing.T) {
+	f := Frame{
+		newTestMessage(Ssid{1, 2, 1}, "a/b/a/", "hello aba"),
+		newTestMessage(Ssid{1, 2, 2}, "a/b/b/", "hello abb"),
+		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
+		newTestMessage(Ssid{1, 2, 4}, "a/b/d/", "hello abd"),
+	}
+
+	head, tail := f.Split(127)
+	assert.Len(t, head, 2)
+	assert.Len(t, tail, 2)
+}
+
+func TestFrameSplit_Empty(t *testing.T) {
+	f := Frame{}
+
+	head, tail := f.Split(127)
+	assert.Len(t, head, 0)
+	assert.Len(t, tail, 0)
+}
