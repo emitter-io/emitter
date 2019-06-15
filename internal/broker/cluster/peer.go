@@ -29,8 +29,10 @@ import (
 // Peer implements subscription.Subscriber
 var _ message.Subscriber = &Peer{}
 
-// Default message frame size to use
-const defaultFrameSize = 128
+const (
+	defaultFrameSize = 128              // Default message frame size to use
+	maxByteFrameSize = 10 * 1024 * 1024 // Hard limit imposed by our underlying gossip
+)
 
 // Peer represents a remote peer.
 type Peer struct {
@@ -124,13 +126,19 @@ func (p *Peer) processSendQueue() {
 		return
 	}
 
-	// Swap the frame and encode it.
-	// TODO: split the frame in chunks of at most 10MB for gossip unicast to work.
+	// Swap the frame and split the frame in chunks of at most 10MB 
+	// for gossip unicast to work.
 	frame := p.swap()
-	buffer := frame.Encode()
+	for {
+		var chunk message.Frame
+		chunk, frame = frame.Split(maxByteFrameSize)
+		if len(chunk) == 0 {
+			break
+		}
 
-	// Send the frame directly to the peer.
-	if err := p.sender.GossipUnicast(p.name, buffer); err != nil {
-		logging.LogError("peer", "gossip unicast", err)
+		buffer := chunk.Encode()
+		if err := p.sender.GossipUnicast(p.name, buffer); err != nil {
+			logging.LogError("peer", "gossip unicast", err)
+		}
 	}
 }

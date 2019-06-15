@@ -123,6 +123,20 @@ func (f Frame) Sort() {
 	sort.Slice(f, func(i, j int) bool { return f[i].Time() < f[j].Time() })
 }
 
+// Split splits the frame by a specified number of bytes into two slices.
+func (f Frame) Split(maxByteSize int) (head Frame, tail Frame) {
+	var sum int
+	for i := 0; i < len(f); i++ {
+		msg := f[i]
+		size := len(msg.Payload) + len(msg.ID) + len(msg.Channel) + 20
+		if sum+size >= maxByteSize {
+			return f[:i], f[i:]
+		}
+		sum += size
+	}
+	return f, nil
+}
+
 // Limit takes the last N elements, sorted by message time
 func (f *Frame) Limit(n int) {
 	f.Sort()
