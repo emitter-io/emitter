@@ -23,7 +23,6 @@ import (
 
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
-	"github.com/emitter-io/emitter/internal/provider/contract"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/security/hash"
@@ -40,27 +39,6 @@ const (
 var (
 	shortcut = regexp.MustCompile("^[a-zA-Z0-9]{1,2}$")
 )
-
-// ------------------------------------------------------------------------------------
-
-// Authorize attempts to authorize a channel with its key
-func (c *Conn) authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
-
-	// Attempt to parse the key
-	key, err := c.service.Cipher.DecryptKey(channel.Key)
-	if err != nil || key.IsExpired() {
-		return nil, nil, false
-	}
-
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := c.service.contracts.Get(key.Contract())
-	if !contractFound || !contract.Validate(key) || !key.HasPermission(permission) || !key.ValidateChannel(channel) {
-		return nil, nil, false
-	}
-
-	// Return the contract and the key
-	return contract, key, true
-}
 
 // ------------------------------------------------------------------------------------
 
@@ -82,7 +60,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 	}
 
 	// Check the authorization and permissions
-	contract, key, allowed := c.authorize(channel, security.AllowRead)
+	contract, key, allowed := c.service.authorize(channel, security.AllowRead)
 	if !allowed {
 		return ErrUnauthorized
 	}
@@ -131,7 +109,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *Error {
 	}
 
 	// Check the authorization and permissions
-	contract, key, allowed := c.authorize(channel, security.AllowRead)
+	contract, key, allowed := c.service.authorize(channel, security.AllowRead)
 	if !allowed {
 		return ErrUnauthorized
 	}
@@ -170,7 +148,7 @@ func (c *Conn) onPublish(packet *mqtt.Publish) *Error {
 	}
 
 	// Check the authorization and permissions
-	contract, key, allowed := c.authorize(channel, security.AllowWrite)
+	contract, key, allowed := c.service.authorize(channel, security.AllowWrite)
 	if !allowed {
 		return ErrUnauthorized
 	}
@@ -277,7 +255,7 @@ func (c *Conn) onLink(payload []byte) (response, bool) {
 	c.links[request.Name] = channel.String()
 
 	// If an auto-subscribe was requested and the key has read permissions, subscribe
-	if _, key, allowed := c.authorize(channel, security.AllowRead); allowed && request.Subscribe {
+	if _, key, allowed := c.service.authorize(channel, security.AllowRead); allowed && request.Subscribe {
 		c.Subscribe(message.NewSsid(key.Contract(), channel.Query), channel.Channel)
 	}
 
@@ -296,7 +274,7 @@ func (c *Conn) makePrivateChannel(chanKey, chanName string) *security.Channel {
 	}
 
 	// Make sure we can actually extend it
-	_, key, allowed := c.authorize(channel, security.AllowExtend)
+	_, key, allowed := c.service.authorize(channel, security.AllowExtend)
 	if !allowed {
 		return nil
 	}
@@ -400,7 +378,6 @@ func getAllPresence(s *Service, ssid message.Ssid) []presenceInfo {
 
 // onPresence processes a presence request.
 func (c *Conn) onPresence(payload []byte) (response, bool) {
-	// Deserialize the payload.
 	msg := presenceRequest{
 		Status:  true, // Default: send status info
 		Changes: nil,  // Default: send all changes
