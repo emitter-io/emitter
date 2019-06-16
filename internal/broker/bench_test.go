@@ -166,6 +166,7 @@ func newBenchClient(port int) *testConn {
 func newTestBroker(port int, licenseVersion int) *Service {
 	cfg := config.NewDefault().(*config.Config)
 	cfg.License = testLicense
+	cfg.Debug = true
 	if licenseVersion == 2 {
 		cfg.License = testLicenseV2
 	}

@@ -84,6 +84,7 @@ func New(filename string, stores ...cfg.SecretStore) *Config {
 type Config struct {
 	ListenAddr string              `json:"listen"`             // The API port used for TCP & Websocket communication.
 	License    string              `json:"license"`            // The license file to use for the broker.
+	Debug      bool                `json:"debug,omitempty"`    // The debug mode flag.
 	Limit      LimitConfig         `json:"limit,omitempty"`    // Configuration for various limits such as message size.
 	TLS        *cfg.TLSConfig      `json:"tls,omitempty"`      // The API port used for Secure TCP & Websocket communication.
 	Cluster    *ClusterConfig      `json:"cluster,omitempty"`  // The configuration for the clustering.
