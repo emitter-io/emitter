@@ -38,8 +38,8 @@ func main() {
 
 	// Register sub-commands
 	app.Command("load", "Runs the load testing client for emitter.", load.Run)
-	app.Command("license", "Manipulates licenses and secret keys.", func(config *cli.Cmd) {
-		config.Command("new", "Generates a new license and secret key pair.", license.New)
+	app.Command("license", "Manipulates licenses and secret keys.", func(cmd *cli.Cmd) {
+		cmd.Command("new", "Generates a new license and secret key pair.", license.New)
 		// TODO: add more sub-commands for license
 	})
 

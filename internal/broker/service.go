@@ -86,14 +86,16 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 
 	// Create a new HTTP request multiplexer
 	mux := http.NewServeMux()
+	if cfg.Debug {
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	}
 	mux.HandleFunc("/health", s.onHealth)
 	mux.HandleFunc("/keygen", handleKeyGen(s))
 	mux.HandleFunc("/presence", s.onHTTPPresence)
-	mux.HandleFunc("/debug/pprof/", pprof.Index)          // TODO: use config flag to enable/disable this
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline) // TODO: use config flag to enable/disable this
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile) // TODO: use config flag to enable/disable this
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)   // TODO: use config flag to enable/disable this
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)     // TODO: use config flag to enable/disable this
 	mux.HandleFunc("/", s.onRequest)
 
 	// Attach handlers
@@ -439,6 +441,25 @@ func (s *Service) publish(m *message.Message, exclude string) (n int64) {
 		}
 	}
 	return
+}
+
+// Authorize attempts to authorize a channel with its key
+func (s *Service) authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
+
+	// Attempt to parse the key
+	key, err := s.Cipher.DecryptKey(channel.Key)
+	if err != nil || key.IsExpired() {
+		return nil, nil, false
+	}
+
+	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract, contractFound := s.contracts.Get(key.Contract())
+	if !contractFound || !contract.Validate(key) || !key.HasPermission(permission) || !key.ValidateChannel(channel) {
+		return nil, nil, false
+	}
+
+	// Return the contract and the key
+	return contract, key, true
 }
 
 // SelfPublish publishes a message to itself.
