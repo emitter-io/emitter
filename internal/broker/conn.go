@@ -16,6 +16,7 @@ package broker
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -25,6 +26,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/address"
+	"github.com/emitter-io/emitter/internal/async"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/contract"
@@ -39,16 +41,18 @@ const defaultReadRate = 100000
 // Conn represents an incoming connection.
 type Conn struct {
 	sync.Mutex
-	tracked  uint32            // Whether the connection was already tracked or not.
-	socket   net.Conn          // The transport used to read and write messages.
-	username string            // The username provided by the client during MQTT connect.
-	luid     security.ID       // The locally unique id of the connection.
-	guid     string            // The globally unique id of the connection.
-	service  *Service          // The service for this connection.
-	subs     *message.Counters // The subscriptions for this connection.
-	measurer stats.Measurer    // The measurer to use for monitoring.
-	links    map[string]string // The map of all pre-authorized links.
-	limit    *rate.Limiter     // The read rate limiter.
+	tracked       uint32            // Whether the connection was already tracked or not.
+	socket        net.Conn          // The transport used to read and write messages.
+	username      string            // The username provided by the client during MQTT connect.
+	luid          security.ID       // The locally unique id of the connection.
+	guid          string            // The globally unique id of the connection.
+	service       *Service          // The service for this connection.
+	subs          *message.Counters // The subscriptions for this connection.
+	measurer      stats.Measurer    // The measurer to use for monitoring.
+	links         map[string]string // The map of all pre-authorized links.
+	limit         *rate.Limiter     // The read rate limiter.
+	expiry        time.Time         // The earliest expiry time
+	expiryChecker context.CancelFunc
 }
 
 // NewConn creates a new connection.
@@ -84,6 +88,28 @@ func (c *Conn) ID() string {
 // Type returns the type of the subscriber
 func (c *Conn) Type() message.SubscriberType {
 	return message.SubscriberDirect
+}
+
+func (c *Conn) setExpiry(expiry time.Time) {
+
+	if c.expiry.IsZero() || c.expiry.After(expiry) {
+		logging.LogAction("conn", "updating expiry")
+		c.expiry = expiry
+	}
+
+	if !c.expiry.IsZero() && c.expiryChecker == nil {
+		c.expiryChecker = async.Repeat(context.Background(), 3*time.Second, func() {
+			logging.LogAction("conn", "checking expiry")
+			if c.expiry.Before(time.Now()) {
+				logging.LogAction("conn", "closing as expired")
+				err := c.Close()
+				if err != nil {
+					logging.LogError("conn", "failed to close expired socket", err)
+				}
+				c.expiryChecker()
+			}
+		})
+	}
 }
 
 // MeasureElapsed measures elapsed time since

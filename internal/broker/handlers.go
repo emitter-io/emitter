@@ -65,6 +65,9 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 		return ErrUnauthorized
 	}
 
+	// Check if the subscription should expire and thus terminate the client connection
+	c.setExpiry(key.Expires())
+
 	// Subscribe the client to the channel
 	ssid := message.NewSsid(key.Contract(), channel.Query)
 	c.Subscribe(ssid, channel.Channel)
