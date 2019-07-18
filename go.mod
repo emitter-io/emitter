@@ -1,5 +1,14 @@
 module github.com/emitter-io/emitter
 
+replace (
+	golang.org/x/crypto => github.com/golang/crypto v0.0.0-20190701094942-4def268fd1a4
+	golang.org/x/net => github.com/golang/net v0.0.0-20190628185345-da137c7871d7
+	golang.org/x/sync => github.com/golang/sync v0.0.0-20190423024810-112230192c58
+	golang.org/x/sys => github.com/golang/sys v0.0.0-20190712062909-fae7ac547cb7
+	golang.org/x/text => github.com/golang/text v0.3.2
+	golang.org/x/tools => github.com/golang/tools v0.0.0-20190408220357-e5b8258f4918
+)
+
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7 // indirect
 	github.com/aws/aws-sdk-go v1.17.9 // indirect
@@ -32,9 +41,6 @@ require (
 	github.com/tidwall/tinyqueue v0.0.0-20180302190814-1e39f5511563 // indirect
 	github.com/valyala/fasthttp v1.3.0
 	github.com/weaveworks/mesh v0.0.0-20190204141226-512bdb7b3cb7
-	golang.org/x/crypto v0.0.0-20190513172903-22d7a77e9e5f
-	golang.org/x/net v0.0.0-20190522155817-f3200d17e092 // indirect
-	golang.org/x/sys v0.0.0-20190524152521-dbbf3f1254d4 // indirect
-	golang.org/x/text v0.3.2 // indirect
+	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
