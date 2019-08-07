@@ -65,6 +65,11 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 		return ErrUnauthorized
 	}
 
+	// Keys which are supposed to be extended should not be used for publishing
+	if key.HasPermission(security.AllowExtend) {
+		return ErrUnauthorizedExt
+	}
+
 	// Subscribe the client to the channel
 	ssid := message.NewSsid(key.Contract(), channel.Query)
 	c.Subscribe(ssid, channel.Channel)
@@ -151,6 +156,11 @@ func (c *Conn) onPublish(packet *mqtt.Publish) *Error {
 	contract, key, allowed := c.service.authorize(channel, security.AllowWrite)
 	if !allowed {
 		return ErrUnauthorized
+	}
+
+	// Keys which are supposed to be extended should not be used for publishing
+	if key.HasPermission(security.AllowExtend) {
+		return ErrUnauthorizedExt
 	}
 
 	// Create a new message
@@ -278,6 +288,9 @@ func (c *Conn) makePrivateChannel(chanKey, chanName string) *security.Channel {
 	if !allowed {
 		return nil
 	}
+
+	// Revoke the extend permission to avoid this to be subsequently extended
+	key.SetPermission(security.AllowExtend, false)
 
 	// Create a new key for the private link
 	target := fmt.Sprintf("%s%s/", channel.Channel, c.ID())
