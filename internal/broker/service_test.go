@@ -147,11 +147,13 @@ func Test_onHTTPPresence(t *testing.T) {
 
 func TestPubsub(t *testing.T) {
 	const port = 9996
-	broker := newTestBroker(port, 1)
+	broker := newTestBroker(port, 2)
 	defer broker.Close()
 
 	cli := newTestClient(port)
 	defer cli.Close()
+
+	key1 := "w07Jv3TMhYTg6lLk6fQoVG2KCe7gjFPk" // on a/b/c/ with 'rwslp'
 
 	{ // Connect to the broker
 		connect := mqtt.Connect{ClientID: []byte("test")}
@@ -182,7 +184,7 @@ func TestPubsub(t *testing.T) {
 	{ // Publish a retained message
 		msg := mqtt.Publish{
 			Header:  mqtt.Header{QOS: 0, Retain: true},
-			Topic:   []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"),
+			Topic:   []byte(key1 + "/a/b/c/"),
 			Payload: []byte("retained message"),
 		}
 		_, err := msg.EncodeTo(cli)
@@ -193,7 +195,7 @@ func TestPubsub(t *testing.T) {
 		sub := mqtt.Subscribe{
 			Header: mqtt.Header{QOS: 0},
 			Subscriptions: []mqtt.TopicQOSTuple{
-				{Topic: []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"), Qos: 0},
+				{Topic: []byte(key1 + "/a/b/c/"), Qos: 0},
 			},
 		}
 		_, err := sub.EncodeTo(cli)
@@ -220,7 +222,7 @@ func TestPubsub(t *testing.T) {
 	{ // Publish a message
 		msg := mqtt.Publish{
 			Header:  mqtt.Header{QOS: 0},
-			Topic:   []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"),
+			Topic:   []byte(key1 + "/a/b/c/"),
 			Payload: []byte("hello world"),
 		}
 		_, err := msg.EncodeTo(cli)
@@ -241,7 +243,7 @@ func TestPubsub(t *testing.T) {
 	{ // Publish a message but ignore ourselves
 		msg := mqtt.Publish{
 			Header:  mqtt.Header{QOS: 0},
-			Topic:   []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/?me=0"),
+			Topic:   []byte(key1 + "/a/b/c/?me=0"),
 			Payload: []byte("hello world"),
 		}
 		_, err := msg.EncodeTo(cli)
@@ -252,7 +254,7 @@ func TestPubsub(t *testing.T) {
 		sub := mqtt.Unsubscribe{
 			Header: mqtt.Header{QOS: 0},
 			Topics: []mqtt.TopicQOSTuple{
-				{Topic: []byte("EbUlduEbUssgWueAWjkEZwdYG5YC0dGh/a/b/c/"), Qos: 0},
+				{Topic: []byte(key1 + "/a/b/c/"), Qos: 0},
 			},
 		}
 		_, err := sub.EncodeTo(cli)
