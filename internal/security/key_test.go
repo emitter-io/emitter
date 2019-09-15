@@ -139,6 +139,15 @@ func TestKey(t *testing.T) {
 	key.SetExpires(time.Unix(1497683272, 0).UTC())
 	assert.True(t, key.IsExpired())
 
+	assert.True(t, key.HasPermission(AllowRead))
+	assert.False(t, key.HasPermission(AllowExtend))
+
+	key.SetPermission(AllowExtend, true)
+	assert.True(t, key.HasPermission(AllowExtend))
+
+	key.SetPermission(AllowExtend, false)
+	assert.False(t, key.HasPermission(AllowExtend))
+
 	key.SetPermissions(AllowMaster)
 	assert.True(t, key.IsMaster())
 	assert.True(t, key.HasPermission(AllowMaster))

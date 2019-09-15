@@ -57,6 +57,7 @@ var (
 	ErrTargetInvalid   = &Error{Status: 400, Message: "channel should end with `/` for strict types or `/#/` for wildcards"}
 	ErrTargetTooLong   = &Error{Status: 400, Message: "channel can not have more than 23 parts"}
 	ErrLinkInvalid     = &Error{Status: 400, Message: "the link must be an alphanumeric string of 1 or 2 characters"}
+	ErrUnauthorizedExt = &Error{Status: 401, Message: "the security key with extend permission can only be used for private links"}
 )
 
 // ------------------------------------------------------------------------------------
