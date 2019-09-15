@@ -42,9 +42,19 @@ func NewProvider(cipher license.Cipher, loader contract.Provider) *Provider {
 	}
 }
 
+// DecryptKey decrypts a key and returns it
+func (p *Provider) DecryptKey(key string) (security.Key, error) {
+	return p.Cipher.DecryptKey([]byte(key))
+}
+
+// EncryptKey encrypts the security key
+func (p *Provider) EncryptKey(key security.Key) (string, error) {
+	return p.Cipher.EncryptKey([]byte(key))
+}
+
 // CreateKey generates a key with the specified access and expiration time.
 func (p *Provider) CreateKey(rawMasterKey, channel string, access uint8, expires time.Time) (string, *errors.Error) {
-	masterKey, err := p.Cipher.DecryptKey([]byte(rawMasterKey))
+	masterKey, err := p.DecryptKey(rawMasterKey)
 	if err != nil || !masterKey.IsMaster() || masterKey.IsExpired() {
 		return "", errors.ErrUnauthorized
 	}

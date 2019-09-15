@@ -298,23 +298,49 @@ func (c *Conn) onMe() (response, bool) {
 
 // onKeyGen processes a keygen request.
 func (c *Conn) onKeyGen(payload []byte) (response, bool) {
-	// Deserialize the payload.
 	message := keyGenRequest{}
 	if err := json.Unmarshal(payload, &message); err != nil {
 		return errors.ErrBadRequest, false
 	}
 
-	key, err := c.keys.CreateKey(message.Key, message.Channel, message.access(), message.expires())
-	if err != nil {
-		return err, false
+	// Decrypt the parent key and make sure it's not expired
+	parentKey, err := c.keys.DecryptKey(message.Key)
+	if err != nil || parentKey.IsExpired() {
+		return errors.ErrUnauthorized, false
 	}
 
-	// Success, return the response
-	return &keyGenResponse{
-		Status:  200,
-		Key:     key,
-		Channel: message.Channel,
-	}, true
+	// If the key provided is a master key, create a new key
+	if parentKey.IsMaster() {
+		key, err := c.keys.CreateKey(message.Key, message.Channel, message.access(), message.expires())
+		if err != nil {
+			return err, false
+		}
+
+		// Success, return the response
+		return &keyGenResponse{
+			Status:  200,
+			Key:     key,
+			Channel: message.Channel,
+		}, true
+	}
+
+	// If the key provided can be extended, attempt to extend the key
+	if parentKey.HasPermission(security.AllowExtend) {
+		channel, err := c.keys.ExtendKey(message.Key, message.Channel, c.ID(), message.access(), message.expires())
+		if err != nil {
+			return err, false
+		}
+
+		// Success, return the response
+		return &keyGenResponse{
+			Status:  200,
+			Key:     string(channel.Key),     // Encrypted channel key
+			Channel: string(channel.Channel), // Channel name
+		}, true
+	}
+
+	// Not authorised
+	return errors.ErrUnauthorized, false
 }
 
 // ------------------------------------------------------------------------------------
@@ -391,7 +417,7 @@ func (c *Conn) onPresence(payload []byte) (response, bool) {
 	}
 
 	// Attempt to parse the key, this should be a master key
-	key, err := c.service.Cipher.DecryptKey([]byte(msg.Key))
+	key, err := c.keys.DecryptKey(msg.Key)
 	if err != nil || !key.HasPermission(security.AllowPresence) || key.IsExpired() {
 		return errors.ErrUnauthorized, false
 	}
