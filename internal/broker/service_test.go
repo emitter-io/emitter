@@ -16,6 +16,7 @@ package broker
 
 import (
 	"encoding/json"
+	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -123,12 +124,13 @@ func Test_onHTTPPresence(t *testing.T) {
 		provider := secmock.NewContractProvider()
 		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 
+		cipher, _ := license.Cipher()
 		s := &Service{
 			contracts:     provider,
 			subscriptions: message.NewTrie(),
 			License:       license,
+			Keygen:        keygen.NewProvider(cipher, provider),
 		}
-		s.Cipher, _ = s.License.Cipher()
 
 		req, _ := http.NewRequest("POST", "/presence", strings.NewReader(tc.payload))
 

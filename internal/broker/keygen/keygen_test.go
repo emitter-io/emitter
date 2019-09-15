@@ -15,189 +15,157 @@
 package keygen
 
 import (
-	"github.com/emitter-io/emitter/internal/provider/contract"
-	"github.com/emitter-io/emitter/internal/provider/usage"
-	"github.com/emitter-io/emitter/internal/security/license"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"regexp"
-	"strconv"
-	"strings"
+	"fmt"
 	"testing"
+	"time"
 
+	"github.com/emitter-io/emitter/internal/errors"
+	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
+	"github.com/emitter-io/emitter/internal/provider/usage"
+	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/security/license"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-const keygenTestLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI:1"
-const keygenTestSecret = "kBCZch5re3Ue-kpG1Aa8Vo7BYvXZ3UwR"
-
-func newTestProvider(t *testing.T) *Provider {
-	l, err := license.Parse(keygenTestLicense)
-	assert.NoError(t, err)
-
-	cipher, err := l.Cipher()
-	assert.NoError(t, err)
-
-	return NewProvider(cipher, contract.NewSingleContractProvider(l, usage.NewNoop()))
-}
-
-var keyGenResponseM = regexp.MustCompile(`(?s)<pre id="keygenResponse">(?P<response>.*)</pre>`)
-
-func TestRenderKeyGenPage(t *testing.T) {
-	p := newTestProvider(t)
-	handler := p.HTTP()
-
-	req := httptest.NewRequest("GET", "https://emitter.io/keygen", nil)
-	w := httptest.NewRecorder()
-
-	// act
-	handler(w, req)
-	content, err := ioutil.ReadAll(w.Body)
-	if err != nil {
-		log.Fatal(err)
+func TestExtendKey(t *testing.T) {
+	license, _ := license.Parse(keygenTestLicense)
+	tests := []struct {
+		key           string
+		channel       string
+		access        uint8
+		expires       time.Time
+		contractValid bool
+		contractFound bool
+		err           *errors.Error
+		expectAccess  uint8
+	}{
+		{
+			key:           "DKs-8DXiPnaQjHm0ZwZPOBji-HsIExCF",
+			channel:       "a/b/",
+			contractValid: true,
+			contractFound: true,
+			access:        security.AllowAll,
+			expectAccess:  security.AllowRead | security.AllowLoad,
+		},
+		{
+			key:           "DKs-8DXiPnaQjHm0ZwZPOBji-HsIExCF",
+			channel:       "a/b/",
+			contractValid: true,
+			contractFound: true,
+			access:        security.AllowAll &^ security.AllowLoad,
+			expectAccess:  security.AllowRead,
+		},
+		{
+			key:           "Oad-avDCDdC-qPHLOANcUrDXm5eIEBFp",
+			channel:       "a/b/",
+			contractValid: true,
+			contractFound: true,
+			access:        security.AllowAll,
+			err:           errors.ErrUnauthorized,
+		},
 	}
+	for i, tc := range tests {
+		name := fmt.Sprintf("case %v", i)
+		t.Run(name, func(*testing.T) {
+			provider := secmock.NewContractProvider()
+			contract := new(secmock.Contract)
+			contract.On("Validate", mock.Anything).Return(tc.contractValid)
+			contract.On("Stats").Return(usage.NewMeter(0))
+			provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
+			cipher, _ := license.Cipher()
+			p := NewProvider(cipher, provider)
 
-	// assert
-	assert.Equal(t, 200, w.Code)
-	assert.NotEmpty(t, content)
-}
+			channel, err := p.ExtendKey(tc.key, tc.channel, "ID", tc.access, tc.expires)
+			if tc.err != nil {
+				assert.Equal(t, tc.err, err, name)
+				return
+			}
 
-func TestHeadRequest(t *testing.T) {
-	p := newTestProvider(t)
-	handler := p.HTTP()
+			// Successful case
+			assert.Nil(t, err, name)
+			assert.NotNil(t, channel, name)
+			assert.Equal(t, "a/b/ID/", string(channel.Channel))
 
-	req := httptest.NewRequest("PUT", "https://emitter.io/keygen", nil)
-	w := httptest.NewRecorder()
-
-	// act
-	handler(w, req)
-
-	// assert
-	assert.Equal(t, 405, w.Code)
-}
-
-func TestGenerateKey(t *testing.T) {
-	p := newTestProvider(t)
-	handler := p.HTTP()
-
-	type testCase struct {
-		Scenario                 string
-		Key                      string
-		Channel                  string
-		TTL                      string
-		PermissionSub            string
-		PermissionPub            string
-		PermissionStore          string
-		PermissionLoad           string
-		PermissionPresence       string
-		PermissionExtend         string
-		Response                 string
-		ExpectedResponseContains string
+			// Make sure the permissions are valid
+			k, kerr := p.DecryptKey(string(channel.Key))
+			assert.NoError(t, kerr)
+			assert.Equal(t, tc.expectAccess, k.Permissions())
+		})
 	}
+}
 
-	testCases := []testCase{
+func TestCreateKey(t *testing.T) {
+	license, _ := license.Parse("N7XxQbUEPxJ_RIj4muLUdLGYtR1kdKe2AAAAAAAAAAI")
+	tests := []struct {
+		key           string
+		channel       string
+		access        uint8
+		expires       time.Time
+		contractValid bool
+		contractFound bool
+		err           *errors.Error
+	}{
 		{
-			Scenario:                 "Request with valid arguments",
-			Key:                      keygenTestSecret,
-			Channel:                  "bar/",
-			TTL:                      "300",
-			PermissionSub:            "on",
-			PermissionPub:            "on",
-			PermissionLoad:           "on",
-			PermissionStore:          "on",
-			PermissionPresence:       "on",
-			PermissionExtend:         "on",
-			ExpectedResponseContains: "key    :",
+			key:           "xEbaDPaICEwVhgdnl2rg_1DWi_MAg_3B",
+			channel:       "article1",
+			contractValid: true,
+			contractFound: true,
+			err:           errors.ErrUnauthorized,
 		},
 		{
-			Scenario:                 "Request with empty valid arguments",
-			Key:                      keygenTestSecret,
-			Channel:                  "bar/",
-			TTL:                      "",
-			PermissionSub:            "",
-			PermissionPub:            "",
-			PermissionLoad:           "",
-			PermissionStore:          "",
-			PermissionPresence:       "",
-			PermissionExtend:         "",
-			ExpectedResponseContains: "key    :",
+			key:           "xEbaDPaICEwVhgdnl2rg_1DWi_MAg_3B",
+			channel:       "article1",
+			contractValid: true,
+			contractFound: true,
+			err:           errors.ErrUnauthorized,
 		},
 		{
-			Scenario:                 "Request with invalid arguments",
-			Key:                      keygenTestSecret,
-			Channel:                  "bar/",
-			TTL:                      "bad",
-			PermissionSub:            "bad",
-			PermissionPub:            "bad",
-			PermissionLoad:           "bad",
-			PermissionStore:          "bad",
-			PermissionPresence:       "bad",
-			PermissionExtend:         "bad",
-			ExpectedResponseContains: "invalid arguments",
+			key:           "8GR6MtpL7Xut-pyogQMeS_gyxEA21BbR",
+			channel:       "article1",
+			contractValid: true,
+			contractFound: false,
+			err:           errors.ErrNotFound,
 		},
 		{
-			Scenario:                 "Request with invalid TTL",
-			Key:                      keygenTestSecret,
-			Channel:                  "bar/",
-			TTL:                      "ERR",
-			ExpectedResponseContains: "invalid arguments",
+			key:           "8GR6MtpL7Xut-pyogQMeS_gyxEA21BbR",
+			channel:       "article1",
+			contractValid: false,
+			contractFound: true,
+			err:           errors.ErrUnauthorized,
 		},
 		{
-			Scenario:                 "Request with invalid permission argument",
-			Key:                      keygenTestSecret,
-			Channel:                  "bar/",
-			PermissionSub:            "ERR",
-			ExpectedResponseContains: "invalid arguments",
+			key:           "8GR6MtpL7Xut-pyogQMeS_gyxEA21BbR",
+			channel:       "article1",
+			contractValid: true,
+			contractFound: true,
+			err:           errors.ErrTargetInvalid,
 		},
 		{
-			Scenario:                 "Pass missing secret",
-			Key:                      "",
-			Channel:                  "bar/",
-			PermissionSub:            "off",
-			ExpectedResponseContains: "Missing SecretKey",
-		},
-		{
-			Scenario:                 "Pass missing secret",
-			Key:                      keygenTestSecret,
-			Channel:                  "",
-			PermissionSub:            "on",
-			ExpectedResponseContains: "Missing Channel",
+			key:           "8GR6MtpL7Xut-pyogQMeS_gyxEA21BbR",
+			channel:       "article1/",
+			contractValid: true,
+			contractFound: true,
 		},
 	}
 
-	for _, c := range testCases {
+	for i, tc := range tests {
+		name := fmt.Sprintf("case %v", i)
+		t.Run(name, func(*testing.T) {
+			provider := secmock.NewContractProvider()
+			contract := new(secmock.Contract)
+			contract.On("Validate", mock.Anything).Return(tc.contractValid)
+			contract.On("Stats").Return(usage.NewMeter(0))
+			provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
+			cipher, _ := license.Cipher()
+			p := NewProvider(cipher, provider)
 
-		data := url.Values{}
-		data.Set("key", c.Key)
-		data.Set("channel", c.Channel)
-		data.Set("ttl", c.TTL)
-		data.Set("sub", c.PermissionSub)
-		data.Set("pub", c.PermissionPub)
-		data.Set("store", c.PermissionStore)
-		data.Set("load", c.PermissionLoad)
-		data.Set("presence", c.PermissionPresence)
-		data.Set("extend", c.PermissionExtend)
-
-		req, _ := http.NewRequest("POST", "https://emitter.io/keygen", strings.NewReader(data.Encode()))
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
-
-		w := httptest.NewRecorder()
-
-		// act
-		handler(w, req)
-		content, err := ioutil.ReadAll(w.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		assert.Equal(t, 200, w.Code)
-		assert.NotEmpty(t, content)
-
-		response := strings.TrimSpace(keyGenResponseM.FindStringSubmatch(string(content))[1])
-		assert.Contains(t, response, c.ExpectedResponseContains, c.Scenario)
+			_, err := p.CreateKey(tc.key, tc.channel, tc.access, tc.expires)
+			if tc.err != nil {
+				assert.Equal(t, tc.err, err, name)
+			} else {
+				assert.Nil(t, err, name)
+			}
+		})
 	}
 }

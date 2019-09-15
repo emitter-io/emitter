@@ -53,7 +53,6 @@ import (
 type Service struct {
 	context       context.Context      // The context for the service.
 	cancel        context.CancelFunc   // The cancellation function.
-	Cipher        license.Cipher       // The cipher to use for decoding and encoding keys.
 	License       license.License      // The licence for this emitter server.
 	Keygen        *keygen.Provider     // The key generation provider.
 	Config        *config.Config       // The configuration for the service.
@@ -96,11 +95,6 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 
 	// Parse the license
 	if s.License, err = license.Parse(cfg.License); err != nil {
-		return nil, err
-	}
-
-	// Create a new cipher from the licence provided
-	if s.Cipher, err = s.License.Cipher(); err != nil {
 		return nil, err
 	}
 
@@ -148,8 +142,14 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	).(monitor.Storage)
 	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
 
+	// Create a new cipher from the licence provided
+	cipher, err := s.License.Cipher()
+	if err != nil {
+		return nil, err
+	}
+
 	// Attach handlers
-	s.Keygen = keygen.NewProvider(s.Cipher, s.contracts)
+	s.Keygen = keygen.NewProvider(cipher, s.contracts)
 	if cfg.Debug {
 		mux.HandleFunc("/debug/pprof/", pprof.Index)
 		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
@@ -333,7 +333,7 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	// Attempt to parse the key, this should be a master key
-	key, err := s.Cipher.DecryptKey([]byte(msg.Key))
+	key, err := s.Keygen.DecryptKey(msg.Key)
 	if err != nil || !key.HasPermission(security.AllowPresence) || key.IsExpired() {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -452,7 +452,7 @@ func (s *Service) publish(m *message.Message, exclude string) (n int64) {
 func (s *Service) authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
 
 	// Attempt to parse the key
-	key, err := s.Cipher.DecryptKey(channel.Key)
+	key, err := s.Keygen.DecryptKey(string(channel.Key))
 	if err != nil || key.IsExpired() {
 		return nil, nil, false
 	}

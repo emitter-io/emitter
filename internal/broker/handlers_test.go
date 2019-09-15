@@ -72,7 +72,6 @@ func TestHandlers_onLink(t *testing.T) {
 				Keygen:        keygen.NewProvider(cipher, provider),
 			}
 
-			s.Cipher, _ = s.License.Cipher()
 			conn := netmock.NewConn()
 			nc := s.newConn(conn.Client, 0)
 
@@ -204,16 +203,17 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 			provider := secmock.NewContractProvider()
 			provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 
+			cipher, _ := license.Cipher()
 			s := &Service{
 				contracts:     provider,
 				subscriptions: message.NewTrie(),
 				License:       license,
 				presence:      make(chan *presenceNotify, 100),
+				Keygen:        keygen.NewProvider(cipher, provider),
 			}
 
 			conn := netmock.NewConn()
 			nc := s.newConn(conn.Client, 0)
-			s.Cipher, _ = s.License.Cipher()
 
 			// Subscribe and check for error.
 			subErr := nc.onSubscribe([]byte(tc.channel))
@@ -221,7 +221,7 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 
 			// Search for the ssid.
 			channel := security.ParseChannel([]byte(tc.channel))
-			key, _ := s.Cipher.DecryptKey(channel.Key)
+			key, _ := cipher.DecryptKey(channel.Key)
 			ssid := message.NewSsid(key.Contract(), channel.Query)
 			subscribers := s.subscriptions.Lookup(ssid, nil)
 			assert.Equal(t, tc.subCount, len(subscribers))
@@ -330,15 +330,16 @@ func TestHandlers_onPublish(t *testing.T) {
 		provider := secmock.NewContractProvider()
 		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 
+		cipher, _ := license.Cipher()
 		s := &Service{
 			contracts:     provider,
 			subscriptions: message.NewTrie(),
 			License:       license,
+			Keygen:        keygen.NewProvider(cipher, provider),
 		}
 
 		conn := netmock.NewConn()
 		nc := s.newConn(conn.Client, 0)
-		s.Cipher, _ = s.License.Cipher()
 
 		err := nc.onPublish(&mqtt.Publish{
 			Topic:   []byte(tc.channel),
@@ -428,15 +429,16 @@ func TestHandlers_onPresence(t *testing.T) {
 		provider := secmock.NewContractProvider()
 		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 
+		cipher, _ := license.Cipher()
 		s := &Service{
 			contracts:     provider,
 			subscriptions: message.NewTrie(),
 			License:       license,
+			Keygen:        keygen.NewProvider(cipher, provider),
 		}
 
 		conn := netmock.NewConn()
 		nc := s.newConn(conn.Client, 0)
-		s.Cipher, _ = s.License.Cipher()
 
 		resp, success := nc.onPresence([]byte(tc.payload))
 
@@ -525,7 +527,6 @@ func TestHandlers_onKeygen(t *testing.T) {
 
 			conn := netmock.NewConn()
 			nc := s.newConn(conn.Client, 0)
-			s.Cipher, _ = s.License.Cipher()
 
 			//resp
 			resp, generated := nc.onKeyGen([]byte(tc.payload))

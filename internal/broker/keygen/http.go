@@ -16,7 +16,6 @@ package keygen
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -28,17 +27,6 @@ import (
 
 // HTTP creates a new HTTP handler which can be used to serve HTTP keygen page.
 func (p *Provider) HTTP() http.HandlerFunc {
-	var fs http.FileSystem = assets
-	f, err := fs.Open("keygen.html")
-	if err != nil {
-		panic(err)
-	}
-
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		panic(err)
-	}
-
 	t, err := template.New("keygen").
 		Funcs(template.FuncMap{
 			"isChecked": func(checked bool) string {
@@ -47,7 +35,7 @@ func (p *Provider) HTTP() http.HandlerFunc {
 				}
 				return ""
 			}}).
-		Parse(string(b))
+		Parse(string(indexPage))
 	if err != nil {
 		panic(err)
 	}
@@ -77,8 +65,7 @@ func (p *Provider) HTTP() http.HandlerFunc {
 			return
 		}
 
-		err := t.Execute(w, f)
-		if err != nil {
+		if err := t.Execute(w, f); err != nil {
 			log.Printf("template execute error: %s\n", err.Error())
 			http.Error(w, "internal server error", 500)
 		}
