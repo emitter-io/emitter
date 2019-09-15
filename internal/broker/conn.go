@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/address"
+	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
@@ -50,6 +51,7 @@ type Conn struct {
 	measurer stats.Measurer    // The measurer to use for monitoring.
 	links    map[string]string // The map of all pre-authorized links.
 	limit    *rate.Limiter     // The read rate limiter.
+	keys     *keygen.Provider  // The key generation provider.
 }
 
 // NewConn creates a new connection.
@@ -62,6 +64,7 @@ func (s *Service) newConn(t net.Conn, readRate int) *Conn {
 		subs:     message.NewCounters(),
 		measurer: s.measurer,
 		links:    map[string]string{},
+		keys:     s.Keygen,
 	}
 
 	// Generate a globally unique id as well

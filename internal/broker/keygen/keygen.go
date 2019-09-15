@@ -34,8 +34,16 @@ type Provider struct {
 	Loader contract.Provider // Contract loader to use to retrieve contracts
 }
 
+// NewProvider creates a new key generation provider.
+func NewProvider(cipher license.Cipher, loader contract.Provider) *Provider {
+	return &Provider{
+		Cipher: cipher,
+		Loader: loader,
+	}
+}
+
 // CreateKey generates a key with the specified access and expiration time.
-func (p *Provider) CreateKey(rawMasterKey string, channel string, access uint8, expires time.Time) (string, *errors.Error) {
+func (p *Provider) CreateKey(rawMasterKey, channel string, access uint8, expires time.Time) (string, *errors.Error) {
 	masterKey, err := p.Cipher.DecryptKey([]byte(rawMasterKey))
 	if err != nil || !masterKey.IsMaster() || masterKey.IsExpired() {
 		return "", errors.ErrUnauthorized
@@ -67,6 +75,9 @@ func (p *Provider) CreateKey(rawMasterKey string, channel string, access uint8, 
 	key.SetPermissions(access)
 	key.SetExpires(expires)
 
+	// Make sure we don't accidentally generate master keys
+	key.SetPermission(security.AllowMaster, false)
+
 	// Set the target and return an convert the error if it occurs
 	if err := key.SetTarget(channel); err != nil {
 		switch err {
@@ -89,7 +100,7 @@ func (p *Provider) CreateKey(rawMasterKey string, channel string, access uint8, 
 }
 
 // ExtendKey creates a private channel and an appropriate key.
-func (p *Provider) ExtendKey(channelKey, channelName, connectionID string) (*security.Channel, *errors.Error) {
+func (p *Provider) ExtendKey(channelKey, channelName, connectionID string, access uint8, expires time.Time) (*security.Channel, *errors.Error) {
 	channel := security.MakeChannel(channelKey, channelName)
 	if channel.ChannelType != security.ChannelStatic {
 		return nil, errors.ErrBadRequest
@@ -103,6 +114,10 @@ func (p *Provider) ExtendKey(channelKey, channelName, connectionID string) (*sec
 
 	// Revoke the extend permission to avoid this to be subsequently extended
 	key.SetPermission(security.AllowExtend, false)
+
+	// Apply the access and expiration
+	key.SetPermissions(key.Permissions() & access)
+	key.SetExpires(expires)
 
 	// Create a new key for the private link
 	target := fmt.Sprintf("%s%s/", channel.Channel, connectionID)

@@ -33,6 +33,7 @@ import (
 
 	"github.com/emitter-io/address"
 	"github.com/emitter-io/emitter/internal/broker/cluster"
+	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/listener"
@@ -54,6 +55,7 @@ type Service struct {
 	cancel        context.CancelFunc   // The cancellation function.
 	Cipher        license.Cipher       // The cipher to use for decoding and encoding keys.
 	License       license.License      // The licence for this emitter server.
+	Keygen        *keygen.Provider     // The key generation provider.
 	Config        *config.Config       // The configuration for the service.
 	subscriptions *message.Trie        // The subscription matching trie.
 	http          *http.Server         // The underlying HTTP server.
@@ -86,17 +88,6 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 
 	// Create a new HTTP request multiplexer
 	mux := http.NewServeMux()
-	if cfg.Debug {
-		mux.HandleFunc("/debug/pprof/", pprof.Index)
-		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	}
-	mux.HandleFunc("/health", s.onHealth)
-	mux.HandleFunc("/keygen", handleKeyGen(s))
-	mux.HandleFunc("/presence", s.onHTTPPresence)
-	mux.HandleFunc("/", s.onRequest)
 
 	// Attach handlers
 	s.http.Handler = mux
@@ -156,6 +147,20 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		monitor.NewPrometheus(sampler, mux),
 	).(monitor.Storage)
 	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
+
+	// Attach handlers
+	s.Keygen = keygen.NewProvider(s.Cipher, s.contracts)
+	if cfg.Debug {
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	}
+	mux.HandleFunc("/health", s.onHealth)
+	mux.HandleFunc("/keygen", s.Keygen.HTTP())
+	mux.HandleFunc("/presence", s.onHTTPPresence)
+	mux.HandleFunc("/", s.onRequest)
 
 	// Addresses and things
 	logging.LogTarget("service", "configured node name", nodeName)

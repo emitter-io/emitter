@@ -10,9 +10,9 @@ import (
 )
 
 func main() {
-	var fs http.FileSystem = http.Dir("./internal/security/keygen/assets")
+	var fs http.FileSystem = http.Dir("./internal/broker/keygen/assets")
 	err := vfsgen.Generate(fs, vfsgen.Options{
-		Filename:    "./internal/security/keygen/assets.go",
+		Filename:    "./internal/broker/keygen/assets.go",
 		PackageName: "broker",
 	})
 	if err != nil {

@@ -17,6 +17,7 @@ package broker
 import (
 	"testing"
 
+	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	netmock "github.com/emitter-io/emitter/internal/network/mock"
@@ -62,11 +63,13 @@ func TestHandlers_onLink(t *testing.T) {
 			contract.On("Validate", mock.Anything).Return(true)
 			provider.On("Get", mock.Anything).Return(contract, true)
 			license, _ := license.Parse(testLicense)
+			cipher, _ := license.Cipher()
 			s := &Service{
 				contracts:     provider,
 				subscriptions: message.NewTrie(),
 				License:       license,
 				presence:      make(chan *presenceNotify, 100),
+				Keygen:        keygen.NewProvider(cipher, provider),
 			}
 
 			s.Cipher, _ = s.License.Cipher()
@@ -512,10 +515,12 @@ func TestHandlers_onKeygen(t *testing.T) {
 			contract.On("Validate", mock.Anything).Return(tc.contractValid)
 			contract.On("Stats").Return(usage.NewMeter(0))
 			provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
+			cipher, _ := license.Cipher()
 			s := &Service{
 				contracts:     provider,
 				subscriptions: message.NewTrie(),
 				License:       license,
+				Keygen:        keygen.NewProvider(cipher, provider),
 			}
 
 			conn := netmock.NewConn()

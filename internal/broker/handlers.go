@@ -16,7 +16,6 @@ package broker
 
 import (
 	"encoding/json"
-	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -26,7 +25,6 @@ import (
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security"
-	"github.com/emitter-io/emitter/internal/security/hash"
 	"github.com/kelindar/binary"
 )
 
@@ -254,7 +252,11 @@ func (c *Conn) onLink(payload []byte) (response, bool) {
 	// Make the channel from the request or try to make a private one
 	channel := security.MakeChannel(request.Key, request.Channel)
 	if request.Private {
-		channel = c.makePrivateChannel(request.Key, request.Channel)
+		priv, err := c.keys.ExtendKey(request.Key, request.Channel, c.ID(), security.AllowAll, time.Unix(0, 0))
+		if err != nil {
+			return err, false
+		}
+		channel = priv
 	}
 
 	// Ensures that the channel requested is valid
@@ -275,41 +277,6 @@ func (c *Conn) onLink(payload []byte) (response, bool) {
 		Name:    request.Name,
 		Channel: channel.SafeString(),
 	}, true
-}
-
-// makePrivateChannel creates a private channel and an appropriate key.
-func (c *Conn) makePrivateChannel(chanKey, chanName string) *security.Channel {
-	channel := security.MakeChannel(chanKey, chanName)
-	if channel.ChannelType != security.ChannelStatic {
-		return nil
-	}
-
-	// Make sure we can actually extend it
-	_, key, allowed := c.service.authorize(channel, security.AllowExtend)
-	if !allowed {
-		return nil
-	}
-
-	// Revoke the extend permission to avoid this to be subsequently extended
-	key.SetPermission(security.AllowExtend, false)
-
-	// Create a new key for the private link
-	target := fmt.Sprintf("%s%s/", channel.Channel, c.ID())
-	if err := key.SetTarget(target); err != nil {
-		return nil
-	}
-
-	// Encrypt the key for storing
-	encryptedKey, err := c.service.Cipher.EncryptKey(key)
-	if err != nil {
-		return nil
-	}
-
-	// Create the private channel
-	channel.Channel = []byte(target)
-	channel.Query = append(channel.Query, hash.Of([]byte(c.ID())))
-	channel.Key = []byte(encryptedKey)
-	return channel
 }
 
 // ------------------------------------------------------------------------------------
@@ -337,7 +304,7 @@ func (c *Conn) onKeyGen(payload []byte) (response, bool) {
 		return errors.ErrBadRequest, false
 	}
 
-	key, err := c.service.generateKey(message.Key, message.Channel, message.access(), message.expires())
+	key, err := c.keys.CreateKey(message.Key, message.Channel, message.access(), message.expires())
 	if err != nil {
 		return err, false
 	}
