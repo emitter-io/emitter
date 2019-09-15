@@ -49,7 +49,7 @@ func BenchmarkSerial(b *testing.B) {
 
 	msg := mqtt.Publish{
 		Header:  mqtt.Header{QOS: 0},
-		Topic:   []byte("4kzJv3TMhYTg6lLk6fQoFG2KCe7gjFPk/a/b/c/"),
+		Topic:   []byte("w07Jv3TMhYTg6lLk6fQoVG2KCe7gjFPk/a/b/c/"),
 		Payload: []byte("hello world"),
 	}
 
@@ -76,7 +76,7 @@ func BenchmarkParallel(b *testing.B) {
 	defer cli.Close()
 	msg := mqtt.Publish{
 		Header:  mqtt.Header{QOS: 0},
-		Topic:   []byte("4kzJv3TMhYTg6lLk6fQoFG2KCe7gjFPk/a/b/c/"),
+		Topic:   []byte("w07Jv3TMhYTg6lLk6fQoVG2KCe7gjFPk/a/b/c/"),
 		Payload: []byte("hello world"),
 	}
 
@@ -112,7 +112,7 @@ func BenchmarkFanOut(b *testing.B) {
 			// Prepare a message for the benchmark
 			msg := mqtt.Publish{
 				Header:  mqtt.Header{QOS: 0},
-				Topic:   []byte("4kzJv3TMhYTg6lLk6fQoFG2KCe7gjFPk/a/b/c/"),
+				Topic:   []byte("w07Jv3TMhYTg6lLk6fQoVG2KCe7gjFPk/a/b/c/"),
 				Payload: []byte("hello world"),
 			}
 
@@ -156,7 +156,7 @@ func newBenchClient(port int) *testConn {
 	sub := mqtt.Subscribe{
 		Header: mqtt.Header{QOS: 0},
 		Subscriptions: []mqtt.TopicQOSTuple{
-			{Topic: []byte("4kzJv3TMhYTg6lLk6fQoFG2KCe7gjFPk/a/b/c/"), Qos: 0},
+			{Topic: []byte("w07Jv3TMhYTg6lLk6fQoVG2KCe7gjFPk/a/b/c/"), Qos: 0},
 		},
 	}
 	check(sub.EncodeTo(cli))

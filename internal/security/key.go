@@ -272,3 +272,12 @@ func (k Key) HasPermission(flag uint8) bool {
 	p := k.Permissions()
 	return (p & flag) == flag
 }
+
+// SetPermission sets a permission to a value
+func (k Key) SetPermission(flag uint8, value bool) {
+	if value {
+		k.SetPermissions(k.Permissions() | flag)
+	} else {
+		k.SetPermissions(k.Permissions() &^ flag)
+	}
+}
