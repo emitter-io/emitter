@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
@@ -70,7 +71,7 @@ func Test_onHTTPPresence(t *testing.T) {
 		},
 		{
 			payload:       "",
-			err:           ErrBadRequest,
+			err:           errors.ErrBadRequest,
 			success:       false,
 			status:        http.StatusBadRequest,
 			contractValid: true,
@@ -83,7 +84,7 @@ func Test_onHTTPPresence(t *testing.T) {
 			contractFound: true,
 			success:       false,
 			status:        http.StatusBadRequest,
-			err:           ErrBadRequest,
+			err:           errors.ErrBadRequest,
 			msg:           "Invalid channel case",
 		},
 		{
@@ -92,12 +93,12 @@ func Test_onHTTPPresence(t *testing.T) {
 			contractFound: true,
 			success:       false,
 			status:        http.StatusUnauthorized,
-			err:           ErrUnauthorized,
+			err:           errors.ErrUnauthorized,
 			msg:           "Key for wrong channel case",
 		},
 		{
 			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
-			err:           ErrNotFound,
+			err:           errors.ErrNotFound,
 			status:        http.StatusNotFound,
 			contractValid: true,
 			contractFound: false,
@@ -105,7 +106,7 @@ func Test_onHTTPPresence(t *testing.T) {
 		},
 		{
 			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
-			err:           ErrUnauthorized,
+			err:           errors.ErrUnauthorized,
 			status:        http.StatusUnauthorized,
 			contractValid: false,
 			contractFound: true,

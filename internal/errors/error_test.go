@@ -12,43 +12,19 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package broker
+package errors
 
 import (
-	"io/ioutil"
 	"testing"
 
-	"github.com/emitter-io/emitter/internal/errors"
-	"github.com/emitter-io/emitter/internal/message"
-	netmock "github.com/emitter-io/emitter/internal/network/mock"
-	"github.com/emitter-io/emitter/internal/security/license"
-	"github.com/emitter-io/stats"
 	"github.com/stretchr/testify/assert"
 )
 
-func newTestConn() (pipe *netmock.Conn, conn *Conn) {
-	license, _ := license.Parse(testLicense)
-	s := &Service{
-		subscriptions: message.NewTrie(),
-		License:       license,
-		measurer:      stats.NewNoop(),
-	}
+func TestErrors(t *testing.T) {
+	assert.Equal(t, 500, New("test").Status)
+	assert.Equal(t, ErrBadRequest.Message, ErrBadRequest.Error())
 
-	pipe = netmock.NewConn()
-	conn = s.newConn(pipe.Client, 0)
-	return
-}
-
-func TestNotifyError(t *testing.T) {
-	pipe, conn := newTestConn()
-	assert.NotNil(t, pipe)
-
-	go func() {
-		conn.notifyError(errors.ErrUnauthorized, 1)
-		conn.Close()
-	}()
-
-	b, err := ioutil.ReadAll(pipe.Server)
-	assert.Contains(t, string(b), errors.ErrUnauthorized.Message)
-	assert.NoError(t, err)
+	cpy := ErrBadRequest.Copy()
+	cpy.ForRequest(15)
+	assert.Equal(t, uint16(15), cpy.Request)
 }

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/address"
+	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/contract"
@@ -236,16 +237,16 @@ func (c *Conn) Send(m *message.Message) (err error) {
 }
 
 // notifyError notifies the connection about an error
-func (c *Conn) notifyError(err *Error, requestID uint16) {
+func (c *Conn) notifyError(err *errors.Error, requestID uint16) {
 	c.sendResponse("emitter/error/", err, requestID)
 }
 
 func (c *Conn) sendResponse(topic string, resp response, requestID uint16) {
 	switch m := resp.(type) {
-	case *Error:
-		errCopy := *m // Copy the value
-		errCopy.ForRequest(requestID)
-		resp = &errCopy
+	case *errors.Error:
+		cpy := m.Copy()
+		cpy.ForRequest(requestID)
+		resp = cpy
 	default:
 		m.ForRequest(requestID)
 	}
