@@ -65,7 +65,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 		return ErrUnauthorized
 	}
 
-	// Keys which are supposed to be extended should not be used for publishing
+	// Keys which are supposed to be extended should not be used for subscribing
 	if key.HasPermission(security.AllowExtend) {
 		return ErrUnauthorizedExt
 	}
