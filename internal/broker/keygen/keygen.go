@@ -143,7 +143,7 @@ func (p *Provider) ExtendKey(channelKey, channelName, connectionID string, acces
 
 	// Create the private channel
 	channel.Channel = []byte(target)
-	channel.Query = append(channel.Query, hash.Of([]byte(connectionID)))
+	channel.Query = append(channel.Query, hash.OfString(connectionID))
 	channel.Key = []byte(encryptedKey)
 	return channel, nil
 }

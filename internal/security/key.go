@@ -181,7 +181,7 @@ func (k Key) ValidateChannel(ch *Channel) bool {
 
 	newChannel := strings.Join(parts[0:maxDepth], "/")
 
-	h := hash.Of([]byte(newChannel))
+	h := hash.OfString(newChannel)
 	return h == target
 }
 
@@ -217,7 +217,7 @@ func (k Key) SetTarget(channel string) error {
 
 	// Create a new channel and get the hash for this channel
 	newChannel := strings.Join(parts, "/")
-	value := hash.Of([]byte(newChannel))
+	value := hash.OfString(newChannel)
 
 	// Set the bit path
 	k[12] = byte(bitPath >> 16)

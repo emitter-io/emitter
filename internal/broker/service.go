@@ -211,6 +211,7 @@ func (s *Service) Listen() (err error) {
 		// If we need to validate certificate, spin up a listener on port 80
 		// More info: https://community.letsencrypt.org/t/2018-01-11-update-regarding-acme-tls-sni-and-shared-hosting-infrastructure/50188
 		if tlsValidator != nil {
+			logging.LogAction("service", "exposing autocert TLS validation on :80")
 			go http.ListenAndServe(":80", tlsValidator)
 		}
 
