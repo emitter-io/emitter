@@ -327,6 +327,29 @@ func (c *Conn) onMe() (response, bool) {
 	}, true
 }
 
+// -----------------------------------------------------------------------------------
+
+// onKeyGen processes a keygen request.
+func (c *Conn) onKeyGen(payload []byte) (response, bool) {
+	// Deserialize the payload.
+	message := keyGenRequest{}
+	if err := json.Unmarshal(payload, &message); err != nil {
+		return errors.ErrBadRequest, false
+	}
+
+	key, err := c.service.generateKey(message.Key, message.Channel, message.access(), message.expires())
+	if err != nil {
+		return err, false
+	}
+
+	// Success, return the response
+	return &keyGenResponse{
+		Status:  200,
+		Key:     key,
+		Channel: message.Channel,
+	}, true
+}
+
 // ------------------------------------------------------------------------------------
 
 // OnSurvey handles an incoming presence query.

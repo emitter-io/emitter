@@ -12,98 +12,77 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package broker
+package keygen
 
 import (
-	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math"
-	"math/big"
 	"net/http"
 	"strconv"
 	"text/template"
 	"time"
 
-	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/security"
 )
 
-// onKeyGen processes a keygen request.
-func (c *Conn) onKeyGen(payload []byte) (response, bool) {
-	// Deserialize the payload.
-	message := keyGenRequest{}
-	if err := json.Unmarshal(payload, &message); err != nil {
-		return errors.ErrBadRequest, false
-	}
-
-	key, err := c.service.generateKey(message.Key, message.Channel, message.access(), message.expires())
+// HTTP creates a new HTTP handler which can be used to serve HTTP keygen page.
+func (p *Provider) HTTP() http.HandlerFunc {
+	var fs http.FileSystem = assets
+	f, err := fs.Open("keygen.html")
 	if err != nil {
-		return err, false
+		panic(err)
 	}
 
-	// Success, return the response
-	return &keyGenResponse{
-		Status:  200,
-		Key:     key,
-		Channel: message.Channel,
-	}, true
-}
-
-func (s *Service) generateKey(rawMasterKey string, channel string, access uint8, expires time.Time) (string, *errors.Error) {
-	// Attempt to parse the key, this should be a master key
-	masterKey, err := s.Cipher.DecryptKey([]byte(rawMasterKey))
-	if err != nil || !masterKey.IsMaster() || masterKey.IsExpired() {
-		return "", errors.ErrUnauthorized
-	}
-
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := s.contracts.Get(masterKey.Contract())
-	if !contractFound {
-		return "", errors.ErrNotFound
-	}
-
-	// Validate the contract
-	if !contract.Validate(masterKey) {
-		return "", errors.ErrUnauthorized
-	}
-
-	// Generate random salt
-	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt16))
+	b, err := ioutil.ReadAll(f)
 	if err != nil {
-		return "", errors.ErrServerError
+		panic(err)
 	}
 
-	// Create a key request
-	key := security.Key(make([]byte, 24))
-	key.SetSalt(uint16(n.Uint64()))
-	key.SetMaster(masterKey.Master())
-	key.SetContract(masterKey.Contract())
-	key.SetSignature(masterKey.Signature())
-	key.SetPermissions(access)
-	key.SetExpires(expires)
+	t, err := template.New("keygen").
+		Funcs(template.FuncMap{
+			"isChecked": func(checked bool) string {
+				if checked {
+					return "checked=\"true\""
+				}
+				return ""
+			}}).
+		Parse(string(b))
+	if err != nil {
+		panic(err)
+	}
 
-	// Set the target and return an convert the error if it occurs
-	if err := key.SetTarget(channel); err != nil {
-		switch err {
-		case security.ErrTargetInvalid:
-			return "", errors.ErrTargetInvalid
-		case security.ErrTargetTooLong:
-			return "", errors.ErrTargetTooLong
+	return func(w http.ResponseWriter, r *http.Request) {
+		f := keygenForm{Sub: true}
+		switch r.Method {
+		case "GET":
+		case "POST":
+			ok := f.parse(r)
+			if ok {
+				if f.isValid() {
+					key, err := p.CreateKey(f.Key, f.Channel, f.access(), f.expires())
+					if err != nil {
+						f.Response = err.Error()
+					} else {
+						f.Response = fmt.Sprintf("channel: %s\nkey    : %s", f.Channel, key)
+					}
+
+				}
+			} else {
+				f.Response = "invalid arguments"
+			}
+
 		default:
-			return "", errors.ErrServerError
+			http.Error(w, http.ErrNotSupported.Error(), 405)
+			return
+		}
+
+		err := t.Execute(w, f)
+		if err != nil {
+			log.Printf("template execute error: %s\n", err.Error())
+			http.Error(w, "internal server error", 500)
 		}
 	}
-
-	// Encrypt the final key
-	out, err := s.Cipher.EncryptKey(key)
-	if err != nil {
-		return "", errors.ErrServerError
-	}
-
-	return out, nil
 }
 
 // ------------------------------------------------------------------------------------
@@ -232,62 +211,4 @@ func (f *keygenForm) access() uint8 {
 	}
 
 	return required
-}
-
-func handleKeyGen(s *Service) http.HandlerFunc {
-	var fs http.FileSystem = assets
-	f, err := fs.Open("keygen.html")
-	if err != nil {
-		panic(err)
-	}
-
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		panic(err)
-	}
-
-	t, err := template.New("keygen").
-		Funcs(template.FuncMap{
-			"isChecked": func(checked bool) string {
-				if checked {
-					return "checked=\"true\""
-				}
-				return ""
-			}}).
-		Parse(string(b))
-	if err != nil {
-		panic(err)
-	}
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		f := keygenForm{Sub: true}
-		switch r.Method {
-		case "GET":
-		case "POST":
-			ok := f.parse(r)
-			if ok {
-				if f.isValid() {
-					key, err := s.generateKey(f.Key, f.Channel, f.access(), f.expires())
-					if err != nil {
-						f.Response = err.Error()
-					} else {
-						f.Response = fmt.Sprintf("channel: %s\nkey    : %s", f.Channel, key)
-					}
-
-				}
-			} else {
-				f.Response = "invalid arguments"
-			}
-
-		default:
-			http.Error(w, http.ErrNotSupported.Error(), 405)
-			return
-		}
-
-		err := t.Execute(w, f)
-		if err != nil {
-			log.Printf("template execute error: %s\n", err.Error())
-			http.Error(w, "internal server error", 500)
-		}
-	}
 }
