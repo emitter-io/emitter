@@ -30,6 +30,7 @@ import (
 
 func TestExtendKey(t *testing.T) {
 	license, _ := license.Parse(keygenTestLicense)
+
 	tests := []struct {
 		key           string
 		channel       string
@@ -39,6 +40,7 @@ func TestExtendKey(t *testing.T) {
 		contractFound bool
 		err           *errors.Error
 		expectAccess  uint8
+		expectChannel string
 	}{
 		{
 			key:           "DKs-8DXiPnaQjHm0ZwZPOBji-HsIExCF",
@@ -47,6 +49,7 @@ func TestExtendKey(t *testing.T) {
 			contractFound: true,
 			access:        security.AllowAll,
 			expectAccess:  security.AllowRead | security.AllowLoad,
+			expectChannel: "a/b/ID/",
 		},
 		{
 			key:           "DKs-8DXiPnaQjHm0ZwZPOBji-HsIExCF",
@@ -55,6 +58,7 @@ func TestExtendKey(t *testing.T) {
 			contractFound: true,
 			access:        security.AllowAll &^ security.AllowLoad,
 			expectAccess:  security.AllowRead,
+			expectChannel: "a/b/ID/",
 		},
 		{
 			key:           "Oad-avDCDdC-qPHLOANcUrDXm5eIEBFp",
@@ -63,6 +67,23 @@ func TestExtendKey(t *testing.T) {
 			contractFound: true,
 			access:        security.AllowAll,
 			err:           errors.ErrUnauthorized,
+		},
+		{
+			key:           "Kz4-7tNTlL8BKpKM0s3qEGKv-r_OD37C",
+			channel:       "a/b/#/",
+			contractValid: true,
+			contractFound: true,
+			access:        security.AllowAll &^ security.AllowLoad,
+			expectAccess:  security.AllowRead,
+			expectChannel: "a/b/ID/#/",
+		},
+		{
+			key:           "Oad-avDCDdC-qPHLOANcUrDXm5eIEBFp",
+			channel:       "a/b/+/",
+			contractValid: true,
+			contractFound: true,
+			access:        security.AllowAll,
+			err:           errors.ErrBadRequest,
 		},
 	}
 	for i, tc := range tests {
@@ -85,7 +106,7 @@ func TestExtendKey(t *testing.T) {
 			// Successful case
 			assert.Nil(t, err, name)
 			assert.NotNil(t, channel, name)
-			assert.Equal(t, "a/b/ID/", string(channel.Channel))
+			assert.Equal(t, tc.expectChannel, string(channel.Channel))
 
 			// Make sure the permissions are valid
 			k, kerr := p.DecryptKey(string(channel.Key))

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/emitter-io/emitter/internal/errors"
@@ -111,6 +112,12 @@ func (p *Provider) CreateKey(rawMasterKey, channel string, access uint8, expires
 
 // ExtendKey creates a private channel and an appropriate key.
 func (p *Provider) ExtendKey(channelKey, channelName, connectionID string, access uint8, expires time.Time) (*security.Channel, *errors.Error) {
+	var suffix string
+	if strings.HasSuffix(channelName, "#/") {
+		suffix = "#/"
+		channelName = strings.TrimSuffix(channelName, "#/")
+	}
+
 	channel := security.MakeChannel(channelKey, channelName)
 	if channel.ChannelType != security.ChannelStatic {
 		return nil, errors.ErrBadRequest
@@ -130,7 +137,7 @@ func (p *Provider) ExtendKey(channelKey, channelName, connectionID string, acces
 	key.SetExpires(expires)
 
 	// Create a new key for the private link
-	target := fmt.Sprintf("%s%s/", channel.Channel, connectionID)
+	target := fmt.Sprintf("%s%s/%s", channel.Channel, connectionID, suffix)
 	if err := key.SetTarget(target); err != nil {
 		return nil, errors.New(err.Error())
 	}
