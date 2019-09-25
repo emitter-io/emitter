@@ -33,6 +33,7 @@ import (
 
 	"github.com/emitter-io/address"
 	"github.com/emitter-io/emitter/internal/broker/cluster"
+	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/listener"
@@ -52,8 +53,8 @@ import (
 type Service struct {
 	context       context.Context      // The context for the service.
 	cancel        context.CancelFunc   // The cancellation function.
-	Cipher        license.Cipher       // The cipher to use for decoding and encoding keys.
 	License       license.License      // The licence for this emitter server.
+	Keygen        *keygen.Provider     // The key generation provider.
 	Config        *config.Config       // The configuration for the service.
 	subscriptions *message.Trie        // The subscription matching trie.
 	http          *http.Server         // The underlying HTTP server.
@@ -86,17 +87,6 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 
 	// Create a new HTTP request multiplexer
 	mux := http.NewServeMux()
-	if cfg.Debug {
-		mux.HandleFunc("/debug/pprof/", pprof.Index)
-		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	}
-	mux.HandleFunc("/health", s.onHealth)
-	mux.HandleFunc("/keygen", handleKeyGen(s))
-	mux.HandleFunc("/presence", s.onHTTPPresence)
-	mux.HandleFunc("/", s.onRequest)
 
 	// Attach handlers
 	s.http.Handler = mux
@@ -105,11 +95,6 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 
 	// Parse the license
 	if s.License, err = license.Parse(cfg.License); err != nil {
-		return nil, err
-	}
-
-	// Create a new cipher from the licence provided
-	if s.Cipher, err = s.License.Cipher(); err != nil {
 		return nil, err
 	}
 
@@ -156,6 +141,26 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		monitor.NewPrometheus(sampler, mux),
 	).(monitor.Storage)
 	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
+
+	// Create a new cipher from the licence provided
+	cipher, err := s.License.Cipher()
+	if err != nil {
+		return nil, err
+	}
+
+	// Attach handlers
+	s.Keygen = keygen.NewProvider(cipher, s.contracts)
+	if cfg.Debug {
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	}
+	mux.HandleFunc("/health", s.onHealth)
+	mux.HandleFunc("/keygen", s.Keygen.HTTP())
+	mux.HandleFunc("/presence", s.onHTTPPresence)
+	mux.HandleFunc("/", s.onRequest)
 
 	// Addresses and things
 	logging.LogTarget("service", "configured node name", nodeName)
@@ -206,6 +211,7 @@ func (s *Service) Listen() (err error) {
 		// If we need to validate certificate, spin up a listener on port 80
 		// More info: https://community.letsencrypt.org/t/2018-01-11-update-regarding-acme-tls-sni-and-shared-hosting-infrastructure/50188
 		if tlsValidator != nil {
+			logging.LogAction("service", "exposing autocert TLS validation on :80")
 			go http.ListenAndServe(":80", tlsValidator)
 		}
 
@@ -328,7 +334,7 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	// Attempt to parse the key, this should be a master key
-	key, err := s.Cipher.DecryptKey([]byte(msg.Key))
+	key, err := s.Keygen.DecryptKey(msg.Key)
 	if err != nil || !key.HasPermission(security.AllowPresence) || key.IsExpired() {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -447,7 +453,7 @@ func (s *Service) publish(m *message.Message, exclude string) (n int64) {
 func (s *Service) authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
 
 	// Attempt to parse the key
-	key, err := s.Cipher.DecryptKey(channel.Key)
+	key, err := s.Keygen.DecryptKey(string(channel.Key))
 	if err != nil || key.IsExpired() {
 		return nil, nil, false
 	}
