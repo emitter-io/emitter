@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"github.com/emitter-io/address"
+	"github.com/emitter-io/emitter/internal/broker/keygen"
+	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/contract"
@@ -49,6 +51,7 @@ type Conn struct {
 	measurer stats.Measurer    // The measurer to use for monitoring.
 	links    map[string]string // The map of all pre-authorized links.
 	limit    *rate.Limiter     // The read rate limiter.
+	keys     *keygen.Provider  // The key generation provider.
 }
 
 // NewConn creates a new connection.
@@ -61,6 +64,7 @@ func (s *Service) newConn(t net.Conn, readRate int) *Conn {
 		subs:     message.NewCounters(),
 		measurer: s.measurer,
 		links:    map[string]string{},
+		keys:     s.Keygen,
 	}
 
 	// Generate a globally unique id as well
@@ -236,16 +240,16 @@ func (c *Conn) Send(m *message.Message) (err error) {
 }
 
 // notifyError notifies the connection about an error
-func (c *Conn) notifyError(err *Error, requestID uint16) {
+func (c *Conn) notifyError(err *errors.Error, requestID uint16) {
 	c.sendResponse("emitter/error/", err, requestID)
 }
 
 func (c *Conn) sendResponse(topic string, resp response, requestID uint16) {
 	switch m := resp.(type) {
-	case *Error:
-		errCopy := *m // Copy the value
-		errCopy.ForRequest(requestID)
-		resp = &errCopy
+	case *errors.Error:
+		cpy := m.Copy()
+		cpy.ForRequest(requestID)
+		resp = cpy
 	default:
 		m.ForRequest(requestID)
 	}

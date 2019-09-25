@@ -16,16 +16,15 @@ package broker
 
 import (
 	"encoding/json"
-	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security"
-	"github.com/emitter-io/emitter/internal/security/hash"
 	"github.com/kelindar/binary"
 )
 
@@ -51,23 +50,23 @@ func (c *Conn) onConnect(packet *mqtt.Connect) bool {
 // ------------------------------------------------------------------------------------
 
 // OnSubscribe is a handler for MQTT Subscribe events.
-func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
+func (c *Conn) onSubscribe(mqttTopic []byte) *errors.Error {
 
 	// Parse the channel
 	channel := security.ParseChannel(mqttTopic)
 	if channel.ChannelType == security.ChannelInvalid {
-		return ErrBadRequest
+		return errors.ErrBadRequest
 	}
 
 	// Check the authorization and permissions
 	contract, key, allowed := c.service.authorize(channel, security.AllowRead)
 	if !allowed {
-		return ErrUnauthorized
+		return errors.ErrUnauthorized
 	}
 
 	// Keys which are supposed to be extended should not be used for subscribing
 	if key.HasPermission(security.AllowExtend) {
-		return ErrUnauthorizedExt
+		return errors.ErrUnauthorizedExt
 	}
 
 	// Subscribe the client to the channel
@@ -87,7 +86,7 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 		msgs, err := c.service.storage.Query(ssid, t0, t1, int(limit))
 		if err != nil {
 			logging.LogError("conn", "query last messages", err)
-			return ErrServerError
+			return errors.ErrServerError
 		}
 
 		// Range over the messages in the channel and forward them
@@ -105,18 +104,18 @@ func (c *Conn) onSubscribe(mqttTopic []byte) *Error {
 // ------------------------------------------------------------------------------------
 
 // OnUnsubscribe is a handler for MQTT Unsubscribe events.
-func (c *Conn) onUnsubscribe(mqttTopic []byte) *Error {
+func (c *Conn) onUnsubscribe(mqttTopic []byte) *errors.Error {
 
 	// Parse the channel
 	channel := security.ParseChannel(mqttTopic)
 	if channel.ChannelType == security.ChannelInvalid {
-		return ErrBadRequest
+		return errors.ErrBadRequest
 	}
 
 	// Check the authorization and permissions
 	contract, key, allowed := c.service.authorize(channel, security.AllowRead)
 	if !allowed {
-		return ErrUnauthorized
+		return errors.ErrUnauthorized
 	}
 
 	// Unsubscribe the client from the channel
@@ -129,7 +128,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *Error {
 // ------------------------------------------------------------------------------------
 
 // OnPublish is a handler for MQTT Publish events.
-func (c *Conn) onPublish(packet *mqtt.Publish) *Error {
+func (c *Conn) onPublish(packet *mqtt.Publish) *errors.Error {
 	mqttTopic := packet.Topic
 	if len(mqttTopic) <= 2 && c.links != nil {
 		mqttTopic = []byte(c.links[string(mqttTopic)])
@@ -138,12 +137,12 @@ func (c *Conn) onPublish(packet *mqtt.Publish) *Error {
 	// Make sure we have a valid channel
 	channel := security.ParseChannel(mqttTopic)
 	if channel.ChannelType == security.ChannelInvalid {
-		return ErrBadRequest
+		return errors.ErrBadRequest
 	}
 
 	// Publish should only have static channel strings
 	if channel.ChannelType != security.ChannelStatic {
-		return ErrForbidden
+		return errors.ErrForbidden
 	}
 
 	// Check whether the key is 'emitter' which means it's an API request
@@ -155,12 +154,12 @@ func (c *Conn) onPublish(packet *mqtt.Publish) *Error {
 	// Check the authorization and permissions
 	contract, key, allowed := c.service.authorize(channel, security.AllowWrite)
 	if !allowed {
-		return ErrUnauthorized
+		return errors.ErrUnauthorized
 	}
 
 	// Keys which are supposed to be extended should not be used for publishing
 	if key.HasPermission(security.AllowExtend) {
-		return ErrUnauthorizedExt
+		return errors.ErrUnauthorizedExt
 	}
 
 	// Create a new message
@@ -213,7 +212,7 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte, reque
 	}()
 
 	// Make sure we have a query
-	resp = ErrNotFound
+	resp = errors.ErrNotFound
 	if len(channel.Query) < 1 {
 		return
 	}
@@ -242,23 +241,27 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte, reque
 func (c *Conn) onLink(payload []byte) (response, bool) {
 	var request linkRequest
 	if err := json.Unmarshal(payload, &request); err != nil {
-		return ErrBadRequest, false
+		return errors.ErrBadRequest, false
 	}
 
 	// Check whether the name is a valid shortcut name
 	if !shortcut.Match([]byte(request.Name)) {
-		return ErrLinkInvalid, false
+		return errors.ErrLinkInvalid, false
 	}
 
 	// Make the channel from the request or try to make a private one
 	channel := security.MakeChannel(request.Key, request.Channel)
 	if request.Private {
-		channel = c.makePrivateChannel(request.Key, request.Channel)
+		priv, err := c.keys.ExtendKey(request.Key, request.Channel, c.ID(), security.AllowAll, time.Unix(0, 0))
+		if err != nil {
+			return err, false
+		}
+		channel = priv
 	}
 
 	// Ensures that the channel requested is valid
 	if channel == nil || channel.ChannelType == security.ChannelInvalid {
-		return ErrBadRequest, false
+		return errors.ErrBadRequest, false
 	}
 
 	// Create the link with the name and set the full channel to it
@@ -276,41 +279,6 @@ func (c *Conn) onLink(payload []byte) (response, bool) {
 	}, true
 }
 
-// makePrivateChannel creates a private channel and an appropriate key.
-func (c *Conn) makePrivateChannel(chanKey, chanName string) *security.Channel {
-	channel := security.MakeChannel(chanKey, chanName)
-	if channel.ChannelType != security.ChannelStatic {
-		return nil
-	}
-
-	// Make sure we can actually extend it
-	_, key, allowed := c.service.authorize(channel, security.AllowExtend)
-	if !allowed {
-		return nil
-	}
-
-	// Revoke the extend permission to avoid this to be subsequently extended
-	key.SetPermission(security.AllowExtend, false)
-
-	// Create a new key for the private link
-	target := fmt.Sprintf("%s%s/", channel.Channel, c.ID())
-	if err := key.SetTarget(target); err != nil {
-		return nil
-	}
-
-	// Encrypt the key for storing
-	encryptedKey, err := c.service.Cipher.EncryptKey(key)
-	if err != nil {
-		return nil
-	}
-
-	// Create the private channel
-	channel.Channel = []byte(target)
-	channel.Query = append(channel.Query, hash.Of([]byte(c.ID())))
-	channel.Key = []byte(encryptedKey)
-	return channel
-}
-
 // ------------------------------------------------------------------------------------
 
 // OnMe is a handler that returns information to the connection.
@@ -324,6 +292,55 @@ func (c *Conn) onMe() (response, bool) {
 		ID:    c.ID(),
 		Links: links,
 	}, true
+}
+
+// -----------------------------------------------------------------------------------
+
+// onKeyGen processes a keygen request.
+func (c *Conn) onKeyGen(payload []byte) (response, bool) {
+	message := keyGenRequest{}
+	if err := json.Unmarshal(payload, &message); err != nil {
+		return errors.ErrBadRequest, false
+	}
+
+	// Decrypt the parent key and make sure it's not expired
+	parentKey, err := c.keys.DecryptKey(message.Key)
+	if err != nil || parentKey.IsExpired() {
+		return errors.ErrUnauthorized, false
+	}
+
+	// If the key provided is a master key, create a new key
+	if parentKey.IsMaster() {
+		key, err := c.keys.CreateKey(message.Key, message.Channel, message.access(), message.expires())
+		if err != nil {
+			return err, false
+		}
+
+		// Success, return the response
+		return &keyGenResponse{
+			Status:  200,
+			Key:     key,
+			Channel: message.Channel,
+		}, true
+	}
+
+	// If the key provided can be extended, attempt to extend the key
+	if parentKey.HasPermission(security.AllowExtend) {
+		channel, err := c.keys.ExtendKey(message.Key, message.Channel, c.ID(), message.access(), message.expires())
+		if err != nil {
+			return err, false
+		}
+
+		// Success, return the response
+		return &keyGenResponse{
+			Status:  200,
+			Key:     string(channel.Key),     // Encrypted channel key
+			Channel: string(channel.Channel), // Channel name
+		}, true
+	}
+
+	// Not authorised
+	return errors.ErrUnauthorized, false
 }
 
 // ------------------------------------------------------------------------------------
@@ -396,24 +413,24 @@ func (c *Conn) onPresence(payload []byte) (response, bool) {
 		Changes: nil,  // Default: send all changes
 	}
 	if err := json.Unmarshal(payload, &msg); err != nil {
-		return ErrBadRequest, false
+		return errors.ErrBadRequest, false
 	}
 
 	// Attempt to parse the key, this should be a master key
-	key, err := c.service.Cipher.DecryptKey([]byte(msg.Key))
+	key, err := c.keys.DecryptKey(msg.Key)
 	if err != nil || !key.HasPermission(security.AllowPresence) || key.IsExpired() {
-		return ErrUnauthorized, false
+		return errors.ErrUnauthorized, false
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
 	contract, contractFound := c.service.contracts.Get(key.Contract())
 	if !contractFound {
-		return ErrNotFound, false
+		return errors.ErrNotFound, false
 	}
 
 	// Validate the contract
 	if !contract.Validate(key) {
-		return ErrUnauthorized, false
+		return errors.ErrUnauthorized, false
 	}
 
 	// Ensure we have trailing slash
@@ -424,7 +441,7 @@ func (c *Conn) onPresence(payload []byte) (response, bool) {
 	// Parse the channel
 	channel := security.ParseChannel([]byte("emitter/" + msg.Channel))
 	if channel.ChannelType == security.ChannelInvalid {
-		return ErrBadRequest, false
+		return errors.ErrBadRequest, false
 	}
 
 	// Create the ssid for the presence

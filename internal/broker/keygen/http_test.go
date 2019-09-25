@@ -12,11 +12,9 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-
-package broker
+package keygen
 
 import (
-	"context"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -27,35 +25,30 @@ import (
 	"strings"
 	"testing"
 
-	conf "github.com/emitter-io/config"
-	"github.com/emitter-io/emitter/internal/config"
+	"github.com/emitter-io/emitter/internal/provider/contract"
+	"github.com/emitter-io/emitter/internal/provider/usage"
+	"github.com/emitter-io/emitter/internal/security/license"
 	"github.com/stretchr/testify/assert"
 )
 
-var keygenTestLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
-var keygenTestSecret = "kBCZch5re3Ue-kpG1Aa8Vo7BYvXZ3UwR"
+const keygenTestLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI:1"
+const keygenTestSecret = "kBCZch5re3Ue-kpG1Aa8Vo7BYvXZ3UwR"
 
-func setup(t *testing.T) (http.HandlerFunc, func()) {
-	cfg := config.NewDefault().(*config.Config)
-	cfg.License = keygenTestLicense
-	cfg.TLS = &conf.TLSConfig{}
+func newTestProvider(t *testing.T) *Provider {
+	l, err := license.Parse(keygenTestLicense)
+	assert.NoError(t, err)
 
-	broker, svcErr := NewService(context.Background(), cfg)
-	assert.NoError(t, svcErr)
+	cipher, err := l.Cipher()
+	assert.NoError(t, err)
 
-	teardown := func() {
-		broker.Close()
-	}
-
-	return handleKeyGen(broker), teardown
+	return NewProvider(cipher, contract.NewSingleContractProvider(l, usage.NewNoop()))
 }
 
 var keyGenResponseM = regexp.MustCompile(`(?s)<pre id="keygenResponse">(?P<response>.*)</pre>`)
 
 func TestRenderKeyGenPage(t *testing.T) {
-
-	handler, teardown := setup(t)
-	defer teardown()
+	p := newTestProvider(t)
+	handler := p.HTTP()
 
 	req := httptest.NewRequest("GET", "https://emitter.io/keygen", nil)
 	w := httptest.NewRecorder()
@@ -73,9 +66,8 @@ func TestRenderKeyGenPage(t *testing.T) {
 }
 
 func TestHeadRequest(t *testing.T) {
-
-	handler, teardown := setup(t)
-	defer teardown()
+	p := newTestProvider(t)
+	handler := p.HTTP()
 
 	req := httptest.NewRequest("PUT", "https://emitter.io/keygen", nil)
 	w := httptest.NewRecorder()
@@ -87,10 +79,9 @@ func TestHeadRequest(t *testing.T) {
 	assert.Equal(t, 405, w.Code)
 }
 
-func TestGenerateKey(t *testing.T) {
-
-	handler, teardown := setup(t)
-	defer teardown()
+func Test_HTTP(t *testing.T) {
+	p := newTestProvider(t)
+	handler := p.HTTP()
 
 	type testCase struct {
 		Scenario                 string
@@ -108,7 +99,7 @@ func TestGenerateKey(t *testing.T) {
 	}
 
 	testCases := []testCase{
-		testCase{
+		{
 			Scenario:                 "Request with valid arguments",
 			Key:                      keygenTestSecret,
 			Channel:                  "bar/",
@@ -121,7 +112,7 @@ func TestGenerateKey(t *testing.T) {
 			PermissionExtend:         "on",
 			ExpectedResponseContains: "key    :",
 		},
-		testCase{
+		{
 			Scenario:                 "Request with empty valid arguments",
 			Key:                      keygenTestSecret,
 			Channel:                  "bar/",
@@ -134,7 +125,7 @@ func TestGenerateKey(t *testing.T) {
 			PermissionExtend:         "",
 			ExpectedResponseContains: "key    :",
 		},
-		testCase{
+		{
 			Scenario:                 "Request with invalid arguments",
 			Key:                      keygenTestSecret,
 			Channel:                  "bar/",
@@ -147,28 +138,28 @@ func TestGenerateKey(t *testing.T) {
 			PermissionExtend:         "bad",
 			ExpectedResponseContains: "invalid arguments",
 		},
-		testCase{
+		{
 			Scenario:                 "Request with invalid TTL",
 			Key:                      keygenTestSecret,
 			Channel:                  "bar/",
 			TTL:                      "ERR",
 			ExpectedResponseContains: "invalid arguments",
 		},
-		testCase{
+		{
 			Scenario:                 "Request with invalid permission argument",
 			Key:                      keygenTestSecret,
 			Channel:                  "bar/",
 			PermissionSub:            "ERR",
 			ExpectedResponseContains: "invalid arguments",
 		},
-		testCase{
+		{
 			Scenario:                 "Pass missing secret",
 			Key:                      "",
 			Channel:                  "bar/",
 			PermissionSub:            "off",
 			ExpectedResponseContains: "Missing SecretKey",
 		},
-		testCase{
+		{
 			Scenario:                 "Pass missing secret",
 			Key:                      keygenTestSecret,
 			Channel:                  "",

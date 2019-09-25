@@ -16,11 +16,13 @@ package broker
 
 import (
 	"encoding/json"
+	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
@@ -70,7 +72,7 @@ func Test_onHTTPPresence(t *testing.T) {
 		},
 		{
 			payload:       "",
-			err:           ErrBadRequest,
+			err:           errors.ErrBadRequest,
 			success:       false,
 			status:        http.StatusBadRequest,
 			contractValid: true,
@@ -83,7 +85,7 @@ func Test_onHTTPPresence(t *testing.T) {
 			contractFound: true,
 			success:       false,
 			status:        http.StatusBadRequest,
-			err:           ErrBadRequest,
+			err:           errors.ErrBadRequest,
 			msg:           "Invalid channel case",
 		},
 		{
@@ -92,12 +94,12 @@ func Test_onHTTPPresence(t *testing.T) {
 			contractFound: true,
 			success:       false,
 			status:        http.StatusUnauthorized,
-			err:           ErrUnauthorized,
+			err:           errors.ErrUnauthorized,
 			msg:           "Key for wrong channel case",
 		},
 		{
 			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
-			err:           ErrNotFound,
+			err:           errors.ErrNotFound,
 			status:        http.StatusNotFound,
 			contractValid: true,
 			contractFound: false,
@@ -105,7 +107,7 @@ func Test_onHTTPPresence(t *testing.T) {
 		},
 		{
 			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
-			err:           ErrUnauthorized,
+			err:           errors.ErrUnauthorized,
 			status:        http.StatusUnauthorized,
 			contractValid: false,
 			contractFound: true,
@@ -122,12 +124,13 @@ func Test_onHTTPPresence(t *testing.T) {
 		provider := secmock.NewContractProvider()
 		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 
+		cipher, _ := license.Cipher()
 		s := &Service{
 			contracts:     provider,
 			subscriptions: message.NewTrie(),
 			License:       license,
+			Keygen:        keygen.NewProvider(cipher, provider),
 		}
-		s.Cipher, _ = s.License.Cipher()
 
 		req, _ := http.NewRequest("POST", "/presence", strings.NewReader(tc.payload))
 
