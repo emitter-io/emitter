@@ -44,7 +44,7 @@ type License interface {
 // New generates a new license and master key. This uses the most up-to-date version
 // of the license to generate a new one.
 func New() (string, string) {
-	license := NewV1()
+	license := NewV2()
 	if secret, err := license.NewMasterKey(1); err != nil {
 		panic(err)
 	} else if cipher, err := license.Cipher(); err != nil {
