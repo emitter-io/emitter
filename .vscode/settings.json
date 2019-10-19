@@ -11,6 +11,8 @@
         "appveyor.yml": true,
         "Dockerfile": true
     },
+    "editor.fontFamily": "Fira Code",
+    "editor.fontLigatures": true,
     "go.formatTool": "gofmt",
     "go.formatFlags": [
         "-s"
