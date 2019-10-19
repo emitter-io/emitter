@@ -14,7 +14,6 @@
 package storage
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -325,21 +324,4 @@ func benchmarkQuery(b *testing.B, store *SSD, last int, m *stats.Metric) {
 	}()
 
 	time.Sleep(5 * time.Second)
-}
-
-func TestBackup(t *testing.T) {
-	runSSDTest(func(store *SSD) {
-		err := store.storeFrame(getNTestMessages(10))
-		assert.NoError(t, err)
-
-		// Do the backup
-		buffer := bytes.NewBuffer(nil)
-		err = store.Backup(buffer)
-		assert.NoError(t, err)
-
-		// Restore the backup
-		reader := bytes.NewReader(buffer.Bytes())
-		err = store.Restore(reader)
-		assert.NoError(t, err)
-	})
 }
