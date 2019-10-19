@@ -1,5 +1,7 @@
 module github.com/emitter-io/emitter
 
+go 1.13
+
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7 // indirect
 	github.com/aws/aws-sdk-go v1.17.9 // indirect
@@ -38,5 +40,3 @@ require (
 	golang.org/x/text v0.3.2 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
-
-go 1.13
