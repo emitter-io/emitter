@@ -40,7 +40,7 @@ func TestHandlers_onLink(t *testing.T) {
 		success bool
 	}{
 		{
-			packet:  `{ "name": "AB", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`,
+			packet:  `{ "name": "AB", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "subscribe": true }`,
 			channel: "a/b/c/",
 			success: true,
 		},
@@ -49,11 +49,15 @@ func TestHandlers_onLink(t *testing.T) {
 			channel: "a/b/c/",
 			success: true,
 		},
-		{packet: `{ "name": "ABC", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`},
-		{packet: `{ "name": "", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`},
-		{packet: `{"key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true, "subscribe": true }`},
-		{packet: `{ "name": "AB", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "---", "private": true, "subscribe": true }`},
-		{packet: `{ "name": "AB", "key": "xxx", "channel": "a/b/c/", "private": true, "subscribe": true }`},
+		{
+			packet:  `{ "name": "AB", "key": "xxx", "channel": "a/b/c/", "subscribe": true }`,
+			channel: "a/b/c/",
+			success: true,
+		},
+		{packet: `{ "name": "ABC", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "subscribe": true }`},
+		{packet: `{ "name": "", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "subscribe": true }`},
+		{packet: `{"key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/",  "subscribe": true }`},
+		{packet: `{ "name": "AB", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "---", "subscribe": true }`},
 	}
 
 	for _, tc := range tests {
