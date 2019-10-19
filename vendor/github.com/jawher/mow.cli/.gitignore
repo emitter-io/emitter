@@ -1,6 +1,0 @@
-testdata/*.golden
-coverage.out
-*.coverprofile
-README.generated.md
-README.original.md
-bin/
