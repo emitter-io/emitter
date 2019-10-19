@@ -249,17 +249,8 @@ func (c *Conn) onLink(payload []byte) (response, bool) {
 		return errors.ErrLinkInvalid, false
 	}
 
-	// Make the channel from the request or try to make a private one
-	channel := security.MakeChannel(request.Key, request.Channel)
-	if request.Private {
-		priv, err := c.keys.ExtendKey(request.Key, request.Channel, c.ID(), security.AllowAll, time.Unix(0, 0))
-		if err != nil {
-			return err, false
-		}
-		channel = priv
-	}
-
 	// Ensures that the channel requested is valid
+	channel := security.MakeChannel(request.Key, request.Channel)
 	if channel == nil || channel.ChannelType == security.ChannelInvalid {
 		return errors.ErrBadRequest, false
 	}
