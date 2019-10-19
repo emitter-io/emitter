@@ -38,3 +38,5 @@ require (
 	golang.org/x/text v0.3.2 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
+
+go 1.13
