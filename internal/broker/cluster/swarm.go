@@ -312,8 +312,8 @@ func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) (err error) {
 	}
 
 	// Go through each message in the decoded frame
-	for _, m := range frame {
-		s.OnMessage(&m)
+	for i := range frame {
+		s.OnMessage(&frame[i])
 	}
 
 	return nil
