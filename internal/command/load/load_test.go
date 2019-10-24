@@ -16,13 +16,13 @@ package load
 
 import (
 	"bytes"
-	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"io"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/jawher/mow.cli"
+	"github.com/emitter-io/emitter/internal/network/mqtt"
+	cli "github.com/jawher/mow.cli"
 	"github.com/stretchr/testify/assert"
 )
 
