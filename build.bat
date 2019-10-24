@@ -16,5 +16,5 @@ goto :end
 	set GOARCH=%2
 	go tool dist install pkg/runtime
 	go install -a std
-	go build -o build/emitter-%1-%2%3 -i .
+	go build -o build/emitter-%1-%2%3 -i  -ldflags "-X main.emitterVersion=%APPVEYOR_BUILD_VERSION% main.emitterCommit=%APPVEYOR_REPO_COMMIT%" .
 :end
