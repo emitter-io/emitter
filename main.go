@@ -23,10 +23,14 @@ import (
 	"github.com/emitter-io/emitter/internal/broker"
 	"github.com/emitter-io/emitter/internal/command/license"
 	"github.com/emitter-io/emitter/internal/command/load"
+	"github.com/emitter-io/emitter/internal/command/version"
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/provider/logging"
-	"github.com/jawher/mow.cli"
+	cli "github.com/jawher/mow.cli"
 )
+
+var emitterVersion string
+var emitterCommit string
 
 //go:generate go run internal/broker/generate/assets_gen.go
 
@@ -37,6 +41,7 @@ func main() {
 	app.Action = func() { listen(app, confPath) }
 
 	// Register sub-commands
+	app.Command("version", "Prints the version of the executable.", version.Print(emitterVersion, emitterCommit))
 	app.Command("load", "Runs the load testing client for emitter.", load.Run)
 	app.Command("license", "Manipulates licenses and secret keys.", func(cmd *cli.Cmd) {
 		cmd.Command("new", "Generates a new license and secret key pair.", license.New)
