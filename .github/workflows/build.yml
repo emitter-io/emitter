@@ -63,12 +63,16 @@ jobs:
       run: |
         go build -o build/emitter-${{ matrix.os }}-${{ matrix.arch }} -i -ldflags "-X github.com/emitter-io/emitter/internal/command/version.version=$BUILD_VERSION -X github.com/emitter-io/emitter/internal/command/version.commit=$GITHUB_SHA" .
 
+    - name: Restore release
+      id: create_release
+      uses: actions/create-release@v1.0.0
+
     - name: Upload release artificat
       id: upload-release-asset 
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+        upload_url: ${{ steps.create_release.outputs.upload_url }} 
         asset_path: ./build/emitter-${{ matrix.os }}-${{ matrix.arch }}
         asset_name: emitter-${{ matrix.os }}-${{ matrix.arch }}
