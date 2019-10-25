@@ -35,6 +35,6 @@ jobs:
         export PATH=$PATH:$(go env GOPATH)/bin
         export EMITTER=$(go env GOPATH)/src/$PROJECT
         mkdir -p $EMITTER
-        mv . $EMITTER
+        mv ./* $EMITTER
         overalls -project=$PROJECT
         goveralls -coverprofile=overalls.coverprofile -service=github -repotoken=${{ secrets.COVERALLS_TOKEN }}
