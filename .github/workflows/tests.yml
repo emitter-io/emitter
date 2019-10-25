@@ -4,7 +4,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: windows-latest
+    runs-on: macos-latest
     steps:
 
     - name: Install Go
@@ -23,8 +23,11 @@ jobs:
         go install github.com/go-playground/overalls
         go get -v -t -d ./...
 
-    - name: Run Tests
+    - name: Run tests
       run: |
         go test ./...
+
+    - name: Calculate code coverage
+      run: |
         overalls -project=github.com\emitter-io\emitter
         goveralls -coverprofile=overalls.coverprofile -service=appveyor-ci -repotoken=${{ secrets.COVERALLS_TOKEN }}
