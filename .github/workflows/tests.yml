@@ -25,18 +25,11 @@ jobs:
         go install github.com/mattn/goveralls
         go install github.com/go-playground/overalls
         go get -v -t -d ./...
-        pwd
-        ls -all
 
-
-    #- name: Run tests
-    #  run: |
-    #    go test -race ./...
-
-    - name: Calculate code coverage
+    - name: Run tests and calculate code coverage
       run: |
         export PATH=$PATH:$(go env GOPATH)/bin
         export EMITTER=$(go env GOPATH)/src/$PROJECT
         mkdir -p $EMITTER && shopt -s dotglob && mv ./* $EMITTER && cd $EMITTER
-        overalls -project=$PROJECT
+        overalls -project=$PROJECT -- -race
         goveralls -coverprofile=overalls.coverprofile -service=github -repotoken=${{ secrets.COVERALLS_TOKEN }}
