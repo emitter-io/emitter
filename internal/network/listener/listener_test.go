@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"os"
 	"runtime"
 	"sort"
 	"strings"
@@ -173,6 +174,11 @@ const (
 )
 
 func TestTimeout(t *testing.T) {
+	if os.Getenv("GITHUB_WORKSPACE") != "" {
+		t.Skip("Skipping the test in CI environment")
+		return
+	}
+
 	defer leakCheck(t)()
 	m, Close := testListener(t)
 	defer Close()
