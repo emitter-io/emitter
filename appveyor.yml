@@ -1,0 +1,38 @@
+version: 2.{build}
+platform: x64
+branches:  
+  only:
+    - master
+
+clone_folder: c:\gopath\src\github.com\emitter-io\emitter
+
+environment:  
+  GOPATH: c:\gopath
+  GO111MODULE: on
+
+install:  
+  - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
+  - rmdir c:\go /s /q
+  - appveyor DownloadFile https://storage.googleapis.com/golang/go1.13.windows-amd64.zip
+  - 7z x go1.13.windows-amd64.zip -y -oC:\ > NUL
+  - go version
+  
+build_script:
+- cmd: .\build.bat
+
+artifacts:  
+  - path: build/*
+    name: binary
+
+deploy:
+  - provider: GitHub
+    auth_token:
+      secure: ImwOgsH/e1F+reDfqNIvoQ773FZHsjQt/4znrFdxUVrs1VNpFK9IUaW4hIL/yl4c
+    release: 'edge'
+    description: 'This is v$(appveyor_build_version) pre-release which is automatically built on every commit to master.'
+    draft: false
+    prerelease: true
+    force_update: true
+    artifact: binary
+    on:
+      branch: master
