@@ -73,3 +73,5 @@ jobs:
         upload_url: ${{ steps.create_release.outputs.upload_url }} 
         asset_path: ./build/emitter-${{ matrix.os }}-${{ matrix.arch }}
         asset_name: emitter-${{ matrix.os }}-${{ matrix.arch }}
+        asset_content_type: application/octet-stream
+
