@@ -25,6 +25,7 @@ jobs:
 
     - name: Run tests
       run: |
+        ifconfig -a
         go test ./...
 
     - name: Calculate code coverage

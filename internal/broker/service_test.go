@@ -16,12 +16,12 @@ package broker
 
 import (
 	"encoding/json"
-	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
