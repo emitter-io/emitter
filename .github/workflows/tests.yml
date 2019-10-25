@@ -30,6 +30,9 @@ jobs:
         go install github.com/mattn/goveralls
         go install github.com/go-playground/overalls
         go get -v -t -d ./...
+        pwd
+        ls -all
+
 
     #- name: Run tests
     #  run: |
