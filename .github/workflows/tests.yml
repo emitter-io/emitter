@@ -1,4 +1,4 @@
-name: Go
+name: Run Tests
 on: [push]
 env:
   PROJECT: "github.com/emitter-io/emitter"
