@@ -24,10 +24,10 @@ jobs:
         go get -v -t -d ./...
 
     - name: Run Tests
-        run: |
-          go test ./...
-          overalls -project=github.com\emitter-io\emitter
-          goveralls -coverprofile=overalls.coverprofile -service=appveyor-ci -repotoken=%COVERALLS_TOKEN%
+      run: |
+        go test ./...
+        overalls -project=github.com\emitter-io\emitter
+        goveralls -coverprofile=overalls.coverprofile -service=appveyor-ci -repotoken=%COVERALLS_TOKEN%
 
     - name: Build
       run: go build -v .

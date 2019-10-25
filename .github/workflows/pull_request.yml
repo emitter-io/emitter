@@ -8,6 +8,14 @@ jobs:
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
+    - name: Generate build number
+      uses: einaregilsson/build-number@v1 
+      with:
+        token: ${{secrets.github_token}}     
+           
+    - name: Print new build number
+      run: echo Build number is $BUILD_NUMBER
+
     - name: Install Go
       uses: actions/setup-go@v1
       with:
