@@ -25,10 +25,10 @@ jobs:
 
     - name: Run tests
       run: |
-        ifconfig -a
         go test ./...
 
     - name: Calculate code coverage
       run: |
+        export PATH=$PATH:$(go env GOPATH)/bin
         overalls -project=github.com\emitter-io\emitter
         goveralls -coverprofile=overalls.coverprofile -service=appveyor-ci -repotoken=${{ secrets.COVERALLS_TOKEN }}
