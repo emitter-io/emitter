@@ -23,7 +23,7 @@ import (
 
 func TestNew(t *testing.T) {
 	assert.NotPanics(t, func() {
-		runCommand(Print("a", "b"))
+		runCommand(Print)
 	})
 }
 

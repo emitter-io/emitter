@@ -21,12 +21,15 @@ import (
 	cli "github.com/jawher/mow.cli"
 )
 
+var (
+	version = "0"
+	commit  = "untracked"
+)
+
 // Print prints the version
-func Print(version, commit string) func(cmd *cli.Cmd) {
-	return func(cmd *cli.Cmd) {
-		cmd.Spec = ""
-		cmd.Action = func() {
-			logging.LogAction("version", fmt.Sprintf("emitter version v%s, commit %s", version, commit))
-		}
+func Print(cmd *cli.Cmd) {
+	cmd.Spec = ""
+	cmd.Action = func() {
+		logging.LogAction("version", fmt.Sprintf("emitter version %s, commit %s", version, commit))
 	}
 }
