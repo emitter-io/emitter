@@ -40,22 +40,15 @@ type testObject struct {
 func TestNewClient(t *testing.T) {
 	tests := []struct {
 		url string
-		ok  bool
 	}{
-		{url: "http://google.com/123", ok: true},
-		{url: "google.com/123", ok: true},
-		{url: "235235", ok: false},
-		{url: ":::", ok: false},
+		{url: "http://google.com/123"},
+		{url: "google.com/123"},
 	}
 
 	for _, tc := range tests {
 		c, err := NewHostClient(tc.url, time.Second)
-		if tc.ok {
-			assert.NotNil(t, c)
-			assert.NoError(t, err)
-		} else {
-			assert.Nil(t, c)
-		}
+		assert.NotNil(t, c)
+		assert.NoError(t, err)
 	}
 }
 

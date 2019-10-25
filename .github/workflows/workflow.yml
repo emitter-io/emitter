@@ -1,0 +1,36 @@
+name: Go
+on: [push]
+env:
+  PROJECT: "github.com/emitter-io/emitter"
+  GO111MODULE: "on"
+
+jobs:
+
+  test:
+    name: Tests and Coverage
+    runs-on: macos-latest
+    steps:
+
+    - name: Install Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v1
+
+    - name: Get dependencies
+      run: |
+        go install golang.org/x/tools/cmd/cover
+        go install github.com/mattn/goveralls
+        go install github.com/go-playground/overalls
+        go get -v -t -d ./...
+
+    - name: Run tests and calculate code coverage
+      run: |
+        export PATH=$PATH:$(go env GOPATH)/bin
+        export EMITTER=$(go env GOPATH)/src/$PROJECT
+        mkdir -p $EMITTER && shopt -s dotglob && mv ./* $EMITTER && cd $EMITTER
+        overalls -project=$PROJECT -covermode=atomic -- -race
+        goveralls -coverprofile=overalls.coverprofile -service=github-actions -race -covermode=atomic -repotoken=${{ secrets.COVERALLS_TOKEN }}

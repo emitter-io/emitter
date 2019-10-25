@@ -13,13 +13,10 @@ environment:
 install:  
   - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
   - rmdir c:\go /s /q
-  - appveyor DownloadFile https://storage.googleapis.com/golang/go1.12.windows-amd64.zip
-  - 7z x go1.12.windows-amd64.zip -y -oC:\ > NUL
+  - appveyor DownloadFile https://storage.googleapis.com/golang/go1.13.windows-amd64.zip
+  - 7z x go1.13.windows-amd64.zip -y -oC:\ > NUL
   - go version
-  - go get golang.org/x/tools/cmd/cover
-  - go get github.com/mattn/goveralls
-  - go get github.com/go-playground/overalls
-
+  
 build_script:
 - cmd: .\build.bat
 
