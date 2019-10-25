@@ -31,6 +31,7 @@ jobs:
       run: |
         export PATH=$PATH:$(go env GOPATH)/bin
         pwd
-        mv . $(GOPATH)/src/github.com/emitter-io/emitter
+        echo $GOPATH
+        mv . $GOPATH/src/github.com/emitter-io/emitter
         overalls -project=github.com/emitter-io/emitter
         goveralls -coverprofile=overalls.coverprofile -service=github -repotoken=${{ secrets.COVERALLS_TOKEN }}
