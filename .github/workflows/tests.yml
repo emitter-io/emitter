@@ -34,4 +34,4 @@ jobs:
         #mkdir -p $EMITTER && shopt -s dotglob && mv ./* $EMITTER && cd $EMITTER
         #overalls -project=$PROJECT -covermode=atomic -- -race
         #goveralls -coverprofile=overalls.coverprofile -service=github -repotoken=${{ secrets.COVERALLS_TOKEN }}
-        goveralls -debug -service=github-actions -race -covermode=atomic -repotoken=${{ secrets.COVERALLS_TOKEN }}
+        goveralls -service=github-actions -race -covermode=atomic -repotoken=${{ secrets.COVERALLS_TOKEN }}
