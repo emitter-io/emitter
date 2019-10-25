@@ -25,9 +25,12 @@ jobs:
 
     - name: Run tests
       run: |
-        go test ./...
+        go test -cover ./...
 
     - name: Calculate code coverage
       run: |
         export PATH=$PATH:$(go env GOPATH)/bin
-        goveralls -repotoken=${{ secrets.COVERALLS_TOKEN }}
+        pwd
+        mv . $(GOPATH)/src/github.com/emitter-io/emitter
+        overalls -project=github.com/emitter-io/emitter
+        goveralls -coverprofile=overalls.coverprofile -service=github -repotoken=${{ secrets.COVERALLS_TOKEN }}
