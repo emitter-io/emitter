@@ -1,4 +1,4 @@
-name: Run Tests
+name: Run tests and coverage
 on: [push]
 env:
   PROJECT: "github.com/emitter-io/emitter"
@@ -34,6 +34,3 @@ jobs:
         mkdir -p $EMITTER && shopt -s dotglob && mv ./* $EMITTER && cd $EMITTER
         overalls -project=$PROJECT -covermode=atomic -- -race
         goveralls -coverprofile=overalls.coverprofile -service=github-actions -race -covermode=atomic -repotoken=${{ secrets.COVERALLS_TOKEN }}
-
-        #goveralls -coverprofile=overalls.coverprofile -service=github -repotoken=${{ secrets.COVERALLS_TOKEN }}
-        
