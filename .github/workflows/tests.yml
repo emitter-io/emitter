@@ -27,4 +27,4 @@ jobs:
       run: |
         go test ./...
         overalls -project=github.com\emitter-io\emitter
-        goveralls -coverprofile=overalls.coverprofile -service=appveyor-ci -repotoken=%COVERALLS_TOKEN%
+        goveralls -coverprofile=overalls.coverprofile -service=appveyor-ci -repotoken=${{ secrets.COVERALLS_TOKEN }}
