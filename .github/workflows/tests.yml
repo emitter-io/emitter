@@ -18,7 +18,7 @@ jobs:
 
     - name: Setup workspace
       run: |
-        export GITHUB_WORKSPACE=$(go env GOPATH)/src/$PROJECT
+        export GITHUB_WORKSPACE=$(go env GOPATH)/src/github.com/emitter-io/
         mkdir -p $GITHUB_WORKSPACE && cd $GITHUB_WORKSPACE
 
     - name: Check out code into the Go module directory
