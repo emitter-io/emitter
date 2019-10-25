@@ -18,13 +18,16 @@ jobs:
 
     - name: Get dependencies
       run: |
+        go install golang.org/x/tools/cmd/cover
+        go install github.com/mattn/goveralls
+        go install github.com/go-playground/overalls
         go get -v -t -d ./...
 
     - name: Run Tests
         run: |
           go test ./...
-          %GOPATH%/bin/overalls -project=github.com\emitter-io\emitter
-          %GOPATH%/bin/goveralls -coverprofile=overalls.coverprofile -service=appveyor-ci -repotoken=%COVERALLS_TOKEN%
+          overalls -project=github.com\emitter-io\emitter
+          goveralls -coverprofile=overalls.coverprofile -service=appveyor-ci -repotoken=%COVERALLS_TOKEN%
 
     - name: Build
       run: go build -v .
