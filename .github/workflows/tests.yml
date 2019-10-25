@@ -30,8 +30,8 @@ jobs:
     - name: Calculate code coverage
       run: |
         export PATH=$PATH:$(go env GOPATH)/bin
-        pwd
-        echo $GOPATH
-        mv . $GOPATH/src/github.com/emitter-io/emitter
+        export EMITTER=$(go env GOPATH)/src/github.com/emitter-io/emitter
+        mkdir EMITTER
+        mv . EMITTER
         overalls -project=github.com/emitter-io/emitter
         goveralls -coverprofile=overalls.coverprofile -service=github -repotoken=${{ secrets.COVERALLS_TOKEN }}
