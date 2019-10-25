@@ -1,4 +1,4 @@
-name: Run tests and coverage
+name: Go
 on: [push]
 env:
   PROJECT: "github.com/emitter-io/emitter"
@@ -7,7 +7,7 @@ env:
 jobs:
 
   test:
-    name: Test
+    name: Tests and Coverage
     runs-on: macos-latest
     steps:
 
