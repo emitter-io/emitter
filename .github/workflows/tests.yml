@@ -30,5 +30,4 @@ jobs:
     - name: Calculate code coverage
       run: |
         export PATH=$PATH:$(go env GOPATH)/bin
-        overalls -project=.
-        goveralls -coverprofile=overalls.coverprofile -service=appveyor-ci -repotoken=${{ secrets.COVERALLS_TOKEN }}
+        goveralls -repotoken=${{ secrets.COVERALLS_TOKEN }}
