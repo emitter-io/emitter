@@ -29,7 +29,7 @@ jobs:
 
     - name: Run tests and calculate code coverage
       run: |
-        #export PATH=$PATH:$(go env GOPATH)/bin
+        export PATH=$PATH:$(go env GOPATH)/bin
         #export EMITTER=$(go env GOPATH)/src/$PROJECT
         #mkdir -p $EMITTER && shopt -s dotglob && mv ./* $EMITTER && cd $EMITTER
         #overalls -project=$PROJECT -covermode=atomic -- -race

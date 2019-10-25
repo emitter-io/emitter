@@ -5,6 +5,21 @@ on: [push]
 #    branches:    
 #      - master
 jobs:
+  version:
+    name: Generate build number
+    runs-on: macos-latest
+    steps:
+    - name: Generate build number
+      id: buildnumber
+      uses: einaregilsson/build-number@v1 
+      with:
+        token: ${{secrets.github_token}}     
+    - name: Upload build number
+      uses: actions/upload-artifact@v1
+      with:
+        name: BUILD_NUMBER
+        path: BUILD_NUMBER
+
   build:
     name: Build
     runs-on: macos-latest
@@ -12,15 +27,14 @@ jobs:
       matrix:
         os: [linux, darwin, windows]
         arch: [arm, amd64, 386]
-
-    steps:
-    - name: Generate build number
-      uses: einaregilsson/build-number@v1 
+        
+    - name: Download build number
+      uses: actions/download-artifact@v1
       with:
-        token: ${{secrets.github_token}}     
-
-    - name: Print new build number
-      run: echo Build number is $BUILD_NUMBER
+        name: BUILD_NUMBER
+    - name: Restore build number
+      id: buildnumber
+      uses: einaregilsson/build-number@v1 
 
     - name: Install Go
       uses: actions/setup-go@v1
@@ -34,6 +48,8 @@ jobs:
       env: 
         GOOS: ${{ matrix.os }}
         GOARCH: ${{ matrix.arch }}
+      with:
+        BUILD_NUMBER
       run: |
         go tool dist install pkg/runtime
         go install -a std
