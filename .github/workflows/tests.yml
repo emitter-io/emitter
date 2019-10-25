@@ -19,7 +19,7 @@ jobs:
     - name: Setup workspace
       run: |
         export GITHUB_WORKSPACE=$(go env GOPATH)/src/$PROJECT
-        cd $GITHUB_WORKSPACE
+        mkdir -p $GITHUB_WORKSPACE && cd $GITHUB_WORKSPACE
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v1
