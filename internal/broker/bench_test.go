@@ -191,12 +191,10 @@ func newTestBroker(port int, licenseVersion int) *Service {
 }
 
 func newTestClient(port int) *testConn {
+	var lastError error
 	for i := 1; i <= 10; i++ {
 		cli, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
-		if err != nil && i == 10 {
-			panic(err)
-		}
-		if err != nil {
+		if lastError = err; lastError != nil {
 			time.Sleep(time.Second)
 			continue
 		}
@@ -207,6 +205,8 @@ func newTestClient(port int) *testConn {
 			scratch: make([]byte, 1),
 		}
 	}
+
+	panic(lastError)
 }
 
 type testConn struct {
