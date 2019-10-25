@@ -27,7 +27,7 @@ jobs:
       matrix:
         os: [linux, darwin, windows]
         arch: [arm, amd64, 386]
-        
+    steps:
     - name: Download build number
       uses: actions/download-artifact@v1
       with:
