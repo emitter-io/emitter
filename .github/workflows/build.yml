@@ -13,7 +13,7 @@ jobs:
       id: buildnumber
       uses: einaregilsson/build-number@v1 
       with:
-        token: ${{secrets.github_token}}     
+        token: ${{secrets.github_token}}        
     - name: Upload build number
       uses: actions/upload-artifact@v1
       with:
@@ -48,8 +48,6 @@ jobs:
       env: 
         GOOS: ${{ matrix.os }}
         GOARCH: ${{ matrix.arch }}
-      with:
-        BUILD_NUMBER
       run: |
         go tool dist install pkg/runtime
         go install -a std
