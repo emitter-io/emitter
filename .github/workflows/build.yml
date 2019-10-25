@@ -21,15 +21,6 @@ jobs:
         name: BUILD_NUMBER
         path: BUILD_NUMBER
 
-    - name: Create GitHub release
-      id: create_release
-      uses: actions/create-release@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v2.${{ steps.buildnumber.outputs.build_number }}
-        release_name: Release v2.${{ steps.buildnumber.outputs.build_number }}
-        draft: true
 
   build:
     name: Build
@@ -63,9 +54,15 @@ jobs:
       run: |
         go build -o build/emitter-${{ matrix.os }}-${{ matrix.arch }} -i -ldflags "-X github.com/emitter-io/emitter/internal/command/version.version=$BUILD_VERSION -X github.com/emitter-io/emitter/internal/command/version.commit=$GITHUB_SHA" .
 
-    - name: Restore release
+    - name: Create GitHub release
       id: create_release
       uses: actions/create-release@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: edge
+        release_name: edge
+        draft: true
 
     - name: Upload release artificat
       id: upload-release-asset 
