@@ -16,6 +16,11 @@ jobs:
         go-version: 1.13
       id: go
 
+    - name: Setup workspace
+      run: |
+        export GITHUB_WORKSPACE=$(go env GOPATH)/src/$PROJECT
+        cd $GITHUB_WORKSPACE
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v1
 
@@ -26,14 +31,14 @@ jobs:
         go install github.com/go-playground/overalls
         go get -v -t -d ./...
 
-    - name: Run tests
-      run: |
-        go test -cover ./...
+    #- name: Run tests
+    #  run: |
+    #    go test -race ./...
 
     - name: Calculate code coverage
       run: |
         export PATH=$PATH:$(go env GOPATH)/bin
-        export EMITTER=$(go env GOPATH)/src/$PROJECT
-        mkdir -p $EMITTER && mv ./* $EMITTER && cd $EMITTER
+        #export EMITTER=$(go env GOPATH)/src/$PROJECT
+        #mkdir -p $EMITTER && mv ./* $EMITTER && cd $EMITTER
         overalls -project=$PROJECT
         goveralls -coverprofile=overalls.coverprofile -service=github -repotoken=${{ secrets.COVERALLS_TOKEN }}
