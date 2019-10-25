@@ -50,6 +50,6 @@ jobs:
         GOOS: ${{ matrix.os }}
         GOARCH: ${{ matrix.arch }}
       run: |
-        go tool dist install pkg/runtime
-        go install -a std
+#        go tool dist install pkg/runtime
+#        go install -a std
         go build -o build/emitter-${{ matrix.os }}-${{ matrix.arch }} -i -ldflags "-X github.com/emitter-io/emitter/internal/command/version.version=$BUILD_VERSION -X github.com/emitter-io/emitter/internal/command/version.commit=$GITHUB_SHA" .
