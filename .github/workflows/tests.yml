@@ -1,5 +1,8 @@
 name: Go
 on: [push]
+env:
+  PROJECT: "github.com/emitter-io/emitter"
+
 jobs:
 
   test:
@@ -30,8 +33,8 @@ jobs:
     - name: Calculate code coverage
       run: |
         export PATH=$PATH:$(go env GOPATH)/bin
-        export EMITTER=$(go env GOPATH)/src/github.com/emitter-io/emitter
+        export EMITTER=$(go env GOPATH)/src/$PROJECT
         mkdir EMITTER
         mv . EMITTER
-        overalls -project=github.com/emitter-io/emitter
+        overalls -project=$PROJECT
         goveralls -coverprofile=overalls.coverprofile -service=github -repotoken=${{ secrets.COVERALLS_TOKEN }}
