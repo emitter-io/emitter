@@ -2,12 +2,12 @@ name: Go
 on: [push]
 jobs:
 
-  build:
-    name: Build
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
 
-    - name: Set up Go 1.13
+    - name: Install Go
       uses: actions/setup-go@v1
       with:
         go-version: 1.13
@@ -28,6 +28,3 @@ jobs:
         go test ./...
         overalls -project=github.com\emitter-io\emitter
         goveralls -coverprofile=overalls.coverprofile -service=appveyor-ci -repotoken=%COVERALLS_TOKEN%
-
-    - name: Build
-      run: go build -v .

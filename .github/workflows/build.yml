@@ -1,7 +1,11 @@
 name: Go
-on: [pull_request]
+on:
+  push:
+    branches:    
+      - master
 jobs:
-  test:
+  build:
+    name: Build
     strategy:
       matrix:
         go-version: [1.13.x]
@@ -12,7 +16,7 @@ jobs:
       uses: einaregilsson/build-number@v1 
       with:
         token: ${{secrets.github_token}}     
-           
+
     - name: Print new build number
       run: echo Build number is $BUILD_NUMBER
 
