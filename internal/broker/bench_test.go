@@ -22,6 +22,7 @@ import (
 	"net"
 	"sync"
 	"testing"
+	"time"
 
 	conf "github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/internal/config"
@@ -190,14 +191,21 @@ func newTestBroker(port int, licenseVersion int) *Service {
 }
 
 func newTestClient(port int) *testConn {
-	cli, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
-	if err != nil {
-		panic(err)
-	}
-	return &testConn{
-		Conn:    cli,
-		buffer:  make([]byte, 8*1024),
-		scratch: make([]byte, 1),
+	for i := 1; i <= 10; i++ {
+		cli, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+		if err != nil && i == 10 {
+			panic(err)
+		}
+		if err != nil {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		return &testConn{
+			Conn:    cli,
+			buffer:  make([]byte, 8*1024),
+			scratch: make([]byte, 1),
+		}
 	}
 }
 
