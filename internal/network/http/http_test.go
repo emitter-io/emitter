@@ -45,7 +45,6 @@ func TestNewClient(t *testing.T) {
 		{url: "http://google.com/123", ok: true},
 		{url: "google.com/123", ok: true},
 		{url: "235235", ok: false},
-		{url: ":::", ok: false},
 	}
 
 	for _, tc := range tests {
@@ -54,7 +53,7 @@ func TestNewClient(t *testing.T) {
 			assert.NotNil(t, c)
 			assert.NoError(t, err)
 		} else {
-			assert.Nil(t, c)
+			assert.NotNil(t, err)
 		}
 	}
 }
