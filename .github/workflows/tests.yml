@@ -29,8 +29,9 @@ jobs:
 
     - name: Run tests and calculate code coverage
       run: |
-        export PATH=$PATH:$(go env GOPATH)/bin
-        export EMITTER=$(go env GOPATH)/src/$PROJECT
-        mkdir -p $EMITTER && shopt -s dotglob && mv ./* $EMITTER && cd $EMITTER
-        overalls -project=$PROJECT -covermode=atomic -- -race
-        goveralls -coverprofile=overalls.coverprofile -service=github -repotoken=${{ secrets.COVERALLS_TOKEN }}
+        #export PATH=$PATH:$(go env GOPATH)/bin
+        #export EMITTER=$(go env GOPATH)/src/$PROJECT
+        #mkdir -p $EMITTER && shopt -s dotglob && mv ./* $EMITTER && cd $EMITTER
+        #overalls -project=$PROJECT -covermode=atomic -- -race
+        #goveralls -coverprofile=overalls.coverprofile -service=github -repotoken=${{ secrets.COVERALLS_TOKEN }}
+        goveralls -debug -service=github-actions -race -covermode=atomic -repotoken=${{ secrets.COVERALLS_TOKEN }}
