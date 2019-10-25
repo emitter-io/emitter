@@ -22,6 +22,7 @@ jobs:
 
   build:
     name: Build
+    needs: version
     runs-on: macos-latest
     strategy:
       matrix:
