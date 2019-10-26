@@ -27,6 +27,12 @@ func TestNew(t *testing.T) {
 	})
 }
 
+func TestCurrent(t *testing.T) {
+	v, c := Current()
+	assert.Equal(t, "0", v)
+	assert.Equal(t, "untracked", c)
+}
+
 func runCommand(f func(cmd *cli.Cmd), args ...string) {
 	app := cli.App("emitter", "")
 	app.Command("version", "", f)

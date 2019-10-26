@@ -113,6 +113,7 @@ func (r *linkResponse) ForRequest(id uint16) {
 type meResponse struct {
 	Request uint16            `json:"req,omitempty"`   // The corresponding request ID.
 	ID      string            `json:"id"`              // The private ID of the connection.
+	Broker  string            `json:"broker"`          // The version of the broker.
 	Links   map[string]string `json:"links,omitempty"` // The set of pre-defined channels.
 }
 

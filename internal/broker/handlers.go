@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/emitter-io/emitter/internal/command/version"
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
@@ -279,9 +280,11 @@ func (c *Conn) onMe() (response, bool) {
 		links[k] = security.ParseChannel([]byte(v)).SafeString()
 	}
 
+	v, _ := version.Current()
 	return &meResponse{
-		ID:    c.ID(),
-		Links: links,
+		ID:     c.ID(),
+		Links:  links,
+		Broker: v,
 	}, true
 }
 

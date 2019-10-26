@@ -33,3 +33,8 @@ func Print(cmd *cli.Cmd) {
 		logging.LogAction("version", fmt.Sprintf("emitter version %s, commit %s", version, commit))
 	}
 }
+
+// Current returns current version and git commit
+func Current() (string, string) {
+	return version, commit
+}
