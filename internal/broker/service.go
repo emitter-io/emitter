@@ -51,6 +51,7 @@ import (
 
 // Service represents the main structure.
 type Service struct {
+	connections   int64                // The number of currently open connections.
 	context       context.Context      // The context for the service.
 	cancel        context.CancelFunc   // The cancellation function.
 	License       license.License      // The licence for this emitter server.
@@ -67,7 +68,6 @@ type Service struct {
 	monitor       monitor.Storage      // The storage provider for stats.
 	measurer      stats.Measurer       // The monitoring registry for the service.
 	metering      usage.Metering       // The usage storage for metering contracts.
-	connections   int64                // The number of currently open connections.
 }
 
 // NewService creates a new service.
