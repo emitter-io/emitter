@@ -406,38 +406,28 @@ func (c *Conn) onPresence(payload []byte) (response, bool) {
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		return errors.ErrBadRequest, false
 	}
-
-	// Attempt to parse the key, this should be a master key
-	key, err := c.keys.DecryptKey(msg.Key)
-	if err != nil || !key.HasPermission(security.AllowPresence) || key.IsExpired() {
-		return errors.ErrUnauthorized, false
-	}
-
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := c.service.contracts.Get(key.Contract())
-	if !contractFound {
-		return errors.ErrNotFound, false
-	}
-
-	// Validate the contract
-	if !contract.Validate(key) {
-		return errors.ErrUnauthorized, false
-	}
-
 	// Ensure we have trailing slash
 	if !strings.HasSuffix(msg.Channel, "/") {
 		msg.Channel = msg.Channel + "/"
 	}
-
 	// Parse the channel
-	channel := security.ParseChannel([]byte("emitter/" + msg.Channel))
+	channel := security.ParseChannel([]byte(msg.Key + "/" + msg.Channel))
 	if channel.ChannelType == security.ChannelInvalid {
 		return errors.ErrBadRequest, false
+	}
+	// Check the authorization and permissions
+	_, key, allowed := c.service.authorize(channel, security.AllowPresence)
+	if !allowed {
+		return errors.ErrUnauthorized, false
+	}
+
+	// Keys which are supposed to be extended should not be used for presence
+	if key.HasPermission(security.AllowExtend) {
+		return errors.ErrUnauthorizedExt, false
 	}
 
 	// Create the ssid for the presence
 	ssid := message.NewSsid(key.Contract(), channel.Query)
-
 	// Check if the client is interested in subscribing/unsubscribing from changes.
 	if msg.Changes != nil {
 		if *msg.Changes {
@@ -446,12 +436,10 @@ func (c *Conn) onPresence(payload []byte) (response, bool) {
 			c.Unsubscribe(message.NewSsidForPresence(ssid), nil)
 		}
 	}
-
 	// If we requested a status, populate the slice via scatter/gather.
 	now := time.Now().UTC().Unix()
 	who := make([]presenceInfo, 0, 4)
 	if msg.Status {
-
 		// Gather local & cluster presence
 		who = append(who, getAllPresence(c.service, ssid)...)
 		return &presenceResponse{
