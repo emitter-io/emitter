@@ -76,6 +76,7 @@ func (p *Provider) HTTP() http.HandlerFunc {
 // HTTP creates a new HTTP handler which can be used to generate channel key with json formatter.
 func (p *Provider) HTTPJson() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		success := false
 		f := keygenForm{Sub: true}
 		switch r.Method {
 		case "POST":
@@ -87,6 +88,7 @@ func (p *Provider) HTTPJson() http.HandlerFunc {
 						f.Response = err.Error()
 					} else {
 						f.Response = fmt.Sprintf(key)
+						success = true
 					}
 
 				}
@@ -98,12 +100,15 @@ func (p *Provider) HTTPJson() http.HandlerFunc {
 			http.Error(w, http.ErrNotSupported.Error(), 405)
 			return
 		}
-		ret, err := json.Marshal(f)
-		if err != nil {
-			log.Printf("json.Marshal error: %s\n", err.Error())
-			http.Error(w, "internal server error", 500)
+
+		httpRet := map[string]interface{}{"code": 0, "message": f.Response}
+
+		if success != true {
+			httpRet["code"] = 1
 		}
-		w.Write(ret)
+		jsonBytes, _ := json.Marshal(httpRet)
+
+		w.Write(jsonBytes)
 	}
 }
 

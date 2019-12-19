@@ -197,3 +197,36 @@ func (e *presenceNotify) Encode() ([]byte, bool) {
 
 	return encoded, true
 }
+
+// ------------------------------------------------------------------------------------
+const (
+	HttpJsonRetSuccess = 0
+	HttpJsonRetFail    = 1
+)
+
+//represents a publish request's json params
+type publishRequest struct {
+	Key     string `json:"key"`           //channel key
+	Channel string `json:"channel"`       // channel name
+	TTL     string `json:"ttl,omitempty"` //time to live for message
+	Message string `json:"message"`       //message to publish
+}
+
+//represents json response data for http request
+type httpJsonResponse struct {
+	Code    int    `json:"code"` //
+	Message string `json:"message"`
+}
+
+func (r *httpJsonResponse) toJsonBytes() ([]byte, error) {
+	jsonBytes, err := json.Marshal(r)
+
+	if err != nil {
+		logging.LogError("httpJsonResponse", "error while encode httpJsonResponse", err)
+		return nil, err
+	}
+
+	return jsonBytes, nil
+}
+
+//-----------------------------------------------------------------------------------------------

@@ -389,56 +389,50 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 
 //get ret content with json formatter
 func getRetJsonBytes(code int, message string) []byte {
-	httpRet := map[string]interface{}{"code": 0, "message": "publish success"}
-
-	httpRet["code"] = code
-	httpRet["message"] = message
-
-	jsonBytes, _ := json.Marshal(httpRet)
+	jsonResponse := httpJsonResponse{Code: code, Message: message}
+	jsonBytes, _ := jsonResponse.toJsonBytes()
 
 	return jsonBytes
 }
 
 // Occurs when a new HTTP publish request is received
 func (s *Service) onHTTPPublishJson(w http.ResponseWriter, r *http.Request) {
-	ttl := ""
-	channelKey := ""
-	channelName := ""
-	messageContent := ""
+	if r.Method != "POST" {
+		// w.WriteHeader(http.StatusNotFound)
+		w.Write(getRetJsonBytes(HttpJsonRetFail, "request method must be post"))
+		return
+	}
 
-	switch r.Method {
-	case http.MethodPost:
-		r.ParseForm()
-		channelKey = r.PostFormValue("key")
-		if channelKey == "" {
-			w.Write(getRetJsonBytes(1, "channel key required"))
-			return
-		}
-		channelName = r.PostFormValue("channel")
-		if channelName == "" {
-			w.Write(getRetJsonBytes(1, "channel required"))
-			return
-		}
-		channelName = strings.Trim(channelName, "/")
-		messageContent = r.PostFormValue("message")
-		if messageContent == "" {
-			w.Write(getRetJsonBytes(1, "message required"))
-			return
-		}
+	msgContent := publishRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&msgContent)
+	if err != nil {
+		logging.LogError("service", "error while decoding", err)
 
-		ttl = r.PostFormValue("ttl")
-		break
-	case http.MethodGet:
-		queryParams := r.URL.Query()
-		channelKey = queryParams.Get("key")
-		channelName = queryParams.Get("channel")
-		ttl = queryParams.Get("ttl")
-
-	default:
-		w.Write(getRetJsonBytes(1, "http method error, post or get method required"))
+		w.WriteHeader(http.StatusBadRequest)
 
 		return
 	}
+	defer r.Body.Close()
+
+	channelKey := msgContent.Key
+	if channelKey == "" {
+		w.Write(getRetJsonBytes(HttpJsonRetFail, "channel key required"))
+		return
+	}
+	channelName := msgContent.Channel
+	if channelName == "" {
+		w.Write(getRetJsonBytes(HttpJsonRetFail, "channel required"))
+		return
+	}
+	channelName = strings.Trim(msgContent.Channel, "/")
+	messageContent := msgContent.Message
+	// if messageContent == "" {
+	// 	w.Write(getRetJsonBytes(HttpJsonRetFail, "message required"))
+	// 	return
+	// }
+
+	ttl := msgContent.TTL
 
 	topic := channelKey + "/" + channelName + "/?m=1"
 	if ttl != "" {
@@ -453,7 +447,7 @@ func (s *Service) onHTTPPublishJson(w http.ResponseWriter, r *http.Request) {
 	mqttTopic := packet.Topic
 	if len(mqttTopic) <= 2 {
 		// mqttTopic = []byte(c.links[string(mqttTopic)])
-		w.Write(getRetJsonBytes(1, "channel length error"))
+		w.Write(getRetJsonBytes(HttpJsonRetFail, "channel length error"))
 
 		return
 	}
@@ -462,14 +456,14 @@ func (s *Service) onHTTPPublishJson(w http.ResponseWriter, r *http.Request) {
 	channel := security.ParseChannel(mqttTopic)
 	if channel.ChannelType == security.ChannelInvalid {
 		// return errors.ErrBadRequest
-		w.Write(getRetJsonBytes(1, "channel invalid"))
+		w.Write(getRetJsonBytes(HttpJsonRetFail, "channel invalid"))
 		return
 	}
 
 	// Publish should only have static channel strings
 	if channel.ChannelType != security.ChannelStatic {
 		// return errors.ErrForbidden
-		w.Write(getRetJsonBytes(1, "Publish should only have static channel strings"))
+		w.Write(getRetJsonBytes(HttpJsonRetFail, "Publish should only have static channel strings"))
 		return
 	}
 
@@ -485,14 +479,14 @@ func (s *Service) onHTTPPublishJson(w http.ResponseWriter, r *http.Request) {
 
 	if !allowed {
 		// return errors.ErrUnauthorized
-		w.Write(getRetJsonBytes(1, "Unauthorized"))
+		w.Write(getRetJsonBytes(HttpJsonRetFail, "Unauthorized"))
 		return
 	}
 
 	// Keys which are supposed to be extended should not be used for publishing
 	if key.HasPermission(security.AllowExtend) {
 		// return errors.ErrUnauthorizedExt
-		w.Write(getRetJsonBytes(1, "Keys which are supposed to be extended should not be used for publishing"))
+		w.Write(getRetJsonBytes(HttpJsonRetFail, "Keys which are supposed to be extended should not be used for publishing"))
 		return
 	}
 
@@ -534,7 +528,7 @@ func (s *Service) onHTTPPublishJson(w http.ResponseWriter, r *http.Request) {
 	// contract.Stats().AddEgress(size)
 	// return nil
 
-	w.Write(getRetJsonBytes(0, "publish success"))
+	w.Write(getRetJsonBytes(HttpJsonRetSuccess, "publish success"))
 }
 
 // Occurs when a peer has a new subscription.

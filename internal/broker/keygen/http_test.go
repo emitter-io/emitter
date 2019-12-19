@@ -201,3 +201,130 @@ func Test_HTTP(t *testing.T) {
 		assert.Contains(t, response, c.ExpectedResponseContains, c.Scenario)
 	}
 }
+
+func Test_HTTPJson(t *testing.T) {
+	p := newTestProvider(t)
+	handler := p.HTTPJson()
+
+	type jsonRet struct {
+		code    int
+		message string
+	}
+
+	type testCase struct {
+		Scenario                 string
+		Key                      string
+		Channel                  string
+		TTL                      string
+		PermissionSub            string
+		PermissionPub            string
+		PermissionStore          string
+		PermissionLoad           string
+		PermissionPresence       string
+		PermissionExtend         string
+		Response                 string
+		ExpectedResponseContains string
+	}
+
+	testCases := []testCase{
+		{
+			Scenario:                 "Request with valid arguments",
+			Key:                      keygenTestSecret,
+			Channel:                  "bar/",
+			TTL:                      "300",
+			PermissionSub:            "on",
+			PermissionPub:            "on",
+			PermissionLoad:           "on",
+			PermissionStore:          "on",
+			PermissionPresence:       "on",
+			PermissionExtend:         "on",
+			ExpectedResponseContains: "\"code\":0",
+		},
+		{
+			Scenario:                 "Request with empty valid arguments",
+			Key:                      keygenTestSecret,
+			Channel:                  "bar/",
+			TTL:                      "",
+			PermissionSub:            "",
+			PermissionPub:            "",
+			PermissionLoad:           "",
+			PermissionStore:          "",
+			PermissionPresence:       "",
+			PermissionExtend:         "",
+			ExpectedResponseContains: "\"code\":0",
+		},
+		{
+			Scenario:                 "Request with invalid arguments",
+			Key:                      keygenTestSecret,
+			Channel:                  "bar/",
+			TTL:                      "bad",
+			PermissionSub:            "bad",
+			PermissionPub:            "bad",
+			PermissionLoad:           "bad",
+			PermissionStore:          "bad",
+			PermissionPresence:       "bad",
+			PermissionExtend:         "bad",
+			ExpectedResponseContains: "invalid arguments",
+		},
+		{
+			Scenario:                 "Request with invalid TTL",
+			Key:                      keygenTestSecret,
+			Channel:                  "bar/",
+			TTL:                      "ERR",
+			ExpectedResponseContains: "invalid arguments",
+		},
+		{
+			Scenario:                 "Request with invalid permission argument",
+			Key:                      keygenTestSecret,
+			Channel:                  "bar/",
+			PermissionSub:            "ERR",
+			ExpectedResponseContains: "invalid arguments",
+		},
+		{
+			Scenario:                 "Pass missing secret",
+			Key:                      "",
+			Channel:                  "bar/",
+			PermissionSub:            "off",
+			ExpectedResponseContains: "Missing SecretKey",
+		},
+		{
+			Scenario:                 "Pass missing secret",
+			Key:                      keygenTestSecret,
+			Channel:                  "",
+			PermissionSub:            "on",
+			ExpectedResponseContains: "Missing Channel",
+		},
+	}
+
+	for _, c := range testCases {
+
+		data := url.Values{}
+		data.Set("key", c.Key)
+		data.Set("channel", c.Channel)
+		data.Set("ttl", c.TTL)
+		data.Set("sub", c.PermissionSub)
+		data.Set("pub", c.PermissionPub)
+		data.Set("store", c.PermissionStore)
+		data.Set("load", c.PermissionLoad)
+		data.Set("presence", c.PermissionPresence)
+		data.Set("extend", c.PermissionExtend)
+
+		req, _ := http.NewRequest("POST", "https://emitter.io/keygen_json", strings.NewReader(data.Encode()))
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+
+		w := httptest.NewRecorder()
+
+		// act
+		handler(w, req)
+		content, err := ioutil.ReadAll(w.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		assert.Equal(t, 200, w.Code)
+		assert.NotEmpty(t, content)
+
+		assert.Contains(t, string(content), c.ExpectedResponseContains, c.Scenario)
+	}
+}

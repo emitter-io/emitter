@@ -16,8 +16,13 @@ package broker
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"log"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -25,6 +30,7 @@ import (
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
+	"github.com/emitter-io/emitter/internal/provider/contract"
 	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security/license"
@@ -33,9 +39,21 @@ import (
 )
 
 const (
-	testLicense   = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
-	testLicenseV2 = "RfBEIIFz1nNLf12JYRpoEUqFPLb3na0X_xbP_h3PM_CqDUVBGJfEV3WalW2maauQd48o-TcTM_61BfEsELfk0qMDqrCTswkB:2"
+	testLicense       = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
+	testLicenseV2     = "RfBEIIFz1nNLf12JYRpoEUqFPLb3na0X_xbP_h3PM_CqDUVBGJfEV3WalW2maauQd48o-TcTM_61BfEsELfk0qMDqrCTswkB:2"
+	keygenTestLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI:1"
+	keygenTestSecret  = "kBCZch5re3Ue-kpG1Aa8Vo7BYvXZ3UwR"
 )
+
+func newKeygenProvider(t *testing.T) *keygen.Provider {
+	l, err := license.Parse(keygenTestLicense)
+	assert.NoError(t, err)
+
+	cipher, err := l.Cipher()
+	assert.NoError(t, err)
+
+	return keygen.NewProvider(cipher, contract.NewSingleContractProvider(l, usage.NewNoop()))
+}
 
 func Test_onHTTPPresence(t *testing.T) {
 	license, _ := license.Parse(testLicense)
@@ -303,4 +321,150 @@ func TestPubsub(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+}
+
+func getChannelKey(t *testing.T, channel string) string {
+	p := newKeygenProvider(t)
+	keyGenHandler := p.HTTPJson()
+
+	data := url.Values{}
+	data.Set("key", keygenTestSecret)
+	data.Set("channel", channel)
+	data.Set("ttl", "300")
+	data.Set("sub", "on")
+	data.Set("pub", "on")
+	data.Set("store", "on")
+	data.Set("load", "on")
+	data.Set("presence", "on")
+	data.Set("extend", "off")
+	req, _ := http.NewRequest("POST", "https://emitter.io/keygen_json", strings.NewReader(data.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+
+	w := httptest.NewRecorder()
+
+	// act
+	keyGenHandler(w, req)
+	content, err := ioutil.ReadAll(w.Body)
+	if err != nil {
+		log.Fatal(err)
+		return ""
+	}
+
+	jsonRet := httpJsonResponse{Code: HttpJsonRetFail, Message: ""}
+	err = json.Unmarshal(content, &jsonRet)
+
+	if err != nil {
+		log.Fatal(err)
+		return ""
+	}
+
+	if jsonRet.Code != HttpJsonRetSuccess {
+		return ""
+	}
+
+	return jsonRet.Message
+}
+
+func Test_onHTTPPublishJson(t *testing.T) {
+	channelName := "bar/"
+	channelKey := getChannelKey(t, channelName)
+
+	if channelKey == "" {
+		log.Fatal("generate channel key fail")
+		return
+	}
+
+	type testCase struct {
+		Scenario                 string
+		Key                      string
+		Channel                  string
+		TTL                      string
+		Message                  string
+		ExpectedResponseContains string
+		Code                     int
+	}
+	testCases := []testCase{
+		{
+			Scenario:                 "Request with valid arguments",
+			Key:                      channelKey,
+			Channel:                  channelName,
+			TTL:                      "0",
+			Message:                  "hello world",
+			ExpectedResponseContains: "\"code\":0",
+			Code:                     HttpJsonRetSuccess,
+		},
+		{
+			Scenario:                 "Request with invalid arguments",
+			Key:                      channelKey + strconv.Itoa(rand.Intn(100000000000)),
+			Channel:                  channelName,
+			TTL:                      "0",
+			Message:                  "hello world",
+			ExpectedResponseContains: "\"code\":0",
+			Code:                     HttpJsonRetFail,
+		},
+		{
+			Scenario:                 "Request with empty key",
+			Key:                      "",
+			Channel:                  channelName,
+			TTL:                      "0",
+			Message:                  "hello world",
+			ExpectedResponseContains: "\"code\":0",
+			Code:                     HttpJsonRetFail,
+		},
+		{
+			Scenario:                 "Request with empty channel",
+			Key:                      channelKey,
+			Channel:                  "",
+			TTL:                      "0",
+			Message:                  "hello world",
+			ExpectedResponseContains: "\"code\":0",
+			Code:                     HttpJsonRetFail,
+		},
+		{
+			Scenario:                 "Request with empty channel",
+			Key:                      channelKey,
+			Channel:                  channelName,
+			TTL:                      "0",
+			Message:                  "",
+			ExpectedResponseContains: "\"code\":0",
+			Code:                     HttpJsonRetSuccess,
+		},
+	}
+
+	license, _ := license.Parse(testLicense)
+
+	for _, c := range testCases {
+
+		contract := new(secmock.Contract)
+		contract.On("Validate", mock.Anything).Return(true)
+		contract.On("Stats").Return(usage.NewMeter(0))
+
+		provider := secmock.NewContractProvider()
+		provider.On("Get", mock.Anything).Return(contract, true)
+
+		cipher, _ := license.Cipher()
+		s := &Service{
+			contracts:     provider,
+			subscriptions: message.NewTrie(),
+			License:       license,
+			Keygen:        keygen.NewProvider(cipher, provider),
+		}
+
+		messageMap := map[string]interface{}{"channel": c.Channel, "key": c.Key, "ttl": c.TTL, "message": c.Message}
+		msgBytes, _ := json.Marshal(messageMap)
+
+		req, _ := http.NewRequest("POST", "/publish_json", strings.NewReader(string(msgBytes)))
+
+		// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(s.onHTTPPublishJson)
+		handler.ServeHTTP(rr, req)
+
+		respJson := httpJsonResponse{Code: HttpJsonRetFail, Message: ""}
+		json.Unmarshal(rr.Body.Bytes(), &respJson)
+
+		// Check the response body is what we expect.
+		assert.Equal(t, c.Code, respJson.Code, c.Scenario)
+	}
 }
