@@ -37,6 +37,7 @@ import (
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/listener"
+	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/network/websocket"
 	"github.com/emitter-io/emitter/internal/provider/contract"
 	"github.com/emitter-io/emitter/internal/provider/logging"
@@ -159,7 +160,9 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	}
 	mux.HandleFunc("/health", s.onHealth)
 	mux.HandleFunc("/keygen", s.Keygen.HTTP())
+	mux.HandleFunc("/keygen_json", s.Keygen.HTTPJson())
 	mux.HandleFunc("/presence", s.onHTTPPresence)
+	mux.HandleFunc("/publish_json", s.onHTTPPublishJson)
 	mux.HandleFunc("/", s.onRequest)
 
 	// Addresses and things
@@ -382,6 +385,156 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 
 	w.Write(resp)
 	return
+}
+
+//get ret content with json formatter
+func getRetJsonBytes(code int, message string) []byte {
+	httpRet := map[string]interface{}{"code": 0, "message": "publish success"}
+
+	httpRet["code"] = code
+	httpRet["message"] = message
+
+	jsonBytes, _ := json.Marshal(httpRet)
+
+	return jsonBytes
+}
+
+// Occurs when a new HTTP publish request is received
+func (s *Service) onHTTPPublishJson(w http.ResponseWriter, r *http.Request) {
+	ttl := ""
+	channelKey := ""
+	channelName := ""
+	messageContent := ""
+
+	switch r.Method {
+	case http.MethodPost:
+		r.ParseForm()
+		channelKey = r.PostFormValue("key")
+		if channelKey == "" {
+			w.Write(getRetJsonBytes(1, "channel key required"))
+			return
+		}
+		channelName = r.PostFormValue("channel")
+		if channelName == "" {
+			w.Write(getRetJsonBytes(1, "channel required"))
+			return
+		}
+		channelName = strings.Trim(channelName, "/")
+		messageContent = r.PostFormValue("message")
+		if messageContent == "" {
+			w.Write(getRetJsonBytes(1, "message required"))
+			return
+		}
+
+		ttl = r.PostFormValue("ttl")
+		break
+	case http.MethodGet:
+		queryParams := r.URL.Query()
+		channelKey = queryParams.Get("key")
+		channelName = queryParams.Get("channel")
+		ttl = queryParams.Get("ttl")
+
+	default:
+		w.Write(getRetJsonBytes(1, "http method error, post or get method required"))
+
+		return
+	}
+
+	topic := channelKey + "/" + channelName + "/?m=1"
+	if ttl != "" {
+		topic += "&ttl=" + ttl
+	}
+	packet := mqtt.Publish{
+		Header:  mqtt.Header{QOS: 0, Retain: false, DUP: false},
+		Topic:   []byte(topic),
+		Payload: []byte(messageContent),
+	}
+
+	mqttTopic := packet.Topic
+	if len(mqttTopic) <= 2 {
+		// mqttTopic = []byte(c.links[string(mqttTopic)])
+		w.Write(getRetJsonBytes(1, "channel length error"))
+
+		return
+	}
+
+	// Make sure we have a valid channel
+	channel := security.ParseChannel(mqttTopic)
+	if channel.ChannelType == security.ChannelInvalid {
+		// return errors.ErrBadRequest
+		w.Write(getRetJsonBytes(1, "channel invalid"))
+		return
+	}
+
+	// Publish should only have static channel strings
+	if channel.ChannelType != security.ChannelStatic {
+		// return errors.ErrForbidden
+		w.Write(getRetJsonBytes(1, "Publish should only have static channel strings"))
+		return
+	}
+
+	// // Check whether the key is 'emitter' which means it's an API request
+	// if len(channel.Key) == 7 && string(channel.Key) == "emitter" {
+	// 	c.onEmitterRequest(channel, packet.Payload, packet.MessageID)
+	// 	return nil
+	// }
+
+	// Check the authorization and permissions
+	// contract, key, allowed := s.authorize(channel, security.AllowWrite)
+	_, key, allowed := s.authorize(channel, security.AllowWrite)
+
+	if !allowed {
+		// return errors.ErrUnauthorized
+		w.Write(getRetJsonBytes(1, "Unauthorized"))
+		return
+	}
+
+	// Keys which are supposed to be extended should not be used for publishing
+	if key.HasPermission(security.AllowExtend) {
+		// return errors.ErrUnauthorizedExt
+		w.Write(getRetJsonBytes(1, "Keys which are supposed to be extended should not be used for publishing"))
+		return
+	}
+
+	// Create a new message
+	msg := message.New(
+		message.NewSsid(key.Contract(), channel.Query),
+		channel.Channel,
+		packet.Payload,
+	)
+
+	// If a user have specified a retain flag, retain with a default TTL
+	if packet.Header.Retain {
+		msg.TTL = message.RetainedTTL
+	}
+
+	// If a user have specified a TTL, use that value
+	if ttl, ok := channel.TTL(); ok && ttl > 0 {
+		msg.TTL = uint32(ttl)
+	}
+
+	// Store the message if needed
+	if msg.Stored() && key.HasPermission(security.AllowStore) {
+		s.storage.Store(msg)
+	}
+
+	// Check whether an exclude me option was set (i.e.: 'me=0')
+	var exclude string
+	// if channel.Exclude() {
+	// 	exclude = c.ID()
+	// }
+
+	// Iterate through all subscribers and send them the message
+	// size := c.service.publish(msg, exclude)
+	s.publish(msg, exclude)
+
+	// // Write the monitoring information
+	// c.track(contract)
+	// contract.Stats().AddIngress(int64(len(packet.Payload)))
+	// contract.Stats().AddEgress(size)
+	// return nil
+
+	w.Write(getRetJsonBytes(0, "publish success"))
 }
 
 // Occurs when a peer has a new subscription.

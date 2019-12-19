@@ -15,6 +15,7 @@
 package keygen
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -69,6 +70,40 @@ func (p *Provider) HTTP() http.HandlerFunc {
 			log.Printf("template execute error: %s\n", err.Error())
 			http.Error(w, "internal server error", 500)
 		}
+	}
+}
+
+// HTTP creates a new HTTP handler which can be used to generate channel key with json formatter.
+func (p *Provider) HTTPJson() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		f := keygenForm{Sub: true}
+		switch r.Method {
+		case "POST":
+			ok := f.parse(r)
+			if ok {
+				if f.isValid() {
+					key, err := p.CreateKey(f.Key, f.Channel, f.access(), f.expires())
+					if err != nil {
+						f.Response = err.Error()
+					} else {
+						f.Response = fmt.Sprintf(key)
+					}
+
+				}
+			} else {
+				f.Response = "invalid arguments"
+			}
+
+		default:
+			http.Error(w, http.ErrNotSupported.Error(), 405)
+			return
+		}
+		ret, err := json.Marshal(f)
+		if err == nil {
+			log.Printf("json.Marshal error: %s\n", err.Error())
+			http.Error(w, "internal server error", 500)
+		}
+		w.Write(ret)
 	}
 }
 
