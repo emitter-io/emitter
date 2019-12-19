@@ -99,7 +99,7 @@ func (p *Provider) HTTPJson() http.HandlerFunc {
 			return
 		}
 		ret, err := json.Marshal(f)
-		if err == nil {
+		if err != nil {
 			log.Printf("json.Marshal error: %s\n", err.Error())
 			http.Error(w, "internal server error", 500)
 		}
