@@ -76,13 +76,15 @@ Both commands above start a new server and if no configuration or environment va
 This message shows that a new security configuration was generated, you can then re-run `EMITTER_LICENSE` set to the specified value. Alternatively, you can set `"license"` property in the `emitter.conf` configuration file.
 
 ### Re-Run Command
-References are available
+References are available. Please replace your EMITTER_LICENSE to it.
 ```shell
-docker run -d --name emitter -p 8080:8080 -e EMITTER_LICENSE=RPBDIEDyqpgipB9IXxeFJ7zuQeUJTyJxwx-ZVG47bp6h9vCzGMzwSSKrTWc8Jdo4mjWonYgIrwa034b-TevG2Wi61-rEDQE:2 --restart=unless-stopped emitter/server
+docker run -d --name emitter -p 8080:8080 -e EMITTER_LICENSE=uppD0PFIcNK6VY-7PTo7uWH8EobaOGgRAAAAAAAAAAI --restart=unless-stopped emitter/server
 ```
 
 ### Generate Key
 Finally, open a browser and navigate to **<http://127.0.0.1:8080/keygen>** in order to generate your key. Now you can use the secret key generated to create channel keys, which allow you to secure individual channels and start using emitter.
+
+**Warning:** If you use upon command, you secret is JUoOxjoXLc4muSxXynOpTc60nWtwUI3o. And it's not safe!!!
 
 
 ## Usage Example
