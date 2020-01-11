@@ -49,7 +49,10 @@ The following [video tutorials](https://www.youtube.com/playlist?list=PLhFXrq-2g
 
 ## Quick Start
 
+### Run Server
 The quick way to start an Emitter broker is by using `docker run` command as shown below. 
+
+Notice: You must use -e for docker environment.You could get it from your docker log.
 
 ```shell
 docker run -d --name emitter -p 8080:8080 --restart=unless-stopped emitter/server
@@ -61,7 +64,8 @@ Alternatively, you might compile this repository and use `go get` command to reb
 go get -u github.com/emitter-io/emitter && emitter
 ```
 
-Both commands above start a new server and if no configuration or environment variables were supplied, it will print out a message similar to the message below once the server has started:
+### Get License
+Both commands above start a new server and if no configuration or environment variables were supplied, it will print out a message(or you could find it in the docker log) similar to the message below once the server has started :
 
 ```shell
 [service] unable to find a license, make sure 'license' value is set in the config file or EMITTER_LICENSE environment variable
@@ -71,6 +75,13 @@ Both commands above start a new server and if no configuration or environment va
 
 This message shows that a new security configuration was generated, you can then re-run `EMITTER_LICENSE` set to the specified value. Alternatively, you can set `"license"` property in the `emitter.conf` configuration file.
 
+### Re-Run Command
+References are available
+```shell
+docker run -d --name emitter -p 8080:8080 -e EMITTER_LICENSE=RPBDIEDyqpgipB9IXxeFJ7zuQeUJTyJxwx-ZVG47bp6h9vCzGMzwSSKrTWc8Jdo4mjWonYgIrwa034b-TevG2Wi61-rEDQE:2 --restart=unless-stopped emitter/server
+```
+
+### Generate Key
 Finally, open a browser and navigate to **<http://127.0.0.1:8080/keygen>** in order to generate your key. Now you can use the secret key generated to create channel keys, which allow you to secure individual channels and start using emitter.
 
 
