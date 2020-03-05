@@ -27,6 +27,7 @@ const (
 
 // ErrMessageTooLarge occurs when a message encoded/decoded is larger than max MQTT frame.
 var ErrMessageTooLarge = errors.New("mqtt: message size exceeds 64K")
+var ErrMessageBadPacket = errors.New("mqtt: bad packet")
 
 //Message is the interface all our packets will be implementing
 type Message interface {
@@ -208,11 +209,11 @@ func DecodePacket(rdr Reader, maxMessageSize int64) (Message, error) {
 	var msg Message
 	switch messageType {
 	case TypeOfConnect:
-		msg = decodeConnect(buffer)
+		msg, err = decodeConnect(buffer)
 	case TypeOfConnack:
 		msg = decodeConnack(buffer, hdr)
 	case TypeOfPublish:
-		msg = decodePublish(buffer, hdr)
+		msg, err = decodePublish(buffer, hdr)
 	case TypeOfPuback:
 		msg = decodePuback(buffer)
 	case TypeOfPubrec:
@@ -222,18 +223,18 @@ func DecodePacket(rdr Reader, maxMessageSize int64) (Message, error) {
 	case TypeOfPubcomp:
 		msg = decodePubcomp(buffer)
 	case TypeOfSubscribe:
-		msg = decodeSubscribe(buffer, hdr)
+		msg, err = decodeSubscribe(buffer, hdr)
 	case TypeOfSuback:
 		msg = decodeSuback(buffer)
 	case TypeOfUnsubscribe:
-		msg = decodeUnsubscribe(buffer, hdr)
+		msg, err = decodeUnsubscribe(buffer, hdr)
 	case TypeOfUnsuback:
 		msg = decodeUnsuback(buffer)
 	default:
 		return nil, fmt.Errorf("Invalid zero-length packet with type %d", messageType)
 	}
 
-	return msg, nil
+	return msg, err
 }
 
 // EncodeTo writes the encoded message to the underlying writer.
@@ -633,17 +634,23 @@ func decodeHeader(rdr Reader) (hdr Header, length uint32, messageType uint8, err
 	return hdr, uint32(length), messageType, nil
 }
 
-func decodeConnect(data []byte) Message {
+func decodeConnect(data []byte) (Message, error) {
 	//TODO: Decide how to recover rom invalid packets (offsets don't equal actual reading?)
 	bookmark := uint32(0)
 
-	protoname := readString(data, &bookmark)
+	protoname, err := readString(data, &bookmark)
+	if err != nil {
+		return nil, err
+	}
 	ver := uint8(data[bookmark])
 	bookmark++
 	flags := data[bookmark]
 	bookmark++
 	keepalive := readUint16(data, &bookmark)
-	cliID := readString(data, &bookmark)
+	cliID, err := readString(data, &bookmark)
+	if err != nil {
+		return nil, err
+	}
 	connect := &Connect{
 		ProtoName:      protoname,
 		Version:        ver,
@@ -658,18 +665,26 @@ func decodeConnect(data []byte) Message {
 	}
 
 	if connect.WillFlag {
-		connect.WillTopic = readString(data, &bookmark)
-		connect.WillMessage = readString(data, &bookmark)
+		if connect.WillTopic, err = readString(data, &bookmark); err != nil {
+			return nil, err
+		}
+		if connect.WillMessage, err = readString(data, &bookmark); err != nil {
+			return nil, err
+		}
 	}
 
 	if connect.UsernameFlag {
-		connect.Username = readString(data, &bookmark)
+		if connect.Username, err = readString(data, &bookmark); err != nil {
+			return nil, err
+		}
 	}
 
 	if connect.PasswordFlag {
-		connect.Password = readString(data, &bookmark)
+		if connect.Password, err = readString(data, &bookmark); err != nil {
+			return nil, err
+		}
 	}
-	return connect
+	return connect, nil
 }
 
 func decodeConnack(data []byte, _ Header) Message {
@@ -682,9 +697,12 @@ func decodeConnack(data []byte, _ Header) Message {
 	}
 }
 
-func decodePublish(data []byte, hdr Header) Message {
+func decodePublish(data []byte, hdr Header) (Message, error) {
 	bookmark := uint32(0)
-	topic := readString(data, &bookmark)
+	topic, err := readString(data, &bookmark)
+	if err != nil {
+		return nil, err
+	}
 	var msgID uint16
 	if hdr.QOS > 0 {
 		msgID = readUint16(data, &bookmark)
@@ -695,7 +713,7 @@ func decodePublish(data []byte, hdr Header) Message {
 		Topic:     topic,
 		Payload:   data[bookmark:],
 		MessageID: msgID,
-	}
+	}, nil
 }
 
 func decodePuback(data []byte) Message {
@@ -731,14 +749,18 @@ func decodePubcomp(data []byte) Message {
 	}
 }
 
-func decodeSubscribe(data []byte, hdr Header) Message {
+func decodeSubscribe(data []byte, hdr Header) (Message, error) {
 	bookmark := uint32(0)
 	msgID := readUint16(data, &bookmark)
 	var topics []TopicQOSTuple
 	maxlen := uint32(len(data))
+	var err error
 	for bookmark < maxlen {
 		var t TopicQOSTuple
-		t.Topic = readString(data, &bookmark)
+		t.Topic, err = readString(data, &bookmark)
+		if err != nil {
+			return nil, err
+		}
 		qos := data[bookmark]
 		bookmark++
 		t.Qos = uint8(qos)
@@ -748,7 +770,7 @@ func decodeSubscribe(data []byte, hdr Header) Message {
 		Header:        hdr,
 		MessageID:     msgID,
 		Subscriptions: topics,
-	}
+	}, nil
 }
 
 func decodeSuback(data []byte) Message {
@@ -768,16 +790,20 @@ func decodeSuback(data []byte) Message {
 	}
 }
 
-func decodeUnsubscribe(data []byte, hdr Header) Message {
+func decodeUnsubscribe(data []byte, hdr Header) (Message, error) {
 	bookmark := uint32(0)
 	var topics []TopicQOSTuple
 	msgID := readUint16(data, &bookmark)
 	maxlen := uint32(len(data))
+	var err error
 	for bookmark < maxlen {
 		var t TopicQOSTuple
 		//		qos := data[bookmark]
 		//		bookmark++
-		t.Topic = readString(data, &bookmark)
+		t.Topic, err = readString(data, &bookmark)
+		if err != nil {
+			return nil, err
+		}
 		//		t.qos = uint8(qos)
 		topics = append(topics, t)
 	}
@@ -785,7 +811,7 @@ func decodeUnsubscribe(data []byte, hdr Header) Message {
 		Header:    hdr,
 		MessageID: msgID,
 		Topics:    topics,
-	}
+	}, nil
 }
 
 func decodeUnsuback(data []byte) Message {
@@ -852,11 +878,14 @@ func writeUint8(buf []byte, v uint8) int {
 	return 1
 }
 
-func readString(b []byte, startsAt *uint32) []byte {
+func readString(b []byte, startsAt *uint32) ([]byte, error) {
 	l := readUint16(b, startsAt)
+	if uint32(l)+*startsAt > uint32(len(b)) {
+		return nil, ErrMessageBadPacket
+	}
 	v := b[*startsAt : uint32(l)+*startsAt]
 	*startsAt += uint32(l)
-	return v
+	return v, nil
 }
 
 func readUint16(b []byte, startsAt *uint32) uint16 {
