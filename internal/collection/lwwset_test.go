@@ -16,6 +16,7 @@ package collection
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -206,13 +207,52 @@ func TestLWWESetGC(t *testing.T) {
 	assert.Equal(t, 1, len(lww.Set))
 }
 
+func TestConcurrent(t *testing.T) {
+	i := 0
+	lww := NewLWWSet()
+	for ; i < 100; i++ {
+		setClock(int64(i))
+		lww.Add(fmt.Sprintf("%v", i))
+	}
+
+	var start, stop sync.WaitGroup
+	start.Add(1)
+
+	for x := 2; x < 10; x++ {
+		other := NewLWWSet()
+		gi := i
+		gu := x * 100
+
+		for ; gi < gu; gi++ {
+			setClock(int64(100000 + gi))
+			other.Remove(fmt.Sprintf("%v", i))
+		}
+
+		stop.Add(1)
+		go func() {
+			start.Wait()
+			lww.Merge(other)
+			other.Merge(lww)
+			stop.Done()
+		}()
+	}
+	start.Done()
+	stop.Wait()
+}
+
+// Lock for the timer
+var lock sync.Mutex
+
 // RestoreClock restores the clock time
 func restoreClock(clk clock) {
+	lock.Lock()
 	Now = clk
+	lock.Unlock()
 }
 
 // SetClock sets the clock time for testing
 func setClock(t int64) {
+	lock.Lock()
 	Now = func() int64 { return t }
-	println("clock set to", Now())
+	lock.Unlock()
 }
