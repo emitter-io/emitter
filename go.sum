@@ -213,6 +213,8 @@ github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyC
 github.com/valyala/fasthttp v1.12.0 h1:TsB9qkSeiMXB40ELWWSRMjlsE+8IkqXHcs01y2d9aw0=
 github.com/valyala/fasthttp v1.12.0/go.mod h1:229t1eWu9UXTPmoUkbpN/fctKPBY4IJoFXQnxHGXy6E=
 github.com/valyala/tcplisten v0.0.0-20161114210144-ceec8f93295a/go.mod h1:v3UYOV9WzVtRmSR+PDvWpU/qWl4Wa5LApYYX4ZtKbio=
+github.com/weaveworks/mesh v0.0.0-20191011115754-8889a805f7f6 h1:yH7FltSv3i7C9I1DUx2A01om9v4KnBkadBZOVEb39LM=
+github.com/weaveworks/mesh v0.0.0-20191011115754-8889a805f7f6/go.mod h1:mcON9Ws1aW0crSErpXWp7U1ErCDEKliDX2OhVlbWRKk=
 github.com/weaveworks/mesh v0.0.0-20191105120815-58dbcc3e8e63 h1:s0fUBZ8Vhtc3ruFmLIr3qVTQUb/j6ySkPLHoKKitHeM=
 github.com/weaveworks/mesh v0.0.0-20191105120815-58dbcc3e8e63/go.mod h1:RZebXKv56dax5zXcLIJZm1Awk28sx0XODXF94Z8WssY=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=

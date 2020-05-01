@@ -24,7 +24,7 @@ require (
 	github.com/tidwall/gjson v1.6.0 // indirect
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/valyala/fasthttp v1.12.0
-	github.com/weaveworks/mesh v0.0.0-20191105120815-58dbcc3e8e63
+	github.com/weaveworks/mesh v0.0.0-20191011115754-8889a805f7f6
 	golang.org/x/crypto v0.0.0-20200429183012-4b2356b1ed79
 	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0 // indirect
 	golang.org/x/sys v0.0.0-20200430202703-d923437fa56d // indirect
