@@ -33,11 +33,10 @@ func TestStatsd_HappyPath(t *testing.T) {
 	s := NewStatsd(m, "")
 	defer s.Close()
 
-	err := s.Configure(map[string]interface{}{
+	s.Configure(map[string]interface{}{
 		"interval": 1000000.00,
 		"url":      ":8125",
 	})
-	assert.NoError(t, err)
 	assert.NotPanics(t, func() {
 		s.write()
 	})

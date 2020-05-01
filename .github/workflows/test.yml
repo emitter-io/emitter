@@ -1,4 +1,4 @@
-name: Go
+name: Test
 on: [push]
 env:
   PROJECT: "github.com/emitter-io/emitter"
@@ -8,7 +8,7 @@ jobs:
 
   test:
     name: Tests and Coverage
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
 
     - name: Install Go

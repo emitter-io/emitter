@@ -1,0 +1,26 @@
+name: Release
+on: [pull_request]
+env:
+  PROJECT: "github.com/emitter-io/emitter"
+  GO111MODULE: "on"
+  
+jobs:
+  publish:
+    name: Docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.14
+        id: go
+      - name: Login to DockerHub Registry
+        run: echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v1
+      - name: Build the Docker image
+        run: |
+          go build .
+          docker build . --file Dockerfile --tag emitter/server:edge
+      - name: Push the Docker image
+        run: docker push emitter/server:edge
