@@ -358,7 +358,7 @@ func TestHandlers_onPresence(t *testing.T) {
 	// TODO :
 	// - valid key for the right channel, but no presence right.
 	// - test Who
-	license, _ := license.Parse(testLicense)
+	license, _ := license.Parse(testLicenseV2)
 	tests := []struct {
 		channel       string
 		payload       string
@@ -371,7 +371,7 @@ func TestHandlers_onPresence(t *testing.T) {
 	}{
 		{
 			channel:       "emitter/presence/",
-			payload:       "{\"key\":\"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY\",\"channel\":\"a\",\"status\":true}",
+			payload:       "{\"key\":\"hw7Jv3TMhYTg6lLk2fQoSvs2EP3gjFPk\",\"channel\":\"a\",\"status\":true}",
 			contractValid: true,
 			contractFound: true,
 			success:       true,
@@ -390,7 +390,7 @@ func TestHandlers_onPresence(t *testing.T) {
 		},
 		{
 			channel:       "emitter/presence/",
-			payload:       "{\"key\":\"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY\",\"channel\":\"a+b\",\"status\":true}",
+			payload:       "{\"key\":\"hw7Jv3TMhYTg6lLk2fQoSvs2EP3gjFPk\",\"channel\":\"a+b\",\"status\":true}",
 			contractValid: true,
 			contractFound: true,
 			success:       false,
@@ -399,7 +399,7 @@ func TestHandlers_onPresence(t *testing.T) {
 		},
 		{
 			channel:       "emitter/presence/",
-			payload:       "{\"key\":\"0Nq8SWbL8qoOKEDqh_ebBZRqJDby30m\",\"channel\":\"a\",\"status\":true}",
+			payload:       "{\"key\":\"07XJv3TMhYTg6lLk2fQoSift1AbgjFPk\",\"channel\":\"a\",\"status\":true}",
 			contractValid: true,
 			contractFound: true,
 			success:       false,
@@ -408,19 +408,27 @@ func TestHandlers_onPresence(t *testing.T) {
 		},
 		{
 			channel:       "emitter/presence/",
-			payload:       "{\"key\":\"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY\",\"channel\":\"a+b\",\"status\":true}",
-			err:           errors.ErrNotFound,
+			payload:       "{\"key\":\"hw7Jv3TMhYTg6lLk2fQoSvs2EP3gjFPk\",\"channel\":\"a\",\"status\":true}",
+			err:           errors.ErrUnauthorized,
 			contractValid: true,
 			contractFound: false,
 			msg:           "Contract not found case",
 		},
 		{
 			channel:       "emitter/presence/",
-			payload:       "{\"key\":\"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY\",\"channel\":\"a+b\",\"status\":true}",
+			payload:       "{\"key\":\"hw7Jv3TMhYTg6lLk2fQoSvs2EP3gjFPk\",\"channel\":\"a\",\"status\":true}",
 			err:           errors.ErrUnauthorized,
 			contractValid: false,
 			contractFound: true,
 			msg:           "Contract is invalid case",
+		},
+		{
+			channel:       "emitter/presence/",
+			payload:       "{\"key\":\"sVTJv3TMhYTg6lLk2fQoCvs2EP3gjFPk\",\"channel\":\"a\",\"status\":true}",
+			err:           errors.ErrUnauthorizedExt,
+			contractValid: true,
+			contractFound: true,
+			msg:           "Extended key is unauthorized case",
 		},
 	}
 
