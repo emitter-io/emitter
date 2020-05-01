@@ -1,5 +1,5 @@
 name: Release
-on: [push, pull_request]
+on: [push]
 env:
   PROJECT: "github.com/emitter-io/emitter"
   GO111MODULE: "on"
