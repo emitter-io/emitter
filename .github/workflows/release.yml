@@ -1,0 +1,32 @@
+name: Release
+on:
+  release:
+    types: [published]
+env:
+  PROJECT: "github.com/emitter-io/emitter"
+  GO111MODULE: "on"
+  
+jobs:
+
+  publish:
+    name: Docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.14
+        id: go
+      - name: Login to DockerHub Registry
+        run: echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v1
+      - name: Get the version
+        id: vars
+        run: echo ::set-output name=tag::$(echo ${GITHUB_REF:10})
+      - name: Build the tagged Docker image
+        run: |
+          go build .
+          docker build . --file Dockerfile --build-arg GO_BINARY=emitter --tag emitter/server:${{steps.vars.outputs.tag}}
+      - name: Push the tagged Docker image
+        run: docker push emitter/server:${{steps.vars.outputs.tag}}

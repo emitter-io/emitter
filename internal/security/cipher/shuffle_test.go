@@ -15,6 +15,7 @@
 package cipher
 
 import (
+	"crypto/rand"
 	"testing"
 	"time"
 
@@ -22,10 +23,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// BenchmarkEncryptKey2-8   	 5000000	       356 ns/op	      64 B/op	       2 allocs/op
-func Benchmark_Salsa_EncryptKey(b *testing.B) {
-	cipher := new(Salsa)
-	key := "um4m30suos9k0tNjZiO19FyGNtmZjRlN"
+type x struct {
+	test string
+}
+
+// Benchmark_Shuffled_EncryptKey-8   	 4477147	       263 ns/op	      64 B/op	       2 allocs/op
+func Benchmark_Shuffled_EncryptKey(b *testing.B) {
+	cipher := new(Shuffle)
+	key := "A-dOBQDuXhqoFz-GZZdbpSFCtzmFl7Ng"
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -34,8 +39,8 @@ func Benchmark_Salsa_EncryptKey(b *testing.B) {
 	}
 }
 
-func Test_Salsa(t *testing.T) {
-	cipher := new(Salsa)
+func Test_Shuffled(t *testing.T) {
+	cipher := new(Shuffle)
 	key := security.Key(make([]byte, 24))
 	key.SetSalt(999)
 	key.SetMaster(2)
@@ -47,17 +52,17 @@ func Test_Salsa(t *testing.T) {
 
 	encoded, err := cipher.EncryptKey(key)
 	assert.NoError(t, err)
-	assert.Equal(t, "uYkm3UsuorRk0tBqliO18gs5xXmXioMF", encoded)
+	assert.Equal(t, "A-dOBQDuXhqoFz-GZZdbpSFCtzmFl7Ng", encoded)
 
 	decoded, err := cipher.DecryptKey([]byte(encoded))
 	assert.NoError(t, err)
 	assert.Equal(t, key, decoded)
 }
 
-// Benchmark_Salsa_DecryptKey-8   	 5000000	       309 ns/op	       0 B/op	       0 allocs/op
-func Benchmark_Salsa_DecryptKey(b *testing.B) {
-	cipher := new(Salsa)
-	key := "um4m30suos9k0tNjZiO19FyGNtmZjRlN"
+// Benchmark_Shuffled_DecryptKey-8   	 4857697	       245 ns/op	       0 B/op	       0 allocs/op
+func Benchmark_Shuffled_DecryptKey(b *testing.B) {
+	cipher := new(Shuffle)
+	key := "A-dOBQDuXhqoFz-GZZdbpSFCtzmFl7Ng"
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -66,8 +71,8 @@ func Benchmark_Salsa_DecryptKey(b *testing.B) {
 	}
 }
 
-func Test_Salsa_Errors(t *testing.T) {
-	cipher := new(Salsa)
+func Test_Shuffled_Errors(t *testing.T) {
+	cipher := new(Shuffle)
 	tests := []struct {
 		key string
 		err bool
@@ -90,20 +95,65 @@ func Test_Salsa_Errors(t *testing.T) {
 	}
 }
 
-func TestNewSalsa(t *testing.T) {
+func TestNewShuffled(t *testing.T) {
 
 	// Happy path
 	{
-		c, err := NewSalsa(make([]byte, 32), make([]byte, 24))
+		c, err := NewShuffle(make([]byte, 32), make([]byte, 16))
 		assert.NoError(t, err)
 		assert.NotNil(t, c)
 	}
 
 	// Error case
 	{
-		c, err := NewSalsa(nil, nil)
+		c, err := NewShuffle(nil, nil)
 		assert.Error(t, err)
 		assert.Nil(t, c)
 	}
 
+}
+
+func TestShuffled_Entropy(t *testing.T) {
+	cryptoKey := make([]byte, 32)
+	rand.Read(cryptoKey)
+
+	nonce := make([]byte, 16)
+	rand.Read(nonce)
+
+	c, err := NewShuffle(cryptoKey, nonce)
+
+	key1 := makeKey(111)
+	key2 := makeKey(333)
+
+	k1, err := c.EncryptKey(key1)
+	assert.NoError(t, err)
+
+	k2, err := c.EncryptKey(key2)
+	assert.NoError(t, err)
+
+	var diff int
+	for i := range k1 {
+		if k1[i] != k2[i] {
+			diff++
+		}
+	}
+
+	assert.NotEqual(t, k1, k2)
+	assert.Greater(t, diff, 20)
+}
+
+func printKey(key security.Key) {
+	println(key.Salt(), key.Contract(), key.Signature(), key.Expires().String())
+}
+
+func makeKey(salt int) security.Key {
+	key := security.Key(make([]byte, 24))
+	key.SetSalt(uint16(salt))
+	key.SetMaster(2)
+	key.SetContract(123)
+	key.SetSignature(777)
+	key.SetPermissions(security.AllowReadWrite)
+	key.SetTarget("a/b/c/")
+	key.SetExpires(time.Unix(1497683272, 0).UTC())
+	return key
 }
