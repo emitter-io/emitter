@@ -95,7 +95,9 @@ func (s *LWWSet) Contains(value string) bool {
 // to leave only the delta.
 func (s *LWWSet) Merge(r *LWWSet) {
 	s.Lock()
+	r.Lock()
 	defer s.Unlock()
+	defer r.Unlock()
 
 	for key, rt := range r.Set {
 		t, _ := s.Set[key]
