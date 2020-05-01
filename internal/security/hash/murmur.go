@@ -15,6 +15,7 @@
 package hash
 
 import (
+	"math/bits"
 	"reflect"
 	"unsafe"
 )
@@ -34,45 +35,37 @@ func Of(data []byte) uint32 {
 	// Seed is set to 37, same as C# version of emitter
 	var h1 uint32 = 37
 
-	nblocks := len(data) / 4
-	var p uintptr
-	if len(data) > 0 {
-		p = uintptr(unsafe.Pointer(&data[0]))
-	}
-
-	p1 := p + uintptr(4*nblocks)
-	for ; p < p1; p += 4 {
-		k1 := *(*uint32)(unsafe.Pointer(p))
+	clen := uint32(len(data))
+	for len(data) >= 4 {
+		k1 := uint32(data[0]) | uint32(data[1])<<8 | uint32(data[2])<<16 | uint32(data[3])<<24
+		data = data[4:]
 
 		k1 *= c1_32
-		k1 = (k1 << 15) | (k1 >> 17) // rotl32(k1, 15)
+		k1 = bits.RotateLeft32(k1, 15)
 		k1 *= c2_32
 
 		h1 ^= k1
-		h1 = (h1 << 13) | (h1 >> 19) // rotl32(h1, 13)
+		h1 = bits.RotateLeft32(h1, 13)
 		h1 = h1*5 + 0xe6546b64
 	}
 
-	tail := data[nblocks*4:]
-
 	var k1 uint32
-	switch len(tail) & 3 {
+	switch len(data) {
 	case 3:
-		k1 ^= uint32(tail[2]) << 16
+		k1 ^= uint32(data[2]) << 16
 		fallthrough
 	case 2:
-		k1 ^= uint32(tail[1]) << 8
+		k1 ^= uint32(data[1]) << 8
 		fallthrough
 	case 1:
-		k1 ^= uint32(tail[0])
+		k1 ^= uint32(data[0])
 		k1 *= c1_32
-		k1 = (k1 << 15) | (k1 >> 17) // rotl32(k1, 15)
+		k1 = bits.RotateLeft32(k1, 15)
 		k1 *= c2_32
 		h1 ^= k1
 	}
 
-	h1 ^= uint32(len(data))
-
+	h1 ^= uint32(clen)
 	h1 ^= h1 >> 16
 	h1 *= 0x85ebca6b
 	h1 ^= h1 >> 13

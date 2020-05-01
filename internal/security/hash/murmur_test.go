@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// BenchmarkOf-8   	100000000	        14.5 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkOf-8   	99755598	        12.1 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkOf(b *testing.B) {
 	v := []byte("a/b/c/d/e/f/g/h/this/is/emitter")
 
@@ -31,7 +31,7 @@ func BenchmarkOf(b *testing.B) {
 	}
 }
 
-// BenchmarkOfString-8   	100000000	        18.4 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkOfString-8   	79873267	        15.0 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkOfString(b *testing.B) {
 	v := "a/b/c/d/e/f/g/h/this/is/emitter"
 
