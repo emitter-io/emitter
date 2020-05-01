@@ -1,5 +1,5 @@
 name: Release
-on: [pull_request]
+on: [push]
 env:
   PROJECT: "github.com/emitter-io/emitter"
   GO111MODULE: "on"
@@ -21,6 +21,6 @@ jobs:
       - name: Build the Docker image
         run: |
           go build .
-          docker build . --file Dockerfile --tag emitter/server:edge
+          docker build . --file Dockerfile --tag emitter/server:latest
       - name: Push the Docker image
-        run: docker push emitter/server:edge
+        run: docker push emitter/server:latest

@@ -9,7 +9,7 @@ env:
 jobs:
 
   publish:
-    name: Publish Docker
+    name: Docker
     runs-on: ubuntu-latest
     steps:
       - name: Install Go
@@ -30,7 +30,3 @@ jobs:
           docker build . --file Dockerfile --build-arg GO_BINARY=emitter --tag emitter/server:${{steps.vars.outputs.tag}}
       - name: Push the tagged Docker image
         run: docker push emitter/server:${{steps.vars.outputs.tag}}
-      - name: Build the latest Docker image
-        run: docker build . --file Dockerfile --tag emitter/server:latest
-      - name: Push the latest Docker image
-        run: docker push emitter/server:latest
