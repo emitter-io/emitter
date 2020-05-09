@@ -10,7 +10,8 @@ import (
 
 type stubGossip struct{}
 
-func (s *stubGossip) GossipBroadcast(update mesh.GossipData) {}
+func (s *stubGossip) GossipNeighbourSubset(update mesh.GossipData) {}
+func (s *stubGossip) GossipBroadcast(update mesh.GossipData)       {}
 func (s *stubGossip) GossipUnicast(dst mesh.PeerName, msg []byte) error {
 	return nil
 }

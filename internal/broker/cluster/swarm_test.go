@@ -1,7 +1,6 @@
 package cluster
 
 import (
-	"io"
 	"testing"
 
 	"github.com/emitter-io/emitter/internal/config"
@@ -61,7 +60,7 @@ func TestNewSwarm_Scenario(t *testing.T) {
 
 	// Gossip with invalid data
 	_, err = s.OnGossip([]byte{1, 2, 3})
-	assert.Equal(t, io.EOF, err)
+	assert.Error(t, err)
 
 	// Self broadcast should not fail
 	_, err = s.OnGossipBroadcast(1, []byte{1, 2, 3})
@@ -69,7 +68,7 @@ func TestNewSwarm_Scenario(t *testing.T) {
 
 	// Broadcast with invalid data
 	_, err = s.OnGossipBroadcast(2, []byte{1, 2, 3})
-	assert.Equal(t, io.EOF, err)
+	assert.Error(t, err)
 
 	// Find peer
 	peer := s.FindPeer(123)

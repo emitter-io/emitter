@@ -126,7 +126,7 @@ func (p *Peer) processSendQueue() {
 		return
 	}
 
-	// Swap the frame and split the frame in chunks of at most 10MB 
+	// Swap the frame and split the frame in chunks of at most 10MB
 	// for gossip unicast to work.
 	frame := p.swap()
 	for {
