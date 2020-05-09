@@ -16,7 +16,9 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -71,6 +73,7 @@ func NewSwarm(cfg *config.ClusterConfig) *Swarm {
 	}
 
 	// Create a new router
+	interval := 30 * time.Second
 	router, err := mesh.NewRouter(mesh.Config{
 		Host:               listenAddr.IP.String(),
 		Port:               listenAddr.Port,
@@ -79,7 +82,8 @@ func NewSwarm(cfg *config.ClusterConfig) *Swarm {
 		ConnLimit:          128,
 		PeerDiscovery:      true,
 		TrustedSubnets:     []*net.IPNet{},
-	}, swarm.name, advertiseAddr.String(), mesh.NullOverlay{}, logging.Discard)
+		GossipInterval:     &interval,
+	}, swarm.name, advertiseAddr.String(), mesh.NullOverlay{}, swarm)
 	if err != nil {
 		panic(err)
 	}
@@ -100,6 +104,14 @@ func NewSwarm(cfg *config.ClusterConfig) *Swarm {
 	swarm.router = router
 	swarm.members = newMemberlist(swarm.newPeer)
 	return swarm
+}
+
+// Printf logs the error
+func (s *Swarm) Printf(format string, args ...interface{}) {
+	message := fmt.Errorf(format, args...)
+	if strings.Contains(message.Error(), "error") {
+		logging.LogError("swarm", "gossip", message)
+	}
 }
 
 // onPeerOnline occurs when a new peer is created.

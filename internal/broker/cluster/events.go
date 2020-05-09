@@ -17,6 +17,7 @@ package cluster
 import (
 	"bytes"
 	bin "encoding/binary"
+	"github.com/golang/snappy"
 
 	"github.com/emitter-io/emitter/internal/collection"
 	"github.com/emitter-io/emitter/internal/message"
@@ -83,6 +84,8 @@ func decodeSubscriptionEvent(encoded string) (SubscriptionEvent, error) {
 	return out, nil
 }
 
+// ------------------------------------------------------------------------------------
+
 // SubscriptionState represents globally synchronised state.
 type subscriptionState collection.LWWSet
 
@@ -93,8 +96,11 @@ func newSubscriptionState() *subscriptionState {
 
 // decodeSubscriptionState decodes the state
 func decodeSubscriptionState(buf []byte) (*subscriptionState, error) {
-	var out collection.LWWState
-	err := binary.Unmarshal(buf, &out)
+	out, err := decodeState(buf)
+	if err != nil {
+		return nil, err
+	}
+
 	return &subscriptionState{Set: out}, err
 }
 
@@ -105,12 +111,8 @@ func (st *subscriptionState) Encode() [][]byte {
 	lww.Lock()
 	defer lww.Unlock()
 
-	buf, err := binary.Marshal(lww.Set)
-	if err != nil {
-		panic(err)
-	}
-
-	return [][]byte{buf}
+	encoded := encodeState(lww.Set)
+	return [][]byte{encoded}
 }
 
 // Merge merges the other GossipData into this one,
@@ -151,4 +153,78 @@ func (st *subscriptionState) RemoveAll(name mesh.PeerName) {
 // All ...
 func (st *subscriptionState) All() collection.LWWState {
 	return (*collection.LWWSet)(st).All()
+}
+
+// ------------------------------------------------------------------------------------
+
+type state struct {
+	Keys []string
+	Adds []int64
+	Dels []int64
+}
+
+func encodeState(s collection.LWWState) []byte {
+	msg := state{
+		Keys: make([]string, 0, len(s)),
+		Adds: make([]int64, 0, len(s)),
+		Dels: make([]int64, 0, len(s)),
+	}
+
+	var count int
+	var addOffset, delOffset int64
+	for k, v := range s {
+		msg.Keys = append(msg.Keys, k)
+		msg.Adds = append(msg.Adds, v.AddTime-addOffset)
+		msg.Dels = append(msg.Dels, v.DelTime-delOffset)
+
+		if addOffset == 0 {
+			addOffset = v.AddTime
+			delOffset = v.DelTime
+		}
+
+		// Since we're iterating over a map, the iteration should be done in pseudo-random
+		// order. Hence, we take advantage of this and break at 100K subscriptions in order
+		// to make sure the gossip message fits under 10MB (max size).
+		if count++; count >= 100000 {
+			break
+		}
+	}
+
+	buf, err := binary.Marshal(msg)
+	if err != nil {
+		panic(err)
+	}
+
+	return snappy.Encode(nil, buf)
+}
+
+func decodeState(b []byte) (collection.LWWState, error) {
+	decoded, err := snappy.Decode(nil, b)
+	if err != nil {
+		return nil, err
+	}
+
+	var msg state
+	if err := binary.Unmarshal(decoded, &msg); err != nil {
+		return nil, err
+	}
+
+	var addOffset, delOffset int64
+	out := make(collection.LWWState, len(msg.Keys))
+	for i := 0; i < len(msg.Keys); i++ {
+		k := msg.Keys[i]
+		addTime := msg.Adds[i] + addOffset
+		delTime := msg.Dels[i] + delOffset
+
+		if addOffset == 0 {
+			addOffset = addTime
+			delOffset = delTime
+		}
+
+		out[k] = collection.LWWTime{
+			AddTime: addTime,
+			DelTime: delTime,
+		}
+	}
+	return out, nil
 }
