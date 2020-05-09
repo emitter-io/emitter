@@ -44,7 +44,7 @@ type License interface {
 // New generates a new license and master key. This uses the most up-to-date version
 // of the license to generate a new one.
 func New() (string, string) {
-	license := NewV2()
+	license := NewV3()
 	if secret, err := license.NewMasterKey(1); err != nil {
 		panic(err)
 	} else if cipher, err := license.Cipher(); err != nil {
@@ -63,10 +63,12 @@ func Parse(data string) (License, error) {
 	}
 
 	switch {
-	case strings.HasSuffix(data, ":2"):
-		return parseV2(data[:len(data)-2])
 	case strings.HasSuffix(data, ":1"):
 		return parseV1(data[:len(data)-2])
+	case strings.HasSuffix(data, ":2"):
+		return parseV2(data[:len(data)-2])
+	case strings.HasSuffix(data, ":3"):
+		return parseV3(data[:len(data)-2])
 	default:
 		return parseV1(data)
 	}
