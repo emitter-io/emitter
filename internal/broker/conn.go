@@ -35,6 +35,7 @@ import (
 	"github.com/emitter-io/stats"
 	"github.com/kelindar/binary/nocopy"
 	"github.com/kelindar/rate"
+	"github.com/weaveworks/mesh"
 )
 
 const defaultReadRate = 100000
@@ -272,6 +273,7 @@ func (c *Conn) Subscribe(ssid message.Ssid, channel []byte) {
 	// Add the subscription
 	if first := c.subs.Increment(ssid, channel); first {
 		ev := &cluster.SubscriptionEvent{
+			Peer:    mesh.PeerName(c.service.LocalName()),
 			Conn:    c.luid,
 			User:    nocopy.String(c.username),
 			Ssid:    ssid,
@@ -291,6 +293,7 @@ func (c *Conn) Unsubscribe(ssid message.Ssid, channel []byte) {
 	// Decrement the counter and if there's no more subscriptions, notify everyone.
 	if last := c.subs.Decrement(ssid); last {
 		ev := &cluster.SubscriptionEvent{
+			Peer:    mesh.PeerName(c.service.LocalName()),
 			Conn:    c.luid,
 			User:    nocopy.String(c.username),
 			Ssid:    ssid,
@@ -312,6 +315,7 @@ func (c *Conn) Close() error {
 	// already locked. Locking the 'Close()' would result in a deadlock.
 	for _, counter := range c.subs.All() {
 		ev := &cluster.SubscriptionEvent{
+			Peer:    mesh.PeerName(c.service.LocalName()),
 			Conn:    c.luid,
 			User:    nocopy.String(c.username),
 			Ssid:    counter.Ssid,

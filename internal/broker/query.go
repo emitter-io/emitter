@@ -62,6 +62,7 @@ func newQueryManager(s *Service) *QueryManager {
 // Start subscribes the manager to the query channel.
 func (c *QueryManager) Start() {
 	ev := &cluster.SubscriptionEvent{
+		Peer: mesh.PeerName(c.service.LocalName()),
 		Conn: c.luid,
 		Ssid: message.Ssid{idSystem, idQuery},
 	}

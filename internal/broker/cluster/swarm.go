@@ -326,7 +326,6 @@ func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) (err error) {
 
 // NotifySubscribe notifies the swarm when a subscription occurs.
 func (s *Swarm) NotifySubscribe(event *SubscriptionEvent) {
-	event.Peer = s.name
 
 	// Add to our global state
 	s.state.Add(event.Encode())
@@ -339,7 +338,6 @@ func (s *Swarm) NotifySubscribe(event *SubscriptionEvent) {
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
 func (s *Swarm) NotifyUnsubscribe(event *SubscriptionEvent) {
-	event.Peer = s.name
 
 	// Remove from our global state
 	s.state.Remove(event.Encode())
