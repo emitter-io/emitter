@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/emitter-io/emitter/internal/broker/cluster"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/weaveworks/mesh"
@@ -60,9 +61,13 @@ func newQueryManager(s *Service) *QueryManager {
 
 // Start subscribes the manager to the query channel.
 func (c *QueryManager) Start() {
-	ssid := message.Ssid{idSystem, idQuery}
-	if ok := c.service.onSubscribe(ssid, c); ok {
-		c.service.cluster.NotifySubscribe(c.luid, ssid)
+	ev := &cluster.SubscriptionEvent{
+		Conn: c.luid,
+		Ssid: message.Ssid{idSystem, idQuery},
+	}
+
+	if ok := c.service.onSubscribe(c, ev); ok {
+		c.service.cluster.NotifySubscribe(ev)
 	}
 }
 
@@ -165,7 +170,7 @@ func (c *QueryManager) Query(query string, payload []byte) (message.Awaiter, err
 		message.Ssid{idSystem, idQuery, awaiter.id},
 		[]byte(channel),
 		payload,
-	), "")
+	), nil)
 	return awaiter, nil
 }
 

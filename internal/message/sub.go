@@ -124,6 +124,7 @@ type SubscriberType uint8
 const (
 	SubscriberDirect = SubscriberType(iota)
 	SubscriberRemote
+	SubscriberOffline
 )
 
 // Subscriber is a value associated with a subscription.

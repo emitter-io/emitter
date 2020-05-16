@@ -1,5 +1,5 @@
 /**********************************************************************************
-* Copyright (c) 2009-2019 Misakai Ltd.
+* Copyright (c) 2009-2020 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
 * terms of the GNU Affero General Public License as published by the  Free Software
 * Foundation, either version 3 of the License, or(at your option) any later version.
@@ -12,15 +12,16 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package collection
+package crdt
 
 import (
+	"bytes"
 	"sync"
 	"time"
-)
 
-// LWWState represents the internal state
-type LWWState = map[string]LWWTime
+	"github.com/golang/snappy"
+	"github.com/kelindar/binary"
+)
 
 // The expiration cutoff time for GCs
 var gcCutoff = (6 * time.Hour).Nanoseconds()
@@ -123,8 +124,22 @@ func (s *LWWSet) Merge(r *LWWSet) {
 	}
 }
 
-// All gets all items in the set.
-func (s *LWWSet) All() LWWState {
+// Range iterates through the events for a specific prefix.
+func (s *LWWSet) Range(prefix []byte, f func(string) bool) {
+	s.Lock()
+	defer s.Unlock()
+
+	for k, v := range s.Set {
+		if bytes.HasPrefix([]byte(k), prefix) && v.IsAdded() {
+			if !f(k) { // If returns false, stop
+				return
+			}
+		}
+	}
+}
+
+// Clone copies a set into another set
+func (s *LWWSet) Clone() *LWWSet {
 	s.Lock()
 	defer s.Unlock()
 
@@ -132,7 +147,7 @@ func (s *LWWSet) All() LWWState {
 	for key, val := range s.Set {
 		items[key] = val
 	}
-	return items
+	return &LWWSet{Set: items}
 }
 
 // GC collects all the garbage in the set by simply removing it. This currently uses a very
@@ -155,4 +170,92 @@ type clock func() int64
 // Now gets the current time in Unix nanoseconds
 var Now clock = func() int64 {
 	return time.Now().UnixNano()
+}
+
+// ------------------------------------------------------------------------------------
+
+// LWWState represents the internal state
+type LWWState = map[string]LWWTime
+
+type state struct {
+	Keys []string
+	Adds []int64
+	Dels []int64
+}
+
+// Marshal marshals the state into a compresed buffer.
+func (s *LWWSet) Marshal() []byte {
+	s.Lock()
+	defer s.Unlock()
+
+	lww := s.Set
+	msg := state{
+		Keys: make([]string, 0, len(lww)),
+		Adds: make([]int64, 0, len(lww)),
+		Dels: make([]int64, 0, len(lww)),
+	}
+
+	var count int
+	var addOffset, delOffset int64
+	for k, v := range lww {
+		msg.Keys = append(msg.Keys, k)
+		msg.Adds = append(msg.Adds, v.AddTime-addOffset)
+		msg.Dels = append(msg.Dels, v.DelTime-delOffset)
+
+		if addOffset == 0 {
+			addOffset = v.AddTime
+			delOffset = v.DelTime
+		}
+
+		// Since we're iterating over a map, the iteration should be done in pseudo-random
+		// order. Hence, we take advantage of this and break at 100K subscriptions in order
+		// to make sure the gossip message fits under 10MB (max size).
+		if count++; count >= 100000 {
+			break
+		}
+	}
+
+	buf, err := binary.Marshal(msg)
+	if err != nil {
+		panic(err)
+	}
+
+	return snappy.Encode(nil, buf)
+}
+
+// Unmarshal unmarshals the encoded state.
+func (s *LWWSet) Unmarshal(b []byte) error {
+	s.Lock()
+	defer s.Unlock()
+
+	decoded, err := snappy.Decode(nil, b)
+	if err != nil {
+		return err
+	}
+
+	var msg state
+	if err := binary.Unmarshal(decoded, &msg); err != nil {
+		return err
+	}
+
+	var addOffset, delOffset int64
+	out := make(LWWState, len(msg.Keys))
+	for i := 0; i < len(msg.Keys); i++ {
+		k := msg.Keys[i]
+		addTime := msg.Adds[i] + addOffset
+		delTime := msg.Dels[i] + delOffset
+
+		if addOffset == 0 {
+			addOffset = addTime
+			delOffset = delTime
+		}
+
+		out[k] = LWWTime{
+			AddTime: addTime,
+			DelTime: delTime,
+		}
+	}
+
+	s.Set = out
+	return nil
 }

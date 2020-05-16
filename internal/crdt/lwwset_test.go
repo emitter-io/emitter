@@ -1,5 +1,5 @@
 /**********************************************************************************
-* Copyright (c) 2009-2019 Misakai Ltd.
+* Copyright (c) 2009-2020 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
 * terms of the GNU Affero General Public License as published by the  Free Software
 * Foundation, either version 3 of the License, or(at your option) any later version.
@@ -12,7 +12,7 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package collection
+package crdt
 
 import (
 	"fmt"
@@ -184,8 +184,8 @@ func TestLWWESetAll(t *testing.T) {
 	lww.Add("B")
 	lww.Add("C")
 
-	all := lww.All()
-	assert.Equal(t, 3, len(all))
+	all := lww.Clone()
+	assert.Equal(t, 3, len(all.Set))
 }
 
 func TestLWWESetGC(t *testing.T) {
@@ -255,4 +255,54 @@ func setClock(t int64) {
 	lock.Lock()
 	Now = func() int64 { return t }
 	lock.Unlock()
+}
+
+// ------------------------------------------------------------------------------------
+
+func TestMarshal(t *testing.T) {
+	defer restoreClock(Now)
+
+	setClock(0)
+	state := &LWWSet{
+		Set: LWWState{"A": {AddTime: 10, DelTime: 50}},
+	}
+
+	// Encode
+	enc := state.Marshal()
+	assert.Equal(t, []byte{0x7, 0x18, 0x1, 0x1, 0x41, 0x1, 0x14, 0x1, 0x64}, enc)
+
+	// Decode
+	var dec LWWSet
+	err := dec.Unmarshal(enc)
+	assert.NoError(t, err)
+	assert.Equal(t, state, &dec)
+}
+
+// ------------------------------------------------------------------------------------
+
+func TestRange(t *testing.T) {
+	state := &LWWSet{
+		Set: LWWState{
+			"AC": {AddTime: 60, DelTime: 50},
+			"AB": {AddTime: 60, DelTime: 50},
+			"AA": {AddTime: 10, DelTime: 50}, // Deleted
+			"BA": {AddTime: 60, DelTime: 50},
+			"BB": {AddTime: 60, DelTime: 50},
+			"BC": {AddTime: 60, DelTime: 50},
+		},
+	}
+
+	var count int
+	state.Range([]byte("A"), func(_ string) bool {
+		count++
+		return true
+	})
+	assert.Equal(t, 2, count)
+
+	count = 0
+	state.Range(nil, func(_ string) bool {
+		count++
+		return true
+	})
+	assert.Equal(t, 5, count)
 }
