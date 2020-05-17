@@ -102,7 +102,7 @@ func (p *Peer) Send(m *message.Message) error {
 	p.Lock()
 	defer p.Unlock()
 
-	// TODO: Make sure we don't send to a dead peer
+	// Make sure we don't send to a dead peer
 	if p.IsActive() {
 		p.frame = append(p.frame, *m)
 	}
@@ -141,4 +141,26 @@ func (p *Peer) processSendQueue() {
 			logging.LogError("peer", "gossip unicast", err)
 		}
 	}
+}
+
+// ------------------------------------------------------------------------------------
+
+// DeadPeer represents a peer which is no longer online
+type deadPeer struct {
+	name mesh.PeerName
+}
+
+// ID returns the unique identifier of the subsriber.
+func (p *deadPeer) ID() string {
+	return p.name.String()
+}
+
+// Type returns the type of the subscriber.
+func (p *deadPeer) Type() message.SubscriberType {
+	return message.SubscriberOffline
+}
+
+// Send forwards the message to the remote server.
+func (p *deadPeer) Send(m *message.Message) error {
+	return nil
 }

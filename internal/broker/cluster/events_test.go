@@ -17,23 +17,23 @@ package cluster
 import (
 	"testing"
 
-	"github.com/emitter-io/emitter/internal/collection"
+	"github.com/emitter-io/emitter/internal/crdt"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/weaveworks/mesh"
 )
 
 func TestEncodeSubscriptionState(t *testing.T) {
-	defer restoreClock(collection.Now)
+	defer restoreClock(crdt.Now)
 
 	setClock(0)
-	state := (*subscriptionState)(&collection.LWWSet{
-		Set: collection.LWWState{"A": {AddTime: 10, DelTime: 50}},
+	state := (*subscriptionState)(&crdt.LWWSet{
+		Set: crdt.LWWState{"A": {AddTime: 10, DelTime: 50}},
 	})
 
 	// Encode
 	enc := state.Encode()[0]
-	assert.Equal(t, []byte{0x7, 0x18, 0x1, 0x1, 0x41, 0x1, 0x14, 0x1, 0x64}, enc)
+	assert.Equal(t, []byte{0x5, 0x10, 0x1, 0x1, 0x41, 0x14, 0x64}, enc)
 
 	// Decode
 	dec, err := decodeSubscriptionState(enc)
@@ -42,17 +42,20 @@ func TestEncodeSubscriptionState(t *testing.T) {
 }
 
 func TestEncodeSubscriptionEvent(t *testing.T) {
-	defer restoreClock(collection.Now)
+	defer restoreClock(crdt.Now)
 
 	setClock(0)
 	ev := SubscriptionEvent{
-		Ssid: message.Ssid{1, 2, 3, 4, 5},
-		Peer: 657,
-		Conn: 12456,
+		Ssid:    message.Ssid{1, 2, 3, 4, 5},
+		Peer:    657,
+		Conn:    12456,
+		User:    "hello",
+		Channel: []byte("a/b/c/d/e/"),
 	}
 
 	// Encode
 	enc := ev.Encode()
+	assert.Equal(t, 27, len(enc))
 
 	// Decode
 	dec, err := decodeSubscriptionEvent(enc)
@@ -62,16 +65,16 @@ func TestEncodeSubscriptionEvent(t *testing.T) {
 
 // RestoreClock restores the clock time
 func restoreClock(clk func() int64) {
-	collection.Now = clk
+	crdt.Now = clk
 }
 
 // SetClock sets the clock time for testing
 func setClock(t int64) {
-	collection.Now = func() int64 { return t }
+	crdt.Now = func() int64 { return t }
 }
 
-func TestEncodeSubscriptionState_RemoveFor(t *testing.T) {
-	defer restoreClock(collection.Now)
+func TestEncodeSubscriptionState_Range(t *testing.T) {
+	defer restoreClock(crdt.Now)
 
 	setClock(0)
 	state := newSubscriptionState()
@@ -88,15 +91,50 @@ func TestEncodeSubscriptionState_RemoveFor(t *testing.T) {
 
 	// Must have 2 keys alive after removal
 	setClock(int64(21))
-	state.RemoveAll(mesh.PeerName(1))
+
+	state.Range(mesh.PeerName(1), func(ev SubscriptionEvent) {
+		state.Remove(ev.Encode())
+	})
 	assert.Equal(t, 2, countAdded(state))
 }
 
 func countAdded(state *subscriptionState) (added int) {
-	for _, v := range state.All() {
+	for _, v := range state.Clone() {
 		if v.IsAdded() {
 			added++
 		}
 	}
 	return
+}
+
+// Benchmark_SubscriptionEvent/encode-8         	 4270450	       280 ns/op	     112 B/op	       2 allocs/op
+// Benchmark_SubscriptionEvent/decode-8         	 6030177	       199 ns/op	     768 B/op	       3 allocs/op
+func Benchmark_SubscriptionEvent(b *testing.B) {
+	ev := SubscriptionEvent{
+		Ssid:    message.Ssid{1, 2, 3, 4, 5},
+		Peer:    657,
+		Conn:    12456,
+		User:    "hello",
+		Channel: []byte("a/b/c/d/e/"),
+	}
+
+	// Encode
+	b.Run("encode", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ev.Encode()
+		}
+	})
+
+	// Decode
+	enc := []byte(ev.Encode())
+	b.Run("decode", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			decodeSubscriptionState(enc)
+		}
+	})
+
 }

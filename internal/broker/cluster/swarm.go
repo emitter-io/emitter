@@ -27,7 +27,6 @@ import (
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/logging"
-	"github.com/emitter-io/emitter/internal/security"
 	"github.com/weaveworks/mesh"
 )
 
@@ -43,9 +42,9 @@ type Swarm struct {
 	gossip  mesh.Gossip           // The gossip protocol.
 	members *memberlist           // The memberlist of peers.
 
-	OnSubscribe   func(message.Ssid, message.Subscriber) bool // Delegate to invoke when the subscription event is received.
-	OnUnsubscribe func(message.Ssid, message.Subscriber) bool // Delegate to invoke when the subscription event is received.
-	OnMessage     func(*message.Message)                      // Delegate to invoke when a new message is received.
+	OnSubscribe   func(message.Subscriber, *SubscriptionEvent) bool // Delegate to invoke when the subscription event is received.
+	OnUnsubscribe func(message.Subscriber, *SubscriptionEvent) bool // Delegate to invoke when the subscription event is received.
+	OnMessage     func(*message.Message)                            // Delegate to invoke when a new message is received.
 }
 
 // Swarm implements mesh.Gossiper.
@@ -117,11 +116,9 @@ func (s *Swarm) Printf(format string, args ...interface{}) {
 // onPeerOnline occurs when a new peer is created.
 func (s *Swarm) onPeerOnline(peer *Peer) {
 	logging.LogTarget("swarm", "peer created", peer.name)
-
-	// Subscribe to all of its subscriptions
-	for _, c := range peer.subs.All() {
-		s.OnSubscribe(c.Ssid, peer)
-	}
+	s.state.Range(peer.name, func(ev SubscriptionEvent) {
+		s.OnSubscribe(peer, &ev)
+	})
 }
 
 // Occurs when a peer is garbage collected.
@@ -130,16 +127,12 @@ func (s *Swarm) onPeerOffline(name mesh.PeerName) {
 		logging.LogTarget("swarm", "unreachable peer removed", peer.name)
 		peer.Close() // Close the peer on our end
 
-		// Unsubscribe from all active subscriptions and also broadcast the fact
-		// that the peer has gone offline.
-		for _, c := range peer.subs.All() {
-			s.OnUnsubscribe(c.Ssid, peer)
-		}
-
-		// We also need to broadcast the fact that the peer is offline
-		op := newSubscriptionState()
-		op.RemoveAll(name)
-		s.gossip.GossipBroadcast(op)
+		// Range over all of the subscriptions we have
+		dead := &deadPeer{name: name}
+		s.state.Range(name, func(ev SubscriptionEvent) {
+			s.OnUnsubscribe(dead, &ev)  // Notify locally that the subscription is gone
+			s.state.Remove(ev.Encode()) // Remove the state from ourselves
+		})
 	}
 }
 
@@ -235,7 +228,7 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 
 	// Merge and get the delta
 	delta := s.state.Merge(other)
-	for k, v := range other.All() {
+	for k, v := range other.Clone() {
 
 		// Decode the event
 		ev, err := decodeSubscriptionEvent(k)
@@ -253,12 +246,12 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 
 		// If the subscription is added, notify (TODO: use channels)
 		if v.IsAdded() && peer.onSubscribe(k, ev.Ssid) && peer.IsActive() {
-			s.OnSubscribe(ev.Ssid, peer)
+			s.OnSubscribe(peer, &ev)
 		}
 
 		// If the subscription is removed, notify (TODO: use channels)
 		if v.IsRemoved() && peer.onUnsubscribe(k, ev.Ssid) && peer.IsActive() {
-			s.OnUnsubscribe(ev.Ssid, peer)
+			s.OnUnsubscribe(peer, &ev)
 		}
 
 	}
@@ -332,12 +325,7 @@ func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) (err error) {
 }
 
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Swarm) NotifySubscribe(conn security.ID, ssid message.Ssid) {
-	event := SubscriptionEvent{
-		Peer: s.name,
-		Conn: conn,
-		Ssid: ssid,
-	}
+func (s *Swarm) NotifySubscribe(event *SubscriptionEvent) {
 
 	// Add to our global state
 	s.state.Add(event.Encode())
@@ -349,12 +337,7 @@ func (s *Swarm) NotifySubscribe(conn security.ID, ssid message.Ssid) {
 }
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
-func (s *Swarm) NotifyUnsubscribe(conn security.ID, ssid message.Ssid) {
-	event := SubscriptionEvent{
-		Peer: s.name,
-		Conn: conn,
-		Ssid: ssid,
-	}
+func (s *Swarm) NotifyUnsubscribe(event *SubscriptionEvent) {
 
 	// Remove from our global state
 	s.state.Remove(event.Encode())
