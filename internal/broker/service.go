@@ -189,7 +189,7 @@ func (s *Service) NumPeers() int {
 func (s *Service) Listen() (err error) {
 	defer s.Close()
 	s.hookSignals()
-	s.notifyPresenceChange()
+	s.pollPresenceChange()
 
 	// Create the cluster if required
 	if s.cluster != nil {
@@ -253,47 +253,52 @@ func (s *Service) Join(peers ...string) []error {
 }
 
 // notifyPresenceChange sends out an event to notify when a client is subscribed/unsubscribed.
-func (s *Service) notifyPresenceChange() {
+func (s *Service) pollPresenceChange() {
 	go func() {
-		channel := []byte("emitter/presence/")
 		for {
 			select {
 			case <-s.context.Done():
 				return
 			case notif := <-s.presence:
-				if encoded, ok := notif.Encode(); ok {
-					s.publish(message.New(notif.Ssid, channel, encoded), "")
-				}
+				s.notifyPresenceEvent(notif, nil)
 			}
 		}
 	}()
 }
 
+// notifyPresenceChange sends out an event to notify when a client is subscribed/unsubscribed.
+func (s *Service) notifyPresenceEvent(ev *presenceNotify, filter func(message.Subscriber) bool) {
+	channel := []byte("emitter/presence/") // TODO: avoid allocation
+	if encoded, ok := ev.Encode(); ok {
+		s.publish(message.New(ev.Ssid, channel, encoded), filter)
+	}
+}
+
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Service) notifySubscribe(conn *Conn, ssid message.Ssid, channel []byte) {
+func (s *Service) notifySubscribe(ev *cluster.SubscriptionEvent) {
 
 	// If we have a new direct subscriber, issue presence message and publish it
-	if channel != nil {
-		s.presence <- newPresenceNotify(ssid, presenceSubscribeEvent, string(channel), conn.ID(), conn.username)
+	if ev.Channel != nil {
+		s.presence <- newPresenceNotify(presenceSubscribeEvent, ev)
 	}
 
 	// Notify our cluster that the client just subscribed.
 	if s.cluster != nil {
-		s.cluster.NotifySubscribe(conn.luid, ssid)
+		s.cluster.NotifySubscribe(ev)
 	}
 }
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
-func (s *Service) notifyUnsubscribe(conn *Conn, ssid message.Ssid, channel []byte) {
+func (s *Service) notifyUnsubscribe(ev *cluster.SubscriptionEvent) {
 
 	// If we have a new direct subscriber, issue presence message and publish it
-	if channel != nil {
-		s.presence <- newPresenceNotify(ssid, presenceUnsubscribeEvent, string(channel), conn.ID(), conn.username)
+	if ev.Channel != nil {
+		s.presence <- newPresenceNotify(presenceUnsubscribeEvent, ev)
 	}
 
 	// Notify our cluster that the client just unsubscribed.
 	if s.cluster != nil {
-		s.cluster.NotifyUnsubscribe(conn.luid, ssid)
+		s.cluster.NotifyUnsubscribe(ev)
 	}
 }
 
@@ -385,8 +390,8 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 }
 
 // Occurs when a peer has a new subscription.
-func (s *Service) onSubscribe(ssid message.Ssid, sub message.Subscriber) bool {
-	if _, err := s.subscriptions.Subscribe(ssid, sub); err != nil {
+func (s *Service) onSubscribe(sub message.Subscriber, ev *cluster.SubscriptionEvent) bool {
+	if _, err := s.subscriptions.Subscribe(ev.Ssid, sub); err != nil {
 		return false // Unable to subscribe
 	}
 
@@ -394,11 +399,19 @@ func (s *Service) onSubscribe(ssid message.Ssid, sub message.Subscriber) bool {
 }
 
 // Occurs when a peer has unsubscribed.
-func (s *Service) onUnsubscribe(ssid message.Ssid, sub message.Subscriber) (ok bool) {
-	subscribers := s.subscriptions.Lookup(ssid, nil)
+func (s *Service) onUnsubscribe(sub message.Subscriber, ev *cluster.SubscriptionEvent) (ok bool) {
+	subscribers := s.subscriptions.Lookup(ev.Ssid, nil)
 	if ok = subscribers.Contains(sub); ok {
-		s.subscriptions.Unsubscribe(ssid, sub)
+		s.subscriptions.Unsubscribe(ev.Ssid, sub)
 	}
+
+	// If the peer is offline, notify the presence
+	if sub.Type() == message.SubscriberOffline {
+		s.notifyPresenceEvent(newPresenceNotify(presenceUnsubscribeEvent, ev), func(s message.Subscriber) bool {
+			return s.Type() == message.SubscriberDirect
+		})
+	}
+
 	return
 }
 
@@ -434,11 +447,8 @@ func (s *Service) Survey(query string, payload []byte) (message.Awaiter, error) 
 }
 
 // Publish publishes a message to everyone and returns the number of outgoing bytes written.
-func (s *Service) publish(m *message.Message, exclude string) (n int64) {
+func (s *Service) publish(m *message.Message, filter func(message.Subscriber) bool) (n int64) {
 	size := m.Size()
-	filter := func(s message.Subscriber) bool {
-		return s.ID() != exclude
-	}
 
 	for _, subscriber := range s.subscriptions.Lookup(m.Ssid(), filter) {
 		subscriber.Send(m)
@@ -476,7 +486,7 @@ func (s *Service) selfPublish(channelName string, payload []byte) {
 			message.NewSsid(s.License.Contract(), channel.Query),
 			channel.Channel,
 			payload,
-		), "")
+		), nil)
 	}
 }
 

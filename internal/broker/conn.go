@@ -24,7 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/emitter-io/address"
+	"github.com/emitter-io/emitter/internal/broker/cluster"
 	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
@@ -33,7 +33,9 @@ import (
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/stats"
+	"github.com/kelindar/binary/nocopy"
 	"github.com/kelindar/rate"
+	"github.com/weaveworks/mesh"
 )
 
 const defaultReadRate = 100000
@@ -68,7 +70,7 @@ func (s *Service) newConn(t net.Conn, readRate int) *Conn {
 	}
 
 	// Generate a globally unique id as well
-	c.guid = c.luid.Unique(uint64(address.GetHardware()), "emitter")
+	c.guid = c.luid.Unique(uint64(s.LocalName()), "emitter")
 	if readRate == 0 {
 		readRate = defaultReadRate
 	}
@@ -270,12 +272,16 @@ func (c *Conn) Subscribe(ssid message.Ssid, channel []byte) {
 
 	// Add the subscription
 	if first := c.subs.Increment(ssid, channel); first {
+		ev := &cluster.SubscriptionEvent{
+			Peer:    mesh.PeerName(c.service.LocalName()),
+			Conn:    c.luid,
+			User:    nocopy.String(c.username),
+			Ssid:    ssid,
+			Channel: channel,
+		}
 
-		// Subscribe the subscriber
-		c.service.onSubscribe(ssid, c)
-
-		// Broadcast the subscription within our cluster
-		c.service.notifySubscribe(c, ssid, channel)
+		c.service.onSubscribe(c, ev)  // Subscribe the subscriber
+		c.service.notifySubscribe(ev) // Broadcast the subscription within our cluster
 	}
 }
 
@@ -286,12 +292,16 @@ func (c *Conn) Unsubscribe(ssid message.Ssid, channel []byte) {
 
 	// Decrement the counter and if there's no more subscriptions, notify everyone.
 	if last := c.subs.Decrement(ssid); last {
+		ev := &cluster.SubscriptionEvent{
+			Peer:    mesh.PeerName(c.service.LocalName()),
+			Conn:    c.luid,
+			User:    nocopy.String(c.username),
+			Ssid:    ssid,
+			Channel: channel,
+		}
 
-		// Unsubscribe the subscriber
-		c.service.onUnsubscribe(ssid, c)
-
-		// Broadcast the unsubscription within our cluster
-		c.service.notifyUnsubscribe(c, ssid, channel)
+		c.service.onUnsubscribe(c, ev)  // Unsubscribe the subscriber
+		c.service.notifyUnsubscribe(ev) // Broadcast the unsubscription within our cluster
 	}
 }
 
@@ -304,8 +314,16 @@ func (c *Conn) Close() error {
 	// Unsubscribe from everything, no need to lock since each Unsubscribe is
 	// already locked. Locking the 'Close()' would result in a deadlock.
 	for _, counter := range c.subs.All() {
-		c.service.onUnsubscribe(counter.Ssid, c)
-		c.service.notifyUnsubscribe(c, counter.Ssid, counter.Channel)
+		ev := &cluster.SubscriptionEvent{
+			Peer:    mesh.PeerName(c.service.LocalName()),
+			Conn:    c.luid,
+			User:    nocopy.String(c.username),
+			Ssid:    counter.Ssid,
+			Channel: counter.Channel,
+		}
+
+		c.service.onUnsubscribe(c, ev)
+		c.service.notifyUnsubscribe(ev)
 	}
 
 	// Close the transport and decrement the connection counter

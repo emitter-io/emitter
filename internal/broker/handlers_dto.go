@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/emitter-io/emitter/internal/broker/cluster"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security"
@@ -174,15 +175,15 @@ type presenceNotify struct {
 }
 
 // newPresenceNotify creates a new notification payload.
-func newPresenceNotify(ssid message.Ssid, event presenceEvent, channel string, id string, username string) *presenceNotify {
+func newPresenceNotify(event presenceEvent, ev *cluster.SubscriptionEvent) *presenceNotify {
 	return &presenceNotify{
-		Ssid:    message.NewSsidForPresence(ssid),
+		Ssid:    message.NewSsidForPresence(ev.Ssid),
 		Time:    time.Now().UTC().Unix(),
 		Event:   event,
-		Channel: channel,
+		Channel: string(ev.Channel),
 		Who: presenceInfo{
-			ID:       id,
-			Username: username,
+			ID:       ev.ConnID(),
+			Username: string(ev.User),
 		},
 	}
 }

@@ -96,8 +96,14 @@ func TestNotify(t *testing.T) {
 
 	// TODO: Test actual correctness as well
 	assert.NotPanics(t, func() {
-		s.NotifySubscribe(5, []uint32{1, 2, 3})
-		s.NotifyUnsubscribe(5, []uint32{1, 2, 3})
+		s.NotifySubscribe(&SubscriptionEvent{
+			Conn: 5,
+			Ssid: []uint32{1, 2, 3},
+		})
+		s.NotifyUnsubscribe(&SubscriptionEvent{
+			Conn: 5,
+			Ssid: []uint32{1, 2, 3},
+		})
 	})
 }
 
@@ -122,7 +128,7 @@ func Test_merge(t *testing.T) {
 
 	// Create a new swarm and check if it was constructed well
 	s := NewSwarm(&cfg)
-	s.OnSubscribe = func(message.Ssid, message.Subscriber) bool {
+	s.OnSubscribe = func(message.Subscriber, *SubscriptionEvent) bool {
 		subscribed = true
 		return true
 	}
