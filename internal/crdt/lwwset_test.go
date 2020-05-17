@@ -16,10 +16,13 @@ package crdt
 
 import (
 	"fmt"
+	"io/ioutil"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/golang/snappy"
+	"github.com/kelindar/binary"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -305,4 +308,54 @@ func TestRange(t *testing.T) {
 		return true
 	})
 	assert.Equal(t, 5, count)
+}
+
+// 15852470 -> 1431080 bytes, 9.03%
+func TestSizeMarshal(t *testing.T) {
+	state, size := loadTestData(t)
+
+	// Encode
+	enc := state.Marshal()
+
+	fmt.Printf("%d -> %d bytes, %.2f%% \n", size, len(enc), float64(len(enc))/float64(size)*100)
+	assert.Greater(t, 20000000, len(enc))
+}
+
+// Benchmark_Marshal/encode-8         	      19	  63264447 ns/op	17334484 B/op	      25 allocs/op
+// Benchmark_Marshal/decode-8         	      56	  21893391 ns/op	17475675 B/op	    3936 allocs/op
+func Benchmark_Marshal(b *testing.B) {
+	state, _ := loadTestData(b)
+
+	// Encode
+	b.Run("encode", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			state.Marshal()
+		}
+	})
+
+	// Decode
+	enc := state.Marshal()
+	b.Run("decode", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var state LWWSet
+			state.Unmarshal(enc)
+		}
+	})
+}
+
+func loadTestData(t assert.TestingT) (state LWWSet, size int) {
+	buf, err := ioutil.ReadFile("test.bin")
+	assert.NoError(t, err)
+
+	decoded, err := snappy.Decode(nil, buf)
+	assert.NoError(t, err)
+
+	err = binary.Unmarshal(decoded, &state.Set)
+	assert.NoError(t, err)
+	size = len(decoded)
+	return
 }

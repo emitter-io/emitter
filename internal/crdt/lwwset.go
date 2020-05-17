@@ -16,11 +16,13 @@ package crdt
 
 import (
 	"bytes"
+	"sort"
 	"sync"
 	"time"
 
 	"github.com/golang/snappy"
 	"github.com/kelindar/binary"
+	"github.com/kelindar/binary/nocopy"
 )
 
 // The expiration cutoff time for GCs
@@ -177,10 +179,10 @@ var Now clock = func() int64 {
 // LWWState represents the internal state
 type LWWState = map[string]LWWTime
 
-type state struct {
-	Keys []string
-	Adds []int64
-	Dels []int64
+type entry struct {
+	Value   nocopy.String
+	AddTime int64
+	DelTime int64
 }
 
 // Marshal marshals the state into a compresed buffer.
@@ -188,32 +190,27 @@ func (s *LWWSet) Marshal() []byte {
 	s.Lock()
 	defer s.Unlock()
 
-	lww := s.Set
-	msg := state{
-		Keys: make([]string, 0, len(lww)),
-		Adds: make([]int64, 0, len(lww)),
-		Dels: make([]int64, 0, len(lww)),
-	}
-
-	var count int
-	var addOffset, delOffset int64
-	for k, v := range lww {
-		msg.Keys = append(msg.Keys, k)
-		msg.Adds = append(msg.Adds, v.AddTime-addOffset)
-		msg.Dels = append(msg.Dels, v.DelTime-delOffset)
-
-		if addOffset == 0 {
-			addOffset = v.AddTime
-			delOffset = v.DelTime
-		}
+	count, breakout := 0, 100000
+	msg := make([]entry, 0, breakout)
+	for k, v := range s.Set {
+		msg = append(msg, entry{
+			Value:   nocopy.String(k),
+			AddTime: v.AddTime,
+			DelTime: v.DelTime,
+		})
 
 		// Since we're iterating over a map, the iteration should be done in pseudo-random
 		// order. Hence, we take advantage of this and break at 100K subscriptions in order
 		// to make sure the gossip message fits under 10MB (max size).
-		if count++; count >= 100000 {
+		if count++; count >= breakout {
 			break
 		}
 	}
+
+	// Sort the values in order to compress more
+	sort.Slice(msg, func(i, j int) bool {
+		return msg[i].Value < msg[j].Value
+	})
 
 	buf, err := binary.Marshal(msg)
 	if err != nil {
@@ -228,34 +225,25 @@ func (s *LWWSet) Unmarshal(b []byte) error {
 	s.Lock()
 	defer s.Unlock()
 
+	if s.Set == nil {
+		s.Set = make(LWWState, 0)
+	}
+
 	decoded, err := snappy.Decode(nil, b)
 	if err != nil {
 		return err
 	}
 
-	var msg state
+	var msg []entry
 	if err := binary.Unmarshal(decoded, &msg); err != nil {
 		return err
 	}
 
-	var addOffset, delOffset int64
-	out := make(LWWState, len(msg.Keys))
-	for i := 0; i < len(msg.Keys); i++ {
-		k := msg.Keys[i]
-		addTime := msg.Adds[i] + addOffset
-		delTime := msg.Dels[i] + delOffset
-
-		if addOffset == 0 {
-			addOffset = addTime
-			delOffset = delTime
-		}
-
-		out[k] = LWWTime{
-			AddTime: addTime,
-			DelTime: delTime,
+	for _, v := range msg {
+		s.Set[string(v.Value)] = LWWTime{
+			AddTime: v.AddTime,
+			DelTime: v.DelTime,
 		}
 	}
-
-	s.Set = out
 	return nil
 }
