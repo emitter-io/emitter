@@ -1,6 +1,21 @@
+/**********************************************************************************
+* Copyright (c) 2009-2020 Misakai Ltd.
+* This program is free software: you can redistribute it and/or modify it under the
+* terms of the GNU Affero General Public License as published by the  Free Software
+* Foundation, either version 3 of the License, or(at your option) any later version.
+*
+* This program is distributed  in the hope that it  will be useful, but WITHOUT ANY
+* WARRANTY;  without even  the implied warranty of MERCHANTABILITY or FITNESS FOR A
+* PARTICULAR PURPOSE.  See the GNU Affero General Public License  for  more details.
+*
+* You should have  received a copy  of the  GNU Affero General Public License along
+* with this program. If not, see<http://www.gnu.org/licenses/>.
+************************************************************************************/
+
 package cluster
 
 import (
+	"github.com/emitter-io/emitter/internal/event"
 	"testing"
 
 	"github.com/emitter-io/emitter/internal/config"
@@ -96,11 +111,11 @@ func TestNotify(t *testing.T) {
 
 	// TODO: Test actual correctness as well
 	assert.NotPanics(t, func() {
-		s.NotifySubscribe(&SubscriptionEvent{
+		s.NotifySubscribe(&event.Subscription{
 			Conn: 5,
 			Ssid: []uint32{1, 2, 3},
 		})
-		s.NotifyUnsubscribe(&SubscriptionEvent{
+		s.NotifyUnsubscribe(&event.Subscription{
 			Conn: 5,
 			Ssid: []uint32{1, 2, 3},
 		})
@@ -114,21 +129,21 @@ func Test_merge(t *testing.T) {
 		AdvertiseAddr: ":4001",
 	}
 
-	ev1 := SubscriptionEvent{
+	ev1 := event.Subscription{
 		Ssid: []uint32{1, 2, 3},
 		Peer: 2,
 		Conn: 30,
 	}
 
-	in := newSubscriptionState()
-	in.Add(ev1.Encode())
+	in := event.NewState()
+	in.Add(ev1)
 
 	// Counter of events
 	var subscribed bool
 
 	// Create a new swarm and check if it was constructed well
 	s := NewSwarm(&cfg)
-	s.OnSubscribe = func(message.Subscriber, *SubscriptionEvent) bool {
+	s.OnSubscribe = func(message.Subscriber, *event.Subscription) bool {
 		subscribed = true
 		return true
 	}
