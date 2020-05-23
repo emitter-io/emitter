@@ -23,7 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/emitter-io/emitter/internal/broker/cluster"
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/weaveworks/mesh"
@@ -61,8 +61,8 @@ func newQueryManager(s *Service) *QueryManager {
 
 // Start subscribes the manager to the query channel.
 func (c *QueryManager) Start() {
-	ev := &cluster.SubscriptionEvent{
-		Peer: mesh.PeerName(c.service.LocalName()),
+	ev := &event.Subscription{
+		Peer: c.service.LocalName(),
 		Conn: c.luid,
 		Ssid: message.Ssid{idSystem, idQuery},
 	}

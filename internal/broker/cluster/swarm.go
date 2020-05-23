@@ -25,6 +25,7 @@ import (
 	"github.com/emitter-io/address"
 	"github.com/emitter-io/emitter/internal/async"
 	"github.com/emitter-io/emitter/internal/config"
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/weaveworks/mesh"
@@ -37,14 +38,14 @@ type Swarm struct {
 	actions chan func()           // The action queue for the peer.
 	cancel  context.CancelFunc    // The cancellation function.
 	config  *config.ClusterConfig // The configuration for the cluster.
-	state   *subscriptionState    // The state to synchronise.
+	state   *event.State          // The state to synchronise.
 	router  *mesh.Router          // The mesh router.
 	gossip  mesh.Gossip           // The gossip protocol.
 	members *memberlist           // The memberlist of peers.
 
-	OnSubscribe   func(message.Subscriber, *SubscriptionEvent) bool // Delegate to invoke when the subscription event is received.
-	OnUnsubscribe func(message.Subscriber, *SubscriptionEvent) bool // Delegate to invoke when the subscription event is received.
-	OnMessage     func(*message.Message)                            // Delegate to invoke when a new message is received.
+	OnSubscribe   func(message.Subscriber, *event.Subscription) bool // Delegate to invoke when the subscription event is received.
+	OnUnsubscribe func(message.Subscriber, *event.Subscription) bool // Delegate to invoke when the subscription event is received.
+	OnMessage     func(*message.Message)                             // Delegate to invoke when a new message is received.
 }
 
 // Swarm implements mesh.Gossiper.
@@ -56,7 +57,7 @@ func NewSwarm(cfg *config.ClusterConfig) *Swarm {
 		name:    getLocalPeerName(cfg),
 		actions: make(chan func()),
 		config:  cfg,
-		state:   newSubscriptionState(),
+		state:   event.NewState(),
 	}
 
 	// Get the cluster binding address
@@ -116,7 +117,7 @@ func (s *Swarm) Printf(format string, args ...interface{}) {
 // onPeerOnline occurs when a new peer is created.
 func (s *Swarm) onPeerOnline(peer *Peer) {
 	logging.LogTarget("swarm", "peer created", peer.name)
-	s.state.Range(peer.name, func(ev SubscriptionEvent) {
+	s.state.SubscriptionsOf(peer.name, func(ev event.Subscription) {
 		s.OnSubscribe(peer, &ev)
 	})
 }
@@ -129,9 +130,9 @@ func (s *Swarm) onPeerOffline(name mesh.PeerName) {
 
 		// Range over all of the subscriptions we have
 		dead := &deadPeer{name: name}
-		s.state.Range(name, func(ev SubscriptionEvent) {
-			s.OnUnsubscribe(dead, &ev)  // Notify locally that the subscription is gone
-			s.state.Remove(ev.Encode()) // Remove the state from ourselves
+		s.state.SubscriptionsOf(name, func(ev event.Subscription) {
+			s.OnUnsubscribe(dead, &ev) // Notify locally that the subscription is gone
+			s.state.Remove(ev)         // Remove the state from ourselves
 		})
 	}
 }
@@ -221,40 +222,32 @@ func (s *Swarm) Join(peers ...string) (errs []error) {
 func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 
 	// Decode the state we just received
-	other, err := decodeSubscriptionState(buf)
+	other, err := event.DecodeState(buf)
 	if err != nil {
 		return nil, err
 	}
 
 	// Merge and get the delta
 	delta := s.state.Merge(other)
-	for k, v := range other.Clone() {
-
-		// Decode the event
-		ev, err := decodeSubscriptionEvent(k)
-		if err != nil {
-			return nil, err
-		}
-
-		// Skip ourselves
-		if ev.Peer == s.router.Ourself.Name {
-			continue
+	other.Subscriptions(func(ev event.Subscription, t event.Time) {
+		if ev.Peer == uint64(s.router.Ourself.Name) {
+			return // Skip ourselves
 		}
 
 		// Find the active peer for this subscription event
-		peer := s.FindPeer(ev.Peer)
+		encoded := ev.Encode()
+		peer := s.FindPeer(mesh.PeerName(ev.Peer))
 
 		// If the subscription is added, notify (TODO: use channels)
-		if v.IsAdded() && peer.onSubscribe(k, ev.Ssid) && peer.IsActive() {
+		if t.IsAdded() && peer.onSubscribe(encoded, ev.Ssid) && peer.IsActive() {
 			s.OnSubscribe(peer, &ev)
 		}
 
 		// If the subscription is removed, notify (TODO: use channels)
-		if v.IsRemoved() && peer.onUnsubscribe(k, ev.Ssid) && peer.IsActive() {
+		if t.IsRemoved() && peer.onUnsubscribe(encoded, ev.Ssid) && peer.IsActive() {
 			s.OnUnsubscribe(peer, &ev)
 		}
-
-	}
+	})
 
 	return delta, nil
 }
@@ -325,26 +318,26 @@ func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) (err error) {
 }
 
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Swarm) NotifySubscribe(event *SubscriptionEvent) {
+func (s *Swarm) NotifySubscribe(ev *event.Subscription) {
 
 	// Add to our global state
-	s.state.Add(event.Encode())
+	s.state.Add(ev)
 
 	// Create a delta for broadcasting just this operation
-	op := newSubscriptionState()
-	op.Add(event.Encode())
+	op := event.NewState()
+	op.Add(ev)
 	s.gossip.GossipBroadcast(op)
 }
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
-func (s *Swarm) NotifyUnsubscribe(event *SubscriptionEvent) {
+func (s *Swarm) NotifyUnsubscribe(ev *event.Subscription) {
 
 	// Remove from our global state
-	s.state.Remove(event.Encode())
+	s.state.Remove(ev)
 
 	// Create a delta for broadcasting just this operation
-	op := newSubscriptionState()
-	op.Remove(event.Encode())
+	op := event.NewState()
+	op.Remove(ev)
 	s.gossip.GossipBroadcast(op)
 }
 

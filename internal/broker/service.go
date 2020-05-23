@@ -35,6 +35,7 @@ import (
 	"github.com/emitter-io/emitter/internal/broker/cluster"
 	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"github.com/emitter-io/emitter/internal/config"
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/listener"
 	"github.com/emitter-io/emitter/internal/network/websocket"
@@ -275,7 +276,7 @@ func (s *Service) notifyPresenceEvent(ev *presenceNotify, filter func(message.Su
 }
 
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Service) notifySubscribe(ev *cluster.SubscriptionEvent) {
+func (s *Service) notifySubscribe(ev *event.Subscription) {
 
 	// If we have a new direct subscriber, issue presence message and publish it
 	if ev.Channel != nil {
@@ -289,7 +290,7 @@ func (s *Service) notifySubscribe(ev *cluster.SubscriptionEvent) {
 }
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
-func (s *Service) notifyUnsubscribe(ev *cluster.SubscriptionEvent) {
+func (s *Service) notifyUnsubscribe(ev *event.Subscription) {
 
 	// If we have a new direct subscriber, issue presence message and publish it
 	if ev.Channel != nil {
@@ -390,7 +391,7 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 }
 
 // Occurs when a peer has a new subscription.
-func (s *Service) onSubscribe(sub message.Subscriber, ev *cluster.SubscriptionEvent) bool {
+func (s *Service) onSubscribe(sub message.Subscriber, ev *event.Subscription) bool {
 	if _, err := s.subscriptions.Subscribe(ev.Ssid, sub); err != nil {
 		return false // Unable to subscribe
 	}
@@ -399,7 +400,7 @@ func (s *Service) onSubscribe(sub message.Subscriber, ev *cluster.SubscriptionEv
 }
 
 // Occurs when a peer has unsubscribed.
-func (s *Service) onUnsubscribe(sub message.Subscriber, ev *cluster.SubscriptionEvent) (ok bool) {
+func (s *Service) onUnsubscribe(sub message.Subscriber, ev *event.Subscription) (ok bool) {
 	subscribers := s.subscriptions.Lookup(ev.Ssid, nil)
 	if ok = subscribers.Contains(sub); ok {
 		s.subscriptions.Unsubscribe(ev.Ssid, sub)
