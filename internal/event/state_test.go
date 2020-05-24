@@ -68,12 +68,20 @@ func TestMergeState(t *testing.T) {
 	state2 := NewState()
 	state2.Remove(ev)
 
-	// Encode
+	// Merge
 	delta := state1.Merge(state2)
 	assert.Equal(t, state2, delta)
-	state2.Subscriptions(func(_ Subscription, v Time) {
+
+	state1.Subscriptions(func(_ Subscription, v Time) {
 		assert.Equal(t, Time{
 			AddTime: 20,
+			DelTime: 50,
+		}, v)
+	})
+
+	state2.Subscriptions(func(_ Subscription, v Time) {
+		assert.Equal(t, Time{
+			AddTime: 0,
 			DelTime: 50,
 		}, v)
 	})
