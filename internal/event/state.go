@@ -61,9 +61,9 @@ func (st *State) Encode() [][]byte {
 // and returns our resulting, complete state.
 func (st *State) Merge(other mesh.GossipData) (complete mesh.GossipData) {
 	otherState := other.(*State)
-	for typ, lww := range otherState.m {
-		otherLww := st.m[typ] // Get the corresponding set to merge with
-		lww.Merge(&otherLww)  // Merges and changes otherState to be a delta
+	for typ, lww := range st.m {
+		otherLww := otherState.m[typ] // Get the corresponding set to merge with
+		lww.Merge(&otherLww)          // Merges and changes otherState to be a delta
 	}
 
 	// Return the delta after merging
