@@ -39,7 +39,7 @@ func newSampler(s *Service, m stats.Measurer) stats.Snapshotter {
 func (s *sampler) Snapshot() (snapshot []byte) {
 	stat := s.service.measurer
 	serv := s.service
-	node := address.Fingerprint(serv.LocalName())
+	node := address.Fingerprint(serv.ID())
 	addr := serv.Config.Addr()
 
 	// Track runtime information

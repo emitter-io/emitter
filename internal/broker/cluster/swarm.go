@@ -16,6 +16,7 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -114,6 +115,16 @@ func (s *Swarm) Printf(format string, args ...interface{}) {
 	}
 }
 
+// findPeer retrieves a peer.
+func (s *Swarm) findPeer(name mesh.PeerName) *Peer {
+	peer, added := s.members.GetOrAdd(name)
+	if added {
+		s.onPeerOnline(peer)
+	}
+
+	return peer
+}
+
 // onPeerOnline occurs when a new peer is created.
 func (s *Swarm) onPeerOnline(peer *Peer) {
 	logging.LogTarget("swarm", "peer created", peer.name)
@@ -137,14 +148,14 @@ func (s *Swarm) onPeerOffline(name mesh.PeerName) {
 	}
 }
 
-// FindPeer retrieves a peer.
-func (s *Swarm) FindPeer(name mesh.PeerName) *Peer {
-	peer, added := s.members.GetOrAdd(name)
-	if added {
-		s.onPeerOnline(peer)
+// SendTo sends a message to a peer.
+func (s *Swarm) SendTo(name mesh.PeerName, msg *message.Message) error {
+	peer := s.findPeer(name)
+	if !peer.IsActive() {
+		return errors.New("swarm: unable to reply to a request, peer is not active")
 	}
 
-	return peer
+	return peer.Send(msg)
 }
 
 // ID returns the local node ID.
@@ -236,7 +247,7 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 
 		// Find the active peer for this subscription event
 		encoded := ev.Encode()
-		peer := s.FindPeer(mesh.PeerName(ev.Peer))
+		peer := s.findPeer(mesh.PeerName(ev.Peer))
 
 		// If the subscription is added, notify (TODO: use channels)
 		if t.IsAdded() && peer.onSubscribe(encoded, ev.Ssid) && peer.IsActive() {
