@@ -15,11 +15,11 @@
 package event
 
 import (
-	"github.com/kelindar/binary/nocopy"
 	"testing"
 
 	"github.com/emitter-io/emitter/internal/event/crdt"
 	"github.com/emitter-io/emitter/internal/message"
+	"github.com/kelindar/binary/nocopy"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,22 +34,35 @@ func setClock(t int64) {
 
 func TestEncodeSubscriptionState(t *testing.T) {
 	defer restoreClock(crdt.Now)
+	for _, tc := range []struct {
+		durable bool
+	}{
+		{durable: true},
+		{durable: false},
+	} {
+		state := NewState(tc.durable)
+		setClock(10)
+		state.Add(Subscription{
+			Channel: nocopy.Bytes("A"),
+		})
 
-	state := NewState()
+		// Encode
+		enc := state.Encode()[0]
+		assert.Equal(t, []byte{0xd, 0x30, 0x1, 0x0, 0x1, 0x6, 0x0, 0x0, 0x0, 0x1, 0x41, 0x0, 0x2, 0x14, 0x0}, enc)
 
-	setClock(10)
-	state.Add(Subscription{
-		Channel: nocopy.Bytes("A"),
-	})
+		// Decode
+		dec, err := DecodeState(enc)
+		assert.NoError(t, err)
+		dec.Subscriptions(func(k Subscription, v Time) {
+			assert.Equal(t, "A", string(k.Channel))
+			assert.Equal(t, Time{
+				AddTime: 10,
+				DelTime: 0,
+			}, v)
+		})
 
-	// Encode
-	enc := state.Encode()[0]
-	assert.Equal(t, []byte{0x1, 0x0, 0x1, 0x14, 0x0, 0x6, 0x0, 0x0, 0x0, 0x1, 0x41, 0x0}, enc)
-
-	// Decode
-	dec, err := DecodeState(enc)
-	assert.NoError(t, err)
-	assert.Equal(t, state, dec)
+		state.Close()
+	}
 }
 
 func TestMergeState(t *testing.T) {
@@ -60,12 +73,12 @@ func TestMergeState(t *testing.T) {
 
 	// Add to state 1
 	setClock(20)
-	state1 := NewState()
+	state1 := NewState(false)
 	state1.Add(ev)
 
 	// Remove from state 2
 	setClock(50)
-	state2 := NewState()
+	state2 := NewState(false)
 	state2.Remove(ev)
 
 	// Merge
@@ -85,13 +98,20 @@ func TestMergeState(t *testing.T) {
 			DelTime: 50,
 		}, v)
 	})
+
+	// Merge with zero delta
+	state3 := NewState(false)
+	state3.Remove(ev)
+	delta = state3.Merge(state2)
+	assert.Nil(t, delta)
 }
 
 func TestSubscriptions(t *testing.T) {
 	defer restoreClock(crdt.Now)
 
 	setClock(0)
-	state := NewState()
+	state := NewState(false)
+	defer state.Close()
 
 	for i := 1; i <= 10; i++ {
 		ev := Subscription{Ssid: message.Ssid{1}, Peer: uint64(i) % 3, Conn: 777}
@@ -119,7 +139,7 @@ func TestSubscriptions(t *testing.T) {
 }
 
 func countAdded(state *State) (added int) {
-	set := state.m[typeSubscription]
+	set := state.subsets[typeSubscription]
 	set.Range(nil, func(_ string, v Time) bool {
 		if v.IsAdded() {
 			added++

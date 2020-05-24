@@ -147,7 +147,7 @@ func Test_merge(t *testing.T) {
 		Conn: 30,
 	}
 
-	in := event.NewState()
+	in := event.NewState(false)
 	in.Add(ev1)
 
 	// Counter of events

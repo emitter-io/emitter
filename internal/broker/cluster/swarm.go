@@ -58,7 +58,7 @@ func NewSwarm(cfg *config.ClusterConfig) *Swarm {
 		name:    getLocalPeerName(cfg),
 		actions: make(chan func()),
 		config:  cfg,
-		state:   event.NewState(),
+		state:   event.NewState(true),
 	}
 
 	// Get the cluster binding address
@@ -335,7 +335,7 @@ func (s *Swarm) NotifySubscribe(ev *event.Subscription) {
 	s.state.Add(ev)
 
 	// Create a delta for broadcasting just this operation
-	op := event.NewState()
+	op := event.NewState(false)
 	op.Add(ev)
 	s.gossip.GossipBroadcast(op)
 }
@@ -347,7 +347,7 @@ func (s *Swarm) NotifyUnsubscribe(ev *event.Subscription) {
 	s.state.Remove(ev)
 
 	// Create a delta for broadcasting just this operation
-	op := event.NewState()
+	op := event.NewState(false)
 	op.Remove(ev)
 	s.gossip.GossipBroadcast(op)
 }
