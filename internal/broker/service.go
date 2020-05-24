@@ -34,6 +34,7 @@ import (
 	"github.com/emitter-io/address"
 	"github.com/emitter-io/emitter/internal/broker/cluster"
 	"github.com/emitter-io/emitter/internal/broker/keygen"
+	"github.com/emitter-io/emitter/internal/broker/survey"
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
@@ -63,7 +64,7 @@ type Service struct {
 	tcp           *tcp.Server          // The underlying TCP server.
 	cluster       *cluster.Swarm       // The gossip-based cluster mechanism.
 	presence      chan *presenceNotify // The channel for presence notifications.
-	querier       *QueryManager        // The generic query manager.
+	surveyor      *survey.Surveyor     // The generic query manager.
 	contracts     contract.Provider    // The contract provider for the service.
 	storage       storage.Storage      // The storage provider for the service.
 	monitor       monitor.Storage      // The storage provider for stats.
@@ -92,7 +93,6 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	// Attach handlers
 	s.http.Handler = mux
 	s.tcp.OnAccept = s.onAcceptConn
-	s.querier = newQueryManager(s)
 
 	// Parse the license
 	if s.License, err = license.Parse(cfg.License); err != nil {
@@ -103,11 +103,8 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	if cfg.Cluster != nil {
 		s.cluster = cluster.NewSwarm(cfg.Cluster)
 		s.cluster.OnMessage = s.onPeerMessage
-		s.cluster.OnSubscribe = s.onSubscribe
-		s.cluster.OnUnsubscribe = s.onUnsubscribe
-
-		// Attach query handlers
-		s.querier.HandleFunc(s)
+		s.cluster.OnSubscribe = s.Subscribe
+		s.cluster.OnUnsubscribe = s.Unsubscribe
 	}
 
 	// Load the logging provider
@@ -117,7 +114,6 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	// Load the storage provider
 	ssdstore := storage.NewSSD(s)
 	memstore := storage.NewInMemory(s)
-	s.querier.HandleFunc(ssdstore, memstore)
 	s.storage = config.LoadProvider(cfg.Storage, storage.NewNoop(), memstore, ssdstore).(storage.Storage)
 	logging.LogTarget("service", "configured message storage", s.storage.Name())
 
@@ -132,7 +128,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	logging.LogTarget("service", "configured contracts provider", s.contracts.Name())
 
 	// Load the monitor storage provider
-	nodeName := address.Fingerprint(s.LocalName()).String()
+	nodeName := address.Fingerprint(s.ID()).String()
 	sampler := newSampler(s, s.measurer)
 	s.monitor = config.LoadProvider(cfg.Monitor,
 		monitor.NewSelf(sampler, s.selfPublish),
@@ -142,6 +138,12 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		monitor.NewPrometheus(sampler, mux),
 	).(monitor.Storage)
 	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
+
+	// Attach survey handlers
+	s.surveyor = survey.New(s, s.cluster)
+	if s.cluster != nil {
+		s.surveyor.HandleFunc(s, ssdstore, memstore)
+	}
 
 	// Create a new cipher from the licence provided
 	cipher, err := s.License.Cipher()
@@ -168,8 +170,8 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	return s, nil
 }
 
-// LocalName returns the local node name.
-func (s *Service) LocalName() uint64 {
+// ID returns the local node ID.
+func (s *Service) ID() uint64 {
 	if s.cluster != nil {
 		return s.cluster.ID()
 	}
@@ -202,7 +204,7 @@ func (s *Service) Listen() (err error) {
 		s.Join(s.Config.Cluster.Seed)
 
 		// Subscribe to the query channel
-		s.querier.Start()
+		s.surveyor.Start()
 	}
 
 	// Setup the listeners on both default and a secure addresses
@@ -271,7 +273,7 @@ func (s *Service) pollPresenceChange() {
 func (s *Service) notifyPresenceEvent(ev *presenceNotify, filter func(message.Subscriber) bool) {
 	channel := []byte("emitter/presence/") // TODO: avoid allocation
 	if encoded, ok := ev.Encode(); ok {
-		s.publish(message.New(ev.Ssid, channel, encoded), filter)
+		s.Publish(message.New(ev.Ssid, channel, encoded), filter)
 	}
 }
 
@@ -390,20 +392,29 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// Occurs when a peer has a new subscription.
-func (s *Service) onSubscribe(sub message.Subscriber, ev *event.Subscription) bool {
+// Subscribe subscribes to a channel.
+func (s *Service) Subscribe(sub message.Subscriber, ev *event.Subscription) bool {
 	if _, err := s.subscriptions.Subscribe(ev.Ssid, sub); err != nil {
 		return false // Unable to subscribe
 	}
 
+	// Broadcast direct subscriptions
+	if sub.Type() == message.SubscriberDirect {
+		s.notifySubscribe(ev)
+	}
 	return true
 }
 
-// Occurs when a peer has unsubscribed.
-func (s *Service) onUnsubscribe(sub message.Subscriber, ev *event.Subscription) (ok bool) {
+// Unsubscribe unsubscribes from a channel
+func (s *Service) Unsubscribe(sub message.Subscriber, ev *event.Subscription) (ok bool) {
 	subscribers := s.subscriptions.Lookup(ev.Ssid, nil)
 	if ok = subscribers.Contains(sub); ok {
 		s.subscriptions.Unsubscribe(ev.Ssid, sub)
+	}
+
+	// Broadcast direct unsubscriptions
+	if sub.Type() == message.SubscriberDirect {
+		s.notifyUnsubscribe(ev)
 	}
 
 	// If the peer is offline, notify the presence
@@ -440,15 +451,15 @@ func (s *Service) onPeerMessage(m *message.Message) {
 // Survey is a mechanism where a message from one node is broadcasted to the
 // entire cluster and each node in the group responds to the message.
 func (s *Service) Survey(query string, payload []byte) (message.Awaiter, error) {
-	if s.querier != nil {
-		return s.querier.Query(query, payload)
+	if s.surveyor != nil {
+		return s.surveyor.Query(query, payload)
 	}
 
 	return nil, errors.New("Query manager was not setup")
 }
 
 // Publish publishes a message to everyone and returns the number of outgoing bytes written.
-func (s *Service) publish(m *message.Message, filter func(message.Subscriber) bool) (n int64) {
+func (s *Service) Publish(m *message.Message, filter func(message.Subscriber) bool) (n int64) {
 	size := m.Size()
 
 	for _, subscriber := range s.subscriptions.Lookup(m.Ssid(), filter) {
@@ -483,7 +494,7 @@ func (s *Service) authorize(channel *security.Channel, permission uint8) (contra
 func (s *Service) selfPublish(channelName string, payload []byte) {
 	channel := security.ParseChannel([]byte("emitter/" + channelName))
 	if channel.ChannelType == security.ChannelStatic {
-		s.publish(message.New(
+		s.Publish(message.New(
 			message.NewSsid(s.License.Contract(), channel.Query),
 			channel.Channel,
 			payload,

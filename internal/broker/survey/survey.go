@@ -1,5 +1,5 @@
 /**********************************************************************************
-* Copyright (c) 2009-2019 Misakai Ltd.
+* Copyright (c) 2009-2020 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
 * terms of the GNU Affero General Public License as published by the  Free Software
 * Foundation, either version 3 of the License, or(at your option) any later version.
@@ -12,7 +12,7 @@
 * with this program. If not, see<http://www.gnu.org/licenses/>.
 ************************************************************************************/
 
-package broker
+package survey
 
 import (
 	"errors"
@@ -39,19 +39,32 @@ type Surveyee interface {
 	OnSurvey(queryType string, request []byte) (response []byte, ok bool)
 }
 
-// QueryManager represents a request-response manager.
-type QueryManager struct {
-	service  *Service    // The service to use.
+type broker interface {
+	ID() uint64
+	NumPeers() int
+	Subscribe(message.Subscriber, *event.Subscription) bool
+	Publish(*message.Message, func(message.Subscriber) bool) int64
+}
+
+type gossiper interface {
+	SendTo(mesh.PeerName, *message.Message) error
+}
+
+// Surveyor represents a distributed surveyor.
+type Surveyor struct {
+	broker   broker      // The pub/sub broker to use.
+	gossip   gossiper    // The cluster service to use.
 	luid     security.ID // The locally unique id of the manager.
 	next     uint32      // The next available query identifier.
 	awaiters *sync.Map   // The map of the awaiters.
 	handlers []Surveyee  // The handlers array.
 }
 
-// newQueryManager creates a new request-response manager.
-func newQueryManager(s *Service) *QueryManager {
-	return &QueryManager{
-		service:  s,
+// New creates a new distributed surveyor.
+func New(b broker, g gossiper) *Surveyor {
+	return &Surveyor{
+		broker:   b,
+		gossip:   g,
 		luid:     security.NewID(),
 		next:     0,
 		awaiters: new(sync.Map),
@@ -60,37 +73,35 @@ func newQueryManager(s *Service) *QueryManager {
 }
 
 // Start subscribes the manager to the query channel.
-func (c *QueryManager) Start() {
+func (c *Surveyor) Start() {
 	ev := &event.Subscription{
-		Peer: c.service.LocalName(),
+		Peer: c.broker.ID(),
 		Conn: c.luid,
 		Ssid: message.Ssid{idSystem, idQuery},
 	}
 
-	if ok := c.service.onSubscribe(c, ev); ok {
-		c.service.cluster.NotifySubscribe(ev)
-	}
+	c.broker.Subscribe(c, ev)
 }
 
 // HandleFunc adds a handler for a query.
-func (c *QueryManager) HandleFunc(surveyees ...Surveyee) {
+func (c *Surveyor) HandleFunc(surveyees ...Surveyee) {
 	for _, h := range surveyees {
 		c.handlers = append(c.handlers, h)
 	}
 }
 
 // ID returns the unique identifier of the subsriber.
-func (c *QueryManager) ID() string {
+func (c *Surveyor) ID() string {
 	return c.luid.String()
 }
 
 // Type returns the type of the subscriber
-func (c *QueryManager) Type() message.SubscriberType {
+func (c *Surveyor) Type() message.SubscriberType {
 	return message.SubscriberDirect
 }
 
 // Send occurs when we have received a message.
-func (c *QueryManager) Send(m *message.Message) error {
+func (c *Surveyor) Send(m *message.Message) error {
 	ssid := m.Ssid()
 	if len(ssid) != 3 {
 		return errors.New("Invalid query received")
@@ -108,7 +119,7 @@ func (c *QueryManager) Send(m *message.Message) error {
 }
 
 // onRequest handles an incoming request
-func (c *QueryManager) onResponse(id uint32, payload []byte) error {
+func (c *Surveyor) onResponse(id uint32, payload []byte) error {
 	if awaiter, ok := c.awaiters.Load(id); ok {
 		awaiter.(*queryAwaiter).receive <- payload
 	}
@@ -116,7 +127,7 @@ func (c *QueryManager) onResponse(id uint32, payload []byte) error {
 }
 
 // onRequest handles an incoming request
-func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []byte) error {
+func (c *Surveyor) onRequest(ssid message.Ssid, channel string, payload []byte) error {
 	// Get the query and reply node
 	ch := strings.Split(channel, "/")
 	query := ch[0]
@@ -127,20 +138,14 @@ func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []by
 
 	// Do not answer our own requests
 	replyAddr := mesh.PeerName(reply)
-	if c.service.cluster.ID() == uint64(replyAddr) {
+	if c.broker.ID() == uint64(replyAddr) {
 		return nil
-	}
-
-	// Get the peer to reply to
-	peer := c.service.cluster.FindPeer(replyAddr)
-	if !peer.IsActive() {
-		return errors.New("unable to reply to a request, peer is not active")
 	}
 
 	// Go through all the handlers and execute the first matching one
 	for _, surveyee := range c.handlers {
 		if response, ok := surveyee.OnSurvey(query, payload); ok {
-			return peer.Send(message.New(ssid, []byte("response"), response))
+			return c.gossip.SendTo(replyAddr, message.New(ssid, []byte("response"), response))
 		}
 	}
 
@@ -148,11 +153,10 @@ func (c *QueryManager) onRequest(ssid message.Ssid, channel string, payload []by
 }
 
 // Query issues a cluster-wide request.
-func (c *QueryManager) Query(query string, payload []byte) (message.Awaiter, error) {
+func (c *Surveyor) Query(query string, payload []byte) (message.Awaiter, error) {
 
 	// Create an awaiter
-	// TODO: replace the max with the total number of cluster nodes
-	numPeers := c.service.NumPeers()
+	numPeers := c.broker.NumPeers()
 	awaiter := &queryAwaiter{
 		id:      atomic.AddUint32(&c.next, 1),
 		receive: make(chan []byte, numPeers),
@@ -164,10 +168,10 @@ func (c *QueryManager) Query(query string, payload []byte) (message.Awaiter, err
 	c.awaiters.Store(awaiter.id, awaiter)
 
 	// Prepare a channel with the reply-to address
-	channel := fmt.Sprintf("%v/%v", query, c.service.LocalName())
+	channel := fmt.Sprintf("%v/%v", query, c.broker.ID())
 
 	// Publish the query as a message
-	c.service.publish(message.New(
+	c.broker.Publish(message.New(
 		message.Ssid{idSystem, idQuery, awaiter.id},
 		[]byte(channel),
 		payload,
@@ -177,10 +181,10 @@ func (c *QueryManager) Query(query string, payload []byte) (message.Awaiter, err
 
 // queryAwaiter represents an asynchronously awaiting response channel.
 type queryAwaiter struct {
-	id      uint32        // The identifier of the query.
-	maximum int           // The maximum number of responses to wait for.
-	receive chan []byte   // The receive channel to use.
-	manager *QueryManager // The query manager used.
+	id      uint32      // The identifier of the query.
+	maximum int         // The maximum number of responses to wait for.
+	receive chan []byte // The receive channel to use.
+	manager *Surveyor   // The query manager used.
 }
 
 // Gather awaits for the responses to be received, blocking until we're done.

@@ -15,10 +15,10 @@
 package cluster
 
 import (
-	"github.com/emitter-io/emitter/internal/event"
 	"testing"
 
 	"github.com/emitter-io/emitter/internal/config"
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/weaveworks/mesh"
@@ -57,6 +57,7 @@ func TestOnGossipUnicast(t *testing.T) {
 }
 
 func TestNewSwarm_Scenario(t *testing.T) {
+	msg := newTestMessage(message.Ssid{1, 2, 3}, "a/b/c/", "hello abc")
 	cfg := config.ClusterConfig{
 		NodeName:      "00:00:00:00:00:01",
 		ListenAddr:    ":4000",
@@ -65,6 +66,8 @@ func TestNewSwarm_Scenario(t *testing.T) {
 
 	// Create a new swarm and check if it was constructed well
 	s := NewSwarm(&cfg)
+	s.update()
+
 	assert.Equal(t, 0, s.NumPeers())
 	assert.Equal(t, uint64(1), s.ID())
 	assert.NotNil(t, s.Gossip())
@@ -86,8 +89,17 @@ func TestNewSwarm_Scenario(t *testing.T) {
 	assert.Error(t, err)
 
 	// Find peer
-	peer := s.FindPeer(123)
+	peer := s.findPeer(123)
 	assert.NotNil(t, peer)
+
+	// Send to active peer
+	err = s.SendTo(123, &msg)
+	assert.NoError(t, err)
+
+	// Send to inactive peer
+	peer.activity = 0
+	err = s.SendTo(123, &msg)
+	assert.Error(t, err)
 
 	// Remove that peer, it should not be there
 	s.onPeerOffline(123)

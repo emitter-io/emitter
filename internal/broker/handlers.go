@@ -191,7 +191,7 @@ func (c *Conn) onPublish(packet *mqtt.Publish) *errors.Error {
 	}
 
 	// Iterate through all subscribers and send them the message
-	size := c.service.publish(msg, func(s message.Subscriber) bool {
+	size := c.service.Publish(msg, func(s message.Subscriber) bool {
 		return s.ID() != exclude
 	})
 

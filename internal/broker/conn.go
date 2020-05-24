@@ -25,8 +25,8 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/internal/broker/keygen"
-	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/errors"
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/contract"
@@ -69,7 +69,7 @@ func (s *Service) newConn(t net.Conn, readRate int) *Conn {
 	}
 
 	// Generate a globally unique id as well
-	c.guid = c.luid.Unique(uint64(s.LocalName()), "emitter")
+	c.guid = c.luid.Unique(uint64(s.ID()), "emitter")
 	if readRate == 0 {
 		readRate = defaultReadRate
 	}
@@ -271,16 +271,13 @@ func (c *Conn) Subscribe(ssid message.Ssid, channel []byte) {
 
 	// Add the subscription
 	if first := c.subs.Increment(ssid, channel); first {
-		ev := &event.Subscription{
-			Peer:    c.service.LocalName(),
+		c.service.Subscribe(c, &event.Subscription{
+			Peer:    c.service.ID(),
 			Conn:    c.luid,
 			User:    nocopy.String(c.username),
 			Ssid:    ssid,
 			Channel: channel,
-		}
-
-		c.service.onSubscribe(c, ev)  // Subscribe the subscriber
-		c.service.notifySubscribe(ev) // Broadcast the subscription within our cluster
+		})
 	}
 }
 
@@ -291,16 +288,13 @@ func (c *Conn) Unsubscribe(ssid message.Ssid, channel []byte) {
 
 	// Decrement the counter and if there's no more subscriptions, notify everyone.
 	if last := c.subs.Decrement(ssid); last {
-		ev := &event.Subscription{
-			Peer:    c.service.LocalName(),
+		c.service.Unsubscribe(c, &event.Subscription{
+			Peer:    c.service.ID(),
 			Conn:    c.luid,
 			User:    nocopy.String(c.username),
 			Ssid:    ssid,
 			Channel: channel,
-		}
-
-		c.service.onUnsubscribe(c, ev)  // Unsubscribe the subscriber
-		c.service.notifyUnsubscribe(ev) // Broadcast the unsubscription within our cluster
+		})
 	}
 }
 
@@ -313,16 +307,13 @@ func (c *Conn) Close() error {
 	// Unsubscribe from everything, no need to lock since each Unsubscribe is
 	// already locked. Locking the 'Close()' would result in a deadlock.
 	for _, counter := range c.subs.All() {
-		ev := &event.Subscription{
-			Peer:    c.service.LocalName(),
+		c.service.Unsubscribe(c, &event.Subscription{
+			Peer:    c.service.ID(),
 			Conn:    c.luid,
 			User:    nocopy.String(c.username),
 			Ssid:    counter.Ssid,
 			Channel: counter.Channel,
-		}
-
-		c.service.onUnsubscribe(c, ev)
-		c.service.notifyUnsubscribe(ev)
+		})
 	}
 
 	// Close the transport and decrement the connection counter
