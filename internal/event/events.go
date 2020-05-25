@@ -24,6 +24,7 @@ import (
 // Various replicated event types.
 const (
 	typeSubscription = uint8(iota)
+	typeBan
 )
 
 // Event represents an encodable event that happened at some point in time.
@@ -44,17 +45,17 @@ type Subscription struct {
 }
 
 // Type retuns the unit type.
-func (e Subscription) unitType() uint8 {
+func (e *Subscription) unitType() uint8 {
 	return typeSubscription
 }
 
 // ConnID returns globally-unique identifier for the connection.
-func (e Subscription) ConnID() string {
+func (e *Subscription) ConnID() string {
 	return e.Conn.Unique(uint64(e.Peer), "emitter")
 }
 
 // Encode encodes the event to string representation.
-func (e Subscription) Encode() string {
+func (e *Subscription) Encode() string {
 	buf, _ := binary.Marshal(e)
 	return string(buf)
 }
@@ -63,4 +64,24 @@ func (e Subscription) Encode() string {
 func decodeSubscription(encoded string) (Subscription, error) {
 	var out Subscription
 	return out, binary.Unmarshal([]byte(encoded), &out)
+}
+
+// ------------------------------------------------------------------------------------
+
+// Ban represents a banned key event.
+type Ban string
+
+// Type retuns the unit type.
+func (e *Ban) unitType() uint8 {
+	return typeBan
+}
+
+// Encode encodes the event to string representation.
+func (e Ban) Encode() string {
+	return string(e)
+}
+
+// decodeBan decodes the event
+func decodeBan(encoded string) (Ban, error) {
+	return Ban(encoded), nil
 }
