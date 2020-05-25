@@ -199,6 +199,7 @@ func TestRange(t *testing.T) {
 		return true
 	})
 	assert.Equal(t, 5, count)
+	assert.Equal(t, 6, state.Count())
 }
 
 // ------------------------------------------------------------------------------------
