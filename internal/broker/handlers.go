@@ -364,9 +364,10 @@ func (c *Conn) onKeyBan(payload []byte) (response, bool) {
 
 	// Depending on the flag, ban or unban the key
 	bannedKey := event.Ban(message.Target)
-	if message.Banned {
+	switch {
+	case message.Banned && !c.service.cluster.Contains(&bannedKey):
 		c.service.cluster.NotifyBeginOf(&bannedKey)
-	} else {
+	case !message.Banned && c.service.cluster.Contains(&bannedKey):
 		c.service.cluster.NotifyEndOf(&bannedKey)
 	}
 

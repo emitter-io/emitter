@@ -686,12 +686,8 @@ func TestHandlers_onKeyBan(t *testing.T) {
 		}),
 	}
 
-	conn := netmock.NewConn()
-	nc := s.newConn(conn.Client, 0)
-
 	// Key should be allowed
 	ev := event.Ban("6ijJv3TMhYTg6lLk2fQoVNbGrujgjFPk")
-	assert.False(t, s.cluster.Contains(&ev))
 
 	// Issue a request to ban the key
 	req, _ := json.Marshal(&keyBanRequest{
@@ -699,6 +695,7 @@ func TestHandlers_onKeyBan(t *testing.T) {
 		Target: string(ev),
 		Banned: true,
 	})
+	nc := s.newConn(netmock.NewConn().Client, 0)
 	r, ok := nc.onKeyBan(req)
 
 	// Key should be banned now
