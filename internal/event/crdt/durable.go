@@ -21,6 +21,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/coocood/freecache"
 	"github.com/kelindar/binary"
 	"github.com/tidwall/buntdb"
 )
@@ -35,38 +36,71 @@ func getTime(tx *buntdb.Tx, item string) Time {
 
 // Durable represents a last-write-wins CRDT set which can be persisted to disk.
 type Durable struct {
-	db *buntdb.DB
+	db    *buntdb.DB       // The underlying data store
+	cache *freecache.Cache // Cache to use for contains checks.
 }
 
 // NewDurable creates a new last-write-wins set with bias for 'add'.
 func NewDurable() *Durable {
-	return newDurableWith(make(map[string]Time, 64))
+	return newDurableWith(map[string]Time{})
 }
 
 // newDurableWith creates a new last-write-wins set with bias for 'add'.
 func newDurableWith(items map[string]Time) *Durable {
+	cache := freecache.NewCache(1 << 20) // 1MB
 	db, err := buntdb.Open(":memory:")
 	if err != nil {
 		panic(err)
 	}
 
+	s := &Durable{
+		cache: cache,
+		db:    db,
+	}
+
 	for k, v := range items {
-		db.Update(func(tx *buntdb.Tx) error {
-			tx.Set(k, v.Encode(), nil)
+		s.db.Update(func(tx *buntdb.Tx) error {
+			s.store(tx, k, v)
 			return nil
 		})
 	}
+	return s
+}
 
-	return &Durable{
-		db: db,
+// Store stores the item into the transaction.
+func (s *Durable) store(tx *buntdb.Tx, key string, t Time) {
+	var opts *buntdb.SetOptions
+	if t.IsRemoved() {
+		opts = &buntdb.SetOptions{
+			Expires: true,
+			TTL:     6 * time.Hour,
+		}
 	}
+
+	tx.Set(key, t.Encode(), opts)
+}
+
+// Fetch fetches the item either from transaction or cache.
+func (s *Durable) fetch(item string) Time {
+	cacheKey := stringToBinary(item)
+	if v, err := s.cache.Get(cacheKey); err == nil {
+		return decodeTime(binaryToString(&v))
+	}
+
+	tx, _ := s.db.Begin(false)
+	defer tx.Rollback()
+	if t, err := tx.Get(item); err == nil {
+		s.cache.Set(cacheKey, stringToBinary(t), 60)
+		return decodeTime(t)
+	}
+	return Time{}
 }
 
 // Add adds a value to the set.
 func (s *Durable) Add(item string) {
 	s.db.Update(func(tx *buntdb.Tx) error {
-		v := getTime(tx, item)
-		tx.Set(item, Time{AddTime: Now(), DelTime: v.DelTime}.Encode(), nil)
+		t := getTime(tx, item)
+		s.store(tx, item, Time{AddTime: Now(), DelTime: t.DelTime})
 		return nil
 	})
 }
@@ -75,24 +109,19 @@ func (s *Durable) Add(item string) {
 func (s *Durable) Remove(item string) {
 	s.db.Update(func(tx *buntdb.Tx) error {
 		v := getTime(tx, item)
-		tx.Set(item, Time{AddTime: v.AddTime, DelTime: Now()}.Encode(), nil)
+		s.store(tx, item, Time{AddTime: v.AddTime, DelTime: Now()})
 		return nil
 	})
 }
 
 // Contains checks if a value is present in the set.
 func (s *Durable) Contains(item string) bool {
-	tx, _ := s.db.Begin(false)
-	defer tx.Rollback()
-	v := getTime(tx, item)
-	return v.IsAdded()
+	return s.fetch(item).IsAdded()
 }
 
 // Get retrieves the time for an item.
 func (s *Durable) Get(item string) Time {
-	tx, _ := s.db.Begin(false)
-	defer tx.Rollback()
-	return getTime(tx, item)
+	return s.fetch(item)
 }
 
 // Merge merges two LWW sets. This also modifies the set being merged in
@@ -123,17 +152,8 @@ func (s *Durable) Merge(other Set) {
 			if rt.IsZero() {
 				delete(r.data, key) // Remove from delta
 			} else {
-
-				var opts *buntdb.SetOptions
-				if st.IsRemoved() {
-					opts = &buntdb.SetOptions{
-						Expires: true,
-						TTL:     6 * time.Hour,
-					}
-				}
-
-				stx.Set(key, st.Encode(), opts) // Merge the new value
-				r.data[key] = rt                // Update the delta
+				s.store(stx, key, st) // Merge the new value
+				r.data[key] = rt      // Update the delta
 			}
 		}
 

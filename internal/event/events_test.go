@@ -17,15 +17,11 @@ package event
 import (
 	"testing"
 
-	"github.com/emitter-io/emitter/internal/event/crdt"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEncodeSubscription(t *testing.T) {
-	defer restoreClock(crdt.Now)
-
-	setClock(0)
 	ev := Subscription{
 		Ssid:    message.Ssid{1, 2, 3, 4, 5},
 		Peer:    657,
@@ -38,6 +34,7 @@ func TestEncodeSubscription(t *testing.T) {
 
 	// Encode
 	enc := ev.Encode()
+	assert.Equal(t, typeSubscription, ev.unitType())
 	assert.Equal(t, 27, len(enc))
 	assert.Equal(t,
 		[]byte{0x91, 0x5, 0xa8, 0x61, 0x5, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0xa, 0x61, 0x2f, 0x62, 0x2f, 0x63, 0x2f, 0x64, 0x2f, 0x65, 0x2f, 0x5, 0x1, 0x2, 0x3, 0x4, 0x5},
@@ -50,7 +47,25 @@ func TestEncodeSubscription(t *testing.T) {
 	assert.Equal(t, ev, dec)
 }
 
-// Benchmark_Subscription/encode-8         	 3702952	       324 ns/op	     192 B/op	       3 allocs/op
+func TestEncodeBan(t *testing.T) {
+	ev := Ban("a/b/c/d/e/")
+
+	// Encode
+	enc := ev.Encode()
+	assert.Equal(t, typeBan, ev.unitType())
+	assert.Equal(t, 10, len(enc))
+	assert.Equal(t,
+		[]byte{0x61, 0x2f, 0x62, 0x2f, 0x63, 0x2f, 0x64, 0x2f, 0x65, 0x2f},
+		[]byte(enc),
+	)
+
+	// Decode
+	dec, err := decodeBan(enc)
+	assert.NoError(t, err)
+	assert.Equal(t, ev, dec)
+}
+
+// Benchmark_Subscription/encode-8         	 4379755	       270 ns/op	     112 B/op	       2 allocs/op
 // Benchmark_Subscription/decode-8         	 2803533	       428 ns/op	     176 B/op	       4 allocs/op
 func Benchmark_Subscription(b *testing.B) {
 	ev := Subscription{

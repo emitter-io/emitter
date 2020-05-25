@@ -15,7 +15,9 @@
 package event
 
 import (
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/emitter-io/emitter/internal/event/crdt"
 	"github.com/emitter-io/emitter/internal/message"
@@ -32,6 +34,28 @@ func setClock(t int64) {
 	crdt.Now = func() int64 { return t }
 }
 
+// Benchmark_State/contains-8         	11535033	       104 ns/op	       4 B/op	       1 allocs/op
+func Benchmark_State(b *testing.B) {
+	state := NewState(true)
+	for i := 1; i <= 20000; i++ {
+		ev := Ban(strconv.Itoa(i))
+		setClock(int64(i))
+		state.Add(&ev)
+	}
+
+	// Encode
+	target := Ban("10000")
+	state.Contains(&target)
+	time.Sleep(10 * time.Millisecond)
+	b.Run("contains", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			state.Contains(&target)
+		}
+	})
+}
+
 func TestEncodeSubscriptionState(t *testing.T) {
 	defer restoreClock(crdt.Now)
 	for _, tc := range []struct {
@@ -42,18 +66,17 @@ func TestEncodeSubscriptionState(t *testing.T) {
 	} {
 		state := NewState(tc.durable)
 		setClock(10)
-		state.Add(Subscription{
+		ev := &Subscription{
 			Channel: nocopy.Bytes("A"),
-		})
+		}
+		state.Add(ev)
+		assert.True(t, state.Contains(ev))
 
-		// Encode
+		// Encode / decode
 		enc := state.Encode()[0]
-		assert.Equal(t, []byte{0xd, 0x30, 0x1, 0x0, 0x1, 0x6, 0x0, 0x0, 0x0, 0x1, 0x41, 0x0, 0x2, 0x14, 0x0}, enc)
-
-		// Decode
 		dec, err := DecodeState(enc)
 		assert.NoError(t, err)
-		dec.Subscriptions(func(k Subscription, v Time) {
+		dec.Subscriptions(func(k *Subscription, v Time) {
 			assert.Equal(t, "A", string(k.Channel))
 			assert.Equal(t, Time{
 				AddTime: 10,
@@ -74,25 +97,25 @@ func TestMergeState(t *testing.T) {
 	// Add to state 1
 	setClock(20)
 	state1 := NewState(false)
-	state1.Add(ev)
+	state1.Add(&ev)
 
 	// Remove from state 2
 	setClock(50)
 	state2 := NewState(false)
-	state2.Remove(ev)
+	state2.Remove(&ev)
 
 	// Merge
 	delta := state1.Merge(state2)
 	assert.Equal(t, state2, delta)
 
-	state1.Subscriptions(func(_ Subscription, v Time) {
+	state1.Subscriptions(func(_ *Subscription, v Time) {
 		assert.Equal(t, Time{
 			AddTime: 20,
 			DelTime: 50,
 		}, v)
 	})
 
-	state2.Subscriptions(func(_ Subscription, v Time) {
+	state2.Subscriptions(func(_ *Subscription, v Time) {
 		assert.Equal(t, Time{
 			AddTime: 0,
 			DelTime: 50,
@@ -101,7 +124,7 @@ func TestMergeState(t *testing.T) {
 
 	// Merge with zero delta
 	state3 := NewState(false)
-	state3.Remove(ev)
+	state3.Remove(&ev)
 	delta = state3.Merge(state2)
 	assert.Nil(t, delta)
 }
@@ -116,7 +139,7 @@ func TestSubscriptions(t *testing.T) {
 	for i := 1; i <= 10; i++ {
 		ev := Subscription{Ssid: message.Ssid{1}, Peer: uint64(i) % 3, Conn: 777}
 		setClock(int64(i))
-		state.Add(ev)
+		state.Add(&ev)
 	}
 
 	// Must have 3 keys alive
@@ -125,14 +148,14 @@ func TestSubscriptions(t *testing.T) {
 
 	// Must have 2 keys alive after removal
 	setClock(int64(21))
-	state.SubscriptionsOf(1, func(ev Subscription) {
+	state.SubscriptionsOf(1, func(ev *Subscription) {
 		state.Remove(ev)
 	})
 	assert.Equal(t, 2, countAdded(state))
 
 	// Count all of the subscriptions (alive or dead)
 	count := 0
-	state.Subscriptions(func(ev Subscription, _ Time) {
+	state.Subscriptions(func(ev *Subscription, _ Time) {
 		count++
 	})
 	assert.Equal(t, 3, count)

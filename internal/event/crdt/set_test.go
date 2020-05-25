@@ -20,6 +20,29 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Benchmark_Time(b *testing.B) {
+	t := Time{10, 20}
+
+	// Encode
+	b.Run("encode", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			t.Encode()
+		}
+	})
+
+	// Decode
+	enc := t.Encode()
+	b.Run("decode", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			decodeTime(enc)
+		}
+	})
+}
+
 func TestNew(t *testing.T) {
 	s1 := New(true)
 	assert.IsType(t, new(Durable), s1)

@@ -126,6 +126,9 @@ func (s *Volatile) Range(prefix []byte, f func(string, Time) bool) {
 
 // Count returns the number of items in the set.
 func (s *Volatile) Count() (count int) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	return len(s.data)
 }
 
@@ -144,7 +147,7 @@ func (c *codecVolatile) EncodeTo(e *binary.Encoder, rv reflect.Value) (err error
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	e.WriteUvarint(uint64(s.Count()))
+	e.WriteUvarint(uint64(len(s.data)))
 	for k, t := range s.data {
 		v := t.Encode()
 

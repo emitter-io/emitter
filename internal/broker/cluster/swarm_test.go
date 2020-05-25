@@ -123,11 +123,11 @@ func TestNotify(t *testing.T) {
 
 	// TODO: Test actual correctness as well
 	assert.NotPanics(t, func() {
-		s.NotifySubscribe(&event.Subscription{
+		s.NotifyBeginOf(&event.Subscription{
 			Conn: 5,
 			Ssid: []uint32{1, 2, 3},
 		})
-		s.NotifyUnsubscribe(&event.Subscription{
+		s.NotifyEndOf(&event.Subscription{
 			Conn: 5,
 			Ssid: []uint32{1, 2, 3},
 		})
@@ -141,7 +141,7 @@ func Test_merge(t *testing.T) {
 		AdvertiseAddr: ":4001",
 	}
 
-	ev1 := event.Subscription{
+	ev1 := &event.Subscription{
 		Ssid: []uint32{1, 2, 3},
 		Peer: 2,
 		Conn: 30,
@@ -165,6 +165,7 @@ func Test_merge(t *testing.T) {
 	_, err := s.merge(in.Encode()[0])
 	assert.NoError(t, err)
 	assert.True(t, subscribed)
+	assert.True(t, s.Contains(ev1))
 }
 
 func TestJoin(t *testing.T) {

@@ -144,6 +144,8 @@ func TestDurableAll(t *testing.T) {
 	all := lww.toMap()
 	assert.Equal(t, 3, len(all))
 	assert.Equal(t, 3, lww.Count())
+	assert.NoError(t, lww.Close())
+	assert.Equal(t, 0, lww.Count())
 }
 
 func TestDurableConcurrent(t *testing.T) {
@@ -252,7 +254,7 @@ func TestDurableMarshal(t *testing.T) {
 	assert.Equal(t, state.toMap(), dec.toMap())
 }
 
-// 15852470 -> 3632341 bytes, 22.91%
+// 15852470 -> 1866217 bytes, 11.77%
 func TestDurableSizeMarshal(t *testing.T) {
 	state, size := loadTestData(t)
 
@@ -268,6 +270,11 @@ func TestDurableSizeMarshal(t *testing.T) {
 	err = binary.Unmarshal(enc, out)
 	assert.NoError(t, err)
 	assert.Equal(t, 50000, len(out.toMap()))
+
+	out.Range(nil, func(k string, _ Time) bool {
+		assert.True(t, out.Contains(k))
+		return false
+	})
 }
 
 // Benchmark_Marshal/encode-8         	      21	  58190505 ns/op	 6761445 B/op	      23 allocs/op
