@@ -29,7 +29,7 @@ import (
 func TestDurableAddContains(t *testing.T) {
 	testStr := "ABCD"
 
-	lww := NewDurable()
+	lww := NewDurable("")
 	assert.False(t, lww.Contains(testStr))
 
 	lww.Add(testStr)
@@ -42,7 +42,7 @@ func TestDurableAddContains(t *testing.T) {
 }
 
 func TestDurableAddRemoveContains(t *testing.T) {
-	lww := NewDurable()
+	lww := NewDurable("")
 	testStr := "object2"
 
 	lww.Add(testStr)
@@ -68,49 +68,49 @@ func TestDurableMerge(t *testing.T) {
 		valid, invalid []string
 	}{
 		{
-			lww1:     newDurableWith(map[string]Time{"A": T(10, 0), "B": T(20, 0)}),
+			lww1:     newDurableWith("", map[string]Time{"A": T(10, 0), "B": T(20, 0)}),
 			lww2:     newVolatileWith(map[string]Time{"A": T(0, 20), "B": T(0, 20)}),
-			expected: newDurableWith(map[string]Time{"A": T(10, 20), "B": T(20, 20)}),
+			expected: newDurableWith("", map[string]Time{"A": T(10, 20), "B": T(20, 20)}),
 			delta:    newVolatileWith(map[string]Time{"A": T(0, 20), "B": T(0, 20)}),
 			valid:    []string{"B"},
 			invalid:  []string{"A"},
 		},
 		{
-			lww1:     newDurableWith(map[string]Time{"A": T(10, 0), "B": T(20, 0)}),
+			lww1:     newDurableWith("", map[string]Time{"A": T(10, 0), "B": T(20, 0)}),
 			lww2:     newVolatileWith(map[string]Time{"A": T(0, 20), "B": T(10, 0)}),
-			expected: newDurableWith(map[string]Time{"A": T(10, 20), "B": T(20, 0)}),
+			expected: newDurableWith("", map[string]Time{"A": T(10, 20), "B": T(20, 0)}),
 			delta:    newVolatileWith(map[string]Time{"A": T(0, 20)}),
 			valid:    []string{"B"},
 			invalid:  []string{"A"},
 		},
 		{
-			lww1:     newDurableWith(map[string]Time{"A": T(30, 0), "B": T(20, 0)}),
+			lww1:     newDurableWith("", map[string]Time{"A": T(30, 0), "B": T(20, 0)}),
 			lww2:     newVolatileWith(map[string]Time{"A": T(20, 0), "B": T(10, 0)}),
-			expected: newDurableWith(map[string]Time{"A": T(30, 0), "B": T(20, 0)}),
+			expected: newDurableWith("", map[string]Time{"A": T(30, 0), "B": T(20, 0)}),
 			delta:    NewVolatile(),
 			valid:    []string{"A", "B"},
 			invalid:  []string{},
 		},
 		{
-			lww1:     newDurableWith(map[string]Time{"A": T(10, 0), "B": T(0, 20)}),
+			lww1:     newDurableWith("", map[string]Time{"A": T(10, 0), "B": T(0, 20)}),
 			lww2:     newVolatileWith(map[string]Time{"C": T(10, 0), "D": T(0, 20)}),
-			expected: newDurableWith(map[string]Time{"A": T(10, 0), "B": T(0, 20), "C": T(10, 0), "D": T(0, 20)}),
+			expected: newDurableWith("", map[string]Time{"A": T(10, 0), "B": T(0, 20), "C": T(10, 0), "D": T(0, 20)}),
 			delta:    newVolatileWith(map[string]Time{"C": T(10, 0), "D": T(0, 20)}),
 			valid:    []string{"A", "C"},
 			invalid:  []string{"B", "D"},
 		},
 		{
-			lww1:     newDurableWith(map[string]Time{"A": T(10, 0), "B": T(30, 0)}),
+			lww1:     newDurableWith("", map[string]Time{"A": T(10, 0), "B": T(30, 0)}),
 			lww2:     newVolatileWith(map[string]Time{"A": T(20, 0), "B": T(20, 0)}),
-			expected: newDurableWith(map[string]Time{"A": T(20, 0), "B": T(30, 0)}),
+			expected: newDurableWith("", map[string]Time{"A": T(20, 0), "B": T(30, 0)}),
 			delta:    newVolatileWith(map[string]Time{"A": T(20, 0)}),
 			valid:    []string{"A", "B"},
 			invalid:  []string{},
 		},
 		{
-			lww1:     newDurableWith(map[string]Time{"A": T(0, 10), "B": T(0, 30)}),
+			lww1:     newDurableWith("", map[string]Time{"A": T(0, 10), "B": T(0, 30)}),
 			lww2:     newVolatileWith(map[string]Time{"A": T(0, 20), "B": T(0, 20)}),
-			expected: newDurableWith(map[string]Time{"A": T(0, 20), "B": T(0, 30)}),
+			expected: newDurableWith("", map[string]Time{"A": T(0, 20), "B": T(0, 30)}),
 			delta:    newVolatileWith(map[string]Time{"A": T(0, 20)}),
 			valid:    []string{},
 			invalid:  []string{"A", "B"},
@@ -136,7 +136,7 @@ func TestDurableAll(t *testing.T) {
 	defer restoreClock(Now)
 
 	setClock(0)
-	lww := NewDurable()
+	lww := NewDurable("")
 	lww.Add("A")
 	lww.Add("B")
 	lww.Add("C")
@@ -150,7 +150,7 @@ func TestDurableAll(t *testing.T) {
 
 func TestDurableConcurrent(t *testing.T) {
 	i := 0
-	lww := NewDurable()
+	lww := NewDurable("")
 	for ; i < 100; i++ {
 		setClock(int64(i))
 		lww.Add(fmt.Sprintf("%v", i))
@@ -204,7 +204,7 @@ func setClock(t int64) {
 // ------------------------------------------------------------------------------------
 
 func TestDurableRange(t *testing.T) {
-	state := newDurableWith(
+	state := newDurableWith("",
 		map[string]Time{
 			"AC": {AddTime: 60, DelTime: 50},
 			"AB": {AddTime: 60, DelTime: 50},
@@ -239,7 +239,7 @@ func TestDurableMarshal(t *testing.T) {
 	defer restoreClock(Now)
 
 	setClock(0)
-	state := newDurableWith(map[string]Time{"A": {AddTime: 10, DelTime: 50}})
+	state := newDurableWith("", map[string]Time{"A": {AddTime: 10, DelTime: 50}})
 
 	// Encode
 	enc, err := binary.Marshal(state)
@@ -247,7 +247,7 @@ func TestDurableMarshal(t *testing.T) {
 	assert.Equal(t, []byte{0x1, 0x1, 0x41, 0x2, 0x14, 0x64}, enc)
 
 	// Decode
-	dec := NewDurable()
+	dec := NewDurable("")
 	err = binary.Unmarshal(enc, dec)
 	assert.NoError(t, err)
 	println(dec.toMap()["A"].AddTime)
@@ -266,7 +266,7 @@ func TestDurableSizeMarshal(t *testing.T) {
 	assert.Greater(t, 20000000, len(enc))
 
 	// Decode
-	out := NewDurable()
+	out := NewDurable("")
 	err = binary.Unmarshal(enc, out)
 	assert.NoError(t, err)
 	assert.Equal(t, 50000, len(out.toMap()))
@@ -298,7 +298,7 @@ func Benchmark_Marshal(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			state := NewDurable()
+			state := NewDurable("")
 			binary.Unmarshal(enc, state)
 		}
 	})
@@ -313,7 +313,7 @@ func loadTestData(t assert.TestingT) (state *Durable, size int) {
 
 	data := make(map[string]Time)
 	err = binary.Unmarshal(decoded, &data)
-	state = newDurableWith(data)
+	state = newDurableWith("", data)
 	assert.NoError(t, err)
 	size = len(decoded)
 	return

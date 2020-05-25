@@ -15,10 +15,14 @@
 package broker
 
 import (
+	"encoding/json"
 	"testing"
 
+	"github.com/emitter-io/emitter/internal/broker/cluster"
 	"github.com/emitter-io/emitter/internal/broker/keygen"
+	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/errors"
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	netmock "github.com/emitter-io/emitter/internal/network/mock"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
@@ -662,4 +666,40 @@ func TestHandlers_lookupPresence(t *testing.T) {
 	s.subscriptions.Subscribe(message.Ssid{1, 2, 3}, s.newConn(netmock.NewNoop(), 0))
 	presence := s.lookupPresence(message.Ssid{1, 2, 3})
 	assert.NotEmpty(t, presence)
+}
+
+func TestHandlers_onKeyBan(t *testing.T) {
+	license, _ := license.Parse(testLicenseV2)
+	cipher, _ := license.Cipher()
+	contract := new(secmock.Contract)
+	contract.On("Validate", mock.Anything).Return(true)
+	provider := secmock.NewContractProvider()
+	provider.On("Get", mock.Anything).Return(contract, true)
+
+	s := &Service{
+		License: license,
+		Keygen:  keygen.NewProvider(cipher, provider),
+		cluster: cluster.NewSwarm(&config.ClusterConfig{
+			NodeName:      "00:00:00:00:00:01",
+			ListenAddr:    ":4000",
+			AdvertiseAddr: ":4001",
+		}),
+	}
+
+	// Key should be allowed
+	ev := event.Ban("6ijJv3TMhYTg6lLk2fQoVNbGrujgjFPk")
+
+	// Issue a request to ban the key
+	req, _ := json.Marshal(&keyBanRequest{
+		Secret: "wnLJv3TMhYTg6lLkGfQoazo1-k7gjFPk",
+		Target: string(ev),
+		Banned: true,
+	})
+	nc := s.newConn(netmock.NewConn().Client, 0)
+	r, ok := nc.onKeyBan(req)
+
+	// Key should be banned now
+	assert.True(t, ok)
+	assert.Equal(t, &keyBanResponse{Status: 200, Banned: true}, r.(*keyBanResponse))
+	assert.True(t, s.cluster.Contains(&ev))
 }

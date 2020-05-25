@@ -19,6 +19,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -54,11 +56,17 @@ var _ mesh.Gossiper = &Swarm{}
 
 // NewSwarm creates a new swarm messaging layer.
 func NewSwarm(cfg *config.ClusterConfig) *Swarm {
+	name := getLocalPeerName(cfg)
+	if d, err := os.UserCacheDir(); cfg.Directory == "" && err == nil {
+		cfg.Directory = path.Join(d, fmt.Sprintf("emitter/%x", int(name)))
+	}
+
+	os.MkdirAll(cfg.Directory, os.ModePerm)
 	swarm := &Swarm{
-		name:    getLocalPeerName(cfg),
+		name:    name,
 		actions: make(chan func()),
 		config:  cfg,
-		state:   event.NewState(true),
+		state:   event.NewState(cfg.Directory),
 	}
 
 	// Get the cluster binding address
@@ -333,7 +341,7 @@ func (s *Swarm) NotifyBeginOf(ev event.Event) {
 	s.state.Add(ev)
 
 	// Create a delta for broadcasting just this operation
-	op := event.NewState(false)
+	op := event.NewState("")
 	op.Add(ev)
 	s.gossip.GossipBroadcast(op)
 }
@@ -343,7 +351,7 @@ func (s *Swarm) NotifyEndOf(ev event.Event) {
 	s.state.Remove(ev)
 
 	// Create a delta for broadcasting just this operation
-	op := event.NewState(false)
+	op := event.NewState("")
 	op.Remove(ev)
 	s.gossip.GossipBroadcast(op)
 }

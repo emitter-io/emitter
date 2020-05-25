@@ -17,6 +17,7 @@ package event
 import (
 	bin "encoding/binary"
 	"io"
+	"path"
 
 	"github.com/emitter-io/emitter/internal/event/crdt"
 	"github.com/golang/snappy"
@@ -34,14 +35,24 @@ type State struct {
 }
 
 // NewState creates a new replicated state.
-func NewState(durable bool) *State {
+func NewState(dir string) *State {
+	durable := dir != ""
 	return &State{
 		durable: durable,
 		subsets: map[uint8]crdt.Set{
-			typeSubscription: crdt.New(durable),
-			typeBan:          crdt.New(durable),
+			typeSub: crdt.New(durable, ""),
+			typeBan: crdt.New(durable, fileOf(dir, "ban.db")),
 		},
 	}
+}
+
+// FileOf creates a filename for the specific directory
+func fileOf(dir, name string) string {
+	if dir == ":memory:" {
+		return dir
+	}
+
+	return path.Join(dir, "ban.db")
 }
 
 // DecodeState decodes the replicated state.
@@ -54,7 +65,7 @@ func DecodeState(buf []byte) (out *State, err error) {
 	}
 
 	// Copy the volatile set into the state
-	out = NewState(false)
+	out = NewState("")
 	for typ, set := range decoded {
 		set := set // Make sure to not add the iterator
 		out.subsets[typ] = &set
@@ -125,7 +136,7 @@ func (st *State) Contains(ev Event) bool {
 // Subscriptions iterates through all of the subscription units. This call is
 // blocking and will lock the entire set of subscriptions while iterating.
 func (st *State) Subscriptions(f func(*Subscription, Time)) {
-	set := st.subsets[typeSubscription]
+	set := st.subsets[typeSub]
 	set.Range(nil, func(v string, t crdt.Time) bool {
 		if ev, err := decodeSubscription(v); err == nil {
 			f(&ev, t)
@@ -142,7 +153,7 @@ func (st *State) SubscriptionsOf(name mesh.PeerName, f func(*Subscription)) {
 
 	// Copy since the Range() is locked
 	var events []*Subscription
-	set := st.subsets[typeSubscription]
+	set := st.subsets[typeSub]
 	set.Range(prefix, func(v string, t crdt.Time) bool {
 		if t.IsAdded() {
 			if ev, err := decodeSubscription(v); err == nil {

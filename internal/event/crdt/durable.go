@@ -41,14 +41,18 @@ type Durable struct {
 }
 
 // NewDurable creates a new last-write-wins set with bias for 'add'.
-func NewDurable() *Durable {
-	return newDurableWith(map[string]Time{})
+func NewDurable(dir string) *Durable {
+	return newDurableWith(dir, nil)
 }
 
 // newDurableWith creates a new last-write-wins set with bias for 'add'.
-func newDurableWith(items map[string]Time) *Durable {
+func newDurableWith(path string, items map[string]Time) *Durable {
+	if path == "" {
+		path = ":memory:"
+	}
+
 	cache := freecache.NewCache(1 << 20) // 1MB
-	db, err := buntdb.Open(":memory:")
+	db, err := buntdb.Open(path)
 	if err != nil {
 		panic(err)
 	}
@@ -256,7 +260,7 @@ func (c *durableCodec) EncodeTo(e *binary.Encoder, rv reflect.Value) (err error)
 
 // Decode decodes into a reflect value from the decoder.
 func (c *durableCodec) DecodeTo(d *binary.Decoder, rv reflect.Value) (err error) {
-	out := NewDurable()
+	out := NewDurable("")
 	size, err := d.ReadUvarint()
 	if err != nil {
 		return err

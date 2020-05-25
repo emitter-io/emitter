@@ -18,9 +18,9 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/logging"
-	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/security"
 )
 
@@ -83,6 +83,27 @@ type keyGenResponse struct {
 
 // ForRequest sets the request ID in the response for matching
 func (r *keyGenResponse) ForRequest(id uint16) {
+	r.Request = id
+}
+
+// ------------------------------------------------------------------------------------
+
+type keyBanRequest struct {
+	Secret string `json:"secret"` // The master key to use.
+	Target string `json:"target"` // The target key to ban.
+	Banned bool   `json:"banned"` // Whether the target should be banned or not.
+}
+
+// ------------------------------------------------------------------------------------
+
+type keyBanResponse struct {
+	Request uint16 `json:"req,omitempty"`
+	Status  int    `json:"status"` // The status of the response
+	Banned  bool   `json:"banned"` // Whether the target should be banned or not.
+}
+
+// ForRequest sets the request ID in the response for matching
+func (r *keyBanResponse) ForRequest(id uint16) {
 	r.Request = id
 }
 

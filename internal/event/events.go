@@ -23,7 +23,7 @@ import (
 
 // Various replicated event types.
 const (
-	typeSubscription = uint8(iota)
+	typeSub = uint8(iota)
 	typeBan
 )
 
@@ -46,7 +46,7 @@ type Subscription struct {
 
 // Type retuns the unit type.
 func (e *Subscription) unitType() uint8 {
-	return typeSubscription
+	return typeSub
 }
 
 // ConnID returns globally-unique identifier for the connection.
