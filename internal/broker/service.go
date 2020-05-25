@@ -474,8 +474,14 @@ func (s *Service) Publish(m *message.Message, filter func(message.Subscriber) bo
 // Authorize attempts to authorize a channel with its key
 func (s *Service) authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
 
+	// Check if the key is blacklisted
+	channelKey := string(channel.Key)
+	if s.cluster != nil && s.cluster.Contains((*event.Ban)(&channelKey)) {
+		return nil, nil, false
+	}
+
 	// Attempt to parse the key
-	key, err := s.Keygen.DecryptKey(string(channel.Key))
+	key, err := s.Keygen.DecryptKey(channelKey)
 	if err != nil || key.IsExpired() {
 		return nil, nil, false
 	}

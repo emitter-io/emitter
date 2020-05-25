@@ -156,6 +156,9 @@ type ClusterConfig struct {
 	// Passphrase is used to initialize the primary encryption key in a keyring. This key
 	// is used for encrypting all the gossip messages (message-level encryption).
 	Passphrase string `json:"passphrase,omitempty"`
+
+	// Directory specifies the directory where the cluster state will be stored.
+	Directory string `json:"dir,omitempty"`
 }
 
 // LimitConfig represents various limit configurations - such as message size.

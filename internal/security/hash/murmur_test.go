@@ -42,6 +42,11 @@ func BenchmarkOfString(b *testing.B) {
 	}
 }
 
+func TestKeyBanHash(t *testing.T) {
+	h := OfString("keyban")
+	assert.Equal(t, uint32(861724010), h)
+}
+
 func TestMeHash(t *testing.T) {
 	h := OfString("me")
 	assert.Equal(t, uint32(2539734036), h)

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/internal/errors"
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/logging"
@@ -30,6 +31,7 @@ import (
 
 const (
 	requestKeygen   = 548658350  // hash("keygen")
+	requestKeyban   = 861724010  // hash("keyban")
 	requestPresence = 3869262148 // hash("presence")
 	requestLink     = 2667034312 // hash("link")
 	requestMe       = 2539734036 // hash("me")
@@ -223,6 +225,9 @@ func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte, reque
 	case requestKeygen:
 		resp, ok = c.onKeyGen(payload)
 		return
+	case requestKeyban:
+		resp, ok = c.onKeyBan(payload)
+		return
 	case requestPresence:
 		resp, ok = c.onPresence(payload)
 		return
@@ -334,6 +339,42 @@ func (c *Conn) onKeyGen(payload []byte) (response, bool) {
 
 	// Not authorised
 	return errors.ErrUnauthorized, false
+}
+
+// -----------------------------------------------------------------------------------
+
+// onKeyBan processes a keyban request.
+func (c *Conn) onKeyBan(payload []byte) (response, bool) {
+	message := keyBanRequest{}
+	if err := json.Unmarshal(payload, &message); err != nil {
+		return errors.ErrBadRequest, false
+	}
+
+	// Decrypt the secret key and make sure it's not expired and is a master key
+	secretKey, err := c.keys.DecryptKey(message.Secret)
+	if err != nil || secretKey.IsExpired() || !secretKey.IsMaster() {
+		return errors.ErrUnauthorized, false
+	}
+
+	// Make sure the target key is for the same contract
+	targetKey, err := c.keys.DecryptKey(message.Target)
+	if err != nil || targetKey.Contract() != secretKey.Contract() {
+		return errors.ErrBadRequest, false
+	}
+
+	// Depending on the flag, ban or unban the key
+	bannedKey := event.Ban(message.Target)
+	if message.Banned {
+		c.service.cluster.NotifyBeginOf(&bannedKey)
+	} else {
+		c.service.cluster.NotifyEndOf(&bannedKey)
+	}
+
+	// Success, return the response
+	return &keyBanResponse{
+		Status: 200,
+		Banned: message.Banned,
+	}, true
 }
 
 // ------------------------------------------------------------------------------------

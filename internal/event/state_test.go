@@ -36,7 +36,7 @@ func setClock(t int64) {
 
 // Benchmark_State/contains-8         	11535033	       104 ns/op	       4 B/op	       1 allocs/op
 func Benchmark_State(b *testing.B) {
-	state := NewState(true)
+	state := NewState(":memory:")
 	for i := 1; i <= 20000; i++ {
 		ev := Ban(strconv.Itoa(i))
 		setClock(int64(i))
@@ -59,12 +59,12 @@ func Benchmark_State(b *testing.B) {
 func TestEncodeSubscriptionState(t *testing.T) {
 	defer restoreClock(crdt.Now)
 	for _, tc := range []struct {
-		durable bool
+		dir string
 	}{
-		{durable: true},
-		{durable: false},
+		{dir: ":memory:"},
+		{dir: ""},
 	} {
-		state := NewState(tc.durable)
+		state := NewState(tc.dir)
 		setClock(10)
 		ev := &Subscription{
 			Channel: nocopy.Bytes("A"),
@@ -96,12 +96,12 @@ func TestMergeState(t *testing.T) {
 
 	// Add to state 1
 	setClock(20)
-	state1 := NewState(false)
+	state1 := NewState("")
 	state1.Add(&ev)
 
 	// Remove from state 2
 	setClock(50)
-	state2 := NewState(false)
+	state2 := NewState("")
 	state2.Remove(&ev)
 
 	// Merge
@@ -123,7 +123,7 @@ func TestMergeState(t *testing.T) {
 	})
 
 	// Merge with zero delta
-	state3 := NewState(false)
+	state3 := NewState("")
 	state3.Remove(&ev)
 	delta = state3.Merge(state2)
 	assert.Nil(t, delta)
@@ -133,7 +133,7 @@ func TestSubscriptions(t *testing.T) {
 	defer restoreClock(crdt.Now)
 
 	setClock(0)
-	state := NewState(false)
+	state := NewState("")
 	defer state.Close()
 
 	for i := 1; i <= 10; i++ {
@@ -162,7 +162,7 @@ func TestSubscriptions(t *testing.T) {
 }
 
 func countAdded(state *State) (added int) {
-	set := state.subsets[typeSubscription]
+	set := state.subsets[typeSub]
 	set.Range(nil, func(_ string, v Time) bool {
 		if v.IsAdded() {
 			added++
