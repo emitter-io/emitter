@@ -149,12 +149,8 @@ func (c *codecVolatile) EncodeTo(e *binary.Encoder, rv reflect.Value) (err error
 
 	e.WriteUvarint(uint64(len(s.data)))
 	for k, t := range s.data {
-		v := t.Encode()
-
-		e.WriteUvarint(uint64(len(k)))
-		e.Write(stringToBinary(k))
-		e.WriteUvarint(uint64(len(v)))
-		e.Write(stringToBinary(v))
+		e.WriteString(k)
+		e.WriteString(t.Encode())
 	}
 	return
 }
@@ -168,17 +164,17 @@ func (c *codecVolatile) DecodeTo(d *binary.Decoder, rv reflect.Value) (err error
 	}
 
 	for i := 0; i < int(size); i++ {
-		k, err := readBytes(d)
+		k, err := d.ReadSlice()
 		if err != nil {
 			return nil
 		}
 
-		v, err := readBytes(d)
+		v, err := d.ReadSlice()
 		if err != nil {
 			return nil
 		}
 
-		out.data[binaryToString(&k)] = decodeTime(binaryToString(&v))
+		out.data[binary.ToString(&k)] = decodeTime(binary.ToString(&v))
 	}
 
 	rv.Set(reflect.ValueOf(*out))
