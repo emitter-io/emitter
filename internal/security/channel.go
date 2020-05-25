@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"strconv"
 	"time"
-	"unsafe"
 
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/security/hash"
+	"github.com/kelindar/binary"
 )
 
 // Channel types
@@ -302,8 +302,8 @@ func (c *Channel) parseOptions(text []byte) (i int, ok bool) {
 
 		// Set the option
 		c.Options = append(c.Options, ChannelOption{
-			Key:   binaryToString(&key),
-			Value: binaryToString(&val),
+			Key:   binary.ToString(&key),
+			Value: binary.ToString(&val),
 		})
 
 		val = val[0:0]
@@ -311,8 +311,4 @@ func (c *Channel) parseOptions(text []byte) (i int, ok bool) {
 	}
 
 	return i, true
-}
-
-func binaryToString(b *[]byte) string {
-	return *(*string)(unsafe.Pointer(b))
 }

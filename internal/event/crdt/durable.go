@@ -86,15 +86,15 @@ func (s *Durable) store(tx *buntdb.Tx, key string, t Time) {
 
 // Fetch fetches the item either from transaction or cache.
 func (s *Durable) fetch(item string) Time {
-	cacheKey := stringToBinary(item)
+	cacheKey := binary.ToBytes(item)
 	if v, err := s.cache.Get(cacheKey); err == nil {
-		return decodeTime(binaryToString(&v))
+		return decodeTime(binary.ToString(&v))
 	}
 
 	tx, _ := s.db.Begin(false)
 	defer tx.Rollback()
 	if t, err := tx.Get(item); err == nil {
-		s.cache.Set(cacheKey, stringToBinary(t), 60)
+		s.cache.Set(cacheKey, binary.ToBytes(t), 60)
 		return decodeTime(t)
 	}
 	return Time{}
@@ -169,7 +169,7 @@ func (s *Durable) Merge(other Set) {
 func (s *Durable) Range(prefix []byte, f func(string, Time) bool) {
 	s.db.View(func(tx *buntdb.Tx) error {
 		return tx.Ascend("", func(k, v string) bool {
-			if !bytes.HasPrefix(stringToBinary(k), prefix) {
+			if !bytes.HasPrefix(binary.ToBytes(k), prefix) {
 				return true
 			}
 
@@ -250,10 +250,8 @@ func (c *durableCodec) EncodeTo(e *binary.Encoder, rv reflect.Value) (err error)
 	// Write the entire sample
 	e.WriteUvarint(uint64(len(entries)))
 	for _, v := range entries {
-		e.WriteUvarint(uint64(len(v.Key)))
-		e.Write(stringToBinary(v.Key))
-		e.WriteUvarint(uint64(len(v.Val)))
-		e.Write(stringToBinary(v.Val))
+		e.WriteString(v.Key)
+		e.WriteString(v.Val)
 	}
 	return
 }
@@ -268,17 +266,17 @@ func (c *durableCodec) DecodeTo(d *binary.Decoder, rv reflect.Value) (err error)
 
 	out.db.Update(func(tx *buntdb.Tx) error {
 		for i := 0; i < int(size); i++ {
-			k, err := readBytes(d)
+			k, err := d.ReadSlice()
 			if err != nil {
 				return nil
 			}
 
-			v, err := readBytes(d)
+			v, err := d.ReadSlice()
 			if err != nil {
 				return nil
 			}
 
-			tx.Set(binaryToString(&k), binaryToString(&v), nil)
+			tx.Set(binary.ToString(&k), binary.ToString(&v), nil)
 		}
 		return nil
 	})

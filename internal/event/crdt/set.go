@@ -16,9 +16,7 @@ package crdt
 
 import (
 	bin "encoding/binary"
-	"reflect"
 	"time"
-	"unsafe"
 
 	"github.com/kelindar/binary"
 )
@@ -71,39 +69,14 @@ func (t Time) Encode() string {
 	n1 := bin.PutVarint(b, t.AddTime)
 	n2 := bin.PutVarint(b[n1:], t.DelTime)
 	b = b[:n1+n2]
-	return binaryToString(&b)
+	return binary.ToString(&b)
 }
 
 // DecodeTime decodes the time from a string
 func decodeTime(t string) (v Time) {
-	b, n := stringToBinary(t), 0
+	b, n := binary.ToBytes(t), 0
 	v.AddTime, n = bin.Varint(b)
 	v.DelTime, _ = bin.Varint(b[n:])
-	return
-}
-
-// ------------------------------------------------------------------------------------
-
-func readBytes(d *binary.Decoder) (buffer []byte, err error) {
-	var l uint64
-	if l, err = d.ReadUvarint(); err == nil && l > 0 {
-		buffer, err = d.Slice(int(l))
-	}
-	return
-}
-
-func binaryToString(b *[]byte) string {
-	return *(*string)(unsafe.Pointer(b))
-}
-
-func stringToBinary(v string) (b []byte) {
-	strHeader := (*reflect.StringHeader)(unsafe.Pointer(&v))
-	byteHeader := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	byteHeader.Data = strHeader.Data
-
-	l := len(v)
-	byteHeader.Len = l
-	byteHeader.Cap = l
 	return
 }
 

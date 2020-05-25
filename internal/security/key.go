@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/internal/security/hash"
+	"github.com/kelindar/binary"
 )
 
 // Gets the beginning of time for the timestamp, which is 2010/1/1 00:00:00
@@ -142,7 +143,7 @@ func (k Key) ValidateChannel(ch *Channel) bool {
 	}
 
 	// Split by `/`
-	channel := binaryToString(&topic)
+	channel := binary.ToString(&topic)
 	parts := strings.Split(channel, "/")
 	wc := parts[len(parts)-1] == "#"
 	if wc {
