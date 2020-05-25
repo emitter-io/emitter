@@ -287,7 +287,7 @@ func (s *Service) notifySubscribe(ev *event.Subscription) {
 
 	// Notify our cluster that the client just subscribed.
 	if s.cluster != nil {
-		s.cluster.NotifySubscribe(ev)
+		s.cluster.NotifyBeginOf(ev)
 	}
 }
 
@@ -301,7 +301,7 @@ func (s *Service) notifyUnsubscribe(ev *event.Subscription) {
 
 	// Notify our cluster that the client just unsubscribed.
 	if s.cluster != nil {
-		s.cluster.NotifyUnsubscribe(ev)
+		s.cluster.NotifyEndOf(ev)
 	}
 }
 

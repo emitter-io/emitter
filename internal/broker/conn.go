@@ -300,6 +300,7 @@ func (c *Conn) Unsubscribe(ssid message.Ssid, channel []byte) {
 
 // Close terminates the connection.
 func (c *Conn) Close() error {
+	atomic.AddInt64(&c.service.connections, -1)
 	if r := recover(); r != nil {
 		logging.LogAction("closing", fmt.Sprintf("panic recovered: %s \n %s", r, debug.Stack()))
 	}
@@ -316,8 +317,6 @@ func (c *Conn) Close() error {
 		})
 	}
 
-	// Close the transport and decrement the connection counter
-	atomic.AddInt64(&c.service.connections, -1)
 	//logging.LogTarget("conn", "closed", c.guid)
 	return c.socket.Close()
 }

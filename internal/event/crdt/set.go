@@ -15,13 +15,34 @@
 package crdt
 
 import (
-	"bytes"
-	"sync"
+	bin "encoding/binary"
+	"reflect"
 	"time"
+	"unsafe"
+
+	"github.com/kelindar/binary"
 )
 
-// The expiration cutoff time for GCs
-var gcCutoff = (6 * time.Hour).Nanoseconds()
+// Set represents a contract for a CRDT set.
+type Set interface {
+	Add(string)
+	Remove(string)
+	Contains(string) bool
+	Get(item string) Time
+	Merge(Set)
+	Range([]byte, func(string, Time) bool)
+	Count() int
+}
+
+// New creates a new CRDT set.
+func New(durable bool) Set {
+	if durable {
+		return NewDurable()
+	}
+	return NewVolatile()
+}
+
+// ------------------------------------------------------------------------------------
 
 // Time represents a time pair.
 type Time struct {
@@ -44,133 +65,49 @@ func (t Time) IsRemoved() bool {
 	return t.AddTime < t.DelTime
 }
 
-// IsExpired checks if the element was removed long time ago and can be safely garbage collected.
-func (t Time) isExpired() bool {
-	return t.IsRemoved() && (t.DelTime+gcCutoff < Now())
+// Encode encodes the value to a string
+func (t Time) Encode() string {
+	b := make([]byte, 20)
+	n1 := bin.PutVarint(b, t.AddTime)
+	n2 := bin.PutVarint(b[n1:], t.DelTime)
+	b = b[:n1+n2]
+	return binaryToString(&b)
+}
+
+// DecodeTime decodes the time from a string
+func decodeTime(t string) (v Time) {
+	b, n := stringToBinary(t), 0
+	v.AddTime, n = bin.Varint(b)
+	v.DelTime, _ = bin.Varint(b[n:])
+	return
 }
 
 // ------------------------------------------------------------------------------------
 
-// Set represents a last-write-wins CRDT set.
-type Set struct {
-	lock *sync.Mutex     // The associated mutex
-	data map[string]Time // The data containing the set
-}
-
-// New creates a new last-write-wins set with bias for 'add'.
-func New() *Set {
-	return NewWith(make(map[string]Time, 64))
-}
-
-// NewWith creates a new last-write-wins set with bias for 'add'.
-func NewWith(items map[string]Time) *Set {
-	return &Set{
-		lock: new(sync.Mutex),
-		data: items,
+func readBytes(d *binary.Decoder) (buffer []byte, err error) {
+	var l uint64
+	if l, err = d.ReadUvarint(); err == nil && l > 0 {
+		buffer, err = d.Slice(int(l))
 	}
+	return
 }
 
-// Add adds a value to the set.
-func (s *Set) Add(value string) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	v, _ := s.data[value]
-	s.data[value] = Time{AddTime: Now(), DelTime: v.DelTime}
+func binaryToString(b *[]byte) string {
+	return *(*string)(unsafe.Pointer(b))
 }
 
-// Remove removes the value from the set.
-func (s *Set) Remove(value string) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func stringToBinary(v string) (b []byte) {
+	strHeader := (*reflect.StringHeader)(unsafe.Pointer(&v))
+	byteHeader := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	byteHeader.Data = strHeader.Data
 
-	v, _ := s.data[value]
-	s.data[value] = Time{AddTime: v.AddTime, DelTime: Now()}
+	l := len(v)
+	byteHeader.Len = l
+	byteHeader.Cap = l
+	return
 }
 
-// Contains checks if a value is present in the set.
-func (s *Set) Contains(value string) bool {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	v, _ := s.data[value]
-	return v.IsAdded()
-}
-
-// Merge merges two LWW sets. This also modifies the set being merged in
-// to leave only the delta.
-func (s *Set) Merge(r *Set) {
-	s.lock.Lock()
-	r.lock.Lock()
-	defer s.lock.Unlock()
-	defer r.lock.Unlock()
-
-	for key, rt := range r.data {
-		t, _ := s.data[key]
-
-		if t.AddTime < rt.AddTime {
-			t.AddTime = rt.AddTime
-		} else {
-			rt.AddTime = 0 // Remove from delta
-		}
-
-		if t.DelTime < rt.DelTime {
-			t.DelTime = rt.DelTime
-		} else {
-			rt.DelTime = 0 // Remove from delta
-		}
-
-		if rt.IsZero() {
-			delete(r.data, key) // Remove from delta
-		} else {
-			s.data[key] = t  // Merge the new value
-			r.data[key] = rt // Update the delta
-		}
-	}
-}
-
-// Range iterates through the events for a specific prefix.
-func (s *Set) Range(prefix []byte, f func(string, Time) bool) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	for k, v := range s.data {
-		if bytes.HasPrefix([]byte(k), prefix) {
-			if !f(k, v) { // If returns false, stop
-				return
-			}
-		}
-	}
-}
-
-// Clone copies a set into another set
-func (s *Set) Clone() *Set {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	items := make(map[string]Time, len(s.data))
-	for key, val := range s.data {
-		items[key] = val
-	}
-	return &Set{
-		lock: new(sync.Mutex),
-		data: items,
-	}
-}
-
-// GC collects all the garbage in the set by simply removing it. This currently uses a very
-// simplistic strategy with a static cutoff and expects all of the nodes in the cluster to
-// have a relatively synchronized time, in absense of which this would cause inconsistency.
-func (s *Set) GC() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	for key, val := range s.data {
-		if val.isExpired() {
-			delete(s.data, key)
-		}
-	}
-}
+// ------------------------------------------------------------------------------------
 
 // The clock for unit-testing
 type clock func() int64
