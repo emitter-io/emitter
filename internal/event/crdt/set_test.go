@@ -44,10 +44,10 @@ func Benchmark_Time(b *testing.B) {
 }
 
 func TestNew(t *testing.T) {
-	s1 := New(true)
+	s1 := New(true, "")
 	assert.IsType(t, new(Durable), s1)
 
-	s2 := New(false)
+	s2 := New(false, "")
 	assert.IsType(t, new(Volatile), s2)
 }
 

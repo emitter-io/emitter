@@ -35,9 +35,9 @@ type Set interface {
 }
 
 // New creates a new CRDT set.
-func New(durable bool) Set {
+func New(durable bool, path string) Set {
 	if durable {
-		return NewDurable()
+		return NewDurable(path)
 	}
 	return NewVolatile()
 }
