@@ -34,7 +34,7 @@ func setClock(t int64) {
 	crdt.Now = func() int64 { return t }
 }
 
-// Benchmark_State/contains-8         	11535033	       104 ns/op	       4 B/op	       1 allocs/op
+// Benchmark_State/contains-8         	11538494	       100 ns/op	      16 B/op	       1 allocs/op
 func Benchmark_State(b *testing.B) {
 	state := NewState(":memory:")
 	for i := 1; i <= 20000; i++ {
@@ -45,13 +45,13 @@ func Benchmark_State(b *testing.B) {
 
 	// Encode
 	target := Ban("10000")
-	state.Contains(&target)
+	state.Has(&target)
 	time.Sleep(10 * time.Millisecond)
 	b.Run("contains", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			state.Contains(&target)
+			state.Has(&target)
 		}
 	})
 }
@@ -70,18 +70,16 @@ func TestEncodeSubscriptionState(t *testing.T) {
 			Channel: nocopy.Bytes("A"),
 		}
 		state.Add(ev)
-		assert.True(t, state.Contains(ev))
+		assert.True(t, state.Has(ev))
 
 		// Encode / decode
 		enc := state.Encode()[0]
 		dec, err := DecodeState(enc)
 		assert.NoError(t, err)
-		dec.Subscriptions(func(k *Subscription, v Time) {
+		dec.Subscriptions(func(k *Subscription, v Value) {
 			assert.Equal(t, "A", string(k.Channel))
-			assert.Equal(t, Time{
-				AddTime: 10,
-				DelTime: 0,
-			}, v)
+			assert.Equal(t, int64(10), v.AddTime())
+			assert.Equal(t, int64(0), v.DelTime())
 		})
 
 		state.Close()
@@ -99,32 +97,27 @@ func TestMergeState(t *testing.T) {
 	state1 := NewState("")
 	state1.Add(&ev)
 
-	// Remove from state 2
+	// Del from state 2
 	setClock(50)
 	state2 := NewState("")
-	state2.Remove(&ev)
+	state2.Del(&ev)
 
 	// Merge
 	delta := state1.Merge(state2)
 	assert.Equal(t, state2, delta)
 
-	state1.Subscriptions(func(_ *Subscription, v Time) {
-		assert.Equal(t, Time{
-			AddTime: 20,
-			DelTime: 50,
-		}, v)
+	state1.Subscriptions(func(_ *Subscription, v Value) {
+		assert.Equal(t, int64(20), v.AddTime())
+		assert.Equal(t, int64(50), v.DelTime())
 	})
 
-	state2.Subscriptions(func(_ *Subscription, v Time) {
-		assert.Equal(t, Time{
-			AddTime: 0,
-			DelTime: 50,
-		}, v)
+	state2.Subscriptions(func(_ *Subscription, v Value) {
+		assert.Equal(t, int64(50), v.DelTime())
 	})
 
 	// Merge with zero delta
 	state3 := NewState("")
-	state3.Remove(&ev)
+	state3.Del(&ev)
 	delta = state3.Merge(state2)
 	assert.Nil(t, delta)
 }
@@ -149,13 +142,13 @@ func TestSubscriptions(t *testing.T) {
 	// Must have 2 keys alive after removal
 	setClock(int64(21))
 	state.SubscriptionsOf(1, func(ev *Subscription) {
-		state.Remove(ev)
+		state.Del(ev)
 	})
 	assert.Equal(t, 2, countAdded(state))
 
 	// Count all of the subscriptions (alive or dead)
 	count := 0
-	state.Subscriptions(func(ev *Subscription, _ Time) {
+	state.Subscriptions(func(ev *Subscription, _ Value) {
 		count++
 	})
 	assert.Equal(t, 3, count)
@@ -163,7 +156,7 @@ func TestSubscriptions(t *testing.T) {
 
 func countAdded(state *State) (added int) {
 	set := state.subsets[typeSub]
-	set.Range(nil, func(_ string, v Time) bool {
+	set.Range(nil, func(_ string, v Value) bool {
 		if v.IsAdded() {
 			added++
 		}
