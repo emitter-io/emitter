@@ -15,7 +15,6 @@
 package event
 
 import (
-	bin "encoding/binary"
 	"io"
 	"path"
 
@@ -25,13 +24,13 @@ import (
 	"github.com/weaveworks/mesh"
 )
 
-// Time represents an event time (CRDT metadata).
-type Time = crdt.Time
+// Value represents an event time & value.
+type Value = crdt.Value
 
 // State represents globally synchronised state.
 type State struct {
 	durable bool               // Whether the state is durable or not.
-	subsets map[uint8]crdt.Set // The subsets of the state.
+	subsets map[uint8]crdt.Map // The subsets of the state.
 }
 
 // NewState creates a new replicated state.
@@ -39,7 +38,7 @@ func NewState(dir string) *State {
 	durable := dir != ""
 	return &State{
 		durable: durable,
-		subsets: map[uint8]crdt.Set{
+		subsets: map[uint8]crdt.Map{
 			typeSub: crdt.New(durable, ""),
 			typeBan: crdt.New(durable, fileOf(dir, "ban.db")),
 		},
@@ -118,27 +117,27 @@ func (st *State) Merge(other mesh.GossipData) mesh.GossipData {
 // Add adds the unit to the state.
 func (st *State) Add(ev Event) {
 	set := st.subsets[ev.unitType()]
-	set.Add(ev.Encode())
+	set.Add(ev.Key(), ev.Val())
 }
 
-// Remove removes the unit from the state.
-func (st *State) Remove(ev Event) {
+// Del removes the unit from the state.
+func (st *State) Del(ev Event) {
 	set := st.subsets[ev.unitType()]
-	set.Remove(ev.Encode())
+	set.Del(ev.Key())
 }
 
-// Contains checks if the state contains an event.
-func (st *State) Contains(ev Event) bool {
+// Has checks if the state contains an event.
+func (st *State) Has(ev Event) bool {
 	set := st.subsets[ev.unitType()]
-	return set.Contains(ev.Encode())
+	return set.Has(ev.Key())
 }
 
 // Subscriptions iterates through all of the subscription units. This call is
 // blocking and will lock the entire set of subscriptions while iterating.
-func (st *State) Subscriptions(f func(*Subscription, Time)) {
+func (st *State) Subscriptions(f func(*Subscription, Value)) {
 	set := st.subsets[typeSub]
-	set.Range(nil, func(v string, t crdt.Time) bool {
-		if ev, err := decodeSubscription(v); err == nil {
+	set.Range(nil, func(v string, t Value) bool {
+		if ev, err := decodeSubscription(v, t.Value()); err == nil {
 			f(&ev, t)
 		}
 		return true
@@ -147,16 +146,15 @@ func (st *State) Subscriptions(f func(*Subscription, Time)) {
 
 // SubscriptionsOf iterates through the subscription events for a specific peer.
 func (st *State) SubscriptionsOf(name mesh.PeerName, f func(*Subscription)) {
-	buffer := make([]byte, 10, 10)
-	offset := bin.PutUvarint(buffer, uint64(name))
-	prefix := buffer[:offset]
+	prefix := make([]byte, 8)
+	binary.BigEndian.PutUint64(prefix, uint64(name))
 
 	// Copy since the Range() is locked
 	var events []*Subscription
 	set := st.subsets[typeSub]
-	set.Range(prefix, func(v string, t crdt.Time) bool {
+	set.Range(prefix, func(v string, t crdt.Value) bool {
 		if t.IsAdded() {
-			if ev, err := decodeSubscription(v); err == nil {
+			if ev, err := decodeSubscription(v, t.Value()); err == nil {
 				events = append(events, &ev)
 			}
 		}
