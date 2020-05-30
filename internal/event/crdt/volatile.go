@@ -24,62 +24,76 @@ import (
 
 // Volatile represents a last-write-wins CRDT set.
 type Volatile struct {
-	lock *sync.Mutex     // The associated mutex
-	data map[string]Time // The data containing the set
+	lock *sync.Mutex      // The associated mutex
+	data map[string]Value // The data containing the set
 }
 
 // NewVolatile creates a new last-write-wins set with bias for 'add'.
 func NewVolatile() *Volatile {
-	return newVolatileWith(make(map[string]Time, 64))
+	return newVolatileWith(make(map[string]Value, 64))
 }
 
 // newVolatileWith creates a new last-write-wins set with bias for 'add'.
-func newVolatileWith(items map[string]Time) *Volatile {
+func newVolatileWith(items map[string]Value) *Volatile {
 	return &Volatile{
 		lock: new(sync.Mutex),
 		data: items,
 	}
 }
 
+// Fetch fetches the item from the dictionary.
+func (s *Volatile) fetch(item string) Value {
+	if t, ok := s.data[item]; ok {
+		return t
+	}
+	return newValue()
+}
+
 // Add adds a value to the set.
-func (s *Volatile) Add(item string) {
+func (s *Volatile) Add(item string, value []byte) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	v, _ := s.data[item]
-	s.data[item] = Time{AddTime: Now(), DelTime: v.DelTime}
+	t, now := s.fetch(item), Now()
+	if t.AddTime() < now {
+		t.setAddTime(now)
+		t.setValue(value)
+		s.data[item] = t
+	}
 }
 
-// Remove removes the value from the set.
-func (s *Volatile) Remove(item string) {
+// Del removes the value from the set.
+func (s *Volatile) Del(item string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	v, _ := s.data[item]
-	s.data[item] = Time{AddTime: v.AddTime, DelTime: Now()}
+	t, now := s.fetch(item), Now()
+	if t.DelTime() < now {
+		t.setDelTime(now)
+		s.data[item] = t
+	}
 }
 
-// Contains checks if a value is present in the set.
-func (s *Volatile) Contains(item string) bool {
+// Has checks if a value is present in the set.
+func (s *Volatile) Has(item string) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	v, _ := s.data[item]
-	return v.IsAdded()
+	t := s.fetch(item)
+	return t.IsAdded()
 }
 
 // Get retrieves the time for an item.
-func (s *Volatile) Get(item string) Time {
+func (s *Volatile) Get(item string) Value {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	v, _ := s.data[item]
-	return v
+	return s.fetch(item)
 }
 
 // Merge merges two LWW sets. This also modifies the set being merged in
 // to leave only the delta.
-func (s *Volatile) Merge(other Set) {
+func (s *Volatile) Merge(other Map) {
 	r := other.(*Volatile)
 	s.lock.Lock()
 	r.lock.Lock()
@@ -87,31 +101,34 @@ func (s *Volatile) Merge(other Set) {
 	defer r.lock.Unlock()
 
 	for key, rt := range r.data {
-		t, _ := s.data[key]
+		st := s.fetch(key)
 
-		if t.AddTime < rt.AddTime {
-			t.AddTime = rt.AddTime
+		// Update add time & value
+		if st.AddTime() < rt.AddTime() {
+			st.setAddTime(rt.AddTime())
 		} else {
-			rt.AddTime = 0 // Remove from delta
+			rt.setAddTime(0) // Remove from delta
 		}
 
-		if t.DelTime < rt.DelTime {
-			t.DelTime = rt.DelTime
+		// Update delete time
+		if st.DelTime() < rt.DelTime() {
+			st.setDelTime(rt.DelTime())
 		} else {
-			rt.DelTime = 0 // Remove from delta
+			rt.setDelTime(0) // Remove from delta
 		}
 
 		if rt.IsZero() {
 			delete(r.data, key) // Remove from delta
 		} else {
-			s.data[key] = t  // Merge the new value
-			r.data[key] = rt // Update the delta
+			st.setValue(rt.Value()) // Set the new value
+			s.data[key] = st        // Merge the new value
+			r.data[key] = rt        // Update the delta
 		}
 	}
 }
 
 // Range iterates through the events for a specific prefix.
-func (s *Volatile) Range(prefix []byte, f func(string, Time) bool) {
+func (s *Volatile) Range(prefix []byte, f func(string, Value) bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -150,7 +167,7 @@ func (c *codecVolatile) EncodeTo(e *binary.Encoder, rv reflect.Value) (err error
 	e.WriteUvarint(uint64(len(s.data)))
 	for k, t := range s.data {
 		e.WriteString(k)
-		e.WriteString(t.Encode())
+		e.WriteString(t.encode())
 	}
 	return
 }
@@ -174,7 +191,7 @@ func (c *codecVolatile) DecodeTo(d *binary.Decoder, rv reflect.Value) (err error
 			return nil
 		}
 
-		out.data[binary.ToString(&k)] = decodeTime(binary.ToString(&v))
+		out.data[binary.ToString(&k)] = decodeValue(binary.ToString(&v))
 	}
 
 	rv.Set(reflect.ValueOf(*out))

@@ -18,12 +18,13 @@ import (
 	"testing"
 
 	"github.com/emitter-io/emitter/internal/message"
+	"github.com/emitter-io/emitter/internal/security/hash"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEncodeSubscription(t *testing.T) {
 	ev := Subscription{
-		Ssid:    message.Ssid{1, 2, 3, 4, 5},
+		Ssid:    message.Ssid{hash.OfString("a"), hash.OfString("b"), hash.OfString("c"), hash.OfString("d"), hash.OfString("e")},
 		Peer:    657,
 		Conn:    12456,
 		User:    "hello",
@@ -33,25 +34,27 @@ func TestEncodeSubscription(t *testing.T) {
 	assert.Equal(t, "LPCGOQV6DEDQFHIRWBMKICQCZE", ev.ConnID())
 
 	// Encode
-	enc := ev.Encode()
+	k, v := ev.Key(), ev.Val()
 	assert.Equal(t, typeSub, ev.unitType())
-	assert.Equal(t, 27, len(enc))
+	assert.Equal(t, 36, len(k))
 	assert.Equal(t,
-		[]byte{0x91, 0x5, 0xa8, 0x61, 0x5, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0xa, 0x61, 0x2f, 0x62, 0x2f, 0x63, 0x2f, 0x64, 0x2f, 0x65, 0x2f, 0x5, 0x1, 0x2, 0x3, 0x4, 0x5},
-		[]byte(enc),
+		[]byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2, 0x91, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x30, 0xa8, 0xc1, 0x3, 0xea,
+			0xb3, 0x1d, 0xd8, 0x2e, 0x48, 0x3d, 0x43, 0x19, 0x23, 0x16, 0x1b, 0xa0, 0x5b, 0x7f, 0xd4, 0x1, 0x2},
+		[]byte(k),
 	)
 
 	// Decode
-	dec, err := decodeSubscription(enc)
+	dec, err := decodeSubscription(k, v)
 	assert.NoError(t, err)
 	assert.Equal(t, ev, dec)
 }
 
 func TestEncodeBan(t *testing.T) {
 	ev := Ban("a/b/c/d/e/")
+	assert.Nil(t, ev.Val())
 
 	// Encode
-	enc := ev.Encode()
+	enc := ev.Key()
 	assert.Equal(t, typeBan, ev.unitType())
 	assert.Equal(t, 10, len(enc))
 	assert.Equal(t,
@@ -65,8 +68,8 @@ func TestEncodeBan(t *testing.T) {
 	assert.Equal(t, ev, dec)
 }
 
-// Benchmark_Subscription/encode-8         	 4379755	       270 ns/op	     112 B/op	       2 allocs/op
-// Benchmark_Subscription/decode-8         	 2803533	       428 ns/op	     176 B/op	       4 allocs/op
+// Benchmark_Subscription/encode-8         	 5939726	       199 ns/op	     160 B/op	       3 allocs/op
+// Benchmark_Subscription/decode-8         	 6665554	       178 ns/op	     112 B/op	       2 allocs/op
 func Benchmark_Subscription(b *testing.B) {
 	ev := Subscription{
 		Ssid:    message.Ssid{1, 2, 3, 4, 5},
@@ -81,17 +84,18 @@ func Benchmark_Subscription(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ev.Encode()
+			ev.Key()
+			ev.Val()
 		}
 	})
 
 	// Decode
-	enc := ev.Encode()
+	k, v := ev.Key(), ev.Val()
 	b.Run("decode", func(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			decodeSubscription(enc)
+			decodeSubscription(k, v)
 		}
 	})
 
