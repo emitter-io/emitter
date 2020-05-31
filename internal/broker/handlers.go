@@ -16,6 +16,7 @@ package broker
 
 import (
 	"encoding/json"
+	"github.com/kelindar/binary/nocopy"
 	"regexp"
 	"strings"
 	"time"
@@ -46,200 +47,22 @@ var (
 // onConnect handles the connection authorization
 func (c *Conn) onConnect(packet *mqtt.Connect) bool {
 	c.username = string(packet.Username)
+	c.connect = &event.Connection{
+		Peer:        c.service.ID(),
+		Conn:        c.luid,
+		WillFlag:    packet.WillFlag,
+		WillRetain:  packet.WillRetainFlag,
+		WillQoS:     packet.WillQOS,
+		WillTopic:   packet.WillTopic,
+		WillMessage: packet.WillMessage,
+		ClientID:    packet.ClientID,
+		Username:    packet.Username,
+	}
+
+	if c.service.cluster != nil {
+		c.service.cluster.NotifyBeginOf(c.connect)
+	}
 	return true
-}
-
-// ------------------------------------------------------------------------------------
-
-// OnSubscribe is a handler for MQTT Subscribe events.
-func (c *Conn) onSubscribe(mqttTopic []byte) *errors.Error {
-
-	// Parse the channel
-	channel := security.ParseChannel(mqttTopic)
-	if channel.ChannelType == security.ChannelInvalid {
-		return errors.ErrBadRequest
-	}
-
-	// Check the authorization and permissions
-	contract, key, allowed := c.service.authorize(channel, security.AllowRead)
-	if !allowed {
-		return errors.ErrUnauthorized
-	}
-
-	// Keys which are supposed to be extended should not be used for subscribing
-	if key.HasPermission(security.AllowExtend) {
-		return errors.ErrUnauthorizedExt
-	}
-
-	// Subscribe the client to the channel
-	ssid := message.NewSsid(key.Contract(), channel.Query)
-	c.Subscribe(ssid, channel.Channel)
-
-	// Use limit = 1 if not specified, otherwise use the limit option. The limit now
-	// defaults to one as per MQTT spec we always need to send retained messages.
-	limit := int64(1)
-	if v, ok := channel.Last(); ok {
-		limit = v
-	}
-
-	// Check if the key has a load permission (also applies for retained)
-	if key.HasPermission(security.AllowLoad) {
-		t0, t1 := channel.Window() // Get the window
-		msgs, err := c.service.storage.Query(ssid, t0, t1, int(limit))
-		if err != nil {
-			logging.LogError("conn", "query last messages", err)
-			return errors.ErrServerError
-		}
-
-		// Range over the messages in the channel and forward them
-		for _, m := range msgs {
-			msg := m // Copy message
-			c.Send(&msg)
-		}
-	}
-
-	// Write the stats
-	c.track(contract)
-	return nil
-}
-
-// ------------------------------------------------------------------------------------
-
-// OnUnsubscribe is a handler for MQTT Unsubscribe events.
-func (c *Conn) onUnsubscribe(mqttTopic []byte) *errors.Error {
-
-	// Parse the channel
-	channel := security.ParseChannel(mqttTopic)
-	if channel.ChannelType == security.ChannelInvalid {
-		return errors.ErrBadRequest
-	}
-
-	// Check the authorization and permissions
-	contract, key, allowed := c.service.authorize(channel, security.AllowRead)
-	if !allowed {
-		return errors.ErrUnauthorized
-	}
-
-	// Unsubscribe the client from the channel
-	ssid := message.NewSsid(key.Contract(), channel.Query)
-	c.Unsubscribe(ssid, channel.Channel)
-	c.track(contract)
-	return nil
-}
-
-// ------------------------------------------------------------------------------------
-
-// OnPublish is a handler for MQTT Publish events.
-func (c *Conn) onPublish(packet *mqtt.Publish) *errors.Error {
-	mqttTopic := packet.Topic
-	if len(mqttTopic) <= 2 && c.links != nil {
-		mqttTopic = []byte(c.links[string(mqttTopic)])
-	}
-
-	// Make sure we have a valid channel
-	channel := security.ParseChannel(mqttTopic)
-	if channel.ChannelType == security.ChannelInvalid {
-		return errors.ErrBadRequest
-	}
-
-	// Publish should only have static channel strings
-	if channel.ChannelType != security.ChannelStatic {
-		return errors.ErrForbidden
-	}
-
-	// Check whether the key is 'emitter' which means it's an API request
-	if len(channel.Key) == 7 && string(channel.Key) == "emitter" {
-		c.onEmitterRequest(channel, packet.Payload, packet.MessageID)
-		return nil
-	}
-
-	// Check the authorization and permissions
-	contract, key, allowed := c.service.authorize(channel, security.AllowWrite)
-	if !allowed {
-		return errors.ErrUnauthorized
-	}
-
-	// Keys which are supposed to be extended should not be used for publishing
-	if key.HasPermission(security.AllowExtend) {
-		return errors.ErrUnauthorizedExt
-	}
-
-	// Create a new message
-	msg := message.New(
-		message.NewSsid(key.Contract(), channel.Query),
-		channel.Channel,
-		packet.Payload,
-	)
-
-	// If a user have specified a retain flag, retain with a default TTL
-	if packet.Header.Retain {
-		msg.TTL = message.RetainedTTL
-	}
-
-	// If a user have specified a TTL, use that value
-	if ttl, ok := channel.TTL(); ok && ttl > 0 {
-		msg.TTL = uint32(ttl)
-	}
-
-	// Store the message if needed
-	if msg.Stored() && key.HasPermission(security.AllowStore) {
-		c.service.storage.Store(msg)
-	}
-
-	// Check whether an exclude me option was set (i.e.: 'me=0')
-	var exclude string
-	if channel.Exclude() {
-		exclude = c.ID()
-	}
-
-	// Iterate through all subscribers and send them the message
-	size := c.service.Publish(msg, func(s message.Subscriber) bool {
-		return s.ID() != exclude
-	})
-
-	// Write the monitoring information
-	c.track(contract)
-	contract.Stats().AddIngress(int64(len(packet.Payload)))
-	contract.Stats().AddEgress(size)
-	return nil
-}
-
-// ------------------------------------------------------------------------------------
-
-// onEmitterRequest processes an emitter request.
-func (c *Conn) onEmitterRequest(channel *security.Channel, payload []byte, requestID uint16) (ok bool) {
-	var resp response
-	defer func() {
-		if resp != nil {
-			c.sendResponse(channel.String(), resp, requestID)
-		}
-	}()
-
-	// Make sure we have a query
-	resp = errors.ErrNotFound
-	if len(channel.Query) < 1 {
-		return
-	}
-
-	switch channel.Query[0] {
-	case requestKeygen:
-		resp, ok = c.onKeyGen(payload)
-		return
-	case requestKeyban:
-		resp, ok = c.onKeyBan(payload)
-		return
-	case requestPresence:
-		resp, ok = c.onPresence(payload)
-		return
-	case requestMe:
-		resp, ok = c.onMe()
-		return
-	case requestLink:
-		resp, ok = c.onLink(payload)
-		return
-	default:
-		return
-	}
 }
 
 // ------------------------------------------------------------------------------------
@@ -266,8 +89,14 @@ func (c *Conn) onLink(payload []byte) (response, bool) {
 	c.links[request.Name] = channel.String()
 
 	// If an auto-subscribe was requested and the key has read permissions, subscribe
-	if _, key, allowed := c.service.authorize(channel, security.AllowRead); allowed && request.Subscribe {
-		c.Subscribe(message.NewSsid(key.Contract(), channel.Query), channel.Channel)
+	if _, key, allowed := c.service.Authorize(channel, security.AllowRead); allowed && request.Subscribe {
+		ssid := message.NewSsid(key.Contract(), channel.Query)
+		c.service.pubsub.Subscribe(c, &event.Subscription{
+			Conn:    c.LocalID(),
+			User:    nocopy.String(c.Username()),
+			Ssid:    ssid,
+			Channel: channel.Channel,
+		})
 	}
 
 	return &linkResponse{
@@ -406,7 +235,7 @@ func (s *Service) lookupPresence(ssid message.Ssid) []presenceInfo {
 		if conn, ok := subscriber.(*Conn); ok {
 			resp = append(resp, presenceInfo{
 				ID:       conn.ID(),
-				Username: conn.username,
+				Username: conn.Username(),
 			})
 		}
 	}
@@ -460,7 +289,7 @@ func (c *Conn) onPresence(payload []byte) (response, bool) {
 		return errors.ErrBadRequest, false
 	}
 	// Check the authorization and permissions
-	_, key, allowed := c.service.authorize(channel, security.AllowPresence)
+	_, key, allowed := c.service.Authorize(channel, security.AllowPresence)
 	if !allowed {
 		return errors.ErrUnauthorized, false
 	}
@@ -472,14 +301,24 @@ func (c *Conn) onPresence(payload []byte) (response, bool) {
 
 	// Create the ssid for the presence
 	ssid := message.NewSsid(key.Contract(), channel.Query)
+
 	// Check if the client is interested in subscribing/unsubscribing from changes.
 	if msg.Changes != nil {
-		if *msg.Changes {
-			c.Subscribe(message.NewSsidForPresence(ssid), nil)
-		} else {
-			c.Unsubscribe(message.NewSsidForPresence(ssid), nil)
+		ev := &event.Subscription{
+			Conn:    c.LocalID(),
+			User:    nocopy.String(c.Username()),
+			Ssid:    message.NewSsidForPresence(ssid),
+			Channel: channel.Channel,
+		}
+
+		switch *msg.Changes {
+		case true:
+			c.service.pubsub.Subscribe(c, ev)
+		case false:
+			c.service.pubsub.Unsubscribe(c, ev)
 		}
 	}
+
 	// If we requested a status, populate the slice via scatter/gather.
 	now := time.Now().UTC().Unix()
 	who := make([]presenceInfo, 0, 4)

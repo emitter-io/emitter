@@ -33,8 +33,6 @@ import (
 
 	"github.com/emitter-io/address"
 	"github.com/emitter-io/emitter/internal/broker/cluster"
-	"github.com/emitter-io/emitter/internal/broker/keygen"
-	"github.com/emitter-io/emitter/internal/broker/survey"
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
@@ -47,6 +45,9 @@ import (
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/security/license"
+	"github.com/emitter-io/emitter/internal/service/keygen"
+	"github.com/emitter-io/emitter/internal/service/pubsub"
+	"github.com/emitter-io/emitter/internal/service/survey"
 	"github.com/emitter-io/stats"
 	"github.com/kelindar/tcp"
 )
@@ -70,6 +71,7 @@ type Service struct {
 	monitor       monitor.Storage      // The storage provider for stats.
 	measurer      stats.Measurer       // The monitoring registry for the service.
 	metering      usage.Metering       // The usage storage for metering contracts.
+	pubsub        *pubsub.Service      // The publish/subscribe service.
 }
 
 // NewService creates a new service.
@@ -99,14 +101,6 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		return nil, err
 	}
 
-	// Create a new cluster if we have this configured
-	if cfg.Cluster != nil {
-		s.cluster = cluster.NewSwarm(cfg.Cluster)
-		s.cluster.OnMessage = s.onPeerMessage
-		s.cluster.OnSubscribe = s.Subscribe
-		s.cluster.OnUnsubscribe = s.Unsubscribe
-	}
-
 	// Load the logging provider
 	logging.Logger = config.LoadProvider(cfg.Logging, logging.NewStdErr()).(logging.Logging)
 	logging.LogTarget("service", "configured logging provider", logging.Logger.Name())
@@ -127,6 +121,9 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		contract.NewHTTPContractProvider(s.License, s.metering)).(contract.Provider)
 	logging.LogTarget("service", "configured contracts provider", s.contracts.Name())
 
+	// Attach the pubsub service
+	s.pubsub = pubsub.New(s, s.storage, s, s.subscriptions, nil)
+
 	// Load the monitor storage provider
 	nodeName := address.Fingerprint(s.ID()).String()
 	sampler := newSampler(s, s.measurer)
@@ -139,8 +136,17 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	).(monitor.Storage)
 	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
 
+	// Create a new cluster if we have this configured
+	if cfg.Cluster != nil {
+		s.cluster = cluster.NewSwarm(cfg.Cluster)
+		s.cluster.OnMessage = s.onPeerMessage
+		s.cluster.OnSubscribe = s.pubsub.Subscribe
+		s.cluster.OnUnsubscribe = s.pubsub.Unsubscribe
+		s.cluster.OnDisconnect = s.pubsub.OnLastWill
+	}
+
 	// Attach survey handlers
-	s.surveyor = survey.New(s, s.cluster)
+	s.surveyor = survey.New(s.pubsub, s.cluster)
 	if s.cluster != nil {
 		s.surveyor.HandleFunc(s, ssdstore, memstore)
 	}
@@ -152,7 +158,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	}
 
 	// Attach handlers
-	s.Keygen = keygen.NewProvider(cipher, s.contracts)
+	s.Keygen = keygen.NewProvider(cipher, s.contracts, s)
 	if cfg.Debug {
 		mux.HandleFunc("/debug/pprof/", pprof.Index)
 		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
@@ -278,30 +284,42 @@ func (s *Service) notifyPresenceEvent(ev *presenceNotify, filter func(message.Su
 }
 
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Service) notifySubscribe(ev *event.Subscription) {
+func (s *Service) NotifySubscribe(sub message.Subscriber, ev *event.Subscription) {
+	ev.Peer = s.ID()
 
-	// If we have a new direct subscriber, issue presence message and publish it
-	if ev.Channel != nil {
-		s.presence <- newPresenceNotify(presenceSubscribeEvent, ev)
-	}
+	// Broadcast direct subscriptions
+	if sub.Type() == message.SubscriberDirect {
 
-	// Notify our cluster that the client just subscribed.
-	if s.cluster != nil {
-		s.cluster.NotifyBeginOf(ev)
+		// If we have a new direct subscriber, issue presence message and publish it
+		if ev.Channel != nil {
+			s.presence <- newPresenceNotify(presenceSubscribeEvent, ev)
+		}
+
+		// Notify our cluster that the client just subscribed.
+		if s.cluster != nil {
+			s.cluster.NotifyBeginOf(ev)
+		}
 	}
 }
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
-func (s *Service) notifyUnsubscribe(ev *event.Subscription) {
+func (s *Service) NotifyUnsubscribe(sub message.Subscriber, ev *event.Subscription) {
+	ev.Peer = s.ID()
+	switch sub.Type() {
+	case message.SubscriberDirect:
+		if ev.Channel != nil { // If we have a new direct subscriber, issue presence message and publish it
+			s.presence <- newPresenceNotify(presenceUnsubscribeEvent, ev)
+		}
 
-	// If we have a new direct subscriber, issue presence message and publish it
-	if ev.Channel != nil {
-		s.presence <- newPresenceNotify(presenceUnsubscribeEvent, ev)
-	}
+		if s.cluster != nil { // Notify our cluster that the client just unsubscribed.
+			s.cluster.NotifyEndOf(ev)
+		}
 
-	// Notify our cluster that the client just unsubscribed.
-	if s.cluster != nil {
-		s.cluster.NotifyEndOf(ev)
+	case message.SubscriberOffline:
+		// If the peer is offline, notify the presence
+		s.notifyPresenceEvent(newPresenceNotify(presenceUnsubscribeEvent, ev), func(s message.Subscriber) bool {
+			return s.Type() == message.SubscriberDirect
+		})
 	}
 }
 
@@ -392,41 +410,6 @@ func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// Subscribe subscribes to a channel.
-func (s *Service) Subscribe(sub message.Subscriber, ev *event.Subscription) bool {
-	if _, err := s.subscriptions.Subscribe(ev.Ssid, sub); err != nil {
-		return false // Unable to subscribe
-	}
-
-	// Broadcast direct subscriptions
-	if sub.Type() == message.SubscriberDirect {
-		s.notifySubscribe(ev)
-	}
-	return true
-}
-
-// Unsubscribe unsubscribes from a channel
-func (s *Service) Unsubscribe(sub message.Subscriber, ev *event.Subscription) (ok bool) {
-	subscribers := s.subscriptions.Lookup(ev.Ssid, nil)
-	if ok = subscribers.Contains(sub); ok {
-		s.subscriptions.Unsubscribe(ev.Ssid, sub)
-	}
-
-	// Broadcast direct unsubscriptions
-	if sub.Type() == message.SubscriberDirect {
-		s.notifyUnsubscribe(ev)
-	}
-
-	// If the peer is offline, notify the presence
-	if sub.Type() == message.SubscriberOffline {
-		s.notifyPresenceEvent(newPresenceNotify(presenceUnsubscribeEvent, ev), func(s message.Subscriber) bool {
-			return s.Type() == message.SubscriberDirect
-		})
-	}
-
-	return
-}
-
 // Occurs when a message is received from a peer.
 func (s *Service) onPeerMessage(m *message.Message) {
 	defer s.measurer.MeasureElapsed("peer.msg", time.Now())
@@ -472,7 +455,10 @@ func (s *Service) Publish(m *message.Message, filter func(message.Subscriber) bo
 }
 
 // Authorize attempts to authorize a channel with its key
-func (s *Service) authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
+func (s *Service) Authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
+	if channel.ChannelType == security.ChannelInvalid {
+		return nil, nil, false
+	}
 
 	// Check if the key is blacklisted
 	channelKey := string(channel.Key)
@@ -500,7 +486,7 @@ func (s *Service) authorize(channel *security.Channel, permission uint8) (contra
 func (s *Service) selfPublish(channelName string, payload []byte) {
 	channel := security.ParseChannel([]byte("emitter/" + channelName))
 	if channel.ChannelType == security.ChannelStatic {
-		s.Publish(message.New(
+		s.pubsub.Publish(message.New(
 			message.NewSsid(s.License.Contract(), channel.Query),
 			channel.Channel,
 			payload,
@@ -540,7 +526,6 @@ func (s *Service) Close() {
 	// Gracefully dispose all of our resources
 	dispose(s.cluster)
 	dispose(s.storage)
-
 }
 
 func dispose(resource io.Closer) {

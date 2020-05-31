@@ -21,13 +21,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security/license"
+	"github.com/emitter-io/emitter/internal/service/keygen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -129,9 +129,9 @@ func Test_onHTTPPresence(t *testing.T) {
 			contracts:     provider,
 			subscriptions: message.NewTrie(),
 			License:       license,
-			Keygen:        keygen.NewProvider(cipher, provider),
 		}
 
+		s.Keygen = keygen.NewProvider(cipher, provider, s)
 		req, _ := http.NewRequest("POST", "/presence", strings.NewReader(tc.payload))
 
 		// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.

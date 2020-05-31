@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/internal/errors"
+	"github.com/emitter-io/emitter/internal/provider/contract"
 	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security"
@@ -95,7 +96,7 @@ func TestExtendKey(t *testing.T) {
 			contract.On("Stats").Return(usage.NewMeter(0))
 			provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 			cipher, _ := license.Cipher()
-			p := NewProvider(cipher, provider)
+			p := NewProvider(cipher, provider, &authorizer{cipher, provider})
 
 			channel, err := p.ExtendKey(tc.key, tc.channel, "ID", tc.access, tc.expires)
 			if tc.err != nil {
@@ -179,7 +180,7 @@ func TestCreateKey(t *testing.T) {
 			contract.On("Stats").Return(usage.NewMeter(0))
 			provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 			cipher, _ := license.Cipher()
-			p := NewProvider(cipher, provider)
+			p := NewProvider(cipher, provider, &authorizer{cipher, provider})
 
 			_, err := p.CreateKey(tc.key, tc.channel, tc.access, tc.expires)
 			if tc.err != nil {
@@ -189,4 +190,27 @@ func TestCreateKey(t *testing.T) {
 			}
 		})
 	}
+}
+
+type authorizer struct {
+	cipher license.Cipher
+	loader contract.Provider
+}
+
+func (a *authorizer) Authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
+
+	// Attempt to parse the key
+	key, err := a.cipher.DecryptKey(channel.Key)
+	if err != nil || key.IsExpired() {
+		return nil, nil, false
+	}
+
+	// Attempt to fetch the contract using the key. Underneath, it's cached.
+	contract, contractFound := a.loader.Get(key.Contract())
+	if !contractFound || !contract.Validate(key) || !key.HasPermission(permission) || !key.ValidateChannel(channel) {
+		return nil, nil, false
+	}
+
+	// Return the contract and the key
+	return contract, key, true
 }

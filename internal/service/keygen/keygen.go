@@ -27,30 +27,33 @@ import (
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/security/hash"
 	"github.com/emitter-io/emitter/internal/security/license"
+	"github.com/emitter-io/emitter/internal/service"
 )
 
 // Provider represents a key generation provider.
 type Provider struct {
-	Cipher license.Cipher    // Cipher to use for the key generation
-	Loader contract.Provider // Contract loader to use to retrieve contracts
+	cipher license.Cipher     // Cipher to use for the key generation
+	loader contract.Provider  // Contract loader to use to retrieve contracts
+	auth   service.Authorizer // The authorizer to use.
 }
 
 // NewProvider creates a new key generation provider.
-func NewProvider(cipher license.Cipher, loader contract.Provider) *Provider {
+func NewProvider(cipher license.Cipher, loader contract.Provider, auth service.Authorizer) *Provider {
 	return &Provider{
-		Cipher: cipher,
-		Loader: loader,
+		cipher: cipher,
+		loader: loader,
+		auth:   auth,
 	}
 }
 
 // DecryptKey decrypts a key and returns it
 func (p *Provider) DecryptKey(key string) (security.Key, error) {
-	return p.Cipher.DecryptKey([]byte(key))
+	return p.cipher.DecryptKey([]byte(key))
 }
 
 // EncryptKey encrypts the security key
 func (p *Provider) EncryptKey(key security.Key) (string, error) {
-	return p.Cipher.EncryptKey([]byte(key))
+	return p.cipher.EncryptKey([]byte(key))
 }
 
 // CreateKey generates a key with the specified access and expiration time.
@@ -61,7 +64,7 @@ func (p *Provider) CreateKey(rawMasterKey, channel string, access uint8, expires
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := p.Loader.Get(masterKey.Contract())
+	contract, contractFound := p.loader.Get(masterKey.Contract())
 	if !contractFound {
 		return "", errors.ErrNotFound
 	}
@@ -102,7 +105,7 @@ func (p *Provider) CreateKey(rawMasterKey, channel string, access uint8, expires
 	}
 
 	// Encrypt the final key
-	out, err := p.Cipher.EncryptKey(key)
+	out, err := p.cipher.EncryptKey(key)
 	if err != nil {
 		return "", errors.ErrServerError
 	}
@@ -124,7 +127,7 @@ func (p *Provider) ExtendKey(channelKey, channelName, connectionID string, acces
 	}
 
 	// Make sure we can actually extend it
-	_, key, allowed := p.authorize(channel, security.AllowExtend)
+	_, key, allowed := p.auth.Authorize(channel, security.AllowExtend)
 	if !allowed {
 		return nil, errors.ErrUnauthorized
 	}
@@ -143,7 +146,7 @@ func (p *Provider) ExtendKey(channelKey, channelName, connectionID string, acces
 	}
 
 	// Encrypt the key for storing
-	encryptedKey, err := p.Cipher.EncryptKey(key)
+	encryptedKey, err := p.cipher.EncryptKey(key)
 	if err != nil {
 		return nil, errors.New(err.Error())
 	}
@@ -153,23 +156,4 @@ func (p *Provider) ExtendKey(channelKey, channelName, connectionID string, acces
 	channel.Query = append(channel.Query, hash.OfString(connectionID))
 	channel.Key = []byte(encryptedKey)
 	return channel, nil
-}
-
-// Authorize attempts to authorize a channel with its key
-func (p *Provider) authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
-
-	// Attempt to parse the key
-	key, err := p.Cipher.DecryptKey(channel.Key)
-	if err != nil || key.IsExpired() {
-		return nil, nil, false
-	}
-
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := p.Loader.Get(key.Contract())
-	if !contractFound || !contract.Validate(key) || !key.HasPermission(permission) || !key.ValidateChannel(channel) {
-		return nil, nil, false
-	}
-
-	// Return the contract and the key
-	return contract, key, true
 }

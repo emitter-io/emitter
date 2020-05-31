@@ -41,7 +41,8 @@ func newTestProvider(t *testing.T) *Provider {
 	cipher, err := l.Cipher()
 	assert.NoError(t, err)
 
-	return NewProvider(cipher, contract.NewSingleContractProvider(l, usage.NewNoop()))
+	provider := contract.NewSingleContractProvider(l, usage.NewNoop())
+	return NewProvider(cipher, provider, &authorizer{cipher, provider})
 }
 
 var keyGenResponseM = regexp.MustCompile(`(?s)<pre id="keygenResponse">(?P<response>.*)</pre>`)

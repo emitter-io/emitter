@@ -128,12 +128,16 @@ func (s *Volatile) Merge(other Map) {
 }
 
 // Range iterates through the events for a specific prefix.
-func (s *Volatile) Range(prefix []byte, f func(string, Value) bool) {
+func (s *Volatile) Range(prefix []byte, tombstones bool, f func(string, Value) bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	for k, v := range s.data {
-		if bytes.HasPrefix([]byte(k), prefix) {
+		if !bytes.HasPrefix(binary.ToBytes(k), prefix) {
+			continue
+		}
+
+		if tombstones || v.IsAdded() {
 			if !f(k, v) { // If returns false, stop
 				return
 			}

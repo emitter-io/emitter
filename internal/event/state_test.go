@@ -126,7 +126,7 @@ func TestSubscriptions(t *testing.T) {
 	defer restoreClock(crdt.Now)
 
 	setClock(0)
-	state := NewState("")
+	state := NewState(":memory:")
 	defer state.Close()
 
 	for i := 1; i <= 10; i++ {
@@ -156,10 +156,8 @@ func TestSubscriptions(t *testing.T) {
 
 func countAdded(state *State) (added int) {
 	set := state.subsets[typeSub]
-	set.Range(nil, func(_ string, v Value) bool {
-		if v.IsAdded() {
-			added++
-		}
+	set.Range(nil, false, func(_ string, v Value) bool {
+		added++
 		return true
 	})
 	return

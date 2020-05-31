@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/emitter-io/emitter/internal/broker/cluster"
-	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/event"
@@ -31,6 +30,7 @@ import (
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/security/license"
+	"github.com/emitter-io/emitter/internal/service/keygen"
 	"github.com/emitter-io/stats"
 	"github.com/kelindar/binary"
 	"github.com/stretchr/testify/assert"
@@ -77,9 +77,9 @@ func TestHandlers_onLink(t *testing.T) {
 				subscriptions: message.NewTrie(),
 				License:       license,
 				presence:      make(chan *presenceNotify, 100),
-				Keygen:        keygen.NewProvider(cipher, provider),
 			}
 
+			s.Keygen = keygen.NewProvider(cipher, provider, s)
 			conn := netmock.NewConn()
 			nc := s.newConn(conn.Client, 0)
 
@@ -217,9 +217,9 @@ func TestHandlers_onSubscribeUnsubscribe(t *testing.T) {
 				subscriptions: message.NewTrie(),
 				License:       license,
 				presence:      make(chan *presenceNotify, 100),
-				Keygen:        keygen.NewProvider(cipher, provider),
 			}
 
+			s.Keygen = keygen.NewProvider(cipher, provider, s)
 			conn := netmock.NewConn()
 			nc := s.newConn(conn.Client, 0)
 
@@ -343,9 +343,9 @@ func TestHandlers_onPublish(t *testing.T) {
 			contracts:     provider,
 			subscriptions: message.NewTrie(),
 			License:       license,
-			Keygen:        keygen.NewProvider(cipher, provider),
 		}
 
+		s.Keygen = keygen.NewProvider(cipher, provider, s)
 		conn := netmock.NewConn()
 		nc := s.newConn(conn.Client, 0)
 
@@ -450,9 +450,9 @@ func TestHandlers_onPresence(t *testing.T) {
 			contracts:     provider,
 			subscriptions: message.NewTrie(),
 			License:       license,
-			Keygen:        keygen.NewProvider(cipher, provider),
 		}
 
+		s.Keygen = keygen.NewProvider(cipher, provider, s)
 		conn := netmock.NewConn()
 		nc := s.newConn(conn.Client, 0)
 
@@ -538,9 +538,9 @@ func TestHandlers_onKeygen(t *testing.T) {
 				contracts:     provider,
 				subscriptions: message.NewTrie(),
 				License:       license,
-				Keygen:        keygen.NewProvider(cipher, provider),
 			}
 
+			s.Keygen = keygen.NewProvider(cipher, provider, s)
 			conn := netmock.NewConn()
 			nc := s.newConn(conn.Client, 0)
 
@@ -678,13 +678,13 @@ func TestHandlers_onKeyBan(t *testing.T) {
 
 	s := &Service{
 		License: license,
-		Keygen:  keygen.NewProvider(cipher, provider),
 		cluster: cluster.NewSwarm(&config.ClusterConfig{
 			NodeName:      "00:00:00:00:00:01",
 			ListenAddr:    ":4000",
 			AdvertiseAddr: ":4001",
 		}),
 	}
+	s.Keygen = keygen.NewProvider(cipher, provider, s)
 
 	// Key should be allowed
 	ev := event.Ban("6ijJv3TMhYTg6lLk2fQoVNbGrujgjFPk")

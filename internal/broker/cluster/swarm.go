@@ -48,6 +48,7 @@ type Swarm struct {
 
 	OnSubscribe   func(message.Subscriber, *event.Subscription) bool // Delegate to invoke when the subscription event is received.
 	OnUnsubscribe func(message.Subscriber, *event.Subscription) bool // Delegate to invoke when the subscription event is received.
+	OnDisconnect  func(message.Subscriber, *event.Connection) bool   // Delegate to invoke when the client is disconnected.
 	OnMessage     func(*message.Message)                             // Delegate to invoke when a new message is received.
 }
 
@@ -153,6 +154,13 @@ func (s *Swarm) onPeerOffline(name mesh.PeerName) {
 			s.OnUnsubscribe(dead, ev) // Notify locally that the subscription is gone
 			s.state.Del(ev)           // Remove the state from ourselves
 		})
+
+		// If we're a fallback server, issue last will events
+		if fallback, ok := s.members.Fallback(name); ok && s.name == fallback.name {
+			s.state.ConnectionsOf(name, func(ev *event.Connection) {
+				s.OnDisconnect(dead, ev)
+			})
+		}
 	}
 }
 
@@ -273,7 +281,7 @@ func (s *Swarm) merge(buf []byte) (mesh.GossipData, error) {
 
 // NumPeers returns the number of connected peers.
 func (s *Swarm) NumPeers() int {
-	if s.router == nil {
+	if s == nil || s.router == nil {
 		return 0
 	}
 

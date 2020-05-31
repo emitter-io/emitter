@@ -15,6 +15,7 @@
 package cluster
 
 import (
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -45,6 +46,23 @@ func (m *memberlist) GetOrAdd(name mesh.PeerName) (*Peer, bool) {
 	peer := m.ctor(name)
 	v, loaded := m.list.LoadOrStore(name, peer)
 	return v.(*Peer), !loaded
+}
+
+// Fallback gets a fallback peer for a given peer.
+func (m *memberlist) Fallback(name mesh.PeerName) (*Peer, bool) {
+	peers := make([]*Peer, 0, 8)
+	m.list.Range(func(k, v interface{}) bool {
+		if peer := v.(*Peer); peer.IsActive() && peer.name != name {
+			peers = append(peers, v.(*Peer))
+		}
+		return true
+	})
+
+	sort.Slice(peers, func(i, j int) bool { return name-peers[i].name > name-peers[j].name })
+	if len(peers) > 0 {
+		return peers[0], true
+	}
+	return nil, false
 }
 
 // Touch updates the last activity time
