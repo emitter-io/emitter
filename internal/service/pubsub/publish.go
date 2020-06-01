@@ -124,10 +124,9 @@ func (s *Service) onEmitterRequest(c service.Conn, channel *security.Channel, pa
 	}
 
 	// Get the handler for the query
-	if handler, ok := s.handlers[channel.Query[0]]; ok {
-		resp, ok = handler.Handle(payload)
+	if handle, ok := s.handlers[channel.Query[0]]; ok {
+		resp, ok = handle(c, payload)
 	}
-
 	return
 }
 

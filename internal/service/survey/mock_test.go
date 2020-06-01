@@ -5,6 +5,7 @@ package survey
 import (
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
+	"github.com/emitter-io/emitter/internal/service"
 	"github.com/stretchr/testify/mock"
 	"github.com/weaveworks/mesh"
 )
@@ -54,6 +55,11 @@ func (_m *pubsubMock) Unsubscribe(_a0 message.Subscriber, _a1 *event.Subscriptio
 	}
 
 	return r0
+}
+
+// Unsubscribe provides a mock function with given fields: _a0, _a1
+func (_m *pubsubMock) Handle(_ string, _ service.Handler) {
+	panic("not implemented")
 }
 
 // ------------------------------------------------------------------------------------

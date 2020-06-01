@@ -40,6 +40,10 @@ import (
 
 const defaultReadRate = 100000
 
+type response interface {
+	ForRequest(uint16)
+}
+
 // Conn represents an incoming connection.
 type Conn struct {
 	sync.Mutex
@@ -51,7 +55,7 @@ type Conn struct {
 	subs     *message.Counters // The subscriptions for this connection.
 	measurer stats.Measurer    // The measurer to use for monitoring.
 	limit    *rate.Limiter     // The read rate limiter.
-	keys     *keygen.Provider  // The key generation provider.
+	keys     *keygen.Service   // The key generation provider.
 	connect  *event.Connection // The associated connection event.
 	username string            // The username provided by the client during MQTT connect.
 	links    map[string]string // The map of all pre-authorized links.
@@ -67,7 +71,7 @@ func (s *Service) newConn(t net.Conn, readRate int) *Conn {
 		subs:     message.NewCounters(),
 		measurer: s.measurer,
 		links:    map[string]string{},
-		keys:     s.Keygen,
+		keys:     s.keygen,
 	}
 
 	// Generate a globally unique id as well
@@ -104,6 +108,16 @@ func (c *Conn) GetLink(topic []byte) []byte {
 		return []byte(c.links[binary.ToString(&topic)])
 	}
 	return topic
+}
+
+// AddLink adds a link alias for a channel.
+func (c *Conn) AddLink(alias string, channel *security.Channel) {
+	c.links[alias] = channel.String()
+}
+
+// Links returns a map of all links registered.
+func (c *Conn) Links() map[string]string {
+	return c.links
 }
 
 // Type returns the type of the subscriber
@@ -308,6 +322,27 @@ func (c *Conn) CanUnsubscribe(ssid message.Ssid, channel []byte) bool {
 	c.Lock()
 	defer c.Unlock()
 	return c.subs.Decrement(ssid)
+}
+
+// onConnect handles the connection authorization
+func (c *Conn) onConnect(packet *mqtt.Connect) bool {
+	c.username = string(packet.Username)
+	c.connect = &event.Connection{
+		Peer:        c.service.ID(),
+		Conn:        c.luid,
+		WillFlag:    packet.WillFlag,
+		WillRetain:  packet.WillRetainFlag,
+		WillQoS:     packet.WillQOS,
+		WillTopic:   packet.WillTopic,
+		WillMessage: packet.WillMessage,
+		ClientID:    packet.ClientID,
+		Username:    packet.Username,
+	}
+
+	if c.service.cluster != nil {
+		c.service.cluster.Notify(c.connect, true)
+	}
+	return true
 }
 
 // Close terminates the connection.

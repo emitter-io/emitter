@@ -26,7 +26,7 @@ import (
 )
 
 // HTTP creates a new HTTP handler which can be used to serve HTTP keygen page.
-func (p *Provider) HTTP() http.HandlerFunc {
+func (s *Service) HTTP() http.HandlerFunc {
 	t, err := template.New("keygen").
 		Funcs(template.FuncMap{
 			"isChecked": func(checked bool) string {
@@ -48,7 +48,7 @@ func (p *Provider) HTTP() http.HandlerFunc {
 			ok := f.parse(r)
 			if ok {
 				if f.isValid() {
-					key, err := p.CreateKey(f.Key, f.Channel, f.access(), f.expires())
+					key, err := s.CreateKey(f.Key, f.Channel, f.access(), f.expires())
 					if err != nil {
 						f.Response = err.Error()
 					} else {

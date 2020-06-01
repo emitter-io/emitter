@@ -69,16 +69,18 @@ type Info struct {
 
 // Notification represents a state notification.
 type Notification struct {
-	Time    int64        `json:"time"`    // The UNIX timestamp.
-	Event   EventType    `json:"event"`   // The event, must be "status", "subscribe" or "unsubscribe".
-	Channel string       `json:"channel"` // The target channel for the notification.
-	Who     Info         `json:"who"`     // The subscriber id.
-	Ssid    message.Ssid `json:"-"`       // The ssid to dispatch the notification on.
+	Time    int64                         `json:"time"`    // The UNIX timestamp.
+	Event   EventType                     `json:"event"`   // The event, must be "status", "subscribe" or "unsubscribe".
+	Channel string                        `json:"channel"` // The target channel for the notification.
+	Who     Info                          `json:"who"`     // The subscriber id.
+	Ssid    message.Ssid                  `json:"-"`       // The ssid to dispatch the notification on.
+	filter  func(message.Subscriber) bool `json:"-"`       // The filter function (optional)
 }
 
-// NewNotification creates a new notification payload.
-func NewNotification(event EventType, ev *event.Subscription) *Notification {
+// newNotification creates a new notification payload.
+func newNotification(event EventType, ev *event.Subscription, filter func(message.Subscriber) bool) *Notification {
 	return &Notification{
+		filter:  filter,
 		Ssid:    message.NewSsidForPresence(ev.Ssid),
 		Time:    time.Now().UTC().Unix(),
 		Event:   event,

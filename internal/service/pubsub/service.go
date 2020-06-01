@@ -18,6 +18,7 @@ import (
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/storage"
+	"github.com/emitter-io/emitter/internal/security/hash"
 	"github.com/emitter-io/emitter/internal/service"
 )
 
@@ -37,17 +38,25 @@ type Service struct {
 }
 
 // New creates a new publisher service.
-func New(auth service.Authorizer, store storage.Storage, notifier notifier, trie *message.Trie, handlers []service.Handler) *Service {
-	s := &Service{
+func New(auth service.Authorizer, store storage.Storage, notifier notifier, trie *message.Trie) *Service {
+	return &Service{
 		auth:     auth,
 		store:    store,
 		notifier: notifier,
 		trie:     trie,
-		handlers: make(map[uint32]service.Handler, len(handlers)),
+		handlers: make(map[uint32]service.Handler),
 	}
+}
 
-	for _, h := range handlers {
-		s.handlers[h.Type()] = h
-	}
-	return s
+/*
+548658350  // hash("keygen")
+861724010  // hash("keyban")
+3869262148 // hash("presence")
+2667034312 // hash("link")
+2539734036 // hash("me")
+*/
+
+// Handle adds a handler for an "emitter/..." request
+func (s *Service) Handle(request string, handler service.Handler) {
+	s.handlers[hash.OfString(request)] = handler
 }

@@ -33,13 +33,11 @@ type PubSub interface {
 	Publish(*message.Message, func(message.Subscriber) bool) int64
 	Subscribe(message.Subscriber, *event.Subscription) bool
 	Unsubscribe(message.Subscriber, *event.Subscription) bool
+	Handle(string, Handler)
 }
 
 // Handler represents a generic emitter request handler
-type Handler interface {
-	Type() uint32
-	Handle([]byte) (Response, bool)
-}
+type Handler func(Conn, []byte) (Response, bool)
 
 // Response represents an emitter response.
 type Response interface {
@@ -62,9 +60,17 @@ type Conn interface {
 	message.Subscriber
 	CanSubscribe(message.Ssid, []byte) bool
 	CanUnsubscribe(message.Ssid, []byte) bool
-	GetLink([]byte) []byte
 	LocalID() security.ID
 	Username() string
 	MeasureElapsed(string, time.Time)
 	Track(contract.Contract)
+	Links() map[string]string
+	GetLink([]byte) []byte
+	AddLink(string, *security.Channel)
+}
+
+// Replicator replicates an event withih the cluster
+type Replicator interface {
+	Notify(event.Event, bool)
+	Contains(event.Event) bool
 }

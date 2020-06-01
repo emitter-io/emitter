@@ -16,6 +16,7 @@ package keygen
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
@@ -30,41 +31,88 @@ import (
 	"github.com/emitter-io/emitter/internal/service"
 )
 
-// Provider represents a key generation provider.
-type Provider struct {
+// Service represents a key generation service.
+type Service struct {
 	cipher license.Cipher     // Cipher to use for the key generation
 	loader contract.Provider  // Contract loader to use to retrieve contracts
 	auth   service.Authorizer // The authorizer to use.
 }
 
-// NewProvider creates a new key generation provider.
-func NewProvider(cipher license.Cipher, loader contract.Provider, auth service.Authorizer) *Provider {
-	return &Provider{
+// New creates a new key generation provider.
+func New(cipher license.Cipher, loader contract.Provider, auth service.Authorizer) *Service {
+	return &Service{
 		cipher: cipher,
 		loader: loader,
 		auth:   auth,
 	}
 }
 
+// OnGenerate processes a keygen request.
+func (s *Service) OnGenerate(c service.Conn, payload []byte) (service.Response, bool) {
+	var message Request
+	if err := json.Unmarshal(payload, &message); err != nil {
+		return errors.ErrBadRequest, false
+	}
+
+	// Decrypt the parent key and make sure it's not expired
+	parentKey, err := s.DecryptKey(message.Key)
+	if err != nil || parentKey.IsExpired() {
+		return errors.ErrUnauthorized, false
+	}
+
+	// If the key provided is a master key, create a new key
+	if parentKey.IsMaster() {
+		key, err := s.CreateKey(message.Key, message.Channel, message.access(), message.expires())
+		if err != nil {
+			return err, false
+		}
+
+		// Success, return the response
+		return &Response{
+			Status:  200,
+			Key:     key,
+			Channel: message.Channel,
+		}, true
+	}
+
+	// If the key provided can be extended, attempt to extend the key
+	if parentKey.HasPermission(security.AllowExtend) {
+		channel, err := s.ExtendKey(message.Key, message.Channel, c.ID(), message.access(), message.expires())
+		if err != nil {
+			return err, false
+		}
+
+		// Success, return the response
+		return &Response{
+			Status:  200,
+			Key:     string(channel.Key),     // Encrypted channel key
+			Channel: string(channel.Channel), // Channel name
+		}, true
+	}
+
+	// Not authorised
+	return errors.ErrUnauthorized, false
+}
+
 // DecryptKey decrypts a key and returns it
-func (p *Provider) DecryptKey(key string) (security.Key, error) {
-	return p.cipher.DecryptKey([]byte(key))
+func (s *Service) DecryptKey(key string) (security.Key, error) {
+	return s.cipher.DecryptKey([]byte(key))
 }
 
 // EncryptKey encrypts the security key
-func (p *Provider) EncryptKey(key security.Key) (string, error) {
-	return p.cipher.EncryptKey([]byte(key))
+func (s *Service) EncryptKey(key security.Key) (string, error) {
+	return s.cipher.EncryptKey([]byte(key))
 }
 
 // CreateKey generates a key with the specified access and expiration time.
-func (p *Provider) CreateKey(rawMasterKey, channel string, access uint8, expires time.Time) (string, *errors.Error) {
-	masterKey, err := p.DecryptKey(rawMasterKey)
+func (s *Service) CreateKey(rawMasterKey, channel string, access uint8, expires time.Time) (string, *errors.Error) {
+	masterKey, err := s.DecryptKey(rawMasterKey)
 	if err != nil || !masterKey.IsMaster() || masterKey.IsExpired() {
 		return "", errors.ErrUnauthorized
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := p.loader.Get(masterKey.Contract())
+	contract, contractFound := s.loader.Get(masterKey.Contract())
 	if !contractFound {
 		return "", errors.ErrNotFound
 	}
@@ -105,7 +153,7 @@ func (p *Provider) CreateKey(rawMasterKey, channel string, access uint8, expires
 	}
 
 	// Encrypt the final key
-	out, err := p.cipher.EncryptKey(key)
+	out, err := s.cipher.EncryptKey(key)
 	if err != nil {
 		return "", errors.ErrServerError
 	}
@@ -114,7 +162,7 @@ func (p *Provider) CreateKey(rawMasterKey, channel string, access uint8, expires
 }
 
 // ExtendKey creates a private channel and an appropriate key.
-func (p *Provider) ExtendKey(channelKey, channelName, connectionID string, access uint8, expires time.Time) (*security.Channel, *errors.Error) {
+func (s *Service) ExtendKey(channelKey, channelName, connectionID string, access uint8, expires time.Time) (*security.Channel, *errors.Error) {
 	var suffix string
 	if strings.HasSuffix(channelName, "#/") {
 		suffix = "#/"
@@ -127,7 +175,7 @@ func (p *Provider) ExtendKey(channelKey, channelName, connectionID string, acces
 	}
 
 	// Make sure we can actually extend it
-	_, key, allowed := p.auth.Authorize(channel, security.AllowExtend)
+	_, key, allowed := s.auth.Authorize(channel, security.AllowExtend)
 	if !allowed {
 		return nil, errors.ErrUnauthorized
 	}
@@ -146,7 +194,7 @@ func (p *Provider) ExtendKey(channelKey, channelName, connectionID string, acces
 	}
 
 	// Encrypt the key for storing
-	encryptedKey, err := p.cipher.EncryptKey(key)
+	encryptedKey, err := s.cipher.EncryptKey(key)
 	if err != nil {
 		return nil, errors.New(err.Error())
 	}

@@ -96,7 +96,7 @@ func TestExtendKey(t *testing.T) {
 			contract.On("Stats").Return(usage.NewMeter(0))
 			provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 			cipher, _ := license.Cipher()
-			p := NewProvider(cipher, provider, &authorizer{cipher, provider})
+			p := New(cipher, provider, &authorizer{cipher, provider})
 
 			channel, err := p.ExtendKey(tc.key, tc.channel, "ID", tc.access, tc.expires)
 			if tc.err != nil {
@@ -180,7 +180,7 @@ func TestCreateKey(t *testing.T) {
 			contract.On("Stats").Return(usage.NewMeter(0))
 			provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
 			cipher, _ := license.Cipher()
-			p := NewProvider(cipher, provider, &authorizer{cipher, provider})
+			p := New(cipher, provider, &authorizer{cipher, provider})
 
 			_, err := p.CreateKey(tc.key, tc.channel, tc.access, tc.expires)
 			if tc.err != nil {

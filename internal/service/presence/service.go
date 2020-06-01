@@ -60,10 +60,18 @@ func (s *Service) pollPresenceChange() {
 			case <-s.context.Done():
 				return
 			case notif := <-s.queue:
-				s.Notify(notif, nil)
+				s.send(notif)
 			}
 		}
 	}()
+}
+
+// send sends out an event to notify when a client is subscribed/unsubscribed.
+func (s *Service) send(ev *Notification) {
+	channel := []byte("emitter/presence/") // TODO: avoid allocation
+	if encoded, ok := ev.Encode(); ok {
+		s.pubsub.Publish(message.New(ev.Ssid, channel, encoded), ev.filter)
+	}
 }
 
 // OnSurvey handles an incoming presence query.

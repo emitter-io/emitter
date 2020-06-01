@@ -1,5 +1,5 @@
 /**********************************************************************************
-* Copyright (c) 2009-2019 Misakai Ltd.
+* Copyright (c) 2009-2020 Misakai Ltd.
 * This program is free software: you can redistribute it and/or modify it under the
 * terms of the GNU Affero General Public License as published by the  Free Software
 * Foundation, either version 3 of the License, or(at your option) any later version.
@@ -344,23 +344,18 @@ func (s *Swarm) OnGossipUnicast(src mesh.PeerName, buf []byte) (err error) {
 	return nil
 }
 
-// NotifyBeginOf notifies the swarm when an event is triggered.
-func (s *Swarm) NotifyBeginOf(ev event.Event) {
-	s.state.Add(ev)
-
-	// Create a delta for broadcasting just this operation
+// Notify notifies the swarm when an event is on/off.
+func (s *Swarm) Notify(ev event.Event, enabled bool) {
 	op := event.NewState("")
-	op.Add(ev)
-	s.gossip.GossipBroadcast(op)
-}
+	if enabled {
+		s.state.Add(ev)
+		op.Add(ev)
+	} else {
+		s.state.Del(ev)
+		op.Del(ev)
+	}
 
-// NotifyEndOf notifies the swarm when an event is stopped being triggered.
-func (s *Swarm) NotifyEndOf(ev event.Event) {
-	s.state.Del(ev)
-
-	// Create a delta for broadcasting just this operation
-	op := event.NewState("")
-	op.Del(ev)
+	// Broadcasting just this operation
 	s.gossip.GossipBroadcast(op)
 }
 

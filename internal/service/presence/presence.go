@@ -16,24 +16,21 @@ package presence
 
 import (
 	"encoding/json"
-	"github.com/emitter-io/emitter/internal/errors"
-	"github.com/emitter-io/emitter/internal/event"
-	"github.com/kelindar/binary/nocopy"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/emitter-io/emitter/internal/errors"
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/service"
+	"github.com/kelindar/binary/nocopy"
 )
 
-// Notify sends out an event to notify when a client is subscribed/unsubscribed.
-func (s *Service) Notify(ev *Notification, filter func(message.Subscriber) bool) {
-	channel := []byte("emitter/presence/") // TODO: avoid allocation
-	if encoded, ok := ev.Encode(); ok {
-		s.pubsub.Publish(message.New(ev.Ssid, channel, encoded), filter)
-	}
+// Notify queues up a notification to be sent later.
+func (s *Service) Notify(eventType EventType, ev *event.Subscription, filter func(message.Subscriber) bool) {
+	s.queue <- newNotification(eventType, ev, filter)
 }
 
 // ------------------------------------------------------------------------------------
