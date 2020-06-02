@@ -30,10 +30,7 @@ type keygen interface {
 }
 
 // Service represents a self-introspection service.
-type Service struct {
-	keygen  keygen             // The key generator to use.
-	cluster service.Replicator // The cluster service to use.
-}
+type Service struct{}
 
 // New creates a new service.
 func New() *Service {

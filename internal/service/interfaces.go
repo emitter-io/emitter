@@ -15,12 +15,12 @@
 package service
 
 import (
+	"io"
+
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/contract"
 	"github.com/emitter-io/emitter/internal/security"
-	"io"
-	"time"
 )
 
 // Authorizer service performs authorization checks.
@@ -62,7 +62,6 @@ type Conn interface {
 	CanUnsubscribe(message.Ssid, []byte) bool
 	LocalID() security.ID
 	Username() string
-	MeasureElapsed(string, time.Time)
 	Track(contract.Contract)
 	Links() map[string]string
 	GetLink([]byte) []byte
@@ -73,4 +72,9 @@ type Conn interface {
 type Replicator interface {
 	Notify(event.Event, bool)
 	Contains(event.Event) bool
+}
+
+// Decryptor decrypts security keys.
+type Decryptor interface {
+	DecryptKey(string) (security.Key, error)
 }
