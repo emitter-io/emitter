@@ -15,138 +15,16 @@
 package broker
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
-	"github.com/emitter-io/emitter/internal/errors"
-	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
-	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
-	"github.com/emitter-io/emitter/internal/provider/usage"
-	"github.com/emitter-io/emitter/internal/security/license"
-	"github.com/emitter-io/emitter/internal/service/keygen"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 const (
 	testLicense   = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI"
 	testLicenseV2 = "RfBEIIFz1nNLf12JYRpoEUqFPLb3na0X_xbP_h3PM_CqDUVBGJfEV3WalW2maauQd48o-TcTM_61BfEsELfk0qMDqrCTswkB:2"
 )
-
-func Test_onHTTPPresence(t *testing.T) {
-	license, _ := license.Parse(testLicense)
-
-	tests := []struct {
-		payload       string
-		contractValid bool
-		contractFound bool
-		status        int
-		success       bool
-		err           error
-		resp          presenceResponse
-		msg           string
-	}{
-		{
-			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a","status":true}`,
-			contractValid: true,
-			contractFound: true,
-			success:       true,
-			status:        http.StatusOK,
-			err:           nil,
-			resp:          presenceResponse{Event: presenceStatusEvent, Channel: "a"},
-			msg:           "Successful case",
-		},
-		{
-			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a","status":true}`,
-			contractValid: true,
-			contractFound: true,
-			success:       true,
-			status:        http.StatusOK,
-			err:           nil,
-			resp:          presenceResponse{Event: presenceStatusEvent, Channel: "a"},
-			msg:           "Successful case",
-		},
-		{
-			payload:       "",
-			err:           errors.ErrBadRequest,
-			success:       false,
-			status:        http.StatusBadRequest,
-			contractValid: true,
-			contractFound: true,
-			msg:           "Invalid payload case",
-		},
-		{
-			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
-			contractValid: true,
-			contractFound: true,
-			success:       false,
-			status:        http.StatusBadRequest,
-			err:           errors.ErrBadRequest,
-			msg:           "Invalid channel case",
-		},
-		{
-			payload:       `{"key":"0Nq8SWbL8qoOKEDqh_ebBZRqJDby30m","channel":"a","status":true}`,
-			contractValid: true,
-			contractFound: true,
-			success:       false,
-			status:        http.StatusUnauthorized,
-			err:           errors.ErrUnauthorized,
-			msg:           "Key for wrong channel case",
-		},
-		{
-			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
-			err:           errors.ErrNotFound,
-			status:        http.StatusNotFound,
-			contractValid: true,
-			contractFound: false,
-			msg:           "Contract not found case",
-		},
-		{
-			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
-			err:           errors.ErrUnauthorized,
-			status:        http.StatusUnauthorized,
-			contractValid: false,
-			contractFound: true,
-			msg:           "Contract is invalid case",
-		},
-	}
-
-	for _, tc := range tests {
-
-		contract := new(secmock.Contract)
-		contract.On("Validate", mock.Anything).Return(tc.contractValid)
-		contract.On("Stats").Return(usage.NewMeter(0))
-
-		provider := secmock.NewContractProvider()
-		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
-
-		cipher, _ := license.Cipher()
-		s := &Service{
-			contracts:     provider,
-			subscriptions: message.NewTrie(),
-			License:       license,
-		}
-
-		s.Keygen = keygen.NewProvider(cipher, provider, s)
-		req, _ := http.NewRequest("POST", "/presence", strings.NewReader(tc.payload))
-
-		// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-		rr := httptest.NewRecorder()
-		handler := http.HandlerFunc(s.onHTTPPresence)
-		handler.ServeHTTP(rr, req)
-
-		var parsedResp presenceResponse
-		json.Unmarshal(rr.Body.Bytes(), &parsedResp)
-
-		// Check the response body is what we expect.
-		assert.Equal(t, tc.status, rr.Code)
-		assert.Equal(t, 0, len(parsedResp.Who))
-	}
-}
 
 func TestPubsub(t *testing.T) {
 	const port = 9996

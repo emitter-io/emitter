@@ -13,3 +13,26 @@
 ************************************************************************************/
 
 package me
+
+import (
+	"testing"
+
+	"github.com/emitter-io/emitter/internal/service/fake"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestMe(t *testing.T) {
+	s := New()
+	c := &fake.Conn{
+		Shortcuts: map[string]string{
+			"a": "test",
+		},
+	}
+
+	r, ok := s.OnRequest(c, nil)
+	assert.Equal(t, true, ok)
+
+	resp := r.(*Response)
+	assert.Contains(t, resp.Links, "a")
+
+}

@@ -13,3 +13,81 @@
 ************************************************************************************/
 
 package link
+
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/emitter-io/emitter/internal/service/fake"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestLink(t *testing.T) {
+	tests := []struct {
+		contract int
+		request  *Request
+		success  bool
+	}{
+		{request: nil},
+		{request: &Request{}},
+		{
+			contract: 1,
+			success:  false,
+			request: &Request{
+				Name:    "a",
+				Channel: "a/b/c/",
+			},
+		},
+		{
+			contract: 1,
+			success:  true,
+			request: &Request{
+				Name:    "a",
+				Key:     "key",
+				Channel: "a/b/c/",
+			},
+		},
+		{
+			contract: 1,
+			success:  true,
+			request: &Request{
+				Name:      "a",
+				Subscribe: true,
+				Key:       "key",
+				Channel:   "a/b/c/",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		pubsub := new(fake.PubSub)
+		auth := &fake.Authorizer{
+			Contract: uint32(tc.contract),
+			Success:  tc.contract != 0,
+		}
+
+		// Prepare the request
+		b, _ := json.Marshal(tc.request)
+		if tc.request == nil {
+			b = []byte("invalid")
+		} else {
+			auth.Target = tc.request.Channel
+		}
+
+		// Issue a request
+		s := New(auth, pubsub)
+		c := new(fake.Conn)
+		_, ok := s.OnRequest(c, b)
+		assert.Equal(t, tc.success, ok)
+
+		// Assert the successful result
+		if tc.request != nil && tc.success {
+			assert.LessOrEqual(t, 5, len(c.GetLink([]byte(tc.request.Name))))
+
+			// If requested to subscribe, make sure we have it
+			if tc.request.Subscribe {
+				assert.Equal(t, 1, pubsub.Trie.Count())
+			}
+		}
+	}
+}

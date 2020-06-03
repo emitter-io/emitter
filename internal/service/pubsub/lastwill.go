@@ -22,7 +22,7 @@ import (
 
 // OnLastWill publishes a last will event of the subscriber.
 func (s *Service) OnLastWill(sub message.Subscriber, ev *event.Connection) bool {
-	if !ev.WillFlag {
+	if ev == nil || !ev.WillFlag {
 		return false
 	}
 

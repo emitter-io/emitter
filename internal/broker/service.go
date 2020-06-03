@@ -176,7 +176,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	// Attach "emitter/..." handlers
 	s.pubsub.Handle("presence", s.presence.OnPresence)
 	s.pubsub.Handle("keygen", s.keygen.OnGenerate)
-	s.pubsub.Handle("keyban", keyban.New(s.keygen, s.cluster).OnRequest)
+	s.pubsub.Handle("keyban", keyban.New(s, s.keygen, s.cluster).OnRequest)
 	s.pubsub.Handle("link", link.New(s, s.pubsub).OnRequest)
 	s.pubsub.Handle("me", me.New().OnRequest)
 
