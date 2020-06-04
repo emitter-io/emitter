@@ -52,6 +52,8 @@ func TestPubSub(t *testing.T) {
 	), nil)
 	assert.Equal(t, int64(3), n)
 	assert.Len(t, conn.Outgoing, 1)
+
+	f.Handle("", nil)
 }
 
 func TestReplicator(t *testing.T) {
@@ -77,6 +79,7 @@ func TestNotifier(t *testing.T) {
 
 func TestConn(t *testing.T) {
 	f := &Conn{ConnID: 1}
+	f.Track(nil)
 
 	assert.Equal(t, security.ID(1), f.LocalID())
 	assert.Equal(t, "1", f.ID())
