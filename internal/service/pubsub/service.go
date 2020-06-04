@@ -15,30 +15,23 @@
 package pubsub
 
 import (
-	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/storage"
 	"github.com/emitter-io/emitter/internal/security/hash"
 	"github.com/emitter-io/emitter/internal/service"
 )
 
-// Notifier represents a cluster-wide notifier.
-type notifier interface {
-	NotifySubscribe(message.Subscriber, *event.Subscription)
-	NotifyUnsubscribe(message.Subscriber, *event.Subscription)
-}
-
 // Service represents a publish service.
 type Service struct {
 	auth     service.Authorizer         // The authorizer to use.
 	store    storage.Storage            // The storage provider to use.
-	notifier notifier                   // The notifier to use.
+	notifier service.Notifier           // The notifier to use.
 	trie     *message.Trie              // The subscription matching trie.
 	handlers map[uint32]service.Handler // The emitter request handlers.
 }
 
 // New creates a new publisher service.
-func New(auth service.Authorizer, store storage.Storage, notifier notifier, trie *message.Trie) *Service {
+func New(auth service.Authorizer, store storage.Storage, notifier service.Notifier, trie *message.Trie) *Service {
 	return &Service{
 		auth:     auth,
 		store:    store,
@@ -47,14 +40,6 @@ func New(auth service.Authorizer, store storage.Storage, notifier notifier, trie
 		handlers: make(map[uint32]service.Handler),
 	}
 }
-
-/*
-548658350  // hash("keygen")
-861724010  // hash("keyban")
-3869262148 // hash("presence")
-2667034312 // hash("link")
-2539734036 // hash("me")
-*/
 
 // Handle adds a handler for an "emitter/..." request
 func (s *Service) Handle(request string, handler service.Handler) {

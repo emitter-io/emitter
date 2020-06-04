@@ -50,12 +50,6 @@ type Storage interface {
 	Query(ssid message.Ssid, from, until time.Time, limit int) (message.Frame, error)
 }
 
-// Surveyor provides a mechanism where a message from one node is broadcasted to the
-// entire group, but where it differs is that each node in the group responds to the message.
-type Surveyor interface {
-	Survey(string, []byte) (message.Awaiter, error)
-}
-
 // ------------------------------------------------------------------------------------
 
 // window constructs a time window

@@ -115,9 +115,9 @@ func TestSSD_QuerySurveyed(t *testing.T) {
 
 		for _, tc := range tests {
 			if tc.gathered == nil {
-				s.cluster = nil
+				s.survey = nil
 			} else {
-				s.cluster = survey(func(string, []byte) (message.Awaiter, error) {
+				s.survey = survey(func(string, []byte) (message.Awaiter, error) {
 					return &mockAwaiter{f: func(_ time.Duration) [][]byte { return [][]byte{tc.gathered} }}, nil
 				})
 			}

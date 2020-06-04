@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/internal/message"
+	"github.com/emitter-io/emitter/internal/service"
 	"github.com/kelindar/binary"
 	"github.com/tidwall/buntdb"
 )
@@ -29,16 +30,16 @@ var _ Storage = new(InMemory)
 
 // InMemory represents a storage which does nothing.
 type InMemory struct {
-	retain  uint32     // The configured TTL for 'retained' messages.
-	cluster Surveyor   // The surveyor to use.
-	index   *sync.Map  // The set of indices.
-	db      *buntdb.DB // The in-memory storage.
+	retain uint32           // The configured TTL for 'retained' messages.
+	survey service.Surveyor // The surveyor to use.
+	index  *sync.Map        // The set of indices.
+	db     *buntdb.DB       // The in-memory storage.
 }
 
 // NewInMemory creates a new in-memory storage.
-func NewInMemory(cluster Surveyor) *InMemory {
+func NewInMemory(survey service.Surveyor) *InMemory {
 	return &InMemory{
-		cluster: cluster,
+		survey: survey,
 	}
 }
 
@@ -101,8 +102,8 @@ func (s *InMemory) Query(ssid message.Ssid, from, until time.Time, limit int) (m
 	match := s.lookup(query)
 
 	// Issue the message survey to the cluster
-	if req, err := binary.Marshal(query); err == nil && s.cluster != nil {
-		if awaiter, err := s.cluster.Survey("memstore", req); err == nil {
+	if req, err := binary.Marshal(query); err == nil && s.survey != nil {
+		if awaiter, err := s.survey.Query("memstore", req); err == nil {
 
 			// Wait for all presence updates to come back (or a deadline)
 			for _, resp := range awaiter.Gather(2000 * time.Millisecond) {
@@ -152,7 +153,7 @@ func (s *InMemory) lookup(q lookupQuery) (matches message.Frame) {
 	s.db.View(func(tx *buntdb.Tx) error {
 		tx.Ascend(idx, func(key, value string) bool {
 			id := message.ID(key[9:])
-			if id.Match(q.Ssid, q.From, q.Until){
+			if id.Match(q.Ssid, q.From, q.Until) {
 				if msg, err := message.DecodeMessage([]byte(value)); err == nil {
 
 					matchCount++
@@ -167,7 +168,6 @@ func (s *InMemory) lookup(q lookupQuery) (matches message.Frame) {
 		})
 		return nil
 	})
-	
 
 	// Return the matching messages we found
 	return
@@ -179,9 +179,7 @@ func (s *InMemory) Close() error {
 	return nil
 }
 
-
 // indexMessage sorts two buntdb messages.
 func indexMessage(a, b string) bool {
 	return true // Do not sort by value
 }
-

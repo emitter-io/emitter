@@ -25,7 +25,8 @@ import (
 
 func TestAuthorizer(t *testing.T) {
 	f := &Authorizer{
-		Success: true,
+		Success:   true,
+		ExtraPerm: security.AllowExtend,
 	}
 
 	c, _, ok := f.Authorize(nil, 1)

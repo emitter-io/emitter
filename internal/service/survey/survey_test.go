@@ -99,6 +99,25 @@ func TestQuery_NoPeers(t *testing.T) {
 	assert.Len(t, result, 0)
 }
 
+func Test_onRequest(t *testing.T) {
+	g := new(gossiperMock)
+	g.On("NumPeers").Return(2)
+	g.On("ID").Return(uint64(5))
+	q := New(nil, g)
+
+	// Bad channel
+	{
+		err := q.onRequest(message.Ssid{1, 2}, "a/b/", nil)
+		assert.Error(t, errors.New("Invalid query received"), err)
+	}
+
+	// No handler
+	{
+		err := q.onRequest(message.Ssid{1, 2}, "a/3/", nil)
+		assert.Error(t, errors.New("Invalid query received"), err)
+	}
+}
+
 func newManager(id, numPeers int) (*Surveyor, chan *message.Message) {
 	b := new(pubsubMock)
 	g := new(gossiperMock)

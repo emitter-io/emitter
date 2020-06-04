@@ -349,9 +349,9 @@ func (s *Service) onPeerMessage(m *message.Message) {
 	}
 }
 
-// Survey is a mechanism where a message from one node is broadcasted to the
+// Query is a mechanism where a message from one node is broadcasted to the
 // entire cluster and each node in the group responds to the message.
-func (s *Service) Survey(query string, payload []byte) (message.Awaiter, error) {
+func (s *Service) Query(query string, payload []byte) (message.Awaiter, error) {
 	if s.surveyor != nil {
 		return s.surveyor.Query(query, payload)
 	}

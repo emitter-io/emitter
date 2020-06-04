@@ -33,15 +33,18 @@ var (
 	_ service.Conn       = new(Conn)
 	_ service.Decryptor  = new(Decryptor)
 	_ contract.Contract  = new(Contract)
+	_ service.Surveyor   = new(Surveyor)
+	_ service.Notifier   = new(Notifier)
 )
 
 // ------------------------------------------------------------------------------------
 
 // Authorizer fake.
 type Authorizer struct {
-	Contract uint32
-	Target   string
-	Success  bool
+	Contract  uint32
+	Target    string
+	ExtraPerm uint8
+	Success   bool
 }
 
 // Authorize provides a fake implementation.
@@ -49,6 +52,10 @@ func (f *Authorizer) Authorize(channel *security.Channel, perms uint8) (contract
 	key := make(security.Key, 24)
 	key.SetTarget(f.Target)
 	key.SetPermissions(perms)
+	if f.ExtraPerm > 0 {
+		key.SetPermission(f.ExtraPerm, true)
+	}
+
 	key.SetContract(f.Contract)
 	return &Contract{
 		Invalid: !f.Success,

@@ -78,3 +78,9 @@ type Replicator interface {
 type Decryptor interface {
 	DecryptKey(string) (security.Key, error)
 }
+
+// Notifier notifies the cluster about publish/subscribe events.
+type Notifier interface {
+	NotifySubscribe(message.Subscriber, *event.Subscription)
+	NotifyUnsubscribe(message.Subscriber, *event.Subscription)
+}
