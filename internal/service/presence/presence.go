@@ -35,11 +35,11 @@ func (s *Service) Notify(eventType EventType, ev *event.Subscription, filter fun
 
 // ------------------------------------------------------------------------------------
 
-// OnPresence processes a presence request.
-func (s *Service) OnPresence(c service.Conn, payload []byte) (service.Response, bool) {
+// OnRequest processes a presence request.
+func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, bool) {
 	msg := Request{
 		Status:  true, // Default: send status info
-		Changes: nil,  // Default: send all changes
+		Changes: nil,  // Default: send no changes
 	}
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		return errors.ErrBadRequest, false
@@ -58,13 +58,8 @@ func (s *Service) OnPresence(c service.Conn, payload []byte) (service.Response, 
 
 	// Check the authorization and permissions
 	_, key, allowed := s.auth.Authorize(channel, security.AllowPresence)
-	if !allowed {
+	if !allowed || key.HasPermission(security.AllowExtend) {
 		return errors.ErrUnauthorized, false
-	}
-
-	// Keys which are supposed to be extended should not be used for presence
-	if key.HasPermission(security.AllowExtend) {
-		return errors.ErrUnauthorizedExt, false
 	}
 
 	// Create the ssid for the presence
@@ -101,11 +96,12 @@ func (s *Service) OnPresence(c service.Conn, payload []byte) (service.Response, 
 			Who:     who,
 		}, true
 	}
+
 	return nil, true
 }
 
-// OnHTTPPresence occurs when a new HTTP presence request is received.
-func (s *Service) OnHTTPPresence(w http.ResponseWriter, r *http.Request) {
+// OnHTTP occurs when a new HTTP presence request is received.
+func (s *Service) OnHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -144,16 +140,12 @@ func (s *Service) OnHTTPPresence(w http.ResponseWriter, r *http.Request) {
 	ssid := message.NewSsid(key.Contract(), channel.Query)
 	now := time.Now().UTC().Unix()
 	who := s.getAllPresence(ssid)
-	resp, err := json.Marshal(&Response{
+	resp, _ := json.Marshal(&Response{
 		Time:    now,
 		Event:   EventTypeStatus,
 		Channel: msg.Channel,
 		Who:     who,
 	})
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 
 	w.Write(resp)
 	return

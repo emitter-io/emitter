@@ -16,11 +16,12 @@ package fake
 
 import (
 	"fmt"
-	"github.com/emitter-io/emitter/internal/provider/usage"
+	"time"
 
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/contract"
+	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/service"
 )
@@ -260,4 +261,25 @@ func (f *Contract) Validate(key security.Key) bool {
 // Stats gets the usage statistics.
 func (f *Contract) Stats() usage.Meter {
 	return usage.NewNoop().Get(1)
+}
+
+// ------------------------------------------------------------------------------------
+
+// Surveyor fake.
+type Surveyor struct {
+	Resp [][]byte
+	Err  error
+}
+
+// Query provides a fake implementation.
+func (f *Surveyor) Query(string, []byte) (message.Awaiter, error) {
+	return &awaiter{f.Resp}, f.Err
+}
+
+type awaiter struct {
+	r [][]byte
+}
+
+func (a *awaiter) Gather(timeout time.Duration) [][]byte {
+	return a.r
 }

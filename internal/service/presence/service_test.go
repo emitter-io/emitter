@@ -13,3 +13,76 @@
 ************************************************************************************/
 
 package presence
+
+import (
+	"testing"
+
+	"github.com/emitter-io/emitter/internal/event"
+	"github.com/emitter-io/emitter/internal/message"
+	"github.com/emitter-io/emitter/internal/service/fake"
+	"github.com/kelindar/binary"
+	"github.com/kelindar/binary/nocopy"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestPresence_OnSurvey(t *testing.T) {
+	ssid := message.Ssid{1, 3238259379, 500706888, 1027807523}
+	pubsub := new(fake.PubSub)
+	pubsub.Subscribe(new(fake.Conn), &event.Subscription{
+		Peer:    2,
+		Conn:    5,
+		Ssid:    ssid,
+		Channel: nocopy.Bytes("a/b/c/"),
+	})
+
+	s := New(&fake.Authorizer{
+		Contract: 1,
+		Success:  true,
+	}, pubsub, new(fake.Surveyor), pubsub.Trie)
+
+	// Bad query
+	{
+		_, ok := s.OnSurvey("xxx", nil)
+		assert.False(t, ok)
+	}
+
+	// Bad request
+	{
+		_, ok := s.OnSurvey("presence", nil)
+		assert.False(t, ok)
+	}
+
+	{
+		b, _ := binary.Marshal(ssid)
+		r, ok := s.OnSurvey("presence", b)
+
+		var out []Info
+		err := binary.Unmarshal(r, &out)
+		assert.NoError(t, err)
+		assert.True(t, ok)
+		assert.Equal(t, 1, len(out))
+	}
+}
+
+func TestPresence_Notify(t *testing.T) {
+	ssid := message.Ssid{1, 3238259379, 500706888, 1027807523}
+	pubsub := new(fake.PubSub)
+	pubsub.Subscribe(new(fake.Conn), &event.Subscription{
+		Peer:    2,
+		Conn:    5,
+		Ssid:    ssid,
+		Channel: nocopy.Bytes("a/b/c/"),
+	})
+
+	s := New(&fake.Authorizer{
+		Contract: 1,
+		Success:  true,
+	}, pubsub, new(fake.Surveyor), pubsub.Trie)
+
+	s.Notify(EventTypeSubscribe, &event.Subscription{
+		Ssid: ssid,
+	}, nil)
+	s.pollPresenceChange()
+	assert.Equal(t, 1, s.trie.Count())
+
+}

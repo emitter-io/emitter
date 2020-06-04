@@ -20,7 +20,6 @@ import (
 
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
-	"github.com/emitter-io/emitter/internal/provider/logging"
 )
 
 // Request represents a presence request
@@ -74,7 +73,7 @@ type Notification struct {
 	Channel string                        `json:"channel"` // The target channel for the notification.
 	Who     Info                          `json:"who"`     // The subscriber id.
 	Ssid    message.Ssid                  `json:"-"`       // The ssid to dispatch the notification on.
-	filter  func(message.Subscriber) bool `json:"-"`       // The filter function (optional)
+	filter  func(message.Subscriber) bool // The filter function (optional)
 }
 
 // newNotification creates a new notification payload.
@@ -95,10 +94,5 @@ func newNotification(event EventType, ev *event.Subscription, filter func(messag
 // Encode encodes the presence notifications and returns a payload to send.
 func (e *Notification) Encode() ([]byte, bool) {
 	encoded, err := json.Marshal(e)
-	if err != nil {
-		logging.LogError("presence", "encoding presence notification", err)
-		return nil, false
-	}
-
-	return encoded, true
+	return encoded, err == nil
 }

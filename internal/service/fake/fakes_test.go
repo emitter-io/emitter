@@ -101,3 +101,13 @@ func TestDecryptor(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(1), k.Contract())
 }
+
+func TestSurvey(t *testing.T) {
+	f := &Surveyor{
+		Resp: [][]byte{[]byte("hi")},
+	}
+
+	r, err := f.Query("", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Gather(0)))
+}
