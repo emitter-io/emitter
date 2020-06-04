@@ -47,8 +47,8 @@ func New(cipher license.Cipher, loader contract.Provider, auth service.Authorize
 	}
 }
 
-// OnGenerate processes a keygen request.
-func (s *Service) OnGenerate(c service.Conn, payload []byte) (service.Response, bool) {
+// OnRequest processes a keygen request.
+func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, bool) {
 	var message Request
 	if err := json.Unmarshal(payload, &message); err != nil {
 		return errors.ErrBadRequest, false

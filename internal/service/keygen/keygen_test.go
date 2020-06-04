@@ -15,6 +15,7 @@
 package keygen
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -25,9 +26,74 @@ import (
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/security/license"
+	"github.com/emitter-io/emitter/internal/service/fake"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+func TestKeyGen_Request(t *testing.T) {
+	tests := []struct {
+		contract      int
+		contractFound bool
+		request       *Request
+		success       bool
+	}{
+		{request: nil},
+		{request: &Request{}},
+		{
+			contract:      1,
+			success:       true,
+			contractFound: true,
+			request: &Request{
+				Key:     "Kz4-7tNTlL8BKpKM0s3qEGKv-r_OD37C",
+				Channel: "a/b/#/",
+				Type:    "rwlspex",
+			},
+		},
+		{
+			contract:      1,
+			success:       true,
+			contractFound: true,
+			request: &Request{
+				Key:     keygenTestSecret,
+				Channel: "a/b/",
+				Type:    "rwls",
+			},
+		},
+		{
+			contract:      1,
+			success:       false,
+			contractFound: false,
+			request: &Request{
+				Key:     keygenTestSecret,
+				Channel: "a/b/",
+				Type:    "rwls",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		license, _ := license.Parse(keygenTestLicense)
+		cipher, _ := license.Cipher()
+		provider := secmock.NewContractProvider()
+		provider.On("Get", mock.Anything).Return(&fake.Contract{}, tc.contractFound)
+
+		s := New(cipher, provider, &fake.Authorizer{
+			Contract: uint32(tc.contract),
+			Success:  tc.contract != 0,
+		})
+
+		// Prepare the request
+		b, _ := json.Marshal(tc.request)
+		if tc.request == nil {
+			b = []byte("invalid")
+		}
+
+		// Issue a request
+		_, ok := s.OnRequest(&fake.Conn{ConnID: 1}, b)
+		assert.Equal(t, tc.success, ok)
+	}
+}
 
 func TestExtendKey(t *testing.T) {
 	license, _ := license.Parse(keygenTestLicense)
