@@ -30,9 +30,8 @@ func (s *Service) Subscribe(sub message.Subscriber, ev *event.Subscription) bool
 		return false
 	}
 
-	if _, err := s.trie.Subscribe(ev.Ssid, sub); err != nil {
-		return false // Unable to subscribe
-	}
+	// Add the subscription to the trie
+	s.trie.Subscribe(ev.Ssid, sub)
 
 	// Broadcast direct subscriptions
 	s.notifier.NotifySubscribe(sub, ev)

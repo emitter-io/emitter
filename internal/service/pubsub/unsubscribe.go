@@ -53,6 +53,11 @@ func (s *Service) OnUnsubscribe(c service.Conn, mqttTopic []byte) *errors.Error 
 		return errors.ErrUnauthorized
 	}
 
+	// Keys which are supposed to be extended should not be used for subscribing
+	if key.HasPermission(security.AllowExtend) {
+		return errors.ErrUnauthorizedExt
+	}
+
 	// Unsubscribe the client from the channel
 	ssid := message.NewSsid(key.Contract(), channel.Query)
 	s.Unsubscribe(c, &event.Subscription{

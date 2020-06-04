@@ -93,8 +93,8 @@ func (f *PubSub) Publish(m *message.Message, filter func(message.Subscriber) boo
 // Subscribe provides a fake implementation.
 func (f *PubSub) Subscribe(sub message.Subscriber, ev *event.Subscription) bool {
 	f.initialize()
-	_, err := f.Trie.Subscribe(ev.Ssid, sub)
-	return err == nil
+	f.Trie.Subscribe(ev.Ssid, sub)
+	return true
 }
 
 // Unsubscribe provides a fake implementation.
@@ -157,6 +157,7 @@ func (f *Notifier) NotifyUnsubscribe(sub message.Subscriber, ev *event.Subscript
 // Conn fake.
 type Conn struct {
 	ConnID    int
+	Disabled  bool
 	Outgoing  []message.Message
 	Shortcuts map[string]string
 }
@@ -191,12 +192,12 @@ func (f *Conn) Send(m *message.Message) error {
 
 // CanSubscribe provides a fake implementation.
 func (f *Conn) CanSubscribe(message.Ssid, []byte) bool {
-	return true
+	return !f.Disabled
 }
 
 // CanUnsubscribe provides a fake implementation.
 func (f *Conn) CanUnsubscribe(message.Ssid, []byte) bool {
-	return true
+	return !f.Disabled
 }
 
 // LocalID provides a fake implementation.
