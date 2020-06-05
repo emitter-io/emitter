@@ -26,7 +26,6 @@ import (
 // Publish publishes a message to everyone and returns the number of outgoing bytes written.
 func (s *Service) Publish(m *message.Message, filter func(message.Subscriber) bool) (n int64) {
 	size := m.Size()
-
 	for _, subscriber := range s.trie.Lookup(m.Ssid(), filter) {
 		subscriber.Send(m)
 		if subscriber.Type() == message.SubscriberDirect {

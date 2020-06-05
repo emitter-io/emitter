@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"runtime/debug"
 	"sync"
@@ -250,7 +251,7 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 		}
 
 	case mqtt.TypeOfDisconnect:
-		return nil
+		return io.EOF
 
 	case mqtt.TypeOfPublish:
 		packet := msg.(*mqtt.Publish)

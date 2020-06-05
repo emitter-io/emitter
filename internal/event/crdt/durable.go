@@ -91,7 +91,11 @@ func (s *Durable) fetch(item string) Value {
 		return decodeValue(binary.ToString(&v))
 	}
 
-	tx, _ := s.db.Begin(false)
+	tx, err := s.db.Begin(false)
+	if err != nil {
+		panic(err)
+	}
+
 	defer tx.Rollback()
 	if t, err := tx.Get(item); err == nil {
 		s.cache.Set(cacheKey, binary.ToBytes(t), 60)

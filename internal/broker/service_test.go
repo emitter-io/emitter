@@ -16,6 +16,7 @@ package broker
 
 import (
 	"testing"
+	"time"
 
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/stretchr/testify/assert"
@@ -29,35 +30,60 @@ const (
 func TestPubsub(t *testing.T) {
 	const port = 9996
 	broker := newTestBroker(port, 2)
-	defer broker.Close()
+	defer func() {
+		time.Sleep(500 * time.Millisecond)
+		broker.Close()
+	}()
 
-	cli := newTestClient(port)
-	defer cli.Close()
+	c1, c2 := newTestClient(port), newTestClient(port)
+	defer c1.Close()
+	defer c2.Close()
 
 	key1 := "w07Jv3TMhYTg6lLk6fQoVG2KCe7gjFPk" // on a/b/c/ with 'rwslp'
 
-	{ // Connect to the broker
-		connect := mqtt.Connect{ClientID: []byte("test")}
-		n, err := connect.EncodeTo(cli)
-		assert.Equal(t, 14, n)
+	{ // Connect to the broker (client1)
+		connect := mqtt.Connect{
+			ClientID:       []byte("test"),
+			WillFlag:       true,
+			WillRetainFlag: false,
+			WillTopic:      []byte(key1 + "/a/b/c/"),
+			WillMessage:    []byte("last will message"),
+		}
+		n, err := connect.EncodeTo(c1)
+		assert.Equal(t, 74, n)
 		assert.NoError(t, err)
 	}
 
 	{ // Read connack
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
+		assert.NoError(t, err)
+		assert.Equal(t, mqtt.TypeOfConnack, pkt.Type())
+	}
+
+	{ // Connect to the broker (client2)
+		connect := mqtt.Connect{
+			ClientID: []byte("test2"),
+		}
+		n, err := connect.EncodeTo(c2)
+		assert.Equal(t, 15, n)
+		assert.NoError(t, err)
+	}
+
+	{ // Read connack
+		pkt, err := mqtt.DecodePacket(c2, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfConnack, pkt.Type())
 	}
 
 	{ // Ping the broker
 		ping := mqtt.Pingreq{}
-		n, err := ping.EncodeTo(cli)
+		n, err := ping.EncodeTo(c1)
 		assert.Equal(t, 2, n)
 		assert.NoError(t, err)
 	}
 
 	{ // Read pong
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPingresp, pkt.Type())
 	}
@@ -68,7 +94,7 @@ func TestPubsub(t *testing.T) {
 			Topic:   []byte(key1 + "/a/b/c/"),
 			Payload: []byte("retained message"),
 		}
-		_, err := msg.EncodeTo(cli)
+		_, err := msg.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
@@ -79,12 +105,12 @@ func TestPubsub(t *testing.T) {
 				{Topic: []byte(key1 + "/a/b/c/"), Qos: 0},
 			},
 		}
-		_, err := sub.EncodeTo(cli)
+		_, err := sub.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
 	{ // Read the retained message
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
 		assert.Equal(t, &mqtt.Publish{
@@ -95,7 +121,7 @@ func TestPubsub(t *testing.T) {
 	}
 
 	{ // Read suback
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfSuback, pkt.Type())
 	}
@@ -106,12 +132,12 @@ func TestPubsub(t *testing.T) {
 			Topic:   []byte(key1 + "/a/b/c/"),
 			Payload: []byte("hello world"),
 		}
-		_, err := msg.EncodeTo(cli)
+		_, err := msg.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
 	{ // Read the message back
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
 		assert.Equal(t, &mqtt.Publish{
@@ -127,7 +153,7 @@ func TestPubsub(t *testing.T) {
 			Topic:   []byte(key1 + "/a/b/c/?me=0"),
 			Payload: []byte("hello world"),
 		}
-		_, err := msg.EncodeTo(cli)
+		_, err := msg.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
@@ -138,12 +164,12 @@ func TestPubsub(t *testing.T) {
 				{Topic: []byte(key1 + "/a/b/c/"), Qos: 0},
 			},
 		}
-		_, err := sub.EncodeTo(cli)
+		_, err := sub.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
 	{ // Read unsuback
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfUnsuback, pkt.Type())
 	}
@@ -154,12 +180,12 @@ func TestPubsub(t *testing.T) {
 			Topic:   []byte("emitter/link/?req=1"),
 			Payload: []byte(`{ "name": "hi", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true }`),
 		}
-		_, err := msg.EncodeTo(cli)
+		_, err := msg.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
 	{ // Read the link response
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
 	}
@@ -170,15 +196,48 @@ func TestPubsub(t *testing.T) {
 			Topic:   []byte("hi"),
 			Payload: []byte("hello world"),
 		}
-		_, err := msg.EncodeTo(cli)
+		_, err := msg.EncodeTo(c1)
 		assert.NoError(t, err)
+	}
+
+	{ // Subscribe to a topic (client2), but do not read retained
+		sub := mqtt.Subscribe{
+			Header: mqtt.Header{QOS: 0},
+			Subscriptions: []mqtt.TopicQOSTuple{
+				{Topic: []byte(key1 + "/a/b/c/?last=0"), Qos: 0},
+			},
+		}
+		_, err := sub.EncodeTo(c2)
+		assert.NoError(t, err)
+	}
+
+	{ // Read suback
+		pkt, err := mqtt.DecodePacket(c2, 65536)
+		assert.NoError(t, err)
+		assert.Equal(t, mqtt.TypeOfSuback, pkt.Type())
 	}
 
 	{ // Disconnect from the broker
 		disconnect := mqtt.Disconnect{}
-		n, err := disconnect.EncodeTo(cli)
+		n, err := disconnect.EncodeTo(c1)
 		assert.Equal(t, 2, n)
 		assert.NoError(t, err)
+	}
+
+	{ // Wait to be closed
+		_, err := mqtt.DecodePacket(c1, 65536)
+		assert.NoError(t, err)
+	}
+
+	{ // Read last will
+		pkt, err := mqtt.DecodePacket(c2, 65536)
+		assert.NoError(t, err)
+		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
+		assert.Equal(t, &mqtt.Publish{
+			Header:  mqtt.Header{QOS: 0},
+			Topic:   []byte("a/b/c/"),
+			Payload: []byte("last will message"),
+		}, pkt)
 	}
 
 }
