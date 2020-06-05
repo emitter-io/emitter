@@ -359,19 +359,6 @@ func (s *Service) Query(query string, payload []byte) (message.Awaiter, error) {
 	return nil, errors.New("Query manager was not setup")
 }
 
-// Publish publishes a message to everyone and returns the number of outgoing bytes written.
-func (s *Service) Publish(m *message.Message, filter func(message.Subscriber) bool) (n int64) {
-	size := m.Size()
-
-	for _, subscriber := range s.subscriptions.Lookup(m.Ssid(), filter) {
-		subscriber.Send(m)
-		if subscriber.Type() == message.SubscriberDirect {
-			n += size
-		}
-	}
-	return
-}
-
 // Authorize attempts to authorize a channel with its key
 func (s *Service) Authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
 	if channel.ChannelType == security.ChannelInvalid {
