@@ -23,6 +23,7 @@ import (
 	"github.com/emitter-io/emitter/internal/async"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/logging"
+	"github.com/emitter-io/emitter/internal/service"
 	"github.com/kelindar/binary"
 )
 
@@ -30,16 +31,16 @@ import (
 
 // SSD represents an SSD-optimized storage storage.
 type SSD struct {
-	retain  uint32             // The configured TTL for 'retained' messages.
-	cluster Surveyor           // The cluster surveyor.
-	db      *badger.DB         // The underlying database to use for messages.
-	cancel  context.CancelFunc // The cancellation function.
+	retain uint32             // The configured TTL for 'retained' messages.
+	survey service.Surveyor   // The cluster surveyor.
+	db     *badger.DB         // The underlying database to use for messages.
+	cancel context.CancelFunc // The cancellation function.
 }
 
 // NewSSD creates a new SSD-optimized storage storage.
-func NewSSD(cluster Surveyor) *SSD {
+func NewSSD(survey service.Surveyor) *SSD {
 	return &SSD{
-		cluster: cluster,
+		survey: survey,
 	}
 }
 
@@ -131,8 +132,8 @@ func (s *SSD) Query(ssid message.Ssid, from, until time.Time, limit int) (messag
 	match := s.lookup(query)
 
 	// Issue the message survey to the cluster
-	if req, err := binary.Marshal(query); err == nil && s.cluster != nil {
-		if awaiter, err := s.cluster.Survey("ssdstore", req); err == nil {
+	if req, err := binary.Marshal(query); err == nil && s.survey != nil {
+		if awaiter, err := s.survey.Query("ssdstore", req); err == nil {
 
 			// Wait for all presence updates to come back (or a deadline)
 			for _, resp := range awaiter.Gather(2000 * time.Millisecond) {

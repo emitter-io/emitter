@@ -91,7 +91,11 @@ func (s *Durable) fetch(item string) Value {
 		return decodeValue(binary.ToString(&v))
 	}
 
-	tx, _ := s.db.Begin(false)
+	tx, err := s.db.Begin(false)
+	if err != nil {
+		panic(err)
+	}
+
 	defer tx.Rollback()
 	if t, err := tx.Get(item); err == nil {
 		s.cache.Set(cacheKey, binary.ToBytes(t), 60)
@@ -174,21 +178,24 @@ func (s *Durable) Merge(other Map) {
 }
 
 // Range iterates through the events for a specific prefix.
-func (s *Durable) Range(prefix []byte, f func(string, Value) bool) {
+func (s *Durable) Range(prefix []byte, tombstones bool, f func(string, Value) bool) {
 	s.db.View(func(tx *buntdb.Tx) error {
 		return tx.Ascend("", func(k, v string) bool {
 			if !bytes.HasPrefix(binary.ToBytes(k), prefix) {
 				return true
 			}
 
-			return f(k, decodeValue(v))
+			if value := decodeValue(v); tombstones || value.IsAdded() {
+				return f(k, decodeValue(v))
+			}
+			return true
 		})
 	})
 }
 
 // Count returns the number of items in the set.
 func (s *Durable) Count() (count int) {
-	s.Range(nil, func(k string, v Value) bool {
+	s.Range(nil, true, func(k string, v Value) bool {
 		count++
 		return true
 	})
@@ -198,7 +205,7 @@ func (s *Durable) Count() (count int) {
 // ToMap converts the set to a map (useful for testing).
 func (s *Durable) toMap() map[string]Value {
 	m := make(map[string]Value)
-	s.Range(nil, func(k string, v Value) bool {
+	s.Range(nil, true, func(k string, v Value) bool {
 		m[k] = v
 		return true
 	})

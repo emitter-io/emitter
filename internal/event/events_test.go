@@ -19,6 +19,7 @@ import (
 
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/security/hash"
+	"github.com/kelindar/binary"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -64,6 +65,39 @@ func TestEncodeBan(t *testing.T) {
 
 	// Decode
 	dec, err := decodeBan(enc)
+	assert.NoError(t, err)
+	assert.Equal(t, ev, dec)
+}
+
+func TestEncodeConnection(t *testing.T) {
+	ev := Connection{
+		Peer:        657,
+		Conn:        12456,
+		WillFlag:    true,
+		WillRetain:  true,
+		WillQoS:     1,
+		WillTopic:   binary.ToBytes("a/b/c/d/"),
+		WillMessage: binary.ToBytes("hello"),
+		ClientID:    binary.ToBytes("client id"),
+		Username:    binary.ToBytes("username"),
+	}
+
+	// Encode
+	k, v := ev.Key(), ev.Val()
+	assert.Equal(t, typeConn, ev.unitType())
+	assert.Equal(t, 16, len(k))
+	assert.Equal(t,
+		[]byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2, 0x91, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x30, 0xa8},
+		[]byte(k),
+	)
+	assert.Equal(t, []byte{
+		0x1, 0x1, 0x1, 0x8, 0x61, 0x2f, 0x62, 0x2f, 0x63, 0x2f, 0x64, 0x2f, 0x5, 0x68,
+		0x65, 0x6c, 0x6c, 0x6f, 0x9, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x20, 0x69,
+		0x64, 0x8, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65},
+		v)
+
+	// Decode
+	dec, err := decodeConnection(k, v)
 	assert.NoError(t, err)
 	assert.Equal(t, ev, dec)
 }

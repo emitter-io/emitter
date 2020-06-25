@@ -15,21 +15,11 @@
 package broker
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
+	"time"
 
-	"github.com/emitter-io/emitter/internal/broker/keygen"
-	"github.com/emitter-io/emitter/internal/errors"
-	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
-	secmock "github.com/emitter-io/emitter/internal/provider/contract/mock"
-	"github.com/emitter-io/emitter/internal/provider/usage"
-	"github.com/emitter-io/emitter/internal/security/license"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 const (
@@ -37,149 +27,63 @@ const (
 	testLicenseV2 = "RfBEIIFz1nNLf12JYRpoEUqFPLb3na0X_xbP_h3PM_CqDUVBGJfEV3WalW2maauQd48o-TcTM_61BfEsELfk0qMDqrCTswkB:2"
 )
 
-func Test_onHTTPPresence(t *testing.T) {
-	license, _ := license.Parse(testLicense)
-
-	tests := []struct {
-		payload       string
-		contractValid bool
-		contractFound bool
-		status        int
-		success       bool
-		err           error
-		resp          presenceResponse
-		msg           string
-	}{
-		{
-			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a","status":true}`,
-			contractValid: true,
-			contractFound: true,
-			success:       true,
-			status:        http.StatusOK,
-			err:           nil,
-			resp:          presenceResponse{Event: presenceStatusEvent, Channel: "a"},
-			msg:           "Successful case",
-		},
-		{
-			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a","status":true}`,
-			contractValid: true,
-			contractFound: true,
-			success:       true,
-			status:        http.StatusOK,
-			err:           nil,
-			resp:          presenceResponse{Event: presenceStatusEvent, Channel: "a"},
-			msg:           "Successful case",
-		},
-		{
-			payload:       "",
-			err:           errors.ErrBadRequest,
-			success:       false,
-			status:        http.StatusBadRequest,
-			contractValid: true,
-			contractFound: true,
-			msg:           "Invalid payload case",
-		},
-		{
-			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
-			contractValid: true,
-			contractFound: true,
-			success:       false,
-			status:        http.StatusBadRequest,
-			err:           errors.ErrBadRequest,
-			msg:           "Invalid channel case",
-		},
-		{
-			payload:       `{"key":"0Nq8SWbL8qoOKEDqh_ebBZRqJDby30m","channel":"a","status":true}`,
-			contractValid: true,
-			contractFound: true,
-			success:       false,
-			status:        http.StatusUnauthorized,
-			err:           errors.ErrUnauthorized,
-			msg:           "Key for wrong channel case",
-		},
-		{
-			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
-			err:           errors.ErrNotFound,
-			status:        http.StatusNotFound,
-			contractValid: true,
-			contractFound: false,
-			msg:           "Contract not found case",
-		},
-		{
-			payload:       `{"key":"VfW_Cv5wWVZPHgCvLwJAuU2bgRFKXQEY","channel":"a+b","status":true}`,
-			err:           errors.ErrUnauthorized,
-			status:        http.StatusUnauthorized,
-			contractValid: false,
-			contractFound: true,
-			msg:           "Contract is invalid case",
-		},
-	}
-
-	for _, tc := range tests {
-
-		contract := new(secmock.Contract)
-		contract.On("Validate", mock.Anything).Return(tc.contractValid)
-		contract.On("Stats").Return(usage.NewMeter(0))
-
-		provider := secmock.NewContractProvider()
-		provider.On("Get", mock.Anything).Return(contract, tc.contractFound)
-
-		cipher, _ := license.Cipher()
-		s := &Service{
-			contracts:     provider,
-			subscriptions: message.NewTrie(),
-			License:       license,
-			Keygen:        keygen.NewProvider(cipher, provider),
-		}
-
-		req, _ := http.NewRequest("POST", "/presence", strings.NewReader(tc.payload))
-
-		// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-		rr := httptest.NewRecorder()
-		handler := http.HandlerFunc(s.onHTTPPresence)
-		handler.ServeHTTP(rr, req)
-
-		var parsedResp presenceResponse
-		json.Unmarshal(rr.Body.Bytes(), &parsedResp)
-
-		// Check the response body is what we expect.
-		assert.Equal(t, tc.status, rr.Code)
-		assert.Equal(t, 0, len(parsedResp.Who))
-	}
-}
-
 func TestPubsub(t *testing.T) {
 	const port = 9996
 	broker := newTestBroker(port, 2)
-	defer broker.Close()
+	defer func() {
+		time.Sleep(500 * time.Millisecond)
+		broker.Close()
+	}()
 
-	cli := newTestClient(port)
-	defer cli.Close()
+	c1, c2 := newTestClient(port), newTestClient(port)
+	defer c1.Close()
+	defer c2.Close()
 
 	key1 := "w07Jv3TMhYTg6lLk6fQoVG2KCe7gjFPk" // on a/b/c/ with 'rwslp'
 
-	{ // Connect to the broker
-		connect := mqtt.Connect{ClientID: []byte("test")}
-		n, err := connect.EncodeTo(cli)
-		assert.Equal(t, 14, n)
+	{ // Connect to the broker (client1)
+		connect := mqtt.Connect{
+			ClientID:       []byte("test"),
+			WillFlag:       true,
+			WillRetainFlag: false,
+			WillTopic:      []byte(key1 + "/a/b/c/"),
+			WillMessage:    []byte("last will message"),
+		}
+		n, err := connect.EncodeTo(c1)
+		assert.Equal(t, 74, n)
 		assert.NoError(t, err)
 	}
 
 	{ // Read connack
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
+		assert.NoError(t, err)
+		assert.Equal(t, mqtt.TypeOfConnack, pkt.Type())
+	}
+
+	{ // Connect to the broker (client2)
+		connect := mqtt.Connect{
+			ClientID: []byte("test2"),
+		}
+		n, err := connect.EncodeTo(c2)
+		assert.Equal(t, 15, n)
+		assert.NoError(t, err)
+	}
+
+	{ // Read connack
+		pkt, err := mqtt.DecodePacket(c2, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfConnack, pkt.Type())
 	}
 
 	{ // Ping the broker
 		ping := mqtt.Pingreq{}
-		n, err := ping.EncodeTo(cli)
+		n, err := ping.EncodeTo(c1)
 		assert.Equal(t, 2, n)
 		assert.NoError(t, err)
 	}
 
 	{ // Read pong
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPingresp, pkt.Type())
 	}
@@ -190,7 +94,7 @@ func TestPubsub(t *testing.T) {
 			Topic:   []byte(key1 + "/a/b/c/"),
 			Payload: []byte("retained message"),
 		}
-		_, err := msg.EncodeTo(cli)
+		_, err := msg.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
@@ -201,12 +105,12 @@ func TestPubsub(t *testing.T) {
 				{Topic: []byte(key1 + "/a/b/c/"), Qos: 0},
 			},
 		}
-		_, err := sub.EncodeTo(cli)
+		_, err := sub.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
 	{ // Read the retained message
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
 		assert.Equal(t, &mqtt.Publish{
@@ -217,7 +121,7 @@ func TestPubsub(t *testing.T) {
 	}
 
 	{ // Read suback
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfSuback, pkt.Type())
 	}
@@ -228,12 +132,12 @@ func TestPubsub(t *testing.T) {
 			Topic:   []byte(key1 + "/a/b/c/"),
 			Payload: []byte("hello world"),
 		}
-		_, err := msg.EncodeTo(cli)
+		_, err := msg.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
 	{ // Read the message back
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
 		assert.Equal(t, &mqtt.Publish{
@@ -249,7 +153,7 @@ func TestPubsub(t *testing.T) {
 			Topic:   []byte(key1 + "/a/b/c/?me=0"),
 			Payload: []byte("hello world"),
 		}
-		_, err := msg.EncodeTo(cli)
+		_, err := msg.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
@@ -260,12 +164,12 @@ func TestPubsub(t *testing.T) {
 				{Topic: []byte(key1 + "/a/b/c/"), Qos: 0},
 			},
 		}
-		_, err := sub.EncodeTo(cli)
+		_, err := sub.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
 	{ // Read unsuback
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfUnsuback, pkt.Type())
 	}
@@ -276,12 +180,12 @@ func TestPubsub(t *testing.T) {
 			Topic:   []byte("emitter/link/?req=1"),
 			Payload: []byte(`{ "name": "hi", "key": "k44Ss59ZSxg6Zyz39kLwN-2t5AETnGpm", "channel": "a/b/c/", "private": true }`),
 		}
-		_, err := msg.EncodeTo(cli)
+		_, err := msg.EncodeTo(c1)
 		assert.NoError(t, err)
 	}
 
 	{ // Read the link response
-		pkt, err := mqtt.DecodePacket(cli, 65536)
+		pkt, err := mqtt.DecodePacket(c1, 65536)
 		assert.NoError(t, err)
 		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
 	}
@@ -292,15 +196,48 @@ func TestPubsub(t *testing.T) {
 			Topic:   []byte("hi"),
 			Payload: []byte("hello world"),
 		}
-		_, err := msg.EncodeTo(cli)
+		_, err := msg.EncodeTo(c1)
 		assert.NoError(t, err)
+	}
+
+	{ // Subscribe to a topic (client2), but do not read retained
+		sub := mqtt.Subscribe{
+			Header: mqtt.Header{QOS: 0},
+			Subscriptions: []mqtt.TopicQOSTuple{
+				{Topic: []byte(key1 + "/a/b/c/?last=0"), Qos: 0},
+			},
+		}
+		_, err := sub.EncodeTo(c2)
+		assert.NoError(t, err)
+	}
+
+	{ // Read suback
+		pkt, err := mqtt.DecodePacket(c2, 65536)
+		assert.NoError(t, err)
+		assert.Equal(t, mqtt.TypeOfSuback, pkt.Type())
 	}
 
 	{ // Disconnect from the broker
 		disconnect := mqtt.Disconnect{}
-		n, err := disconnect.EncodeTo(cli)
+		n, err := disconnect.EncodeTo(c1)
 		assert.Equal(t, 2, n)
 		assert.NoError(t, err)
+	}
+
+	{ // Wait to be closed
+		_, err := mqtt.DecodePacket(c1, 65536)
+		assert.NoError(t, err)
+	}
+
+	{ // Read last will
+		pkt, err := mqtt.DecodePacket(c2, 65536)
+		assert.NoError(t, err)
+		assert.Equal(t, mqtt.TypeOfPublish, pkt.Type())
+		assert.Equal(t, &mqtt.Publish{
+			Header:  mqtt.Header{QOS: 0},
+			Topic:   []byte("a/b/c/"),
+			Payload: []byte("last will message"),
+		}, pkt)
 	}
 
 }

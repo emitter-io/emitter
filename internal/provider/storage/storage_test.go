@@ -25,7 +25,7 @@ import (
 
 type survey func(string, []byte) (message.Awaiter, error)
 
-func (s survey) Survey(q string, b []byte) (message.Awaiter, error) {
+func (s survey) Query(q string, b []byte) (message.Awaiter, error) {
 	return s(q, b)
 }
 

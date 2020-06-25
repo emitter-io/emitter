@@ -27,7 +27,7 @@ type Map interface {
 	Has(string) bool
 	Get(string) Value
 	Merge(Map)
-	Range([]byte, func(string, Value) bool)
+	Range([]byte, bool, func(string, Value) bool)
 	Count() int
 }
 

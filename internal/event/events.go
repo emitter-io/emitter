@@ -25,6 +25,7 @@ import (
 const (
 	typeSub = uint8(iota)
 	typeBan
+	typeConn
 )
 
 // Event represents an encodable event that happened at some point in time.
@@ -111,6 +112,53 @@ func (e Ban) Val() []byte {
 }
 
 // decodeBan decodes the event
-func decodeBan(encoded string) (Ban, error) {
-	return Ban(encoded), nil
+func decodeBan(k string) (Ban, error) {
+	return Ban(k), nil
+}
+
+// ------------------------------------------------------------------------------------
+
+// Connection represents a banned key event.
+type Connection struct {
+	Peer        uint64      `binary:"-"` // The name of the peer. This must be first, since we're doing prefix search.
+	Conn        security.ID `binary:"-"` // The connection identifier.
+	WillFlag    bool
+	WillRetain  bool
+	WillQoS     uint8
+	WillTopic   []byte
+	WillMessage []byte
+	ClientID    []byte
+	Username    []byte
+}
+
+// Type retuns the unit type.
+func (e *Connection) unitType() uint8 {
+	return typeConn
+}
+
+// Key returns the event key.
+func (e Connection) Key() string {
+	buffer := make([]byte, 16)
+	binary.BigEndian.PutUint64(buffer[0:8], e.Peer)
+	binary.BigEndian.PutUint64(buffer[8:16], uint64(e.Conn))
+	return binary.ToString(&buffer)
+}
+
+// Val returns the event value.
+func (e Connection) Val() []byte {
+	buffer, _ := binary.Marshal(e)
+	return buffer
+}
+
+// decodeConnection decodes the event
+func decodeConnection(k string, v []byte) (e Connection, err error) {
+	if len(v) > 0 {
+		err = binary.Unmarshal(v, &e)
+	}
+
+	// Decode the key
+	buffer := binary.ToBytes(k)
+	e.Peer = binary.BigEndian.Uint64(buffer[0:8])
+	e.Conn = security.ID(binary.BigEndian.Uint64(buffer[8:16]))
+	return e, err
 }

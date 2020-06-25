@@ -18,13 +18,13 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/emitter-io/emitter/internal/broker/keygen"
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
@@ -32,27 +32,34 @@ import (
 	"github.com/emitter-io/emitter/internal/provider/contract"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/service/keygen"
 	"github.com/emitter-io/stats"
+	"github.com/kelindar/binary"
 	"github.com/kelindar/binary/nocopy"
 	"github.com/kelindar/rate"
 )
 
 const defaultReadRate = 100000
 
+type response interface {
+	ForRequest(uint16)
+}
+
 // Conn represents an incoming connection.
 type Conn struct {
 	sync.Mutex
 	tracked  uint32            // Whether the connection was already tracked or not.
 	socket   net.Conn          // The transport used to read and write messages.
-	username string            // The username provided by the client during MQTT connect.
 	luid     security.ID       // The locally unique id of the connection.
 	guid     string            // The globally unique id of the connection.
 	service  *Service          // The service for this connection.
 	subs     *message.Counters // The subscriptions for this connection.
 	measurer stats.Measurer    // The measurer to use for monitoring.
-	links    map[string]string // The map of all pre-authorized links.
 	limit    *rate.Limiter     // The read rate limiter.
-	keys     *keygen.Provider  // The key generation provider.
+	keys     *keygen.Service   // The key generation provider.
+	connect  *event.Connection // The associated connection event.
+	username string            // The username provided by the client during MQTT connect.
+	links    map[string]string // The map of all pre-authorized links.
 }
 
 // NewConn creates a new connection.
@@ -65,7 +72,7 @@ func (s *Service) newConn(t net.Conn, readRate int) *Conn {
 		subs:     message.NewCounters(),
 		measurer: s.measurer,
 		links:    map[string]string{},
-		keys:     s.Keygen,
+		keys:     s.keygen,
 	}
 
 	// Generate a globally unique id as well
@@ -86,6 +93,34 @@ func (c *Conn) ID() string {
 	return c.guid
 }
 
+// LocalID returns the local connection identifier.
+func (c *Conn) LocalID() security.ID {
+	return c.luid
+}
+
+// Username returns the associated username.
+func (c *Conn) Username() string {
+	return c.username
+}
+
+// GetLink checks if the topic is a registered shortcut and expands it.
+func (c *Conn) GetLink(topic []byte) []byte {
+	if len(topic) <= 2 && c.links != nil {
+		return []byte(c.links[binary.ToString(&topic)])
+	}
+	return topic
+}
+
+// AddLink adds a link alias for a channel.
+func (c *Conn) AddLink(alias string, channel *security.Channel) {
+	c.links[alias] = channel.String()
+}
+
+// Links returns a map of all links registered.
+func (c *Conn) Links() map[string]string {
+	return c.links
+}
+
 // Type returns the type of the subscriber
 func (c *Conn) Type() message.SubscriberType {
 	return message.SubscriberDirect
@@ -96,8 +131,8 @@ func (c *Conn) MeasureElapsed(name string, since time.Time) {
 	c.measurer.MeasureElapsed(name, time.Now())
 }
 
-// track tracks the connection by adding it to the metering.
-func (c *Conn) track(contract contract.Contract) {
+// Track tracks the connection by adding it to the metering.
+func (c *Conn) Track(contract contract.Contract) {
 	if atomic.LoadUint32(&c.tracked) == 0 {
 
 		// We keep only the IP address for fair tracking
@@ -110,6 +145,16 @@ func (c *Conn) track(contract contract.Contract) {
 		contract.Stats().AddDevice(addr)
 		atomic.StoreUint32(&c.tracked, 1)
 	}
+}
+
+// Increment increments the subscription counter.
+func (c *Conn) Increment(ssid message.Ssid, channel []byte) bool {
+	return c.subs.Increment(ssid, channel)
+}
+
+// Decrement decrements a subscription counter.
+func (c *Conn) Decrement(ssid message.Ssid) bool {
+	return c.subs.Decrement(ssid)
 }
 
 // Process processes the messages.
@@ -166,7 +211,7 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 
 		// Subscribe for each subscription
 		for _, sub := range packet.Subscriptions {
-			if err := c.onSubscribe(sub.Topic); err != nil {
+			if err := c.service.pubsub.OnSubscribe(c, sub.Topic); err != nil {
 				ack.Qos = append(ack.Qos, 0x80) // 0x80 indicate subscription failure
 				c.notifyError(err, packet.MessageID)
 				continue
@@ -188,7 +233,7 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 
 		// Unsubscribe from each subscription
 		for _, sub := range packet.Topics {
-			if err := c.onUnsubscribe(sub.Topic); err != nil {
+			if err := c.service.pubsub.OnUnsubscribe(c, sub.Topic); err != nil {
 				c.notifyError(err, packet.MessageID)
 			}
 		}
@@ -206,11 +251,11 @@ func (c *Conn) onReceive(msg mqtt.Message) error {
 		}
 
 	case mqtt.TypeOfDisconnect:
-		return nil
+		return io.EOF
 
 	case mqtt.TypeOfPublish:
 		packet := msg.(*mqtt.Publish)
-		if err := c.onPublish(packet); err != nil {
+		if err := c.service.pubsub.OnPublish(c, packet); err != nil {
 			logging.LogError("conn", "publish received", err)
 			c.notifyError(err, packet.MessageID)
 		}
@@ -264,38 +309,41 @@ func (c *Conn) sendResponse(topic string, resp response, requestID uint16) {
 	return
 }
 
-// Subscribe subscribes to a particular channel.
-func (c *Conn) Subscribe(ssid message.Ssid, channel []byte) {
+// CanSubscribe increments the internal counters and checks if the cluster
+// needs to be notified.
+func (c *Conn) CanSubscribe(ssid message.Ssid, channel []byte) bool {
 	c.Lock()
 	defer c.Unlock()
-
-	// Add the subscription
-	if first := c.subs.Increment(ssid, channel); first {
-		c.service.Subscribe(c, &event.Subscription{
-			Peer:    c.service.ID(),
-			Conn:    c.luid,
-			User:    nocopy.String(c.username),
-			Ssid:    ssid,
-			Channel: channel,
-		})
-	}
+	return c.subs.Increment(ssid, channel)
 }
 
-// Unsubscribe unsubscribes this client from a particular channel.
-func (c *Conn) Unsubscribe(ssid message.Ssid, channel []byte) {
+// CanUnsubscribe decrements the internal counters and checks if the cluster
+// needs to be notified.
+func (c *Conn) CanUnsubscribe(ssid message.Ssid, channel []byte) bool {
 	c.Lock()
 	defer c.Unlock()
+	return c.subs.Decrement(ssid)
+}
 
-	// Decrement the counter and if there's no more subscriptions, notify everyone.
-	if last := c.subs.Decrement(ssid); last {
-		c.service.Unsubscribe(c, &event.Subscription{
-			Peer:    c.service.ID(),
-			Conn:    c.luid,
-			User:    nocopy.String(c.username),
-			Ssid:    ssid,
-			Channel: channel,
-		})
+// onConnect handles the connection authorization
+func (c *Conn) onConnect(packet *mqtt.Connect) bool {
+	c.username = string(packet.Username)
+	c.connect = &event.Connection{
+		Peer:        c.service.ID(),
+		Conn:        c.luid,
+		WillFlag:    packet.WillFlag,
+		WillRetain:  packet.WillRetainFlag,
+		WillQoS:     packet.WillQOS,
+		WillTopic:   packet.WillTopic,
+		WillMessage: packet.WillMessage,
+		ClientID:    packet.ClientID,
+		Username:    packet.Username,
 	}
+
+	if c.service.cluster != nil {
+		c.service.cluster.Notify(c.connect, true)
+	}
+	return true
 }
 
 // Close terminates the connection.
@@ -308,14 +356,17 @@ func (c *Conn) Close() error {
 	// Unsubscribe from everything, no need to lock since each Unsubscribe is
 	// already locked. Locking the 'Close()' would result in a deadlock.
 	for _, counter := range c.subs.All() {
-		c.service.Unsubscribe(c, &event.Subscription{
+		c.service.pubsub.Unsubscribe(c, &event.Subscription{
 			Peer:    c.service.ID(),
 			Conn:    c.luid,
-			User:    nocopy.String(c.username),
+			User:    nocopy.String(c.Username()),
 			Ssid:    counter.Ssid,
 			Channel: counter.Channel,
 		})
 	}
+
+	// Publish last will
+	c.service.pubsub.OnLastWill(c, c.connect)
 
 	//logging.LogTarget("conn", "closed", c.guid)
 	return c.socket.Close()

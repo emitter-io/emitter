@@ -119,7 +119,7 @@ func T(k string, add, del int64, v ...string) Action {
 }
 
 func equalSets(t *testing.T, expected, current Map) {
-	expected.Range(nil, func(k string, v Value) bool {
+	expected.Range(nil, true, func(k string, v Value) bool {
 		assert.Equal(t, v, current.Get(k))
 		return true
 	})
