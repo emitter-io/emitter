@@ -123,14 +123,14 @@ func TestNotify(t *testing.T) {
 
 	// TODO: Test actual correctness as well
 	assert.NotPanics(t, func() {
-		s.NotifyBeginOf(&event.Subscription{
+		s.Notify(&event.Subscription{
 			Conn: 5,
 			Ssid: []uint32{1, 2, 3},
-		})
-		s.NotifyEndOf(&event.Subscription{
+		}, true)
+		s.Notify(&event.Subscription{
 			Conn: 5,
 			Ssid: []uint32{1, 2, 3},
-		})
+		}, false)
 	})
 }
 

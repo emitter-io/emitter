@@ -39,8 +39,9 @@ func NewState(dir string) *State {
 	return &State{
 		durable: durable,
 		subsets: map[uint8]crdt.Map{
-			typeSub: crdt.New(durable, ""),
-			typeBan: crdt.New(durable, fileOf(dir, "ban.db")),
+			typeSub:  crdt.New(durable, ""),
+			typeBan:  crdt.New(durable, fileOf(dir, "ban.db")),
+			typeConn: crdt.New(durable, ""),
 		},
 	}
 }
@@ -136,7 +137,7 @@ func (st *State) Has(ev Event) bool {
 // blocking and will lock the entire set of subscriptions while iterating.
 func (st *State) Subscriptions(f func(*Subscription, Value)) {
 	set := st.subsets[typeSub]
-	set.Range(nil, func(v string, t Value) bool {
+	set.Range(nil, true, func(v string, t Value) bool {
 		if ev, err := decodeSubscription(v, t.Value()); err == nil {
 			f(&ev, t)
 		}
@@ -146,25 +147,30 @@ func (st *State) Subscriptions(f func(*Subscription, Value)) {
 
 // SubscriptionsOf iterates through the subscription events for a specific peer.
 func (st *State) SubscriptionsOf(name mesh.PeerName, f func(*Subscription)) {
-	prefix := make([]byte, 8)
-	binary.BigEndian.PutUint64(prefix, uint64(name))
-
-	// Copy since the Range() is locked
-	var events []*Subscription
-	set := st.subsets[typeSub]
-	set.Range(prefix, func(v string, t crdt.Value) bool {
-		if t.IsAdded() {
-			if ev, err := decodeSubscription(v, t.Value()); err == nil {
-				events = append(events, &ev)
-			}
+	for k, v := range st.findEventsOf(typeSub, prefixOf(name), false) {
+		if ev, err := decodeSubscription(k, v.Value()); err == nil {
+			f(&ev)
 		}
+	}
+}
+
+// ConnectionsOf iterates through the connection events for a specific peer.
+func (st *State) ConnectionsOf(name mesh.PeerName, f func(*Connection)) {
+	for k, v := range st.findEventsOf(typeConn, prefixOf(name), false) {
+		if ev, err := decodeConnection(k, v.Value()); err == nil {
+			f(&ev)
+		}
+	}
+}
+
+// findEventsOf ranges over the events of a specific type and copies them for concurrent usage.
+func (st *State) findEventsOf(typ uint8, prefix []byte, tombstones bool) map[string]Value {
+	events := make(map[string]Value)
+	st.subsets[typ].Range(prefix, tombstones, func(k string, v crdt.Value) bool {
+		events[k] = v
 		return true
 	})
-
-	// Invoke the callback, without blocking the state
-	for _, v := range events {
-		f(v)
-	}
+	return events
 }
 
 // Close closes the set gracefully.
@@ -175,4 +181,11 @@ func (st *State) Close() error {
 		}
 	}
 	return nil
+}
+
+// prefixOf returns a binary prefix for search.
+func prefixOf(name mesh.PeerName) []byte {
+	prefix := make([]byte, 8)
+	binary.BigEndian.PutUint64(prefix, uint64(name))
+	return prefix
 }

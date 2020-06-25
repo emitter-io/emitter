@@ -172,9 +172,13 @@ func newTestBroker(port int, licenseVersion int) *Service {
 		cfg.License = testLicenseV2
 	}
 
-	cfg.ListenAddr = fmt.Sprintf("127.0.0.1:%d", port)
-	cfg.Cluster = nil
 	cfg.TLS = &conf.TLSConfig{}
+	cfg.ListenAddr = fmt.Sprintf("127.0.0.1:%d", port)
+	cfg.Cluster = &config.ClusterConfig{
+		NodeName:      "00:00:00:00:00:01",
+		ListenAddr:    ":4000",
+		AdvertiseAddr: ":4001",
+	}
 
 	// Start the broker asynchronously
 	broker, err := NewService(context.Background(), cfg)

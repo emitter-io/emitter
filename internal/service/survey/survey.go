@@ -26,6 +26,7 @@ import (
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/service"
 	"github.com/weaveworks/mesh"
 )
 
@@ -39,31 +40,26 @@ type Surveyee interface {
 	OnSurvey(queryType string, request []byte) (response []byte, ok bool)
 }
 
-type broker interface {
+type gossiper interface {
 	ID() uint64
 	NumPeers() int
-	Subscribe(message.Subscriber, *event.Subscription) bool
-	Publish(*message.Message, func(message.Subscriber) bool) int64
-}
-
-type gossiper interface {
 	SendTo(mesh.PeerName, *message.Message) error
 }
 
 // Surveyor represents a distributed surveyor.
 type Surveyor struct {
-	broker   broker      // The pub/sub broker to use.
-	gossip   gossiper    // The cluster service to use.
-	luid     security.ID // The locally unique id of the manager.
-	next     uint32      // The next available query identifier.
-	awaiters *sync.Map   // The map of the awaiters.
-	handlers []Surveyee  // The handlers array.
+	pubsub   service.PubSub // The pub/sub broker to use.
+	gossip   gossiper       // The cluster service to use.
+	luid     security.ID    // The locally unique id of the manager.
+	next     uint32         // The next available query identifier.
+	awaiters *sync.Map      // The map of the awaiters.
+	handlers []Surveyee     // The handlers array.
 }
 
 // New creates a new distributed surveyor.
-func New(b broker, g gossiper) *Surveyor {
+func New(p service.PubSub, g gossiper) *Surveyor {
 	return &Surveyor{
-		broker:   b,
+		pubsub:   p,
 		gossip:   g,
 		luid:     security.NewID(),
 		next:     0,
@@ -75,12 +71,12 @@ func New(b broker, g gossiper) *Surveyor {
 // Start subscribes the manager to the query channel.
 func (c *Surveyor) Start() {
 	ev := &event.Subscription{
-		Peer: c.broker.ID(),
+		Peer: c.gossip.ID(),
 		Conn: c.luid,
 		Ssid: message.Ssid{idSystem, idQuery},
 	}
 
-	c.broker.Subscribe(c, ev)
+	c.pubsub.Subscribe(c, ev)
 }
 
 // HandleFunc adds a handler for a query.
@@ -138,7 +134,7 @@ func (c *Surveyor) onRequest(ssid message.Ssid, channel string, payload []byte) 
 
 	// Do not answer our own requests
 	replyAddr := mesh.PeerName(reply)
-	if c.broker.ID() == uint64(replyAddr) {
+	if c.gossip.ID() == uint64(replyAddr) {
 		return nil
 	}
 
@@ -156,7 +152,7 @@ func (c *Surveyor) onRequest(ssid message.Ssid, channel string, payload []byte) 
 func (c *Surveyor) Query(query string, payload []byte) (message.Awaiter, error) {
 
 	// Create an awaiter
-	numPeers := c.broker.NumPeers()
+	numPeers := c.gossip.NumPeers()
 	awaiter := &queryAwaiter{
 		id:      atomic.AddUint32(&c.next, 1),
 		receive: make(chan []byte, numPeers),
@@ -168,10 +164,10 @@ func (c *Surveyor) Query(query string, payload []byte) (message.Awaiter, error) 
 	c.awaiters.Store(awaiter.id, awaiter)
 
 	// Prepare a channel with the reply-to address
-	channel := fmt.Sprintf("%v/%v", query, c.broker.ID())
+	channel := fmt.Sprintf("%v/%v", query, c.gossip.ID())
 
 	// Publish the query as a message
-	c.broker.Publish(message.New(
+	c.pubsub.Publish(message.New(
 		message.Ssid{idSystem, idQuery, awaiter.id},
 		[]byte(channel),
 		payload,

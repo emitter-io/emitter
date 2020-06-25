@@ -62,7 +62,7 @@ func (t *Trie) Count() int {
 }
 
 // Subscribe adds the Subscriber to the topic and returns a Subscription.
-func (t *Trie) Subscribe(ssid Ssid, sub Subscriber) (*Subscription, error) {
+func (t *Trie) Subscribe(ssid Ssid, sub Subscriber) *Subscription {
 	t.Lock()
 	curr := t.root
 	for _, word := range ssid {
@@ -85,7 +85,7 @@ func (t *Trie) Subscribe(ssid Ssid, sub Subscriber) (*Subscription, error) {
 	}
 
 	t.Unlock()
-	return &Subscription{Ssid: ssid, Subscriber: sub}, nil
+	return &Subscription{Ssid: ssid, Subscriber: sub}
 }
 
 // Unsubscribe removes the Subscription.

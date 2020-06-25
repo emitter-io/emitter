@@ -74,19 +74,16 @@ func TestRange(t *testing.T) {
 		})
 
 	var count int
-	state.Range([]byte("A"), func(_ string, v Value) bool {
-		if v.IsAdded() {
-			count++
-		}
+	state.Range([]byte("A"), false, func(_ string, v Value) bool {
+		count++
+
 		return true
 	})
 	assert.Equal(t, 2, count)
 
 	count = 0
-	state.Range(nil, func(_ string, v Value) bool {
-		if v.IsAdded() {
-			count++
-		}
+	state.Range(nil, false, func(_ string, v Value) bool {
+		count++
 		return true
 	})
 	assert.Equal(t, 5, count)

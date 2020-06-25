@@ -17,7 +17,6 @@ package broker
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -27,14 +26,10 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/emitter-io/address"
-	"github.com/emitter-io/emitter/internal/broker/cluster"
-	"github.com/emitter-io/emitter/internal/broker/keygen"
-	"github.com/emitter-io/emitter/internal/broker/survey"
 	"github.com/emitter-io/emitter/internal/config"
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
@@ -47,29 +42,38 @@ import (
 	"github.com/emitter-io/emitter/internal/provider/usage"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/security/license"
+	"github.com/emitter-io/emitter/internal/service/cluster"
+	"github.com/emitter-io/emitter/internal/service/keyban"
+	"github.com/emitter-io/emitter/internal/service/keygen"
+	"github.com/emitter-io/emitter/internal/service/link"
+	"github.com/emitter-io/emitter/internal/service/me"
+	"github.com/emitter-io/emitter/internal/service/presence"
+	"github.com/emitter-io/emitter/internal/service/pubsub"
+	"github.com/emitter-io/emitter/internal/service/survey"
 	"github.com/emitter-io/stats"
 	"github.com/kelindar/tcp"
 )
 
 // Service represents the main structure.
 type Service struct {
-	connections   int64                // The number of currently open connections.
-	context       context.Context      // The context for the service.
-	cancel        context.CancelFunc   // The cancellation function.
-	License       license.License      // The licence for this emitter server.
-	Keygen        *keygen.Provider     // The key generation provider.
-	Config        *config.Config       // The configuration for the service.
-	subscriptions *message.Trie        // The subscription matching trie.
-	http          *http.Server         // The underlying HTTP server.
-	tcp           *tcp.Server          // The underlying TCP server.
-	cluster       *cluster.Swarm       // The gossip-based cluster mechanism.
-	presence      chan *presenceNotify // The channel for presence notifications.
-	surveyor      *survey.Surveyor     // The generic query manager.
-	contracts     contract.Provider    // The contract provider for the service.
-	storage       storage.Storage      // The storage provider for the service.
-	monitor       monitor.Storage      // The storage provider for stats.
-	measurer      stats.Measurer       // The monitoring registry for the service.
-	metering      usage.Metering       // The usage storage for metering contracts.
+	connections   int64              // The number of currently open connections.
+	context       context.Context    // The context for the service.
+	cancel        context.CancelFunc // The cancellation function.
+	License       license.License    // The licence for this emitter server.
+	Config        *config.Config     // The configuration for the service.
+	subscriptions *message.Trie      // The subscription matching trie.
+	http          *http.Server       // The underlying HTTP server.
+	tcp           *tcp.Server        // The underlying TCP server.
+	cluster       *cluster.Swarm     // The gossip-based cluster mechanism.
+	surveyor      *survey.Surveyor   // The generic query manager.
+	contracts     contract.Provider  // The contract provider for the service.
+	storage       storage.Storage    // The storage provider for the service.
+	monitor       monitor.Storage    // The storage provider for stats.
+	measurer      stats.Measurer     // The monitoring registry for the service.
+	metering      usage.Metering     // The usage storage for metering contracts.
+	pubsub        *pubsub.Service    // The publish/subscribe service.
+	presence      *presence.Service  // The presence service.
+	keygen        *keygen.Service    // The key generation provider.
 }
 
 // NewService creates a new service.
@@ -82,7 +86,6 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		subscriptions: message.NewTrie(),
 		http:          new(http.Server),
 		tcp:           new(tcp.Server),
-		presence:      make(chan *presenceNotify, 100),
 		storage:       new(storage.Noop),
 		measurer:      stats.New(),
 	}
@@ -97,14 +100,6 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	// Parse the license
 	if s.License, err = license.Parse(cfg.License); err != nil {
 		return nil, err
-	}
-
-	// Create a new cluster if we have this configured
-	if cfg.Cluster != nil {
-		s.cluster = cluster.NewSwarm(cfg.Cluster)
-		s.cluster.OnMessage = s.onPeerMessage
-		s.cluster.OnSubscribe = s.Subscribe
-		s.cluster.OnUnsubscribe = s.Unsubscribe
 	}
 
 	// Load the logging provider
@@ -127,6 +122,9 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		contract.NewHTTPContractProvider(s.License, s.metering)).(contract.Provider)
 	logging.LogTarget("service", "configured contracts provider", s.contracts.Name())
 
+	// Attach the pubsub service
+	s.pubsub = pubsub.New(s, s.storage, s, s.subscriptions)
+
 	// Load the monitor storage provider
 	nodeName := address.Fingerprint(s.ID()).String()
 	sampler := newSampler(s, s.measurer)
@@ -139,10 +137,20 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	).(monitor.Storage)
 	logging.LogTarget("service", "configured monitoring sink", s.monitor.Name())
 
+	// Create a new cluster if we have this configured
+	if cfg.Cluster != nil {
+		s.cluster = cluster.NewSwarm(cfg.Cluster)
+		s.cluster.OnMessage = s.onPeerMessage
+		s.cluster.OnSubscribe = s.pubsub.Subscribe
+		s.cluster.OnUnsubscribe = s.pubsub.Unsubscribe
+		s.cluster.OnDisconnect = s.pubsub.OnLastWill
+	}
+
 	// Attach survey handlers
-	s.surveyor = survey.New(s, s.cluster)
+	s.surveyor = survey.New(s.pubsub, s.cluster)
+	s.presence = presence.New(s, s.pubsub, s.surveyor, s.subscriptions)
 	if s.cluster != nil {
-		s.surveyor.HandleFunc(s, ssdstore, memstore)
+		s.surveyor.HandleFunc(s.presence, ssdstore, memstore)
 	}
 
 	// Create a new cipher from the licence provided
@@ -152,7 +160,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	}
 
 	// Attach handlers
-	s.Keygen = keygen.NewProvider(cipher, s.contracts)
+	s.keygen = keygen.New(cipher, s.contracts, s)
 	if cfg.Debug {
 		mux.HandleFunc("/debug/pprof/", pprof.Index)
 		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
@@ -161,9 +169,16 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 	}
 	mux.HandleFunc("/health", s.onHealth)
-	mux.HandleFunc("/keygen", s.Keygen.HTTP())
-	mux.HandleFunc("/presence", s.onHTTPPresence)
+	mux.HandleFunc("/keygen", s.keygen.HTTP())
+	mux.HandleFunc("/presence", s.presence.OnHTTP)
 	mux.HandleFunc("/", s.onRequest)
+
+	// Attach "emitter/..." handlers
+	s.pubsub.Handle("presence", s.presence.OnRequest)
+	s.pubsub.Handle("keygen", s.keygen.OnRequest)
+	s.pubsub.Handle("keyban", keyban.New(s, s.keygen, s.cluster).OnRequest)
+	s.pubsub.Handle("link", link.New(s, s.pubsub).OnRequest)
+	s.pubsub.Handle("me", me.New().OnRequest)
 
 	// Addresses and things
 	logging.LogTarget("service", "configured node name", nodeName)
@@ -192,7 +207,6 @@ func (s *Service) NumPeers() int {
 func (s *Service) Listen() (err error) {
 	defer s.Close()
 	s.hookSignals()
-	s.pollPresenceChange()
 
 	// Create the cluster if required
 	if s.cluster != nil {
@@ -255,53 +269,43 @@ func (s *Service) Join(peers ...string) []error {
 	return s.cluster.Join(peers...)
 }
 
-// notifyPresenceChange sends out an event to notify when a client is subscribed/unsubscribed.
-func (s *Service) pollPresenceChange() {
-	go func() {
-		for {
-			select {
-			case <-s.context.Done():
-				return
-			case notif := <-s.presence:
-				s.notifyPresenceEvent(notif, nil)
-			}
-		}
-	}()
-}
-
-// notifyPresenceChange sends out an event to notify when a client is subscribed/unsubscribed.
-func (s *Service) notifyPresenceEvent(ev *presenceNotify, filter func(message.Subscriber) bool) {
-	channel := []byte("emitter/presence/") // TODO: avoid allocation
-	if encoded, ok := ev.Encode(); ok {
-		s.Publish(message.New(ev.Ssid, channel, encoded), filter)
-	}
-}
-
 // NotifySubscribe notifies the swarm when a subscription occurs.
-func (s *Service) notifySubscribe(ev *event.Subscription) {
+func (s *Service) NotifySubscribe(sub message.Subscriber, ev *event.Subscription) {
+	ev.Peer = s.ID()
 
-	// If we have a new direct subscriber, issue presence message and publish it
-	if ev.Channel != nil {
-		s.presence <- newPresenceNotify(presenceSubscribeEvent, ev)
-	}
+	// Broadcast direct subscriptions
+	if sub.Type() == message.SubscriberDirect {
 
-	// Notify our cluster that the client just subscribed.
-	if s.cluster != nil {
-		s.cluster.NotifyBeginOf(ev)
+		// If we have a new direct subscriber, issue presence message and publish it
+		if ev.Channel != nil {
+			s.presence.Notify(presence.EventTypeSubscribe, ev, nil)
+		}
+
+		// Notify our cluster that the client just subscribed.
+		if s.cluster != nil {
+			s.cluster.Notify(ev, true)
+		}
 	}
 }
 
 // NotifyUnsubscribe notifies the swarm when an unsubscription occurs.
-func (s *Service) notifyUnsubscribe(ev *event.Subscription) {
+func (s *Service) NotifyUnsubscribe(sub message.Subscriber, ev *event.Subscription) {
+	ev.Peer = s.ID()
+	switch sub.Type() {
+	case message.SubscriberDirect:
+		if ev.Channel != nil { // If we have a new direct subscriber, issue presence message and publish it
+			s.presence.Notify(presence.EventTypeUnsubscribe, ev, nil)
+		}
 
-	// If we have a new direct subscriber, issue presence message and publish it
-	if ev.Channel != nil {
-		s.presence <- newPresenceNotify(presenceUnsubscribeEvent, ev)
-	}
+		if s.cluster != nil { // Notify our cluster that the client just unsubscribed.
+			s.cluster.Notify(ev, false)
+		}
 
-	// Notify our cluster that the client just unsubscribed.
-	if s.cluster != nil {
-		s.cluster.NotifyEndOf(ev)
+	case message.SubscriberOffline:
+		// If the peer is offline, notify the presence
+		s.presence.Notify(presence.EventTypeUnsubscribe, ev, func(s message.Subscriber) bool {
+			return s.Type() == message.SubscriberDirect
+		})
 	}
 }
 
@@ -322,109 +326,6 @@ func (s *Service) onRequest(w http.ResponseWriter, r *http.Request) {
 // Occurs when a new HTTP health check is received.
 func (s *Service) onHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
-}
-
-// Occurs when a new HTTP presence request is received.
-func (s *Service) onHTTPPresence(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	// Deserialize the body.
-	msg := presenceRequest{}
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&msg)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	// Attempt to parse the key, this should be a master key
-	key, err := s.Keygen.DecryptKey(msg.Key)
-	if err != nil || !key.HasPermission(security.AllowPresence) || key.IsExpired() {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	// Attempt to fetch the contract using the key. Underneath, it's cached.
-	contract, contractFound := s.contracts.Get(key.Contract())
-	if !contractFound {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	// Validate the contract
-	if !contract.Validate(key) {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	// Ensure we have trailing slash
-	if !strings.HasSuffix(msg.Channel, "/") {
-		msg.Channel = msg.Channel + "/"
-	}
-
-	// Parse the channel
-	channel := security.ParseChannel([]byte("emitter/" + msg.Channel))
-	if channel.ChannelType == security.ChannelInvalid {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// Create the ssid for the presence
-	ssid := message.NewSsid(key.Contract(), channel.Query)
-	now := time.Now().UTC().Unix()
-	who := getAllPresence(s, ssid)
-	resp, err := json.Marshal(&presenceResponse{
-		Time:    now,
-		Event:   presenceStatusEvent,
-		Channel: msg.Channel,
-		Who:     who,
-	})
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Write(resp)
-	return
-}
-
-// Subscribe subscribes to a channel.
-func (s *Service) Subscribe(sub message.Subscriber, ev *event.Subscription) bool {
-	if _, err := s.subscriptions.Subscribe(ev.Ssid, sub); err != nil {
-		return false // Unable to subscribe
-	}
-
-	// Broadcast direct subscriptions
-	if sub.Type() == message.SubscriberDirect {
-		s.notifySubscribe(ev)
-	}
-	return true
-}
-
-// Unsubscribe unsubscribes from a channel
-func (s *Service) Unsubscribe(sub message.Subscriber, ev *event.Subscription) (ok bool) {
-	subscribers := s.subscriptions.Lookup(ev.Ssid, nil)
-	if ok = subscribers.Contains(sub); ok {
-		s.subscriptions.Unsubscribe(ev.Ssid, sub)
-	}
-
-	// Broadcast direct unsubscriptions
-	if sub.Type() == message.SubscriberDirect {
-		s.notifyUnsubscribe(ev)
-	}
-
-	// If the peer is offline, notify the presence
-	if sub.Type() == message.SubscriberOffline {
-		s.notifyPresenceEvent(newPresenceNotify(presenceUnsubscribeEvent, ev), func(s message.Subscriber) bool {
-			return s.Type() == message.SubscriberDirect
-		})
-	}
-
-	return
 }
 
 // Occurs when a message is received from a peer.
@@ -448,9 +349,9 @@ func (s *Service) onPeerMessage(m *message.Message) {
 	}
 }
 
-// Survey is a mechanism where a message from one node is broadcasted to the
+// Query is a mechanism where a message from one node is broadcasted to the
 // entire cluster and each node in the group responds to the message.
-func (s *Service) Survey(query string, payload []byte) (message.Awaiter, error) {
+func (s *Service) Query(query string, payload []byte) (message.Awaiter, error) {
 	if s.surveyor != nil {
 		return s.surveyor.Query(query, payload)
 	}
@@ -458,21 +359,11 @@ func (s *Service) Survey(query string, payload []byte) (message.Awaiter, error) 
 	return nil, errors.New("Query manager was not setup")
 }
 
-// Publish publishes a message to everyone and returns the number of outgoing bytes written.
-func (s *Service) Publish(m *message.Message, filter func(message.Subscriber) bool) (n int64) {
-	size := m.Size()
-
-	for _, subscriber := range s.subscriptions.Lookup(m.Ssid(), filter) {
-		subscriber.Send(m)
-		if subscriber.Type() == message.SubscriberDirect {
-			n += size
-		}
-	}
-	return
-}
-
 // Authorize attempts to authorize a channel with its key
-func (s *Service) authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
+func (s *Service) Authorize(channel *security.Channel, permission uint8) (contract.Contract, security.Key, bool) {
+	if channel.ChannelType == security.ChannelInvalid {
+		return nil, nil, false
+	}
 
 	// Check if the key is blacklisted
 	channelKey := string(channel.Key)
@@ -481,7 +372,7 @@ func (s *Service) authorize(channel *security.Channel, permission uint8) (contra
 	}
 
 	// Attempt to parse the key
-	key, err := s.Keygen.DecryptKey(channelKey)
+	key, err := s.keygen.DecryptKey(channelKey)
 	if err != nil || key.IsExpired() {
 		return nil, nil, false
 	}
@@ -500,7 +391,7 @@ func (s *Service) authorize(channel *security.Channel, permission uint8) (contra
 func (s *Service) selfPublish(channelName string, payload []byte) {
 	channel := security.ParseChannel([]byte("emitter/" + channelName))
 	if channel.ChannelType == security.ChannelStatic {
-		s.Publish(message.New(
+		s.pubsub.Publish(message.New(
 			message.NewSsid(s.License.Contract(), channel.Query),
 			channel.Channel,
 			payload,
@@ -540,7 +431,6 @@ func (s *Service) Close() {
 	// Gracefully dispose all of our resources
 	dispose(s.cluster)
 	dispose(s.storage)
-
 }
 
 func dispose(resource io.Closer) {

@@ -34,14 +34,15 @@ import (
 const keygenTestLicense = "zT83oDV0DWY5_JysbSTPTDr8KB0AAAAAAAAAAAAAAAI:1"
 const keygenTestSecret = "kBCZch5re3Ue-kpG1Aa8Vo7BYvXZ3UwR"
 
-func newTestProvider(t *testing.T) *Provider {
+func newTestProvider(t *testing.T) *Service {
 	l, err := license.Parse(keygenTestLicense)
 	assert.NoError(t, err)
 
 	cipher, err := l.Cipher()
 	assert.NoError(t, err)
 
-	return NewProvider(cipher, contract.NewSingleContractProvider(l, usage.NewNoop()))
+	provider := contract.NewSingleContractProvider(l, usage.NewNoop())
+	return New(cipher, provider, &authorizer{cipher, provider})
 }
 
 var keyGenResponseM = regexp.MustCompile(`(?s)<pre id="keygenResponse">(?P<response>.*)</pre>`)

@@ -15,6 +15,7 @@
 package event
 
 import (
+	"github.com/weaveworks/mesh"
 	"strconv"
 	"testing"
 	"time"
@@ -126,7 +127,7 @@ func TestSubscriptions(t *testing.T) {
 	defer restoreClock(crdt.Now)
 
 	setClock(0)
-	state := NewState("")
+	state := NewState(":memory:")
 	defer state.Close()
 
 	for i := 1; i <= 10; i++ {
@@ -154,12 +155,30 @@ func TestSubscriptions(t *testing.T) {
 	assert.Equal(t, 3, count)
 }
 
+func TestConnections(t *testing.T) {
+	defer restoreClock(crdt.Now)
+
+	setClock(0)
+	state := NewState(":memory:")
+	defer state.Close()
+
+	for i := 1; i <= 10; i++ {
+		ev := Connection{Peer: uint64(i) % 3, Conn: 777}
+		setClock(int64(i))
+		state.Add(&ev)
+	}
+
+	count := 0
+	state.ConnectionsOf(mesh.PeerName(2), func(*Connection) {
+		count++
+	})
+	assert.Equal(t, 1, count)
+}
+
 func countAdded(state *State) (added int) {
 	set := state.subsets[typeSub]
-	set.Range(nil, func(_ string, v Value) bool {
-		if v.IsAdded() {
-			added++
-		}
+	set.Range(nil, false, func(_ string, v Value) bool {
+		added++
 		return true
 	})
 	return

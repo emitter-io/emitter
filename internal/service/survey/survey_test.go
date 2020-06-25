@@ -28,7 +28,7 @@ import (
 func Test_New(t *testing.T) {
 	q := New(nil, nil)
 
-	assert.Nil(t, q.broker)
+	assert.Nil(t, q.pubsub)
 	assert.Nil(t, q.gossip)
 	assert.Equal(t, uint32(0), q.next)
 	assert.NotEqual(t, "", q.ID())
@@ -99,8 +99,27 @@ func TestQuery_NoPeers(t *testing.T) {
 	assert.Len(t, result, 0)
 }
 
+func Test_onRequest(t *testing.T) {
+	g := new(gossiperMock)
+	g.On("NumPeers").Return(2)
+	g.On("ID").Return(uint64(5))
+	q := New(nil, g)
+
+	// Bad channel
+	{
+		err := q.onRequest(message.Ssid{1, 2}, "a/b/", nil)
+		assert.Error(t, errors.New("Invalid query received"), err)
+	}
+
+	// No handler
+	{
+		err := q.onRequest(message.Ssid{1, 2}, "a/3/", nil)
+		assert.Error(t, errors.New("Invalid query received"), err)
+	}
+}
+
 func newManager(id, numPeers int) (*Surveyor, chan *message.Message) {
-	b := new(brokerMock)
+	b := new(pubsubMock)
 	g := new(gossiperMock)
 	s := new(surveyeeMock)
 	s.On("OnSurvey", "test", mock.Anything).Return([]byte(fmt.Sprintf("hello from %d", id)), true)
@@ -109,12 +128,12 @@ func newManager(id, numPeers int) (*Surveyor, chan *message.Message) {
 	q.HandleFunc(s)
 	out := make(chan *message.Message, 8)
 
+	g.On("NumPeers").Return(numPeers)
+	g.On("ID").Return(uint64(id))
 	g.On("SendTo", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		out <- args.Get(1).(*message.Message)
 	}).Return(nil)
 
-	b.On("NumPeers").Return(numPeers)
-	b.On("ID").Return(uint64(id))
 	b.On("Subscribe", mock.Anything, mock.Anything).Return(true)
 	b.On("Publish", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		out <- args.Get(0).(*message.Message)
