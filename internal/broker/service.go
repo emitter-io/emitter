@@ -79,11 +79,17 @@ type Service struct {
 // NewService creates a new service.
 func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error) {
 	ctx, cancel := context.WithCancel(context.Background())
+	var trie *message.Trie
+	if "mqtt" == cfg.Matcher {
+		trie = message.NewTrieMQTT()
+	} else {
+		trie = message.NewTrie()
+	}
 	s = &Service{
 		context:       ctx,
 		cancel:        cancel,
 		Config:        cfg,
-		subscriptions: message.NewTrie(),
+		subscriptions: trie,
 		http:          new(http.Server),
 		tcp:           new(tcp.Server),
 		storage:       new(storage.Noop),

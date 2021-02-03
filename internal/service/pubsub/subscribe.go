@@ -15,6 +15,7 @@
 package pubsub
 
 import (
+	"bytes"
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
@@ -40,6 +41,12 @@ func (s *Service) Subscribe(sub message.Subscriber, ev *event.Subscription) bool
 
 // OnSubscribe is a handler for MQTT Subscribe events.
 func (s *Service) OnSubscribe(c service.Conn, mqttTopic []byte) *errors.Error {
+
+	// compatibility with paho.mqtt.golang
+	// https://github.com/eclipse/paho.mqtt.golang/blob/master/topic.go#L78
+	// http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc385349376
+	mqttTopic = bytes.ReplaceAll(mqttTopic, []byte("#"), []byte("#/"))
+	mqttTopic = bytes.ReplaceAll(mqttTopic, []byte("//"), []byte("/"))
 
 	// Parse the channel
 	channel := security.ParseChannel(mqttTopic)
