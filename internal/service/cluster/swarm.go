@@ -47,7 +47,7 @@ type Swarm struct {
 	members *memberlist           // The memberlist of peers.
 
 	OnSubscribe   func(message.Subscriber, *event.Subscription) bool // Delegate to invoke when the subscription event is received.
-	OnUnsubscribe func(message.Subscriber, *event.Subscription) bool // Delegate to invoke when the subscription event is received.
+	OnUnsubscribe func(message.Subscriber, *event.Subscription) bool // Delegate to invoke when the unsubscription event is received.
 	OnDisconnect  func(message.Subscriber, *event.Connection) bool   // Delegate to invoke when the client is disconnected.
 	OnMessage     func(*message.Message)                             // Delegate to invoke when a new message is received.
 }
