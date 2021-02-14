@@ -26,11 +26,12 @@ import (
 
 // Various constant parts of the SSID.
 const (
-	system   = uint32(0)
-	presence = uint32(3869262148)
-	query    = uint32(3939663052)
-	wildcard = uint32(1815237614)
-	share    = uint32(1480642916)
+	system        = uint32(0)
+	presence      = uint32(3869262148)
+	query         = uint32(3939663052)
+	wildcard      = uint32(1815237614) // +
+	multiWildcard = uint32(4285801373) // #
+	share         = uint32(1480642916)
 )
 
 // Query represents a constant SSID for a query.
@@ -86,7 +87,7 @@ func (s Ssid) Encode() string {
 	out := make([]byte, len(s)*8)
 
 	for i, v := range s {
-		if v != wildcard {
+		if v != wildcard && v != multiWildcard {
 			binary.BigEndian.PutUint32(bin, v)
 			hex.Encode(out[i*8:i*8+8], bin)
 		} else {

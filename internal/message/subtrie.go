@@ -42,16 +42,31 @@ type Trie struct {
 	sync.RWMutex
 	root  *node // The root node of the tree.
 	count int   // Number of subscriptions in the trie.
+	lookup func(Ssid, *Subscribers, *node, func(s Subscriber) bool)
 }
 
-// NewTrie creates a new matcher for the subscriptions.
-func NewTrie() *Trie {
+// newTrie creates a new trie without a lookup function
+func newTrie() *Trie {
 	return &Trie{
 		root: &node{
 			subs:     newSubscribers(),
 			children: make(map[uint32]*node),
 		},
 	}
+}
+
+// NewTrie creates a new subscriptions matcher using standard emitter strategy.
+func NewTrie() *Trie {
+	t := newTrie()
+	t.lookup = t.lookupEmitter
+	return t
+}
+
+// NewTrieMQTT creates a new subscriptions matcher using standard MQTT strategy.
+func NewTrieMQTT() *Trie {
+	t := newTrie()
+	t.lookup = t.lookupMqtt
+	return t
 }
 
 // Count returns the number of subscriptions.
@@ -118,7 +133,9 @@ func (t *Trie) Unsubscribe(ssid Ssid, subscriber Subscriber) {
 func (t *Trie) Lookup(ssid Ssid, filter func(s Subscriber) bool) (subs Subscribers) {
 	subs = newSubscribers()
 	t.RLock()
+
 	t.lookup(ssid, &subs, t.root, filter)
+
 	if contractNode, ok := t.root.children[ssid[0]]; ok {
 		if shareNode, ok := contractNode.children[share]; ok {
 			t.randomByGroup(ssid[1:], &subs, shareNode, filter)
@@ -129,8 +146,7 @@ func (t *Trie) Lookup(ssid Ssid, filter func(s Subscriber) bool) (subs Subscribe
 	return
 }
 
-func (t *Trie) lookup(query Ssid, subs *Subscribers, node *node, filter func(s Subscriber) bool) {
-
+func (t *Trie) lookupEmitter(query Ssid, subs *Subscribers, node *node, filter func(s Subscriber) bool) {
 	// Add subscribers from the current branch
 	subs.AddRange(node.subs, filter)
 
@@ -141,12 +157,36 @@ func (t *Trie) lookup(query Ssid, subs *Subscribers, node *node, filter func(s S
 
 	// Go through the exact match branch
 	if n, ok := node.children[query[0]]; ok {
-		t.lookup(query[1:], subs, n, filter)
+		t.lookupEmitter(query[1:], subs, n, filter)
 	}
 
 	// Go through wildcard match branch
 	if n, ok := node.children[wildcard]; ok {
-		t.lookup(query[1:], subs, n, filter)
+		t.lookupEmitter(query[1:], subs, n, filter)
+	}
+}
+
+func (t *Trie) lookupMqtt(query Ssid, subs *Subscribers, node *node, filter func(s Subscriber) bool) {
+	// If we're done, stop
+	if len(query) == 0 {
+		// Add subscribers from the current branch
+		subs.AddRange(node.subs, filter)
+		return
+	}
+
+	// Go through the exact match branch
+	if n, ok := node.children[query[0]]; ok {
+		t.lookupMqtt(query[1:], subs, n, filter)
+	}
+
+	// Go through wildcard match branch
+	if n, ok := node.children[wildcard]; ok {
+		t.lookupMqtt(query[1:], subs, n, filter)
+	}
+
+	// Add subscribers from multi-wildcard branch
+	if n, ok := node.children[multiWildcard]; ok {
+		subs.AddRange(n.subs, filter)
 	}
 }
 

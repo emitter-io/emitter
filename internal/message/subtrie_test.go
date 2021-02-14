@@ -105,6 +105,95 @@ func TestTrieMatch(t *testing.T) {
 	}
 }
 
+func TestTrieMatchMqtt0(t *testing.T) {
+	m := NewTrieMQTT()
+	testPopulateWithStrings(m, []string{
+		"a/",
+	})
+
+	// Tests to run
+	tests := []struct {
+		topic string
+		n     int
+	}{
+		{topic: "a/b/", n: 0},
+	}
+
+	for _, tc := range tests {
+		result := m.Lookup(testSub(tc.topic), nil)
+		assert.Equal(t, tc.n, result.Size())
+	}
+}
+
+func TestTrieMatchMqttMultiWildcard(t *testing.T) {
+	m := NewTrieMQTT()
+	testPopulateWithStrings(m, []string{
+		"a/#",
+		"+/b/#",
+	})
+
+	// Tests to run
+	tests := []struct {
+		topic string
+		n     int
+	}{
+		{topic: "a/", n: 0},
+		{topic: "a/b/", n: 1},
+		{topic: "a/b/c/", n: 2},
+		{topic: "a/b/c/d/", n: 2},
+	}
+
+	for _, tc := range tests {
+		result := m.Lookup(testSub(tc.topic), nil)
+		assert.Equal(t, tc.n, result.Size())
+	}
+}
+
+func TestTrieMatchMqtt(t *testing.T) {
+	m := NewTrieMQTT()
+	testPopulateWithStrings(m, []string{
+		"key/a/",
+		"key/a/b/c/",
+		"key/a/+/c/",
+		"key/a/b/c/d/",
+		"key/a/+/c/+/",
+		"key/x/",
+		"key/x/y/",
+		"key/x/+/z",
+		"key/$share/group1/a/+/c/",
+		"key/$share/group1/a/b/c/",
+		"key/$share/group2/a/b/c/",
+		"key/$share/group2/a/b/",
+		"key/$share/group3/y/",
+		"key/$share/group3/y/", // Duplicate (same ID)
+	})
+
+	// Tests to run
+	tests := []struct {
+		topic string
+		n     int
+	}{
+		{topic: "key/a/", n: 1},
+		{topic: "key/a/1/", n: 0},
+		{topic: "key/a/2/", n: 0},
+		{topic: "key/a/1/2/", n: 0},
+		{topic: "key/a/1/2/3/", n: 0},
+		{topic: "key/a/x/y/c/", n: 0},
+		{topic: "key/a/x/c/", n: 2},
+		{topic: "key/a/b/c/", n: 4},
+		{topic: "key/a/b/c/d/", n: 2},
+		{topic: "key/a/b/c/e/", n: 1},
+		{topic: "key/x/y/c/e/", n: 0},
+		{topic: "key/y/", n: 1},
+	}
+
+	assert.Equal(t, 13, m.Count())
+	for _, tc := range tests {
+		result := m.Lookup(testSub(tc.topic), nil)
+		assert.Equal(t, tc.n, result.Size(), tc.topic)
+	}
+}
+
 func TestTrieIntegration(t *testing.T) {
 	assert := assert.New(t)
 	var (
@@ -127,6 +216,46 @@ func TestTrieIntegration(t *testing.T) {
 	assertEqual(assert, m.Lookup([]uint32{1}, nil), s2)
 	assertEqual(assert, m.Lookup([]uint32{4, 5}, nil), s1, s2)
 	assertEqual(assert, m.Lookup([]uint32{1, 5}, nil), s0, s1, s2)
+	assertEqual(assert, m.Lookup([]uint32{4}, nil), s1, s2)
+
+	m.Unsubscribe(sub0.Ssid, sub0.Subscriber)
+	m.Unsubscribe(sub1.Ssid, sub1.Subscriber)
+	m.Unsubscribe(sub2.Ssid, sub2.Subscriber)
+	m.Unsubscribe(sub3.Ssid, sub3.Subscriber)
+	m.Unsubscribe(sub4.Ssid, sub4.Subscriber)
+	m.Unsubscribe(sub5.Ssid, sub5.Subscriber)
+	m.Unsubscribe(sub6.Ssid, sub6.Subscriber)
+	m.Unsubscribe(sub6.Ssid, sub6.Subscriber)
+
+	assertEqual(assert, m.Lookup([]uint32{1, 3}, nil))
+	assertEqual(assert, m.Lookup([]uint32{1}, nil))
+	assertEqual(assert, m.Lookup([]uint32{4, 5}, nil))
+	assertEqual(assert, m.Lookup([]uint32{1, 5}, nil))
+	assertEqual(assert, m.Lookup([]uint32{4}, nil))
+}
+
+func TestTrieIntegrationMqtt(t *testing.T) {
+	assert := assert.New(t)
+	var (
+		m  = NewTrieMQTT()
+		s0 = &testSubscriber{"s0"}
+		s1 = &testSubscriber{"s1"}
+		s2 = &testSubscriber{"s2"}
+	)
+
+	sub0 := m.Subscribe([]uint32{1, wildcard}, s0)
+	sub1 := m.Subscribe([]uint32{wildcard, 2}, s0)
+	sub2 := m.Subscribe([]uint32{1, 3}, s0)
+	sub3 := m.Subscribe([]uint32{wildcard, 3}, s1)
+	sub4 := m.Subscribe([]uint32{1, wildcard}, s1)
+	sub5 := m.Subscribe([]uint32{4}, s1)
+	sub6 := m.Subscribe([]uint32{wildcard}, s2)
+	m.Subscribe([]uint32{wildcard}, s2)
+
+	assertEqual(assert, m.Lookup([]uint32{1, 3}, nil), s0, s1)
+	assertEqual(assert, m.Lookup([]uint32{1}, nil), s2)
+	assertEqual(assert, m.Lookup([]uint32{4, 5}, nil))
+	assertEqual(assert, m.Lookup([]uint32{1, 5}, nil), s0, s1)
 	assertEqual(assert, m.Lookup([]uint32{4}, nil), s1, s2)
 
 	m.Unsubscribe(sub0.Ssid, sub0.Subscriber)
@@ -282,6 +411,116 @@ func BenchmarkSubscriptionTrieLookupCold(b *testing.B) {
 		m.Lookup(q2, nil)
 	}
 }
+func BenchmarkSubscriptionTrieSubscribeMqtt(b *testing.B) {
+	var (
+		m     = NewTrieMQTT()
+		s0    = new(testSubscriber)
+		query = []uint32{1, wildcard, 2, 3, 4}
+	)
+	populateMatcher(m, 1000, 5)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.Subscribe(query, s0)
+	}
+}
+
+func BenchmarkSubscriptionTrieUnsubscribeMqtt(b *testing.B) {
+	var (
+		m     = NewTrieMQTT()
+		s0    = new(testSubscriber)
+		query = []uint32{1, wildcard, 2, 3, 4}
+	)
+
+	m.Subscribe(query, s0)
+	populateMatcher(m, 1000, 5)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.Unsubscribe(query, s0)
+	}
+}
+
+func BenchmarkTrieLargeNMqtt(b *testing.B) {
+	rand.Seed(42)
+	var (
+		m     = NewTrieMQTT()
+		query = []uint32{1, 2, 3}
+	)
+
+	populateMatcher(m, 100000, 3)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.Lookup(query, nil)
+	}
+}
+
+func BenchmarkSubscriptionTrieLookupMqtt(b *testing.B) {
+	rand.Seed(42)
+	var (
+		m  = NewTrieMQTT()
+		s0 = new(testSubscriber)
+		q1 = []uint32{1, wildcard, 2, 3, 4}
+		q2 = []uint32{1, 5, 2, 3, 4}
+	)
+
+	m.Subscribe(q1, s0)
+	populateMatcher(m, 1000, 3)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.Lookup(q2, nil)
+	}
+}
+
+func BenchmarkSubscriptionTrieSubscribeColdMqtt(b *testing.B) {
+	var (
+		m     = NewTrieMQTT()
+		s0    = new(testSubscriber)
+		query = []uint32{1, wildcard, 2, 3, 4}
+	)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.Subscribe(query, s0)
+	}
+}
+
+func BenchmarkSubscriptionTrieUnsubscribeColdMqtt(b *testing.B) {
+	var (
+		m     = NewTrieMQTT()
+		s0    = new(testSubscriber)
+		query = []uint32{1, wildcard, 2, 3, 4}
+	)
+	m.Subscribe(query, s0)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.Unsubscribe(query, s0)
+	}
+}
+
+func BenchmarkSubscriptionTrieLookupColdMqtt(b *testing.B) {
+	var (
+		m  = NewTrieMQTT()
+		s0 = new(testSubscriber)
+		q1 = []uint32{1, wildcard, 2, 3, 4}
+		q2 = []uint32{1, 5, 2, 3, 4}
+	)
+	m.Subscribe(q1, s0)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.Lookup(q2, nil)
+	}
+}
 
 func assertEqual(assert *assert.Assertions, actual Subscribers, expected ...Subscriber) {
 	assert.Equal(actual.Size(), len(expected))
@@ -291,7 +530,6 @@ func assertEqual(assert *assert.Assertions, actual Subscribers, expected ...Subs
 }
 
 func populateMatcher(m *Trie, num, topicSize int) {
-
 	for i := 0; i < num; i++ {
 		topic := make([]uint32, 0)
 		for j := 0; j < topicSize; j++ {
