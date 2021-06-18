@@ -1,5 +1,5 @@
 FROM golang:alpine AS builder
-MAINTAINER Roman Atachiants "roman@misakai.com"
+LABEL MAINTAINER="roman@misakai.com"
 
 # Copy the directory into the container outside of the gopath
 RUN mkdir -p /go-build/src/github.com/emitter-io/emitter/
