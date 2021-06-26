@@ -57,12 +57,7 @@ func TestInMemory_Name(t *testing.T) {
 
 func TestInMemory_Configure(t *testing.T) {
 	s := new(InMemory)
-	cfg := map[string]interface{}{
-		"maxsize": float64(1),
-		"prune":   float64(1),
-	}
-
-	err := s.Configure(cfg)
+	err := s.Configure(map[string]interface{}{})
 	assert.NoError(t, err)
 
 	errClose := s.Close()
@@ -119,7 +114,6 @@ func TestInMemory_Query(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-
 		if tc.gathered == nil {
 			s.survey = nil
 		} else {
@@ -164,7 +158,9 @@ func TestInMemory_lookup(t *testing.T) {
 }
 
 func TestInMemory_OnSurvey(t *testing.T) {
-	s := newTestMemStore()
+	s := NewInMemory(nil)
+	s.Configure(nil)
+	s.storeFrame(getNTestMessages(10))
 	zero := time.Unix(0, 0)
 	tests := []struct {
 		name        string
@@ -173,18 +169,18 @@ func TestInMemory_OnSurvey(t *testing.T) {
 		expectCount int
 	}{
 		{name: "dummy"},
-		{name: "memstore"},
+		{name: "ssdstore"},
 		{
-			name:        "memstore",
+			name:        "ssdstore",
 			query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 1),
 			expectOk:    true,
 			expectCount: 1,
 		},
 		{
-			name:        "memstore",
+			name:        "ssdstore",
 			query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 10),
 			expectOk:    true,
-			expectCount: 6,
+			expectCount: 2,
 		},
 	}
 
@@ -200,7 +196,7 @@ func TestInMemory_OnSurvey(t *testing.T) {
 	}
 
 	// Special, wrong payload case
-	_, ok := s.OnSurvey("memstore", []byte{})
+	_, ok := s.OnSurvey("ssdstore", []byte{})
 	assert.Equal(t, false, ok)
 
 }

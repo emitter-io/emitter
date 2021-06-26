@@ -177,11 +177,11 @@ func TestSSD_OnSurvey(t *testing.T) {
 
 }
 
-// batch=1         batch/s=43444   msg/s=43444
-// batch=10        batch/s=18445   msg/s=184452
-// batch=100       batch/s=2620    msg/s=262004
-// batch=1000      batch/s=260     msg/s=260115
-// batch=10000     batch/s=23      msg/s=228987
+// batch=1  	batch/s=89849	msg/s=89849
+// batch=10  	batch/s=26015	msg/s=260149
+// batch=100  	batch/s=4583	msg/s=458328
+// batch=1000  	batch/s=430		msg/s=429714
+// batch=10000  batch/s=36		msg/s=359491
 func BenchmarkStore(b *testing.B) {
 	runSSDTest(func(store *SSD) {
 		benchmarkStoreSingle(b, store, 1)
@@ -192,11 +192,11 @@ func BenchmarkStore(b *testing.B) {
 	})
 }
 
-// batch=1         batch/s=173956  msg/s=173956
-// batch=10        batch/s=39658   msg/s=396576
-// batch=100       batch/s=4400    msg/s=439988
-// batch=1000      batch/s=448     msg/s=448376
-// batch=10000     batch/s=31      msg/s=314984
+//batch=1  		batch/s=179990	msg/s=179990
+//batch=10  	batch/s=51094	msg/s=510942
+//batch=100  	batch/s=6606	msg/s=660574
+//batch=1000  	batch/s=552		msg/s=551637
+//batch=10000  	batch/s=50		msg/s=501079
 func BenchmarkStoreParallel(b *testing.B) {
 	runSSDTest(func(store *SSD) {
 		benchmarkStoreParallel(b, store, 1, runtime.NumCPU())
@@ -247,10 +247,10 @@ func benchmarkStore(b *testing.B, store *SSD, batchSize int, m *stats.Metric) {
 	time.Sleep(2 * time.Second)
 }
 
-// last=1          query/s=45053   msg/s=45053
-// last=10         query/s=8154    msg/s=81539
-// last=100        query/s=872     msg/s=87200
-// last=1000       query/s=81      msg/s=80517
+// last=1		query/s=188057
+// last=10  	query/s=68843
+// last=100  	query/s=10547
+// last=1000  	query/s=1121
 func BenchmarkQuery(b *testing.B) {
 	runSSDTest(func(store *SSD) {
 		batchSize := 10
@@ -265,10 +265,10 @@ func BenchmarkQuery(b *testing.B) {
 	})
 }
 
-// last=1          query/s=152868  msg/s=152868
-// last=10         query/s=26351   msg/s=263507
-// last=100        query/s=3023    msg/s=302346
-// last=1000       query/s=287     msg/s=287481
+// last=1  		query/s=882693
+// last=10  	query/s=482933
+// last=100  	query/s=82463
+// last=1000  	query/s=8711
 func BenchmarkQueryParallel(b *testing.B) {
 	runSSDTest(func(store *SSD) {
 		batchSize := 10
