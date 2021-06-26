@@ -221,7 +221,7 @@ func (c *Channel) parseChannel(text []byte) (i int) {
 			wildcards = 0
 			continue
 		// If this symbol is a wildcard symbol
-		case symbol == '+' || symbol == '*':
+		case symbol == '#' || symbol == '+' || symbol == '*':
 			if chanChars > 0 || wildcards > 0 {
 				c.ChannelType = ChannelInvalid
 				return i

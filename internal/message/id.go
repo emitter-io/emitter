@@ -109,7 +109,7 @@ func (id ID) Match(query Ssid, from, until int64) bool {
 	// likelihood of having last element of SSID matching decreases with
 	// the depth of the SSID.
 	for i := len(query) - 1; i >= 0; i-- {
-		if query[i] != binary.BigEndian.Uint32(id[fixed+i*4:fixed+4+i*4]) && query[i] != wildcard {
+		if query[i] != binary.BigEndian.Uint32(id[fixed+i*4:fixed+4+i*4]) && query[i] != wildcard && query[i] != multiWildcard {
 			return false
 		}
 	}
