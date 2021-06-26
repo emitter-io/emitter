@@ -1,12 +1,13 @@
-![](https://s3.amazonaws.com/cdn.misakai.com/www-emitter/logo/emitter_logo_blue.png)
+<p align="center">
+<img src="https://s3.amazonaws.com/cdn.misakai.com/www-emitter/logo/emitter_logo_blue.png" border="0" alt="kelindar/column">
+<br>
+<img src="https://img.shields.io/github/go-mod/go-version/emitter-io/emitter" alt="Go Version">
+<a href="https://goreportcard.com/report/github.com/emitter-io/emitter"><img src="https://goreportcard.com/badge/github.com/emitter-io/emitter" alt="Go Report Card"></a>
+<a href="https://coveralls.io/github/emitter-io/emitter"><img src="https://coveralls.io/repos/github/emitter-io/emitter/badge.svg" alt="Coverage"></a>
+<a href="https://twitter.com/emitter_io"><img src="https://img.shields.io/twitter/follow/emitter_io.svg?style=social&label=Follow" alt="Twitter"></a>
+</p>
 
-[![Join the chat at https://gitter.im/emitter-io/public](https://badges.gitter.im/emitter-io/public.svg)](https://gitter.im/emitter-io/public?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
-[![Build status](https://ci.appveyor.com/api/projects/status/6im4291ao9i664ix?svg=true)](https://ci.appveyor.com/project/Kelindar/emitter)
-[![Coverage Status](https://coveralls.io/repos/github/emitter-io/emitter/badge.svg?branch=master)](https://coveralls.io/github/emitter-io/emitter?branch=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/emitter-io/emitter)](https://goreportcard.com/report/github.com/emitter-io/emitter)
-[![Twitter Follow](https://img.shields.io/twitter/follow/emitter_io.svg?style=social&label=Follow)](https://twitter.com/emitter_io)
-
-# Emitter: Distributed Publish-Subscribe Platform
+## Emitter: Distributed Publish-Subscribe Platform
 
 Emitter is a distributed, scalable and fault-tolerant publish-subscribe  platform built with MQTT protocol and featuring message storage, security, monitoring and more:
 * **Publish/Subscribe** using MQTT over TCP or Websockets.
@@ -203,6 +204,8 @@ docker run -d -p 8080:8080 -p 4000:4000 -e EMITTER_LICENSE=[key] -e EMITTER_CLUS
 ```
 
 ## Support, Discussion, and Community
+
+[![Join the chat at https://gitter.im/emitter-io/public](https://badges.gitter.im/emitter-io/public.svg)](https://gitter.im/emitter-io/public?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
 
 If you need any help with Emitter Server or any of our client SDKs, please join us at either our [gitter chat](https://gitter.im/emitter-io/public) where most of our team hangs out at or drop us an e-mail at <info@emitter.io>.
 
