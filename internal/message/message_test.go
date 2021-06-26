@@ -59,8 +59,8 @@ func TestNewFrame(t *testing.T) {
 	assert.Equal(t, 64, cap(f))
 }
 
-// BenchmarkCodec/Encode-8         	 3000000	       509 ns/op	     176 B/op	       1 allocs/op
-// BenchmarkCodec/Decode-8         	 3000000	       496 ns/op	     288 B/op	       3 allocs/op
+// BenchmarkCodec/Encode-8         	 3788479	       324.9 ns/op	     176 B/op	       1 allocs/op
+// BenchmarkCodec/Decode-8         	 3950424	       294.8 ns/op	     288 B/op	       3 allocs/op
 func BenchmarkCodec(b *testing.B) {
 	m := newTestMessage(Ssid{1, 2, 3}, "tweet/canada/english/", "This is a random tweet en english so we can test the payload. #emitter")
 	enc := m.Encode()

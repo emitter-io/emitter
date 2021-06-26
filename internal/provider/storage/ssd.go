@@ -19,7 +19,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/emitter-io/emitter/internal/async"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/logging"
@@ -70,7 +70,6 @@ func (s *SSD) Configure(config map[string]interface{}) error {
 	// Create the options
 	opts := badger.DefaultOptions(dir)
 	opts.SyncWrites = false
-	opts.Truncate = true
 
 	//opts.ValueLogLoadingMode = options.FileIO
 

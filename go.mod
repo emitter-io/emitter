@@ -3,11 +3,10 @@ module github.com/emitter-io/emitter
 go 1.16
 
 require (
-	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/aws/aws-sdk-go v1.31.4 // indirect
 	github.com/axiomhq/hyperloglog v0.0.0-20191112132149-a4c4c47bc57f
 	github.com/coocood/freecache v1.1.1
-	github.com/dgraph-io/badger v1.6.1
+	github.com/dgraph-io/badger/v3 v3.2103.0
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/dgryski/go-metro v0.0.0-20200812162917-85c65e2d0165 // indirect
 	github.com/emitter-io/address v1.0.1
@@ -20,11 +19,12 @@ require (
 	github.com/kelindar/rate v1.0.0
 	github.com/kelindar/tcp v1.0.0
 	github.com/klauspost/compress v1.10.6 // indirect
+	github.com/kr/pretty v0.2.0 // indirect
 	github.com/prometheus/client_golang v1.11.0
 	github.com/stretchr/testify v1.7.0
-	github.com/tidwall/buntdb v1.1.2
-	github.com/tidwall/gjson v1.6.0 // indirect
-	github.com/tidwall/pretty v1.0.1 // indirect
+	github.com/tidwall/buntdb v1.2.4
+	github.com/tidwall/pretty v1.2.0 // indirect
+	github.com/tidwall/rtree v0.0.0-20180113144539-6cd427091e0e // indirect
 	github.com/valyala/fasthttp v1.12.0
 	github.com/weaveworks/mesh v0.0.0-20191105120815-58dbcc3e8e63
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e

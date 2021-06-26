@@ -91,11 +91,11 @@ func BenchmarkParallel(b *testing.B) {
 	}
 }
 
-// BenchmarkFanOut/8-Clients-8         	  300000	      5197 ns/op	    1096 B/op	      12 allocs/op
-// BenchmarkFanOut/16-Clients-8        	  300000	      5155 ns/op	     792 B/op	       9 allocs/op
-// BenchmarkFanOut/32-Clients-8        	  300000	     15266 ns/op	    2750 B/op	      16 allocs/op
-// BenchmarkFanOut/64-Clients-8        	  300000	     30667 ns/op	    6224 B/op	      21 allocs/op
-// BenchmarkFanOut/128-Clients-8       	  300000	     55146 ns/op	   10690 B/op	      20 allocs/op
+// BenchmarkFanOut/8-Clients-8         	  214063	      6407 ns/op	    1423 B/op	      19 allocs/op
+// BenchmarkFanOut/16-Clients-8        	  299041	      4140 ns/op	     999 B/op	      13 allocs/op
+// BenchmarkFanOut/32-Clients-8        	  280191	      5187 ns/op	    1425 B/op	       9 allocs/op
+// BenchmarkFanOut/64-Clients-8        	  294547	     11597 ns/op	    3406 B/op	      12 allocs/op
+// BenchmarkFanOut/128-Clients-8       	  231928	     19599 ns/op	    5788 B/op	      12 allocs/op
 func BenchmarkFanOut(b *testing.B) {
 	const port = 9995
 	benchInit.Do(func() {
