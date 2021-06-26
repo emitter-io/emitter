@@ -133,8 +133,8 @@ func (c *Conn) MeasureElapsed(name string, since time.Time) {
 
 // Track tracks the connection by adding it to the metering.
 func (c *Conn) Track(contract contract.Contract) {
-	if atomic.LoadUint32(&c.tracked) == 0 {
 
+	if atomic.CompareAndSwapUint32(&c.tracked, 0, 1) {
 		// We keep only the IP address for fair tracking
 		addr := c.socket.RemoteAddr().String()
 		if tcp, ok := c.socket.RemoteAddr().(*net.TCPAddr); ok {
@@ -143,7 +143,6 @@ func (c *Conn) Track(contract contract.Contract) {
 
 		// Add the device to the stats and mark as done
 		contract.Stats().AddDevice(addr)
-		atomic.StoreUint32(&c.tracked, 1)
 	}
 }
 
