@@ -16,6 +16,7 @@ package pubsub
 
 import (
 	"bytes"
+
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
