@@ -313,7 +313,8 @@ func (c *Conn) sendResponse(topic string, resp response, requestID uint16) {
 func (c *Conn) CanSubscribe(ssid message.Ssid, channel []byte) bool {
 	c.Lock()
 	defer c.Unlock()
-	return c.subs.Increment(ssid, channel)
+
+	return c.subs.IncrementOnce(ssid, channel)
 }
 
 // CanUnsubscribe decrements the internal counters and checks if the cluster
