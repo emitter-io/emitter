@@ -181,6 +181,24 @@ func TestSub_Increment(t *testing.T) {
 	assert.True(t, isDecremented)
 }
 
+func TestSub_IncrementOnce(t *testing.T) {
+	// Preparation.
+	counters := NewCounters()
+	ssid1 := make([]uint32, 1)
+	key1 := (Ssid(ssid1)).GetHashCode()
+
+	counters.getOrCreate(ssid1, []byte("test"))
+
+	// Test previously created counter.
+	isFirst := counters.IncrementOnce(ssid1, []byte("test"))
+	assert.True(t, isFirst)
+	assert.Equal(t, 1, counters.m[key1].Counter)
+
+	isFirst = counters.IncrementOnce(ssid1, []byte("test"))
+	assert.False(t, isFirst)
+	assert.Equal(t, 1, counters.m[key1].Counter)
+}
+
 func TestCollisions(t *testing.T) {
 	subs := newSubscribers()
 	count := 100000
