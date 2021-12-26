@@ -249,6 +249,19 @@ func (s *Counters) Increment(ssid Ssid, channel []byte) (first bool) {
 	return m.Counter == 1
 }
 
+// IncrementOnce increments the subscription counter.
+func (s *Counters) IncrementOnce(ssid Ssid, channel []byte) (first bool) {
+	s.Lock()
+	defer s.Unlock()
+
+	m := s.getOrCreate(ssid, channel)
+	first = m.Counter == 0
+	if first {
+		m.Counter++
+	}
+	return first
+}
+
 // Decrement decrements a subscription counter.
 func (s *Counters) Decrement(ssid Ssid) (last bool) {
 	s.Lock()
