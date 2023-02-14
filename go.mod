@@ -3,7 +3,7 @@ module github.com/emitter-io/emitter
 go 1.17
 
 require (
-	github.com/aws/aws-sdk-go v1.31.4 // indirect
+	github.com/aws/aws-sdk-go v1.34.0 // indirect
 	github.com/axiomhq/hyperloglog v0.0.0-20191112132149-a4c4c47bc57f
 	github.com/coocood/freecache v1.1.1
 	github.com/dgraph-io/badger/v3 v3.2103.0
