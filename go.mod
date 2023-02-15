@@ -20,7 +20,7 @@ require (
 	github.com/kelindar/tcp v1.0.0
 	github.com/klauspost/compress v1.10.6 // indirect
 	github.com/kr/pretty v0.2.0 // indirect
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.11.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tidwall/buntdb v1.2.4
 	github.com/tidwall/pretty v1.2.0 // indirect
