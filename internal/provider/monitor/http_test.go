@@ -15,7 +15,7 @@
 package monitor
 
 import (
-	"io/ioutil"
+	"io"
 	netHttp "net/http"
 	"net/http/httptest"
 	"testing"
@@ -32,7 +32,7 @@ func (f handler) ServeHTTP(w netHttp.ResponseWriter, r *netHttp.Request) {
 func TestHTTP_HappyPath(t *testing.T) {
 	r := snapshot("test")
 	server := httptest.NewServer(handler(func(w netHttp.ResponseWriter, r *netHttp.Request) {
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 		assert.Equal(t, "test", string(b))
 		assert.NoError(t, err)
 		w.WriteHeader(204)

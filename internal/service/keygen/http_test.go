@@ -15,7 +15,7 @@
 package keygen
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -56,7 +56,7 @@ func TestRenderKeyGenPage(t *testing.T) {
 
 	// act
 	handler(w, req)
-	content, err := ioutil.ReadAll(w.Body)
+	content, err := io.ReadAll(w.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func Test_HTTP(t *testing.T) {
 
 		// act
 		handler(w, req)
-		content, err := ioutil.ReadAll(w.Body)
+		content, err := io.ReadAll(w.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
