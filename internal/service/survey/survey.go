@@ -81,9 +81,7 @@ func (c *Surveyor) Start() {
 
 // HandleFunc adds a handler for a query.
 func (c *Surveyor) HandleFunc(surveyees ...Surveyee) {
-	for _, h := range surveyees {
-		c.handlers = append(c.handlers, h)
-	}
+	c.handlers = append(c.handlers, surveyees...)
 }
 
 // ID returns the unique identifier of the subsriber.
