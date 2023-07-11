@@ -16,7 +16,7 @@ package listener
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -119,7 +119,7 @@ func runTestHTTP1Client(t *testing.T, addr net.Addr) {
 		}
 	}()
 
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

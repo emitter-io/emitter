@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"sync"
 	"testing"
@@ -228,7 +227,7 @@ func (c *testConn) ReadByte() (byte, error) {
 
 func (c *testConn) Drain() {
 	for {
-		if _, err := io.Copy(ioutil.Discard, c.Conn); err != nil {
+		if _, err := io.Copy(io.Discard, c.Conn); err != nil {
 			return
 		}
 	}
