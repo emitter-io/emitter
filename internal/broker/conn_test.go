@@ -15,7 +15,7 @@
 package broker
 
 import (
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/emitter-io/emitter/internal/errors"
@@ -48,7 +48,7 @@ func TestNotifyError(t *testing.T) {
 		conn.Close()
 	}()
 
-	b, err := ioutil.ReadAll(pipe.Server)
+	b, err := io.ReadAll(pipe.Server)
 	assert.Contains(t, string(b), errors.ErrUnauthorized.Message)
 	assert.NoError(t, err)
 }

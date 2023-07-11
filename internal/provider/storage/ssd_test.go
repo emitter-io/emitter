@@ -16,7 +16,6 @@ package storage
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"runtime"
 	"sync"
@@ -46,7 +45,7 @@ func getNTestMessages(count int) (frame message.Frame) {
 func runSSDTest(test func(store *SSD)) {
 
 	// Prepare a store
-	dir, _ := ioutil.TempDir("", "emitter")
+	dir, _ := os.MkdirTemp("", "emitter")
 	store := NewSSD(nil)
 	store.Configure(map[string]interface{}{
 		"dir": dir,

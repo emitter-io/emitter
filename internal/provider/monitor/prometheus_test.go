@@ -15,7 +15,7 @@
 package monitor
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -74,7 +74,7 @@ func TestPrometheus_Request(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	content, err := ioutil.ReadAll(res.Body)
+	content, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
 		log.Fatal(err)

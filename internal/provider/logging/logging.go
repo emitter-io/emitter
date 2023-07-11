@@ -15,7 +15,7 @@
 package logging
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 
@@ -23,7 +23,7 @@ import (
 )
 
 // Discard is the discard logger.
-var Discard = log.New(ioutil.Discard, "", 0)
+var Discard = log.New(io.Discard, "", 0)
 
 // Logger is the logger we use.
 var Logger = NewStdErr()
