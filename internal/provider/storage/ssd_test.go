@@ -121,7 +121,7 @@ func TestSSD_QuerySurveyed(t *testing.T) {
 				})
 			}
 
-			out, err := s.Query(tc.query, zero, zero, tc.limit)
+			out, err := s.Query(tc.query, zero, zero, tc.limit, nil)
 			assert.NoError(t, err)
 			count := 0
 			for range out {
@@ -146,13 +146,13 @@ func TestSSD_OnSurvey(t *testing.T) {
 			{name: "ssdstore"},
 			{
 				name:        "ssdstore",
-				query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 1),
+				query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 1, nil),
 				expectOk:    true,
 				expectCount: 1,
 			},
 			{
 				name:        "ssdstore",
-				query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 10),
+				query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 10, nil),
 				expectOk:    true,
 				expectCount: 2,
 			},
@@ -191,11 +191,11 @@ func BenchmarkStore(b *testing.B) {
 	})
 }
 
-//batch=1  		batch/s=179990	msg/s=179990
-//batch=10  	batch/s=51094	msg/s=510942
-//batch=100  	batch/s=6606	msg/s=660574
-//batch=1000  	batch/s=552		msg/s=551637
-//batch=10000  	batch/s=50		msg/s=501079
+// batch=1  		batch/s=179990	msg/s=179990
+// batch=10  	batch/s=51094	msg/s=510942
+// batch=100  	batch/s=6606	msg/s=660574
+// batch=1000  	batch/s=552		msg/s=551637
+// batch=10000  	batch/s=50		msg/s=501079
 func BenchmarkStoreParallel(b *testing.B) {
 	runSSDTest(func(store *SSD) {
 		benchmarkStoreParallel(b, store, 1, runtime.NumCPU())
@@ -316,7 +316,7 @@ func benchmarkQuery(b *testing.B, store *SSD, last int, m *stats.Metric) {
 				return
 
 			default:
-				store.Query(ssid, t0, t1, last)
+				store.Query(ssid, t0, t1, last, nil)
 				m.Update(int32(last))
 			}
 		}

@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	fixed = 16
+	fixed       = 16
+	maxSsidSize = 32
 )
 
 // RetainedTTL represents a TTL value to use for retained messages (max TTL).

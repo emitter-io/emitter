@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	maxHeaderSize  = 6     // max MQTT header size
+	maxHeaderSize  = 6
+	maxTopicSize   = 1024  // max MQTT header size
 	maxMessageSize = 65536 // max MQTT message size is impossible to increase as per protocol (uint16 len)
 )
 
@@ -29,7 +30,7 @@ const (
 var ErrMessageTooLarge = errors.New("mqtt: message size exceeds 64K")
 var ErrMessageBadPacket = errors.New("mqtt: bad packet")
 
-//Message is the interface all our packets will be implementing
+// Message is the interface all our packets will be implementing
 type Message interface {
 	fmt.Stringer
 
@@ -105,70 +106,70 @@ type Publish struct {
 	Payload   []byte
 }
 
-//Puback is sent for QOS level one to verify the receipt of a publish
-//Qoth the spec: "A PUBACK message is sent by a server in response to a PUBLISH message from a publishing client, and by a subscriber in response to a PUBLISH message from the server."
+// Puback is sent for QOS level one to verify the receipt of a publish
+// Qoth the spec: "A PUBACK message is sent by a server in response to a PUBLISH message from a publishing client, and by a subscriber in response to a PUBLISH message from the server."
 type Puback struct {
 	MessageID uint16
 }
 
-//Pubrec is for verifying the receipt of a publish
-//Qoth the spec:"It is the second message of the QoS level 2 protocol flow. A PUBREC message is sent by the server in response to a PUBLISH message from a publishing client, or by a subscriber in response to a PUBLISH message from the server."
+// Pubrec is for verifying the receipt of a publish
+// Qoth the spec:"It is the second message of the QoS level 2 protocol flow. A PUBREC message is sent by the server in response to a PUBLISH message from a publishing client, or by a subscriber in response to a PUBLISH message from the server."
 type Pubrec struct {
 	MessageID uint16
 }
 
-//Pubrel is a response to pubrec from either the client or server.
+// Pubrel is a response to pubrec from either the client or server.
 type Pubrel struct {
 	MessageID uint16
 	//QOS1
 	Header Header
 }
 
-//Pubcomp is for saying is in response to a pubrel sent by the publisher
-//the final member of the QOS2 flow. both sides have said "hey, we did it!"
+// Pubcomp is for saying is in response to a pubrel sent by the publisher
+// the final member of the QOS2 flow. both sides have said "hey, we did it!"
 type Pubcomp struct {
 	MessageID uint16
 }
 
-//Subscribe tells the server which topics the client would like to subscribe to
+// Subscribe tells the server which topics the client would like to subscribe to
 type Subscribe struct {
 	Header
 	MessageID     uint16
 	Subscriptions []TopicQOSTuple
 }
 
-//Suback is to say "hey, you got it buddy. I will send you messages that fit this pattern"
+// Suback is to say "hey, you got it buddy. I will send you messages that fit this pattern"
 type Suback struct {
 	MessageID uint16
 	Qos       []uint8
 }
 
-//Unsubscribe is the message to send if you don't want to subscribe to a topic anymore
+// Unsubscribe is the message to send if you don't want to subscribe to a topic anymore
 type Unsubscribe struct {
 	Header
 	MessageID uint16
 	Topics    []TopicQOSTuple
 }
 
-//Unsuback is to unsubscribe as suback is to subscribe
+// Unsuback is to unsubscribe as suback is to subscribe
 type Unsuback struct {
 	MessageID uint16
 }
 
-//Pingreq is a keepalive
+// Pingreq is a keepalive
 type Pingreq struct {
 }
 
-//Pingresp is for saying "hey, the server is alive"
+// Pingresp is for saying "hey, the server is alive"
 type Pingresp struct {
 }
 
-//Disconnect is to signal you want to cease communications with the server
+// Disconnect is to signal you want to cease communications with the server
 type Disconnect struct {
 }
 
-//TopicQOSTuple is a struct for pairing the Qos and topic together
-//for the QOS' pairs in unsubscribe and subscribe
+// TopicQOSTuple is a struct for pairing the Qos and topic together
+// for the QOS' pairs in unsubscribe and subscribe
 type TopicQOSTuple struct {
 	Qos   uint8
 	Topic []byte
