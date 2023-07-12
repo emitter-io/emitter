@@ -130,6 +130,11 @@ func (c *Channel) getOption(name string, bitSize int) (int64, bool) {
 	return 0, false
 }
 
+// TODO bitSize?
+func (c *Channel) GetOption(name string) (v int64, b bool) {
+	return c.getOption(name, 64)
+}
+
 // MakeChannel attempts to parse the channel from the key and channel strings.
 func MakeChannel(key, channelWithOptions string) *Channel {
 	return ParseChannel([]byte(fmt.Sprintf("%s/%s", key, channelWithOptions)))

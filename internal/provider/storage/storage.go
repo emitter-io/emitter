@@ -29,7 +29,8 @@ var (
 )
 
 const (
-	defaultRetain = 2592000 // 30-days
+	defaultRetain  = 2592000 // 30-days
+	MaxMessageSize = 65536   // max MQTT message size
 )
 
 // Storage represents a message storage contract that message storage provides
@@ -47,7 +48,7 @@ type Storage interface {
 	// Query performs a query and attempts to fetch last n messages where
 	// n is specified by limit argument. From and until times can also be specified
 	// for time-series retrieval.
-	Query(ssid message.Ssid, from, until time.Time, limit int) (message.Frame, error)
+	Query(ssid message.Ssid, from, untilTime time.Time, untilID message.ID, limiter Limiter) (message.Frame, error)
 }
 
 // ------------------------------------------------------------------------------------
@@ -65,20 +66,40 @@ func window(from, until time.Time) (int64, int64) {
 
 // The lookup query to send out to the cluster.
 type lookupQuery struct {
-	Ssid  message.Ssid // The ssid to match.
-	From  int64        // The beginning of the time window.
-	Until int64        // The end of the time window.
-	Limit int          // The maximum number of elements to return.
+	Ssid      message.Ssid // (required) The ssid to match.
+	From      int64        // (required) The beginning of the time window.
+	UntilTime int64        // Lookup stops when reaches this time.
+	UntilID   message.ID   // Lookup stops when reaches this message ID.
+	Limiter   Limiter      // The maximum number of elements to return.
+}
+
+type Limiter interface {
+	Admit(*message.Message) bool
+}
+
+// MessageNumberLimiter provide an Limiter implementation to replace the "limit"
+// parameter in the Query() function.
+type MessageNumberLimiter struct {
+	count int64
+	limit int64
+}
+
+func (n *MessageNumberLimiter) Admit(m *message.Message) bool {
+	return n.count < n.limit
+}
+func NewMessageNumberLimiter(limit int64) Limiter {
+	return &MessageNumberLimiter{limit: limit}
 }
 
 // newLookupQuery creates a new lookup query
-func newLookupQuery(ssid message.Ssid, from, until time.Time, limit int) lookupQuery {
+func newLookupQuery(ssid message.Ssid, from, until time.Time, untilID message.ID, limiter Limiter) lookupQuery {
 	t0, t1 := window(from, until)
 	return lookupQuery{
-		Ssid:  ssid,
-		From:  t0,
-		Until: t1,
-		Limit: limit,
+		Ssid:      ssid,
+		From:      t0,
+		UntilTime: t1,
+		UntilID:   untilID,
+		Limiter:   limiter,
 	}
 }
 
@@ -128,7 +149,7 @@ func (s *Noop) Store(m *message.Message) error {
 // Query performs a query and attempts to fetch last n messages where
 // n is specified by limit argument. From and until times can also be specified
 // for time-series retrieval.
-func (s *Noop) Query(ssid message.Ssid, from, until time.Time, limit int) (message.Frame, error) {
+func (s *Noop) Query(ssid message.Ssid, from, untilTime time.Time, untilID message.ID, limiter Limiter) (message.Frame, error) {
 	return nil, nil
 }
 

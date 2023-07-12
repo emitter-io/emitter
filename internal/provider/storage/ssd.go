@@ -124,10 +124,10 @@ func encodeFrame(msgs message.Frame) []*badger.Entry {
 // Query performs a query and attempts to fetch last n messages where
 // n is specified by limit argument. From and until times can also be specified
 // for time-series retrieval.
-func (s *SSD) Query(ssid message.Ssid, from, until time.Time, limit int) (message.Frame, error) {
+func (s *SSD) Query(ssid message.Ssid, from, untilTime time.Time, untilID message.ID, limiter Limiter) (message.Frame, error) {
 
 	// Construct a query and lookup locally first
-	query := newLookupQuery(ssid, from, until, limit)
+	query := newLookupQuery(ssid, from, untilTime, untilID, limiter)
 	match := s.lookup(query)
 
 	// Issue the message survey to the cluster
@@ -174,7 +174,7 @@ func (s *SSD) OnSurvey(surveyType string, payload []byte) ([]byte, bool) {
 
 // Lookup performs a against the storage.
 func (s *SSD) lookup(q lookupQuery) (matches message.Frame) {
-	matches = make(message.Frame, 0, q.Limit)
+	matches = make(message.Frame, 0) //TODO : explore the implications of not being able to presize with q.Limit
 	if err := s.db.View(func(tx *badger.Txn) error {
 		it := tx.NewIterator(badger.IteratorOptions{
 			PrefetchValues: false,
@@ -183,20 +183,26 @@ func (s *SSD) lookup(q lookupQuery) (matches message.Frame) {
 
 		// Since we're starting backwards, seek to the 'until' position first and then
 		// we'll iterate forward but have reverse time ('until' -> 'from')
-		prefix := message.NewPrefix(q.Ssid, q.Until)
+		prefix := q.UntilID
+		if len(prefix) == 0 {
+			prefix = message.NewPrefix(q.Ssid, q.UntilTime)
+		}
 
 		// Seek the prefix and check the key so we can quickly exit the iteration.
 		for it.Seek(prefix); it.Valid() &&
-			message.ID(it.Item().Key()).HasPrefix(q.Ssid, q.From) &&
-			len(matches) < q.Limit; it.Next() {
-			if message.ID(it.Item().Key()).Match(q.Ssid, q.From, q.Until) {
+			message.ID(it.Item().Key()).HasPrefix(q.Ssid, q.From); it.Next() {
+			if message.ID(it.Item().Key()).Match(q.Ssid, q.From, q.UntilTime) {
 				if msg, err := loadMessage(it.Item()); err == nil {
+					if !q.Limiter.Admit(&msg) {
+						return nil
+					}
 					matches = append(matches, msg)
 				}
 			}
 		}
 
 		return nil
+
 	}); err != nil {
 		logging.LogError("ssd", "query lookup", err)
 	}
