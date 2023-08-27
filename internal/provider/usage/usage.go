@@ -108,7 +108,7 @@ func (t *usage) merge(other *usage) {
 	atomic.AddInt64(&t.TrafficEg, other.TrafficEg)
 }
 
-// encodedUsage represents a single encoded usage which will be transfered
+// encodedUsage represents a single encoded usage which will be transferred
 // within HTTP request and encoded into binary.
 type encodedUsage struct {
 	MessageIn int64

@@ -122,7 +122,7 @@ func (l *V1) String() string {
 	return base64.RawURLEncoding.EncodeToString(output) + ":1"
 }
 
-// Contract retuns the contract ID of the license.
+// Contract returns the contract ID of the license.
 func (l *V1) Contract() uint32 {
 	return l.User
 }
