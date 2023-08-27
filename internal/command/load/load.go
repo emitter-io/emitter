@@ -134,7 +134,7 @@ func (c *conn) ReadByte() (byte, error) {
 	return c.scratch[0], nil
 }
 
-// Drain continously drains the connection.
+// Drain continuously drains the connection.
 func (c *conn) Drain() {
 	async.Repeat(context.Background(), time.Second, func() {
 		sent := atomic.LoadUint64(&c.sent)

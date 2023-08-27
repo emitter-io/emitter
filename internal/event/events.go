@@ -46,7 +46,7 @@ type Subscription struct {
 	Channel nocopy.Bytes  // The channel string.
 }
 
-// Type retuns the unit type.
+// Type returns the unit type.
 func (e *Subscription) unitType() uint8 {
 	return typeSub
 }
@@ -96,7 +96,7 @@ func decodeSubscription(k string, v []byte) (e Subscription, err error) {
 // Ban represents a banned key event.
 type Ban string
 
-// Type retuns the unit type.
+// Type returns the unit type.
 func (e *Ban) unitType() uint8 {
 	return typeBan
 }
@@ -131,7 +131,7 @@ type Connection struct {
 	Username    []byte
 }
 
-// Type retuns the unit type.
+// Type returns the unit type.
 func (e *Connection) unitType() uint8 {
 	return typeConn
 }
