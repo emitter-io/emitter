@@ -143,7 +143,7 @@ func (s *SSD) Query(ssid message.Ssid, from, untilTime time.Time, untilID messag
 		}
 	}
 
-	match.Limit(limit)
+	limiter.Limit(&match)
 	return match, nil
 }
 
@@ -183,13 +183,20 @@ func (s *SSD) lookup(q lookupQuery) (matches message.Frame) {
 
 		// Since we're starting backwards, seek to the 'until' position first and then
 		// we'll iterate forward but have reverse time ('until' -> 'from')
-		prefix := q.UntilID
-		if len(prefix) == 0 {
+		var prefix message.ID
+		if len(q.UntilID) == 0 {
 			prefix = message.NewPrefix(q.Ssid, q.UntilTime)
+			it.Seek(prefix)
+		} else {
+			it.Seek(q.UntilID)
+			if !it.Valid() {
+				return nil
+			}
+			it.Next()
 		}
 
 		// Seek the prefix and check the key so we can quickly exit the iteration.
-		for it.Seek(prefix); it.Valid() &&
+		for ; it.Valid() &&
 			message.ID(it.Item().Key()).HasPrefix(q.Ssid, q.From); it.Next() {
 			if message.ID(it.Item().Key()).Match(q.Ssid, q.From, q.UntilTime) {
 				if msg, err := loadMessage(it.Item()); err == nil {

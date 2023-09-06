@@ -177,7 +177,7 @@ func (s *buggyStore) Store(m *message.Message) error {
 	return errors.New("not working")
 }
 
-func (s *buggyStore) Query(ssid message.Ssid, from, until time.Time, limit int) (message.Frame, error) {
+func (s *buggyStore) Query(ssid message.Ssid, from, untilTime time.Time, untilID message.ID, limiter storage.Limiter) (message.Frame, error) {
 	return nil, errors.New("not working")
 }
 

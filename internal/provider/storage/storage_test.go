@@ -47,7 +47,7 @@ func TestNoop_Store(t *testing.T) {
 func TestNoop_Query(t *testing.T) {
 	s := new(Noop)
 	zero := time.Unix(0, 0)
-	r, err := s.Query(testMessage(1, 2, 3).Ssid(), zero, zero, 10)
+	r, err := s.Query(testMessage(1, 2, 3).Ssid(), zero, zero, nil, NewMessageNumberLimiter(10))
 	assert.NoError(t, err)
 	for range r {
 		t.Errorf("Should be empty")
@@ -80,7 +80,7 @@ func testOrder(t *testing.T, store Storage) {
 
 	// Issue a query
 	zero := time.Unix(0, 0)
-	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 5)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, nil, NewMessageNumberLimiter(5))
 	assert.NoError(t, err)
 
 	assert.Len(t, f, 5)
@@ -103,7 +103,7 @@ func testRetained(t *testing.T, store Storage) {
 
 	// Issue a query
 	zero := time.Unix(0, 0)
-	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 1)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, nil, NewMessageNumberLimiter(1))
 	assert.NoError(t, err)
 
 	assert.Len(t, f, 1)
@@ -126,7 +126,7 @@ func testRange(t *testing.T, store Storage) {
 	}
 
 	// Issue a query
-	f, err := store.Query([]uint32{0, 1, 2}, time.Unix(t0, 0), time.Unix(t1, 0), 5)
+	f, err := store.Query([]uint32{0, 1, 2}, time.Unix(t0, 0), time.Unix(t1, 0), nil, NewMessageNumberLimiter(5))
 	assert.NoError(t, err)
 
 	assert.Len(t, f, 5)

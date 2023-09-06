@@ -75,20 +75,28 @@ type lookupQuery struct {
 
 type Limiter interface {
 	Admit(*message.Message) bool
+	Limit(*message.Frame)
 }
 
 // MessageNumberLimiter provide an Limiter implementation to replace the "limit"
 // parameter in the Query() function.
 type MessageNumberLimiter struct {
-	count int64
-	limit int64
+	msgCount int64
+	MsgLimit int64
 }
 
-func (n *MessageNumberLimiter) Admit(m *message.Message) bool {
-	return n.count < n.limit
+func (limiter *MessageNumberLimiter) Admit(m *message.Message) bool {
+	admit := limiter.msgCount < limiter.MsgLimit
+	limiter.msgCount += 1
+	return admit
 }
+
+func (limiter *MessageNumberLimiter) Limit(frame *message.Frame) {
+	frame.Limit(int(limiter.MsgLimit))
+}
+
 func NewMessageNumberLimiter(limit int64) Limiter {
-	return &MessageNumberLimiter{limit: limit}
+	return &MessageNumberLimiter{MsgLimit: limit}
 }
 
 // newLookupQuery creates a new lookup query
