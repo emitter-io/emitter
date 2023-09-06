@@ -66,41 +66,64 @@ func window(from, until time.Time) (int64, int64) {
 
 // The lookup query to send out to the cluster.
 type lookupQuery struct {
-	Ssid      message.Ssid // (required) The ssid to match.
-	From      int64        // (required) The beginning of the time window.
-	UntilTime int64        // Lookup stops when reaches this time.
-	UntilID   message.ID   // Lookup stops when reaches this message ID.
-	Limiter   Limiter      // The maximum number of elements to return.
-}
-
-type Limiter interface {
-	Admit(*message.Message) bool
-}
-
-// MessageNumberLimiter provide an Limiter implementation to replace the "limit"
-// parameter in the Query() function.
-type MessageNumberLimiter struct {
-	count int64
-	limit int64
-}
-
-func (n *MessageNumberLimiter) Admit(m *message.Message) bool {
-	return n.count < n.limit
-}
-func NewMessageNumberLimiter(limit int64) Limiter {
-	return &MessageNumberLimiter{limit: limit}
+	Ssid         message.Ssid // (required) The ssid to match.
+	From         int64        // (required) The beginning of the time window.
+	UntilTime    int64        // Lookup stops when reaches this time.
+	UntilID      message.ID   // Lookup stops when reaches this message ID.
+	LimitByCount *MessageNumberLimiter
+	//LimitBySize *MessageSizeLimiter
 }
 
 // newLookupQuery creates a new lookup query
 func newLookupQuery(ssid message.Ssid, from, until time.Time, untilID message.ID, limiter Limiter) lookupQuery {
 	t0, t1 := window(from, until)
-	return lookupQuery{
+	query := lookupQuery{
 		Ssid:      ssid,
 		From:      t0,
 		UntilTime: t1,
 		UntilID:   untilID,
-		Limiter:   limiter,
 	}
+
+	switch v := limiter.(type) {
+	case *MessageNumberLimiter:
+		query.LimitByCount = v
+	}
+	return query
+}
+
+func (q *lookupQuery) Limiter() Limiter {
+	switch {
+	case q.LimitByCount != nil:
+		return q.LimitByCount
+	default:
+		return &MessageNumberLimiter{}
+	}
+}
+
+type Limiter interface {
+	Admit(*message.Message) bool
+	Limit(*message.Frame)
+}
+
+// MessageNumberLimiter provide an Limiter implementation to replace the "limit"
+// parameter in the Query() function.
+type MessageNumberLimiter struct {
+	count    int64 `binary:"-"`
+	MsgLimit int64
+}
+
+func (limiter *MessageNumberLimiter) Admit(m *message.Message) bool {
+	admit := limiter.count < limiter.MsgLimit
+	limiter.count += 1
+	return admit
+}
+
+func (limiter *MessageNumberLimiter) Limit(frame *message.Frame) {
+	frame.Limit(int(limiter.MsgLimit))
+}
+
+func NewMessageNumberLimiter(limit int64) Limiter {
+	return &MessageNumberLimiter{MsgLimit: limit}
 }
 
 // configUint32 retrieves an uint32 from the config

@@ -21,6 +21,7 @@ import (
 	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/logging"
+	"github.com/emitter-io/emitter/internal/provider/storage"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/service"
 	"github.com/kelindar/binary/nocopy"
@@ -85,7 +86,7 @@ func (s *Service) OnSubscribe(c service.Conn, mqttTopic []byte) *errors.Error {
 	// Check if the key has a load permission (also applies for retained)
 	if key.HasPermission(security.AllowLoad) {
 		t0, t1 := channel.Window() // Get the window
-		msgs, err := s.store.Query(ssid, t0, t1, int(limit))
+		msgs, err := s.store.Query(ssid, t0, t1, nil, storage.NewMessageNumberLimiter(limit))
 		if err != nil {
 			logging.LogError("conn", "query last messages", err)
 			return errors.ErrServerError

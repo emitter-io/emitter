@@ -20,6 +20,7 @@ import (
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/logging"
+	"github.com/emitter-io/emitter/internal/provider/storage"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/service"
 )
@@ -80,17 +81,18 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 	}
 
 	limit := int64(3)
-	if v, ok := channel.Last(); ok {
-		limit = v
-	}
-	messageLimiter := &limiter{
-		maxCount: limit,
-	}
+	// if v, ok := channel.Last(); ok {
+	// 	limit = v
+	// }
+	// messageLimiter := &limiter{
+	// 	maxCount: limit,
+	// }
 
 	ssid := message.NewSsid(key.Contract(), channel.Query)
 	t0, t1 := channel.Window() // Get the window
 
-	msgs, err := s.store.LimitedQuery(ssid, t0, t1, messageLimiter, request.LastMessageID)
+	messageLimiter := storage.NewMessageNumberLimiter(limit)
+	msgs, err := s.store.Query(ssid, t0, t1, request.LastMessageID, messageLimiter)
 	if err != nil {
 		logging.LogError("conn", "query last messages", err)
 		return errors.ErrServerError, false
