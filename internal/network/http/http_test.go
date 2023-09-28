@@ -150,6 +150,7 @@ func TestHTTP_204(t *testing.T) {
 
 	// New client
 	c, err := NewClient(time.Second)
+	assert.NoError(t, err)
 	b, err := c.Get(server.URL, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, b)
@@ -163,6 +164,7 @@ func TestHTTP_500(t *testing.T) {
 
 	// New client
 	c, err := NewClient(time.Second)
+	assert.NoError(t, err)
 	b, err := c.Get(server.URL, nil)
 	assert.Error(t, err)
 	assert.Nil(t, b)
