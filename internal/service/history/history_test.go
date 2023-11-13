@@ -38,7 +38,7 @@ func TestHistory(t *testing.T) {
 
 	request := &Request{
 		Key:     "key",
-		Channel: "a/b/c/",
+		Channel: "key/a/b/c/",
 	}
 
 	// Prepare the request
@@ -57,7 +57,7 @@ func TestHistory(t *testing.T) {
 	for i := 0; i < 1; i++ {
 		store.Store(&message.Message{
 			ID:      message.NewID(ssid),
-			Channel: []byte("a/b/c/?ttl=30"),
+			Channel: []byte("a/b/c/"),
 			Payload: []byte("hello"),
 			TTL:     30,
 		})
