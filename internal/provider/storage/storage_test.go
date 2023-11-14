@@ -110,6 +110,26 @@ func testRetained(t *testing.T, store Storage) {
 	assert.Equal(t, "9", string(f[0].Payload))
 }
 
+func testUntilID(t *testing.T, store Storage) {
+	var fourth message.ID
+	for i := int64(0); i < 10; i++ {
+		msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), []byte(fmt.Sprintf("%d", i)))
+		msg.TTL = message.RetainedTTL
+		msg.ID.SetTime(msg.ID.Time() + (i * 10000))
+		assert.NoError(t, store.Store(msg))
+		if i == 4 {
+			fourth = msg.ID
+		}
+	}
+
+	// Issue a query
+	zero := time.Unix(0, 0)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, fourth, NewMessageNumberLimiter(100))
+	assert.NoError(t, err)
+
+	assert.Len(t, f, 4)
+}
+
 func testRange(t *testing.T, store Storage) {
 	var t0, t1 int64
 	for i := int64(0); i < 100; i++ {

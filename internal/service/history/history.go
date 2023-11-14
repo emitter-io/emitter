@@ -41,25 +41,11 @@ type Message struct {
 type Response struct {
 	Request  uint16    `json:"req,omitempty"` // The corresponding request ID.
 	Messages []Message `json:"messages"`      // The history of messages.
-	//Messages message.Frame `json:"messages"`
 }
 
 // ForRequest sets the request ID in the response for matching
 func (r *Response) ForRequest(id uint16) {
 	r.Request = id
-}
-
-type limiter struct {
-	maxCount     int64
-	currentCount int64
-	totalSize    int64
-}
-
-func (l *limiter) CanAddMessage(m message.Message) bool {
-	if l.currentCount >= l.maxCount {
-		return false
-	}
-	return true
 }
 
 // OnRequest handles a request of historical messages.
@@ -80,13 +66,12 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 		return errors.ErrUnauthorized, false
 	}
 
-	limit := int64(3)
-	// if v, ok := channel.Last(); ok {
-	// 	limit = v
-	// }
-	// messageLimiter := &limiter{
-	// 	maxCount: limit,
-	// }
+	// Use limit = 1 if not specified, otherwise use the limit option. The limit now
+	// defaults to one as per MQTT spec we always need to send retained messages.
+	limit := int64(1)
+	if v, ok := channel.Last(); ok {
+		limit = v
+	}
 
 	ssid := message.NewSsid(key.Contract(), channel.Query)
 	t0, t1 := channel.Window() // Get the window
@@ -98,40 +83,16 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 		return errors.ErrServerError, false
 	}
 
-	// This request is answered either by resending all messages on their
-	// original channel, potentially triggering mutliple handlers on the client
-	// side, or by responding with all messages in one big response here.
-	// Can be both, but the latter is the default behavior.
-	withResponse, okResponse := channel.GetOption("response")
-	withResend, okResend := channel.GetOption("resend")
-	doResend := okResend && withResend == 1
-	doRespond := (okResponse && withResponse == 1) || !doResend
-
-	// Resend every messages again like they were originally.
-	/*
-		if doResend {
-			// Range over the messages in the channel and forward them
-			for _, m := range msgs {
-				msg := m // Copy message
-				c.Send(&msg)
-			}
-		}*/
-
-	// Send all messages in the payload of the response to this request.
-	if doRespond {
-		resp := &Response{
-			Messages: make([]Message, 0, len(msgs)),
-		}
-		for _, m := range msgs {
-			msg := m
-			resp.Messages = append(resp.Messages, Message{
-				ID:      msg.ID,
-				Topic:   string(msg.Channel), // The channel for this message.
-				Payload: string(msg.Payload), // The payload for this message.
-			})
-		}
-		return resp, true
+	resp := &Response{
+		Messages: make([]Message, 0, len(msgs)),
 	}
-
-	return nil, true
+	for _, m := range msgs {
+		msg := m
+		resp.Messages = append(resp.Messages, Message{
+			ID:      msg.ID,
+			Topic:   string(msg.Channel), // The channel for this message.
+			Payload: string(msg.Payload), // The payload for this message.
+		})
+	}
+	return resp, true
 }

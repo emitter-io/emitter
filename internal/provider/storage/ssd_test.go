@@ -83,6 +83,12 @@ func TestSSD_QueryOrdered(t *testing.T) {
 	})
 }
 
+func TestSSD_QueryUntilID(t *testing.T) {
+	runSSDTest(func(store *SSD) {
+		testUntilID(t, store)
+	})
+}
+
 func TestSSD_QueryRetained(t *testing.T) {
 	runSSDTest(func(store *SSD) {
 		testRetained(t, store)

@@ -125,7 +125,6 @@ func encodeFrame(msgs message.Frame) []*badger.Entry {
 // n is specified by limit argument. From and until times can also be specified
 // for time-series retrieval.
 func (s *SSD) Query(ssid message.Ssid, from, untilTime time.Time, untilID message.ID, limiter Limiter) (message.Frame, error) {
-
 	// Construct a query and lookup locally first
 	query := newLookupQuery(ssid, from, untilTime, untilID, limiter)
 	match := s.lookup(query)
