@@ -47,7 +47,7 @@ func TestNoop_Store(t *testing.T) {
 func TestNoop_Query(t *testing.T) {
 	s := new(Noop)
 	zero := time.Unix(0, 0)
-	r, err := s.Query(testMessage(1, 2, 3).Ssid(), zero, zero, nil, NewMessageNumberLimiter(10))
+	r, err := s.Query(testMessage(1, 2, 3).Ssid(), zero, zero, nil, NewMessageSizeLimiter(10, MaxMessageSize))
 	assert.NoError(t, err)
 	for range r {
 		t.Errorf("Should be empty")
@@ -80,7 +80,7 @@ func testOrder(t *testing.T, store Storage) {
 
 	// Issue a query
 	zero := time.Unix(0, 0)
-	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, nil, NewMessageNumberLimiter(5))
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, nil, NewMessageSizeLimiter(5, MaxMessageSize))
 	assert.NoError(t, err)
 
 	assert.Len(t, f, 5)
@@ -103,7 +103,7 @@ func testRetained(t *testing.T, store Storage) {
 
 	// Issue a query
 	zero := time.Unix(0, 0)
-	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, nil, NewMessageNumberLimiter(1))
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, nil, NewMessageSizeLimiter(1, MaxMessageSize))
 	assert.NoError(t, err)
 
 	assert.Len(t, f, 1)
@@ -124,7 +124,7 @@ func testUntilID(t *testing.T, store Storage) {
 
 	// Issue a query
 	zero := time.Unix(0, 0)
-	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, fourth, NewMessageNumberLimiter(100))
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, fourth, NewMessageSizeLimiter(100, MaxMessageSize))
 	assert.NoError(t, err)
 
 	assert.Len(t, f, 4)
@@ -146,7 +146,7 @@ func testRange(t *testing.T, store Storage) {
 	}
 
 	// Issue a query
-	f, err := store.Query([]uint32{0, 1, 2}, time.Unix(t0, 0), time.Unix(t1, 0), nil, NewMessageNumberLimiter(5))
+	f, err := store.Query([]uint32{0, 1, 2}, time.Unix(t0, 0), time.Unix(t1, 0), nil, NewMessageSizeLimiter(5, MaxMessageSize))
 	assert.NoError(t, err)
 
 	assert.Len(t, f, 5)
@@ -156,6 +156,21 @@ func testRange(t *testing.T, store Storage) {
 	assert.Equal(t, "58", string(f[2].Payload))
 	assert.Equal(t, "59", string(f[3].Payload))
 	assert.Equal(t, "60", string(f[4].Payload))
+}
+
+func testResponseSizeLimited(t *testing.T, store Storage) {
+	var t0, t1 int64
+	for i := int64(0); i < 100; i++ {
+		msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), []byte(fmt.Sprintf("%d", i)))
+		msg.ID.SetTime(msg.ID.Time() + (i * 10000))
+		assert.NoError(t, store.Store(msg))
+	}
+
+	// Issue a query
+	f, err := store.Query([]uint32{0, 1, 2}, time.Unix(t0, 0), time.Unix(t1, 0), nil, NewMessageSizeLimiter(100, 200))
+	assert.NoError(t, err)
+
+	assert.Len(t, f, 20)
 }
 
 func Test_configUint32(t *testing.T) {

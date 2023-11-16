@@ -101,6 +101,12 @@ func TestSSD_QueryRange(t *testing.T) {
 	})
 }
 
+func TestSSD_QueryResponseSizeLimited(t *testing.T) {
+	runSSDTest(func(store *SSD) {
+		testResponseSizeLimited(t, store)
+	})
+}
+
 func TestSSD_QuerySurveyed(t *testing.T) {
 	runSSDTest(func(s *SSD) {
 		const wildcard = uint32(1815237614)

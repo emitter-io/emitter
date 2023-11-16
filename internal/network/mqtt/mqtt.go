@@ -23,7 +23,7 @@ import (
 const (
 	maxHeaderSize  = 6
 	maxTopicSize   = 1024  // max MQTT header size
-	maxMessageSize = 65536 // max MQTT message size is impossible to increase as per protocol (uint16 len)
+	MaxMessageSize = 65536 // max MQTT message size is impossible to increase as per protocol (uint16 len)
 )
 
 // ErrMessageTooLarge occurs when a message encoded/decoded is larger than max MQTT frame.
@@ -327,7 +327,7 @@ func (p *Publish) EncodeTo(w io.Writer) (int, error) {
 		length += 2
 	}
 
-	if length > maxMessageSize {
+	if length > MaxMessageSize {
 		return 0, ErrMessageTooLarge
 	}
 

@@ -19,6 +19,7 @@ import (
 
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/message"
+	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/provider/storage"
 	"github.com/emitter-io/emitter/internal/security"
@@ -76,7 +77,8 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 	ssid := message.NewSsid(key.Contract(), channel.Query)
 	t0, t1 := channel.Window() // Get the window
 
-	messageLimiter := storage.NewMessageNumberLimiter(limit)
+	//messageLimiter := storage.NewMessageNumberLimiter(limit)
+	messageLimiter := storage.NewMessageSizeLimiter(limit, mqtt.MaxMessageSize)
 	msgs, err := s.store.Query(ssid, t0, t1, request.LastMessageID, messageLimiter)
 	if err != nil {
 		logging.LogError("conn", "query last messages", err)
