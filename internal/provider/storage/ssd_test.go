@@ -83,6 +83,12 @@ func TestSSD_QueryOrdered(t *testing.T) {
 	})
 }
 
+func TestSSD_MaxResponseSizeReached(t *testing.T) {
+	runSSDTest(func(store *SSD) {
+		testMaxResponseSizeReached(t, store)
+	})
+}
+
 func TestSSD_QueryRetained(t *testing.T) {
 	runSSDTest(func(store *SSD) {
 		testRetained(t, store)
@@ -191,11 +197,11 @@ func BenchmarkStore(b *testing.B) {
 	})
 }
 
-//batch=1  		batch/s=179990	msg/s=179990
-//batch=10  	batch/s=51094	msg/s=510942
-//batch=100  	batch/s=6606	msg/s=660574
-//batch=1000  	batch/s=552		msg/s=551637
-//batch=10000  	batch/s=50		msg/s=501079
+// batch=1  		batch/s=179990	msg/s=179990
+// batch=10  	batch/s=51094	msg/s=510942
+// batch=100  	batch/s=6606	msg/s=660574
+// batch=1000  	batch/s=552		msg/s=551637
+// batch=10000  	batch/s=50		msg/s=501079
 func BenchmarkStoreParallel(b *testing.B) {
 	runSSDTest(func(store *SSD) {
 		benchmarkStoreParallel(b, store, 1, runtime.NumCPU())

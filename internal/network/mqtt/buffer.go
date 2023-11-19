@@ -23,7 +23,7 @@ const smallBufferSize = 64
 const maxInt = int(^uint(0) >> 1)
 
 // buffers are reusable fixed-side buffers for faster encoding.
-var buffers = newBufferPool(maxMessageSize)
+var buffers = newBufferPool(MaxMessageSize)
 
 // bufferPool represents a thread safe buffer pool
 type bufferPool struct {
