@@ -48,7 +48,7 @@ func TestNoop_Store(t *testing.T) {
 func TestNoop_Query(t *testing.T) {
 	s := new(Noop)
 	zero := time.Unix(0, 0)
-	r, err := s.Query(testMessage(1, 2, 3).Ssid(), zero, zero, 10)
+	r, err := s.Query(testMessage(1, 2, 3).Ssid(), zero, zero, nil, 10)
 	assert.NoError(t, err)
 	for range r {
 		t.Errorf("Should be empty")
@@ -81,7 +81,7 @@ func testOrder(t *testing.T, store Storage) {
 
 	// Issue a query
 	zero := time.Unix(0, 0)
-	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 5)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, nil, 5)
 	assert.NoError(t, err)
 
 	assert.Len(t, f, 5)
@@ -104,7 +104,7 @@ func testRetained(t *testing.T, store Storage) {
 
 	// Issue a query
 	zero := time.Unix(0, 0)
-	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 1)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, nil, 1)
 	assert.NoError(t, err)
 
 	assert.Len(t, f, 1)
@@ -127,7 +127,7 @@ func testRange(t *testing.T, store Storage) {
 	}
 
 	// Issue a query
-	f, err := store.Query([]uint32{0, 1, 2}, time.Unix(t0, 0), time.Unix(t1, 0), 5)
+	f, err := store.Query([]uint32{0, 1, 2}, time.Unix(t0, 0), time.Unix(t1, 0), nil, 5)
 	assert.NoError(t, err)
 
 	assert.Len(t, f, 5)
@@ -153,6 +153,37 @@ func Test_configUint32(t *testing.T) {
 	assert.Equal(t, uint32(99999999), v)
 }
 
+// Test the StartFromID option for pagination purposes.
+func testStartFromID(t *testing.T, store Storage) {
+	var fourth message.ID
+	for i := int64(0); i < 10; i++ {
+		payload := make([]byte, 1)
+		payload[0] = byte(i)
+		msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), payload)
+		msg.TTL = message.RetainedTTL
+		msg.ID.SetTime(msg.ID.Time() + (i * 10000))
+		assert.NoError(t, store.Store(msg))
+		if i == 4 {
+			fourth = msg.ID
+		}
+	}
+
+	// Issue a query, starting at the fourth message ID and going back 2.
+	zero := time.Unix(0, 0)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, fourth, 2)
+	assert.NoError(t, err)
+
+	assert.Len(t, f, 2)
+	assert.Equal(t, 2, int(f[0].Payload[0]))
+	assert.Equal(t, 3, int(f[1].Payload[0]))
+
+	// Issue a query, starting at the first message ID and going back 2.
+	f, err = store.Query([]uint32{0, 1, 2}, zero, zero, f[0].ID, 2)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, int(f[0].Payload[0]))
+	assert.Equal(t, 1, int(f[1].Payload[0]))
+}
+
 func testMaxResponseSizeReached(t *testing.T, store Storage) {
 	for i := int64(0); i < 10; i++ {
 		payload := make([]byte, mqtt.MaxMessageSize/5)
@@ -163,7 +194,7 @@ func testMaxResponseSizeReached(t *testing.T, store Storage) {
 	}
 
 	zero := time.Unix(0, 0)
-	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 10)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, nil, 10)
 	assert.NoError(t, err)
 
 	assert.Len(t, f, 4)

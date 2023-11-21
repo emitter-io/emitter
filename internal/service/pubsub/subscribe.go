@@ -85,7 +85,7 @@ func (s *Service) OnSubscribe(c service.Conn, mqttTopic []byte) *errors.Error {
 	// Check if the key has a load permission (also applies for retained)
 	if key.HasPermission(security.AllowLoad) {
 		t0, t1 := channel.Window() // Get the window
-		msgs, err := s.store.Query(ssid, t0, t1, int(limit))
+		msgs, err := s.store.Query(ssid, t0, t1, nil, int(limit))
 		if err != nil {
 			logging.LogError("conn", "query last messages", err)
 			return errors.ErrServerError

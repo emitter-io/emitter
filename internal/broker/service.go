@@ -43,6 +43,7 @@ import (
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/security/license"
 	"github.com/emitter-io/emitter/internal/service/cluster"
+	"github.com/emitter-io/emitter/internal/service/history"
 	"github.com/emitter-io/emitter/internal/service/keyban"
 	"github.com/emitter-io/emitter/internal/service/keygen"
 	"github.com/emitter-io/emitter/internal/service/link"
@@ -185,6 +186,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	s.pubsub.Handle("keyban", keyban.New(s, s.keygen, s.cluster).OnRequest)
 	s.pubsub.Handle("link", link.New(s, s.pubsub).OnRequest)
 	s.pubsub.Handle("me", me.New().OnRequest)
+	s.pubsub.Handle("history", history.New(s, s.storage).OnRequest)
 
 	// Addresses and things
 	logging.LogTarget("service", "configured node name", nodeName)

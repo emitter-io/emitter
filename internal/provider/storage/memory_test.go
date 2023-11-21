@@ -122,7 +122,7 @@ func TestInMemory_Query(t *testing.T) {
 			})
 		}
 
-		out, err := s.Query(tc.query, zero, zero, tc.limit)
+		out, err := s.Query(tc.query, zero, zero, nil, tc.limit)
 		assert.NoError(t, err)
 
 		count := 0
@@ -152,7 +152,7 @@ func TestInMemory_lookup(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		matches := s.lookup(newLookupQuery(tc.query, zero, zero, tc.limit))
+		matches := s.lookup(newLookupQuery(tc.query, zero, zero, nil, tc.limit))
 		assert.Equal(t, tc.count, len(matches))
 	}
 }
@@ -172,13 +172,13 @@ func TestInMemory_OnSurvey(t *testing.T) {
 		{name: "ssdstore"},
 		{
 			name:        "ssdstore",
-			query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 1),
+			query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, nil, 1),
 			expectOk:    true,
 			expectCount: 1,
 		},
 		{
 			name:        "ssdstore",
-			query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 10),
+			query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, nil, 10),
 			expectOk:    true,
 			expectCount: 2,
 		},
