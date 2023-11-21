@@ -22,6 +22,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/emitter-io/emitter/internal/async"
 	"github.com/emitter-io/emitter/internal/message"
+	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/service"
 	"github.com/kelindar/binary"
@@ -185,17 +186,27 @@ func (s *SSD) lookup(q lookupQuery) (matches message.Frame) {
 		// we'll iterate forward but have reverse time ('until' -> 'from')
 		prefix := message.NewPrefix(q.Ssid, q.Until)
 
+		matchesSize := 0
 		// Seek the prefix and check the key so we can quickly exit the iteration.
 		for it.Seek(prefix); it.Valid() &&
 			message.ID(it.Item().Key()).HasPrefix(q.Ssid, q.From) &&
 			len(matches) < q.Limit; it.Next() {
-			if message.ID(it.Item().Key()).Match(q.Ssid, q.From, q.Until) {
-				if msg, err := loadMessage(it.Item()); err == nil {
-					matches = append(matches, msg)
-				}
+			if !message.ID(it.Item().Key()).Match(q.Ssid, q.From, q.Until) {
+				continue
 			}
-		}
 
+			var msg message.Message
+			var err error
+			if msg, err = loadMessage(it.Item()); err != nil {
+				continue
+			}
+
+			if matchesSize += len(msg.Payload) + len(msg.ID) + len(msg.Channel); matchesSize > mqtt.MaxMessageSize {
+				break
+			}
+
+			matches = append(matches, msg)
+		}
 		return nil
 	}); err != nil {
 		logging.LogError("ssd", "query lookup", err)

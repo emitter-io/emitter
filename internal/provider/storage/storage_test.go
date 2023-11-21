@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/emitter-io/emitter/internal/message"
+	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -150,4 +151,24 @@ func Test_configUint32(t *testing.T) {
 
 	v := configUint32(cfg.Config, "retain", 0)
 	assert.Equal(t, uint32(99999999), v)
+}
+
+func testMaxResponseSizeReached(t *testing.T, store Storage) {
+	for i := int64(0); i < 10; i++ {
+		payload := make([]byte, mqtt.MaxMessageSize/5)
+		payload[0] = byte(i)
+		msg := message.New(message.Ssid{0, 1, 2}, []byte("a/b/c/"), payload)
+		msg.ID.SetTime(msg.ID.Time() + (i * 10000))
+		assert.NoError(t, store.Store(msg))
+	}
+
+	zero := time.Unix(0, 0)
+	f, err := store.Query([]uint32{0, 1, 2}, zero, zero, 10)
+	assert.NoError(t, err)
+
+	assert.Len(t, f, 4)
+	assert.Equal(t, 6, int(f[0].Payload[0]))
+	assert.Equal(t, 7, int(f[1].Payload[0]))
+	assert.Equal(t, 8, int(f[2].Payload[0]))
+	assert.Equal(t, 9, int(f[3].Payload[0]))
 }
