@@ -12,5 +12,5 @@ goto :end
 	set GOARCH=%2
 	go tool dist install pkg/runtime
 	go install -a std
-	go build -o build/emitter-%1-%2%3 -i  -ldflags "-X github.com/emitter-io/emitter/internal/command/version.version=%APPVEYOR_BUILD_VERSION% -X github.com/emitter-io/emitter/internal/command/version.commit=%APPVEYOR_REPO_COMMIT%" .
+	go build -o build/emitter-%1-%2%3 -ldflags "-X github.com/emitter-io/emitter/internal/command/version.version=%APPVEYOR_BUILD_VERSION% -X github.com/emitter-io/emitter/internal/command/version.commit=%APPVEYOR_REPO_COMMIT%" .
 :end
