@@ -125,10 +125,10 @@ func encodeFrame(msgs message.Frame) []*badger.Entry {
 // Query performs a query and attempts to fetch last n messages where
 // n is specified by limit argument. From and until times can also be specified
 // for time-series retrieval.
-func (s *SSD) Query(ssid message.Ssid, from, until time.Time, limit int) (message.Frame, error) {
+func (s *SSD) Query(ssid message.Ssid, from, until time.Time, startFromID message.ID, limit int) (message.Frame, error) {
 
 	// Construct a query and lookup locally first
-	query := newLookupQuery(ssid, from, until, limit)
+	query := newLookupQuery(ssid, from, until, startFromID, limit)
 	match := s.lookup(query)
 
 	// Issue the message survey to the cluster
@@ -184,11 +184,21 @@ func (s *SSD) lookup(q lookupQuery) (matches message.Frame) {
 
 		// Since we're starting backwards, seek to the 'until' position first and then
 		// we'll iterate forward but have reverse time ('until' -> 'from')
-		prefix := message.NewPrefix(q.Ssid, q.Until)
+		var prefix message.ID
+		if len(q.StartFromID) == 0 {
+			prefix = message.NewPrefix(q.Ssid, q.Until)
+			it.Seek(prefix)
+		} else {
+			it.Seek(q.StartFromID)
+			if !it.Valid() {
+				return nil
+			}
+			it.Next()
+		}
 
 		matchesSize := 0
 		// Seek the prefix and check the key so we can quickly exit the iteration.
-		for it.Seek(prefix); it.Valid() &&
+		for ; it.Valid() &&
 			message.ID(it.Item().Key()).HasPrefix(q.Ssid, q.From) &&
 			len(matches) < q.Limit; it.Next() {
 			if !message.ID(it.Item().Key()).Match(q.Ssid, q.From, q.Until) {

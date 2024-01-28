@@ -47,7 +47,7 @@ type Storage interface {
 	// Query performs a query and attempts to fetch last n messages where
 	// n is specified by limit argument. From and until times can also be specified
 	// for time-series retrieval.
-	Query(ssid message.Ssid, from, until time.Time, limit int) (message.Frame, error)
+	Query(ssid message.Ssid, from, until time.Time, startFromID message.ID, limit int) (message.Frame, error)
 }
 
 // ------------------------------------------------------------------------------------
@@ -65,20 +65,22 @@ func window(from, until time.Time) (int64, int64) {
 
 // The lookup query to send out to the cluster.
 type lookupQuery struct {
-	Ssid  message.Ssid // The ssid to match.
-	From  int64        // The beginning of the time window.
-	Until int64        // The end of the time window.
-	Limit int          // The maximum number of elements to return.
+	Ssid        message.Ssid // The ssid to match.
+	From        int64        // The beginning of the time window.
+	Until       int64        // The end of the time window.
+	StartFromID message.ID   // The ID to start from when retrieving message, used for pagination.
+	Limit       int          // The maximum number of elements to return.
 }
 
 // newLookupQuery creates a new lookup query
-func newLookupQuery(ssid message.Ssid, from, until time.Time, limit int) lookupQuery {
+func newLookupQuery(ssid message.Ssid, from, until time.Time, startFromID message.ID, limit int) lookupQuery {
 	t0, t1 := window(from, until)
 	return lookupQuery{
-		Ssid:  ssid,
-		From:  t0,
-		Until: t1,
-		Limit: limit,
+		Ssid:        ssid,
+		From:        t0,
+		Until:       t1,
+		StartFromID: startFromID,
+		Limit:       limit,
 	}
 }
 
@@ -128,7 +130,7 @@ func (s *Noop) Store(m *message.Message) error {
 // Query performs a query and attempts to fetch last n messages where
 // n is specified by limit argument. From and until times can also be specified
 // for time-series retrieval.
-func (s *Noop) Query(ssid message.Ssid, from, until time.Time, limit int) (message.Frame, error) {
+func (s *Noop) Query(ssid message.Ssid, from, until time.Time, startFromID message.ID, limit int) (message.Frame, error) {
 	return nil, nil
 }
 

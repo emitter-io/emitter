@@ -130,7 +130,7 @@ func TestPubSub_LastWill(t *testing.T) {
 
 		// Query the storage
 		{
-			msgs, err := store.Query(ssid, time.Unix(0, 0), time.Now(), 100)
+			msgs, err := store.Query(ssid, time.Unix(0, 0), time.Now(), nil, 100)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectStored, len(msgs))
 		}

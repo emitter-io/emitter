@@ -71,7 +71,7 @@ func TestSSD_Query(t *testing.T) {
 		assert.NoError(t, err)
 
 		zero := time.Unix(0, 0)
-		f, err := store.Query([]uint32{0, 3, 2, 6}, zero, zero, 5)
+		f, err := store.Query([]uint32{0, 3, 2, 6}, zero, zero, nil, 5)
 		assert.NoError(t, err)
 		assert.Len(t, f, 1)
 	})
@@ -80,6 +80,12 @@ func TestSSD_Query(t *testing.T) {
 func TestSSD_QueryOrdered(t *testing.T) {
 	runSSDTest(func(store *SSD) {
 		testOrder(t, store)
+	})
+}
+
+func TestSSD_QueryStartFromID(t *testing.T) {
+	runSSDTest(func(store *SSD) {
+		testStartFromID(t, store)
 	})
 }
 
@@ -127,7 +133,7 @@ func TestSSD_QuerySurveyed(t *testing.T) {
 				})
 			}
 
-			out, err := s.Query(tc.query, zero, zero, tc.limit)
+			out, err := s.Query(tc.query, zero, zero, nil, tc.limit)
 			assert.NoError(t, err)
 			count := 0
 			for range out {
@@ -152,13 +158,13 @@ func TestSSD_OnSurvey(t *testing.T) {
 			{name: "ssdstore"},
 			{
 				name:        "ssdstore",
-				query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 1),
+				query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, nil, 1),
 				expectOk:    true,
 				expectCount: 1,
 			},
 			{
 				name:        "ssdstore",
-				query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, 10),
+				query:       newLookupQuery(message.Ssid{0, 1}, zero, zero, nil, 10),
 				expectOk:    true,
 				expectCount: 2,
 			},
@@ -322,7 +328,7 @@ func benchmarkQuery(b *testing.B, store *SSD, last int, m *stats.Metric) {
 				return
 
 			default:
-				store.Query(ssid, t0, t1, last)
+				store.Query(ssid, t0, t1, nil, last)
 				m.Update(int32(last))
 			}
 		}
