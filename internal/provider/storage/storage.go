@@ -22,6 +22,7 @@ import (
 	"github.com/emitter-io/config"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/security"
+	"github.com/emitter-io/emitter/internal/service/survey"
 )
 
 var (
@@ -37,6 +38,7 @@ const (
 type Storage interface {
 	config.Provider
 	io.Closer
+	survey.Surveyee
 
 	// Store is used to store a message, the SSID provided must be a full SSID
 	// SSID, where first element should be a contract ID. The time resolution
@@ -138,4 +140,9 @@ func (s *Noop) Query(ssid message.Ssid, from, until time.Time, startFromID messa
 // resource is properly disposed.
 func (s *Noop) Close() error {
 	return nil
+}
+
+// OnSurvey handles an incoming cluster lookup request.
+func (s *Noop) OnSurvey(surveyType string, payload []byte) ([]byte, bool) {
+	return []byte{}, true
 }
