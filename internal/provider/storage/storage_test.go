@@ -24,9 +24,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type survey func(string, []byte) (message.Awaiter, error)
+type surveyFunc func(string, []byte) (message.Awaiter, error)
 
-func (s survey) Query(q string, b []byte) (message.Awaiter, error) {
+func (s surveyFunc) Query(q string, b []byte) (message.Awaiter, error) {
 	return s(q, b)
 }
 

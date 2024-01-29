@@ -184,3 +184,7 @@ func (s *buggyStore) Query(ssid message.Ssid, from, until time.Time, startFromID
 func (s *buggyStore) Close() error {
 	return errors.New("not working")
 }
+
+func (s *buggyStore) OnSurvey(surveyType string, payload []byte) ([]byte, bool) {
+	return []byte{}, true
+}
