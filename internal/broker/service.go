@@ -157,11 +157,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	s.surveyor = survey.New(s.pubsub, s.cluster)
 	s.presence = presence.New(s, s.pubsub, s.surveyor, s.subscriptions)
 	if s.cluster != nil {
-		if s.storage.Name() == ssdstore.Name() {
-			s.surveyor.HandleFunc(s.presence, ssdstore)
-		} else if s.storage.Name() == memstore.Name() {
-			s.surveyor.HandleFunc(s.presence, memstore)
-		}
+		s.surveyor.HandleFunc(s.storage)
 	}
 
 	// Create a new cipher from the licence provided

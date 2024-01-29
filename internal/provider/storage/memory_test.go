@@ -117,7 +117,7 @@ func TestInMemory_Query(t *testing.T) {
 		if tc.gathered == nil {
 			s.survey = nil
 		} else {
-			s.survey = survey(func(string, []byte) (message.Awaiter, error) {
+			s.survey = surveyFunc(func(string, []byte) (message.Awaiter, error) {
 				return &mockAwaiter{f: func(_ time.Duration) [][]byte { return [][]byte{tc.gathered} }}, nil
 			})
 		}
