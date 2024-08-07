@@ -169,6 +169,14 @@ func (f *Conn) initialize() {
 	}
 }
 
+func (f *Conn) Ban() {
+
+}
+
+func (f *Conn) IsBanned() bool {
+	return false
+}
+
 // Close provides a fake implementation.
 func (f *Conn) Close() error {
 	return nil

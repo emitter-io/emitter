@@ -60,6 +60,7 @@ type Conn struct {
 	connect  *event.Connection // The associated connection event.
 	username string            // The username provided by the client during MQTT connect.
 	links    map[string]string // The map of all pre-authorized links.
+	banned   bool              // Close() will behave differently if this flag is true. Note: can't modify Close's signature as it has to respect the one from the MQTT lib.
 }
 
 // NewConn creates a new connection.
@@ -86,6 +87,16 @@ func (s *Service) newConn(t net.Conn, readRate int) *Conn {
 	// Increment the connection counter
 	atomic.AddInt64(&s.connections, 1)
 	return c
+}
+
+// IsBanned checks if the connection is banned.
+func (c *Conn) IsBanned() bool {
+	return c.banned
+}
+
+// Ban bans the connection.
+func (c *Conn) Ban() {
+	c.banned = true
 }
 
 // ID returns the unique identifier of the subsriber.
@@ -365,8 +376,10 @@ func (c *Conn) Close() error {
 		})
 	}
 
-	// Publish last will
-	c.service.pubsub.OnLastWill(c, c.connect)
+	if !c.IsBanned() {
+		// Publish last will
+		c.service.pubsub.OnLastWill(c, c.connect)
+	}
 
 	//logging.LogTarget("conn", "closed", c.guid)
 	return c.socket.Close()

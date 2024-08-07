@@ -14,6 +14,12 @@
 
 package keyban
 
+import (
+	"time"
+
+	"github.com/emitter-io/emitter/internal/message"
+)
+
 // Request represents a key ban request.
 type Request struct {
 	Secret string `json:"secret"` // The master key to use.
@@ -22,6 +28,16 @@ type Request struct {
 }
 
 // ------------------------------------------------------------------------------------
+/*
+// EventType represents a presence event type
+type EventType string
+
+// Various event types
+const (
+	EventTypeKeyban   = EventType("keyban")
+	EventTypeKeyunban = EventType("keyunban")
+)
+*/
 
 // Response represents a key ban response.
 type Response struct {
@@ -33,4 +49,21 @@ type Response struct {
 // ForRequest sets the request ID in the response for matching
 func (r *Response) ForRequest(id uint16) {
 	r.Request = id
+}
+
+type Notification struct {
+	Time   int64                         `json:"time"`   // The UNIX timestamp.
+	Banned bool                          `json:"banned"` // The event, must be "status", "subscribe" or "unsubscribe".
+	Key    string                        `json:"key"`    // The target channel for the notification.
+	filter func(message.Subscriber) bool // The filter function (optional)
+}
+
+// newNotification creates a new notification payload.
+func newNotification(banned bool, key string, filter func(message.Subscriber) bool) *Notification {
+	return &Notification{
+		filter: filter,
+		Time:   time.Now().UTC().Unix(),
+		Key:    key,
+		Banned: banned,
+	}
 }

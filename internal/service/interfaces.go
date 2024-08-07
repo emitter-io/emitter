@@ -49,7 +49,7 @@ type Surveyee interface {
 	OnSurvey(string, []byte) ([]byte, bool)
 }
 
-//Surveyor issues the surveys.
+// Surveyor issues the surveys.
 type Surveyor interface {
 	Query(string, []byte) (message.Awaiter, error)
 }
@@ -66,6 +66,8 @@ type Conn interface {
 	Links() map[string]string
 	GetLink([]byte) []byte
 	AddLink(string, *security.Channel)
+	Ban()
+	IsBanned() bool
 }
 
 // Replicator replicates an event withih the cluster

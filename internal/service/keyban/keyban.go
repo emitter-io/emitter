@@ -15,6 +15,7 @@
 package keyban
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -32,21 +33,56 @@ var (
 
 // Service represents a key blacklisting service.
 type Service struct {
-	auth    service.Authorizer // The authorizer to use.
-	keygen  service.Decryptor  // The key generator to use.
-	cluster service.Replicator // The cluster service to use.
+	connection service.Conn
+	auth       service.Authorizer // The authorizer to use.
+	keygen     service.Decryptor  // The key generator to use.
+	cluster    service.Replicator // The cluster service to use.
+	queue      chan *Notification // The channel for keyban notifications.
+	context    context.Context    // The context for the service.
+	cancel     context.CancelFunc // The cancellation function.
+	//subscriptions *message.Trie      // The subscription matching trie.
 }
 
 // New creates a new key blacklisting service.
-func New(auth service.Authorizer, keygen service.Decryptor, cluster service.Replicator) *Service {
-	return &Service{
+func New(auth service.Authorizer, keygen service.Decryptor, cluster service.Replicator /*, subscriptions *message.Trie*/) *Service {
+	ctx, cancel := context.WithCancel(context.Background())
+	s := &Service{
+		context: ctx,
+		cancel:  cancel,
 		auth:    auth,
 		keygen:  keygen,
 		cluster: cluster,
+		//subscriptions: subscriptions,
+		queue: make(chan *Notification, 100),
 	}
+
+	s.pollKeybanChange()
+	return s
 }
 
-// OnRequest handles a request to create a link.
+func (s *Service) pollKeybanChange() {
+	go func() {
+		for {
+			select {
+			case <-s.context.Done():
+				return
+			case notif := <-s.queue:
+				// Depending on the flag, ban or unban the key
+				bannedKey := event.Ban(notif.Key)
+				switch {
+				case notif.Banned && !s.cluster.Contains(&bannedKey):
+					s.connection.Ban()
+					s.connection.Close()
+					s.cluster.Notify(&bannedKey, true)
+				case !notif.Banned && s.cluster.Contains(&bannedKey):
+					s.cluster.Notify(&bannedKey, false)
+				}
+			}
+		}
+	}()
+}
+
+// OnRequest handles a request to ban or unban a key.
 func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, bool) {
 	var message Request
 	if err := json.Unmarshal(payload, &message); err != nil {
@@ -71,6 +107,8 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 	bannedKey := event.Ban(message.Target)
 	switch {
 	case message.Banned && !s.cluster.Contains(&bannedKey):
+		c.Ban()
+		c.Close()
 		s.cluster.Notify(&bannedKey, true)
 	case !message.Banned && s.cluster.Contains(&bannedKey):
 		s.cluster.Notify(&bannedKey, false)
