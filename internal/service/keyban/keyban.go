@@ -16,14 +16,11 @@ package keyban
 
 import (
 	"encoding/json"
-	"fmt"
 	"regexp"
 
 	"github.com/emitter-io/emitter/internal/errors"
 	"github.com/emitter-io/emitter/internal/event"
-	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/service"
-	"github.com/kelindar/binary"
 )
 
 var (
@@ -53,11 +50,9 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 		return errors.ErrBadRequest, false
 	}
 
-	// Decrypt the secret key and make sure it's not expired and is a master key
-	_, secretKey, ok := s.auth.Authorize(security.ParseChannel(
-		binary.ToBytes(fmt.Sprintf("%s/emitter/", message.Secret)),
-	), security.AllowMaster)
-	if !ok || secretKey.IsExpired() || !secretKey.IsMaster() {
+	// Decrypt the secret/master key and make sure it's not expired
+	secretKey, err := s.keygen.DecryptKey(message.Secret)
+	if err != nil || secretKey.IsExpired() || !secretKey.IsMaster() {
 		return errors.ErrUnauthorized, false
 	}
 
