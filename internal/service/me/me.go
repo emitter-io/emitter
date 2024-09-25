@@ -45,7 +45,8 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 	}
 
 	return &Response{
-		ID:    c.ID(),
-		Links: links,
+		Status: 200,
+		ID:     c.ID(),
+		Links:  links,
 	}, true
 }

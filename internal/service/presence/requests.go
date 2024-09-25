@@ -45,6 +45,7 @@ const (
 // Response represents a state notification.
 type Response struct {
 	Request uint16    `json:"req,omitempty"` // The corresponding request ID.
+	Status  int       `json:"status"`        // The status of the response
 	Time    int64     `json:"time"`          // The UNIX timestamp.
 	Event   EventType `json:"event"`         // The event, must be "status", "subscribe" or "unsubscribe".
 	Channel string    `json:"channel"`       // The target channel for the notification.

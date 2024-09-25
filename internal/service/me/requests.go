@@ -17,6 +17,7 @@ package me
 // Response represents a response for the 'me' request.
 type Response struct {
 	Request uint16            `json:"req,omitempty"`   // The corresponding request ID.
+	Status  int               `json:"status"`          // The status of the response
 	ID      string            `json:"id"`              // The private ID of the connection.
 	Links   map[string]string `json:"links,omitempty"` // The set of pre-defined channels.
 }

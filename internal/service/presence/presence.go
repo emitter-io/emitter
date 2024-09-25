@@ -90,6 +90,7 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 		// Gather local & cluster presence
 		who = append(who, s.getAllPresence(ssid)...)
 		return &Response{
+			Status:  200,
 			Time:    now,
 			Event:   EventTypeStatus,
 			Channel: msg.Channel,
@@ -97,7 +98,9 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 		}, true
 	}
 
-	return nil, true
+	return &Response{
+		Status: 200,
+	}, true
 }
 
 // OnHTTP occurs when a new HTTP presence request is received.
