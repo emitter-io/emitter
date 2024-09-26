@@ -59,7 +59,7 @@ Notice: You must use -e for docker environment.You could get it from your docker
 docker run -d --name emitter -p 8080:8080 --restart=unless-stopped emitter/server
 ```
 
-Alternatively, you build and run from source. 
+Alternatively, you can build and run from source. 
 
 ```shell
 # install git and go
@@ -68,7 +68,6 @@ git clone https://github.com/emitter-io/emitter
 cd emitter
 go get -x .
 go build -x .
-go install -x .
 ./emitter
 ```
 
