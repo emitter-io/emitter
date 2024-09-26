@@ -59,10 +59,17 @@ Notice: You must use -e for docker environment.You could get it from your docker
 docker run -d --name emitter -p 8080:8080 --restart=unless-stopped emitter/server
 ```
 
-Alternatively, you might compile this repository and use `go get` command to rebuild and run from source. 
+Alternatively, you build and run from source. 
 
 ```shell
-go get -u github.com/emitter-io/emitter && emitter
+# install git and go
+# depending on your system, you may also need to install gcc and musl-dev
+git clone https://github.com/emitter-io/emitter
+cd emitter
+go get -x .
+go build -x .
+go install -x .
+./emitter
 ```
 
 ### Get License
