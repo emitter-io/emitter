@@ -22,6 +22,7 @@ import (
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/emitter-io/emitter/internal/service"
+	"github.com/kelindar/binary"
 )
 
 // Request represents a historical messages request.
@@ -33,8 +34,8 @@ type Request struct {
 
 type Message struct {
 	ID      message.ID `json:"id"`
-	Topic   string     `json:"topic"`   // The channel of the message
-	Payload string     `json:"payload"` // The payload of the message
+	Channel string     `json:"channel"` // The channel of the message
+	Payload []byte     `json:"payload"` // The payload of the message
 }
 type Response struct {
 	Request  uint16    `json:"req,omitempty"` // The corresponding request ID.
@@ -87,8 +88,8 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 		msg := m
 		resp.Messages = append(resp.Messages, Message{
 			ID:      msg.ID,
-			Topic:   string(msg.Channel), // The channel for this message.
-			Payload: string(msg.Payload), // The payload for this message.
+			Channel: binary.ToString(&msg.Channel),
+			Payload: msg.Payload,
 		})
 	}
 	return resp, true
