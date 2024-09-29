@@ -13,7 +13,7 @@ require (
 	github.com/emitter-io/config v1.0.0
 	github.com/emitter-io/stats v1.0.3
 	github.com/golang/snappy v0.0.4
-	github.com/gorilla/websocket v1.5.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/jawher/mow.cli v1.2.0
 	github.com/kelindar/binary v1.0.18
 	github.com/kelindar/rate v1.0.0
@@ -25,10 +25,12 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/valyala/fasthttp v1.51.0
 	github.com/weaveworks/mesh v0.0.0-20191105120815-58dbcc3e8e63
-	golang.org/x/crypto v0.18.0
-	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/crypto v0.25.0
+	golang.org/x/net v0.27.0 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
+
+require github.com/eclipse/paho.mqtt.golang v1.5.0
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
@@ -60,8 +62,9 @@ require (
 	github.com/tidwall/tinyqueue v0.1.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/sys v0.16.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
