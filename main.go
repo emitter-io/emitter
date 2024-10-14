@@ -21,6 +21,7 @@ import (
 	"github.com/emitter-io/config/dynamo"
 	"github.com/emitter-io/config/vault"
 	"github.com/emitter-io/emitter/internal/broker"
+	"github.com/emitter-io/emitter/internal/command/keygen"
 	"github.com/emitter-io/emitter/internal/command/license"
 	"github.com/emitter-io/emitter/internal/command/load"
 	"github.com/emitter-io/emitter/internal/command/version"
@@ -44,6 +45,7 @@ func main() {
 		cmd.Command("new", "Generates a new license and secret key pair.", license.New)
 		// TODO: add more sub-commands for license
 	})
+	app.Command("keygen", "Generates a new key for a channel.", keygen.NewKey)
 
 	app.Run(os.Args)
 }
