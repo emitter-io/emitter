@@ -144,7 +144,8 @@ func (s *SSD) Query(ssid message.Ssid, from, until time.Time, startFromID messag
 		}
 	}
 
-	match.Limit(limit)
+	match.Limit(limit) // Limit the number of messages.
+	match.LimitPayloadSize(match, mqtt.MaxMessageSize)
 	return match, nil
 }
 
@@ -196,7 +197,7 @@ func (s *SSD) lookup(q lookupQuery) (matches message.Frame) {
 			it.Next()
 		}
 
-		matchesSize := 0
+		var matchesSize int64 = 0
 		// Seek the prefix and check the key so we can quickly exit the iteration.
 		for ; it.Valid() &&
 			message.ID(it.Item().Key()).HasPrefix(q.Ssid, q.From) &&
@@ -211,7 +212,12 @@ func (s *SSD) lookup(q lookupQuery) (matches message.Frame) {
 				continue
 			}
 
-			if matchesSize += len(msg.Payload) + len(msg.ID) + len(msg.Channel); matchesSize > mqtt.MaxMessageSize {
+			// MaxMessageSize is the maximum size of the payload of an MQTT message in Emitter. See comment on mqtt.MaxMessageSize.
+
+			// STILL BUGGY: messages are ingested based on the size of the payload, not including the size of the topic... REALLY?
+			// Technically, this algorithms would try to send a message longer than the maximum size of the Payload as defined in mqtt.MaxMessageSize
+			// This means, through History, you might not be able to retrieve a message whose Payload is still within the maximum size of the MQTT message.
+			if matchesSize += msg.TotalSize(); matchesSize > mqtt.MaxMessageSize {
 				break
 			}
 

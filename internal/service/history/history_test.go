@@ -17,6 +17,7 @@ package history
 import (
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/emitter-io/emitter/internal/message"
@@ -171,15 +172,18 @@ func TestSumOfTwoExceedMaxSize(t *testing.T) {
 	}
 
 	// Store 2 messages
-	randomBytes := make([]byte, int(mqtt.MaxMessageSize/2))
-	rand.Read(randomBytes)
 	firstSSID := message.NewID(ssid)
-	store.Store(&message.Message{
+	fmt.Println(int(mqtt.MaxMessageSize - len(firstSSID) - len("test/") - 1)) // KEYSIZE???
+	//randomBytes := make([]byte, int(mqtt.MaxMessageSize-len(firstSSID)-len("a/b/c/")-1)) // BUG: MaxMessageSize represents the maximum size of the payload, but the message is composed of the ID, the channel size and the payload.
+	randomBytes := make([]byte, int(mqtt.MaxMessageSize))
+	rand.Read(randomBytes)
+	err := store.Store(&message.Message{
 		ID:      firstSSID,
 		Channel: []byte("a/b/c/"),
 		Payload: randomBytes,
 		TTL:     30,
 	})
+	assert.NoError(t, err)
 	store.Store(&message.Message{
 		ID:      message.NewID(ssid),
 		Channel: []byte("a/b/c/"),
