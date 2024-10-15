@@ -21,8 +21,16 @@ import (
 )
 
 const (
-	maxHeaderSize  = 6     // max MQTT header size
-	MaxMessageSize = 65536 // max MQTT message size is impossible to increase as per protocol (uint16 len)
+	maxHeaderSize = 6 // max MQTT header size
+
+	/* Original comment: "[65536] max MQTT message size is impossible to increase as per protocol (uint16 len)"
+	   This is not true according the MQTT 3.1.1 spec, the max size is 256MB.
+	   Official spec: https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html
+	   Also see this article for simplified explanation: https://www.hivemq.com/blog/mqtt-essentials-part-6-mqtt-quality-of-service-levels/
+	   However, as noted in most sources, brokers could and should impose a much sensible limit.
+	   65536 is the original limit in Emitter and seems sensible. This number will be used as the payload limit.
+	*/
+	MaxMessageSize = 65536
 )
 
 // ErrMessageTooLarge occurs when a message encoded/decoded is larger than max MQTT frame.
