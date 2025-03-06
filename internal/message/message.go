@@ -45,6 +45,11 @@ func (m *Message) Size() int64 {
 	return int64(len(m.Payload))
 }
 
+// TotalSize returns the total byte size of the message, including the ID and channel.
+func (m *Message) TotalSize() int64 {
+	return int64(len(m.Payload) + len(m.ID) + len(m.Channel))
+}
+
 // Time gets the time of the key, adjusted.
 func (m *Message) Time() int64 {
 	return m.ID.Time()
@@ -142,6 +147,18 @@ func (f *Frame) Limit(n int) {
 	f.Sort()
 	if size := len(*f); size > n {
 		*f = (*f)[size-n:]
+	}
+}
+
+// LimitPayloadSize limits the payload size of the frame.
+func (f *Frame) LimitPayloadSize(frame Frame, maxPayloadSize int64) {
+	var sum int64
+	for i := 0; i < len(frame); i++ {
+		sum += frame[i].TotalSize()
+		if sum >= maxPayloadSize {
+			*f = frame[:i]
+			return
+		}
 	}
 }
 
