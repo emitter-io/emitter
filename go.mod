@@ -26,8 +26,8 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/valyala/fasthttp v1.58.0
 	github.com/weaveworks/mesh v0.0.0-20191105120815-58dbcc3e8e63
-	golang.org/x/crypto v0.33.0
-	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/crypto v0.35.0
+	golang.org/x/net v0.36.0 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
 
