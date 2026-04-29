@@ -29,6 +29,7 @@ type Message struct {
 	Channel []byte `json:"chan,omitempty"` // The channel of the message
 	Payload []byte `json:"data,omitempty"` // The payload of the message
 	TTL     uint32 `json:"ttl,omitempty"`  // The time-to-live of the message
+	KeyHash uint32 `json:"key,omitempty"`  // The hash of the key used to publish the message
 }
 
 // New creates a new message structure from the provided SSID, channel and payload.

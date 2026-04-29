@@ -33,6 +33,7 @@ func TestDecodeFrame(t *testing.T) {
 		newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc"),
 		newTestMessage(Ssid{1, 2, 3}, "a/b/", "hello ab"),
 	}
+	frame[0].KeyHash = 42
 
 	// Encode
 	buffer := frame.Encode()
@@ -42,6 +43,16 @@ func TestDecodeFrame(t *testing.T) {
 	output, err := DecodeFrame(buffer)
 	assert.NoError(t, err)
 	assert.Equal(t, frame, output)
+}
+
+func TestMessageEncodeKeyHash(t *testing.T) {
+	m := newTestMessage(Ssid{1, 2, 3}, "a/b/c/", "hello abc")
+	m.KeyHash = 73
+
+	encoded := m.Encode()
+	decoded, err := DecodeMessage(encoded)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(73), decoded.KeyHash)
 }
 
 func TestNewMessage(t *testing.T) {

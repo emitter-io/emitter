@@ -15,6 +15,8 @@
 package event
 
 import (
+	"errors"
+
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/security"
 	"github.com/kelindar/binary"
@@ -25,6 +27,7 @@ import (
 const (
 	typeSub = uint8(iota)
 	typeBan
+	typeKeyHashBan
 	typeConn
 )
 
@@ -114,6 +117,37 @@ func (e Ban) Val() []byte {
 // decodeBan decodes the event
 func decodeBan(k string) (Ban, error) {
 	return Ban(k), nil
+}
+
+// ------------------------------------------------------------------------------------
+
+// KeyHashBan represents a banned key hash event.
+type KeyHashBan uint32
+
+// Type returns the unit type.
+func (e *KeyHashBan) unitType() uint8 {
+	return typeKeyHashBan
+}
+
+// Key returns the event key.
+func (e KeyHashBan) Key() string {
+	buffer := make([]byte, 4)
+	binary.BigEndian.PutUint32(buffer, uint32(e))
+	return binary.ToString(&buffer)
+}
+
+// Val returns the event value.
+func (e KeyHashBan) Val() []byte {
+	return nil
+}
+
+// decodeKeyHashBan decodes the event
+func decodeKeyHashBan(k string) (KeyHashBan, error) {
+	buffer := binary.ToBytes(k)
+	if len(buffer) < 4 {
+		return 0, errors.New("key hash ban event is malformed")
+	}
+	return KeyHashBan(binary.BigEndian.Uint32(buffer[:4])), nil
 }
 
 // ------------------------------------------------------------------------------------

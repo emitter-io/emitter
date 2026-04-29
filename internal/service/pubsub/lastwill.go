@@ -44,10 +44,19 @@ func (s *Service) OnLastWill(sub message.Subscriber, ev *event.Connection) bool 
 		channel.Channel,
 		ev.WillMessage,
 	)
+	msg.KeyHash = key.Hash()
 
 	// If a user have specified a retain flag, retain with a default TTL
 	if ev.WillRetain {
 		msg.TTL = message.RetainedTTL
+	}
+
+	// If the key was banned while the message was being processed, reject it.
+	if s.cluster != nil && msg.KeyHash != 0 {
+		keyHash := event.KeyHashBan(msg.KeyHash)
+		if s.cluster.Contains(&keyHash) {
+			return false
+		}
 	}
 
 	// Store the message if needed

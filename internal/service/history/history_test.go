@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/storage"
 	"github.com/emitter-io/emitter/internal/security"
@@ -81,4 +82,49 @@ func TestHistory(t *testing.T) {
 	assert.Equal(t, true, ok)
 	// The response should have returned the last 2 messages.
 	assert.Equal(t, 2, len(response.(*Response).Messages))
+}
+
+func TestHistory_BannedStoredMessage(t *testing.T) {
+	ssid := message.Ssid{1, 3238259379, 500706888, 1027807523}
+	store := storage.NewInMemory(nil)
+	store.Configure(nil)
+	auth := &fake.Authorizer{
+		Success:   true,
+		Contract:  uint32(1),
+		ExtraPerm: security.AllowLoad,
+	}
+	cluster := new(fake.Replicator)
+
+	service := New(auth, store)
+	service.SetCluster(cluster)
+	connection := &fake.Conn{}
+
+	store.Store(&message.Message{
+		ID:      message.NewID(ssid),
+		Channel: []byte("a/b/c/"),
+		Payload: []byte("hello"),
+		TTL:     30,
+		KeyHash: 123,
+	})
+	store.Store(&message.Message{
+		ID:      message.NewID(ssid),
+		Channel: []byte("a/b/c/"),
+		Payload: []byte("world"),
+		TTL:     30,
+		KeyHash: 456,
+	})
+
+	keyHash := event.KeyHashBan(123)
+	cluster.Notify(&keyHash, true)
+
+	request := &Request{
+		Key:     "key",
+		Channel: "key/a/b/c/?last=10",
+	}
+	reqBytes, _ := json.Marshal(request)
+
+	response, ok := service.OnRequest(connection, reqBytes)
+	assert.Equal(t, true, ok)
+	assert.Equal(t, 1, len(response.(*Response).Messages))
+	assert.Equal(t, "world", string(response.(*Response).Messages[0].Payload))
 }

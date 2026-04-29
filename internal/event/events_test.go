@@ -69,6 +69,21 @@ func TestEncodeBan(t *testing.T) {
 	assert.Equal(t, ev, dec)
 }
 
+func TestEncodeKeyHashBan(t *testing.T) {
+	ev := KeyHashBan(123456)
+	assert.Nil(t, ev.Val())
+
+	// Encode
+	enc := ev.Key()
+	assert.Equal(t, typeKeyHashBan, ev.unitType())
+	assert.Equal(t, 4, len(enc))
+
+	// Decode
+	dec, err := decodeKeyHashBan(enc)
+	assert.NoError(t, err)
+	assert.Equal(t, ev, dec)
+}
+
 func TestEncodeConnection(t *testing.T) {
 	ev := Connection{
 		Peer:        657,

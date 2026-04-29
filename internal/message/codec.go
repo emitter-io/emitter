@@ -16,6 +16,7 @@ package message
 
 import (
 	"bytes"
+	"io"
 	"reflect"
 	"sync"
 
@@ -37,6 +38,7 @@ func (c *messageCodec) EncodeTo(e *binary.Encoder, rv reflect.Value) (err error)
 	channel := rv.Field(1).Bytes()
 	payload := rv.Field(2).Bytes()
 	ttl := rv.Field(3).Uint()
+	keyHash := rv.Field(4).Uint()
 
 	e.WriteUvarint(uint64(len(id)))
 	e.Write(id)
@@ -45,6 +47,7 @@ func (c *messageCodec) EncodeTo(e *binary.Encoder, rv reflect.Value) (err error)
 	e.WriteUvarint(uint64(len(payload)))
 	e.Write(payload)
 	e.WriteUvarint(ttl)
+	e.WriteUvarint(keyHash)
 	return
 }
 
@@ -56,6 +59,12 @@ func (c *messageCodec) DecodeTo(d *binary.Decoder, rv reflect.Value) (err error)
 			if v.Payload, err = readBytes(d); err == nil {
 				if ttl, err := d.ReadUvarint(); err == nil {
 					v.TTL = uint32(ttl)
+					if keyHash, err := d.ReadUvarint(); err == nil {
+						v.KeyHash = uint32(keyHash)
+					} else if err != io.EOF {
+						return err
+					}
+
 					rv.Set(reflect.ValueOf(v))
 					return nil
 				}

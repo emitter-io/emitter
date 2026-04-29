@@ -24,6 +24,7 @@ import (
 type Service struct {
 	auth     service.Authorizer         // The authorizer to use.
 	store    storage.Storage            // The storage provider to use.
+	cluster  service.Replicator         // The cluster to check for banned keys.
 	handlers map[uint32]service.Handler // The emitter request handlers.
 }
 
@@ -34,6 +35,11 @@ func New(auth service.Authorizer, store storage.Storage) *Service {
 		store:    store,
 		handlers: make(map[uint32]service.Handler),
 	}
+}
+
+// SetCluster attaches the cluster replicator for ban checks.
+func (s *Service) SetCluster(cluster service.Replicator) {
+	s.cluster = cluster
 }
 
 // Handle adds a handler for an "emitter/..." request

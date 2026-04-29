@@ -151,4 +151,9 @@ func TestKey(t *testing.T) {
 	key.SetPermissions(AllowMaster)
 	assert.True(t, key.IsMaster())
 	assert.True(t, key.HasPermission(AllowMaster))
+
+	hash1 := key.Hash()
+	hash2 := key.Hash()
+	assert.NotZero(t, hash1)
+	assert.Equal(t, hash1, hash2)
 }

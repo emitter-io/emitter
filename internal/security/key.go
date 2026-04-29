@@ -284,3 +284,14 @@ func (k Key) SetPermission(flag uint8, value bool) {
 		k.SetPermissions(k.Permissions() &^ flag)
 	}
 }
+
+// Hash generates a unique hash for the key based on its unique identifying fields.
+// This is used to identify a specific key for banning purposes.
+func (k Key) Hash() uint32 {
+	if len(k) < 12 {
+		return 0
+	}
+	// Use salt (0-1), master (2-3), contract (4-7), and signature (8-11) to create a unique hash
+	// These fields together uniquely identify a key within the system
+	return hash.Of(k[0:12])
+}

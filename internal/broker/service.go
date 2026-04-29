@@ -131,6 +131,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 
 	// Attach the pubsub service
 	s.pubsub = pubsub.New(s, s.storage, s, s.subscriptions)
+	historyService := history.New(s, s.storage)
 
 	// Load the monitor storage provider
 	nodeName := address.Fingerprint(s.ID()).String()
@@ -151,6 +152,8 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 		s.cluster.OnSubscribe = s.pubsub.Subscribe
 		s.cluster.OnUnsubscribe = s.pubsub.Unsubscribe
 		s.cluster.OnDisconnect = s.pubsub.OnLastWill
+		s.pubsub.SetCluster(s.cluster)
+		historyService.SetCluster(s.cluster)
 	}
 
 	// Attach survey handlers
@@ -186,7 +189,7 @@ func NewService(ctx context.Context, cfg *config.Config) (s *Service, err error)
 	s.pubsub.Handle("keyban", keyban.New(s, s.keygen, s.cluster).OnRequest)
 	s.pubsub.Handle("link", link.New(s, s.pubsub).OnRequest)
 	s.pubsub.Handle("me", me.New().OnRequest)
-	s.pubsub.Handle("history", history.New(s, s.storage).OnRequest)
+	s.pubsub.Handle("history", historyService.OnRequest)
 
 	// Addresses and things
 	logging.LogTarget("service", "configured node name", nodeName)
@@ -339,6 +342,13 @@ func (s *Service) onHealth(w http.ResponseWriter, r *http.Request) {
 // Occurs when a message is received from a peer.
 func (s *Service) onPeerMessage(m *message.Message) {
 	defer s.measurer.MeasureElapsed("peer.msg", time.Now())
+	if s.cluster != nil && m.KeyHash != 0 {
+		keyHash := event.KeyHashBan(m.KeyHash)
+		if s.cluster.Contains(&keyHash) {
+			return
+		}
+	}
+
 	size, n := len(m.Payload), 0
 	filter := func(s message.Subscriber) bool {
 		return s.Type() == message.SubscriberDirect // only local subscribers
@@ -383,6 +393,14 @@ func (s *Service) Authorize(channel *security.Channel, permission uint8) (contra
 	key, err := s.keygen.DecryptKey(channelKey)
 	if err != nil || key.IsExpired() {
 		return nil, nil, false
+	}
+
+	// Check whether the key hash is blacklisted
+	if s.cluster != nil {
+		keyHash := event.KeyHashBan(key.Hash())
+		if s.cluster.Contains(&keyHash) {
+			return nil, nil, false
+		}
 	}
 
 	// Attempt to fetch the contract using the key. Underneath, it's cached.

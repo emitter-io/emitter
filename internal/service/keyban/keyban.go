@@ -64,11 +64,23 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 
 	// Depending on the flag, ban or unban the key
 	bannedKey := event.Ban(message.Target)
-	switch {
-	case message.Banned && !s.cluster.Contains(&bannedKey):
-		s.cluster.Notify(&bannedKey, true)
-	case !message.Banned && s.cluster.Contains(&bannedKey):
-		s.cluster.Notify(&bannedKey, false)
+	bannedKeyHash := event.KeyHashBan(targetKey.Hash())
+	if message.Banned {
+		if !s.cluster.Contains(&bannedKey) {
+			s.cluster.Notify(&bannedKey, true)
+		}
+
+		if !s.cluster.Contains(&bannedKeyHash) {
+			s.cluster.Notify(&bannedKeyHash, true)
+		}
+	} else {
+		if s.cluster.Contains(&bannedKey) {
+			s.cluster.Notify(&bannedKey, false)
+		}
+
+		if s.cluster.Contains(&bannedKeyHash) {
+			s.cluster.Notify(&bannedKeyHash, false)
+		}
 	}
 
 	// Success, return the response

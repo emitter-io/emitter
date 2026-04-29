@@ -39,9 +39,10 @@ func NewState(dir string) *State {
 	return &State{
 		durable: durable,
 		subsets: map[uint8]crdt.Map{
-			typeSub:  crdt.New(durable, ""),
-			typeBan:  crdt.New(durable, fileOf(dir, "ban.db")),
-			typeConn: crdt.New(durable, ""),
+			typeSub:        crdt.New(durable, ""),
+			typeBan:        crdt.New(durable, fileOf(dir, "ban.db")),
+			typeKeyHashBan: crdt.New(durable, fileOf(dir, "keyban.db")),
+			typeConn:       crdt.New(durable, ""),
 		},
 	}
 }

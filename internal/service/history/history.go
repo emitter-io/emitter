@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 
 	"github.com/emitter-io/emitter/internal/errors"
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/logging"
 	"github.com/emitter-io/emitter/internal/security"
@@ -85,6 +86,13 @@ func (s *Service) OnRequest(c service.Conn, payload []byte) (service.Response, b
 		Messages: make([]Message, 0, len(msgs)),
 	}
 	for _, m := range msgs {
+		if s.cluster != nil && m.KeyHash != 0 {
+			keyHash := event.KeyHashBan(m.KeyHash)
+			if s.cluster.Contains(&keyHash) {
+				continue
+			}
+		}
+
 		msg := m
 		resp.Messages = append(resp.Messages, Message{
 			ID:      msg.ID,

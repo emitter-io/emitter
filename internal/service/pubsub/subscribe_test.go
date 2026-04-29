@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/provider/storage"
 	"github.com/emitter-io/emitter/internal/security"
@@ -113,6 +114,47 @@ func TestPubSub_Subscribe(t *testing.T) {
 		assert.Equal(t, tc.expectLoaded, len(c.Outgoing))
 		assert.Equal(t, tc.expectCount, trie.Count())
 	}
+}
+
+func TestPubSub_Subscribe_BannedStoredMessage(t *testing.T) {
+	ssid := message.Ssid{1, 3238259379, 500706888, 1027807523}
+	store := storage.NewInMemory(nil)
+	store.Configure(nil)
+	trie := message.NewTrie()
+	notify := new(fake.Notifier)
+	cluster := new(fake.Replicator)
+	auth := &fake.Authorizer{
+		Contract:  uint32(1),
+		Success:   true,
+		ExtraPerm: security.AllowLoad,
+	}
+
+	s := New(auth, store, notify, trie)
+	s.SetCluster(cluster)
+
+	store.Store(&message.Message{
+		ID:      message.NewID(ssid),
+		Channel: []byte("a/b/c/"),
+		Payload: []byte("hello"),
+		TTL:     30,
+		KeyHash: 123,
+	})
+	store.Store(&message.Message{
+		ID:      message.NewID(ssid),
+		Channel: []byte("a/b/c/"),
+		Payload: []byte("world"),
+		TTL:     30,
+		KeyHash: 456,
+	})
+
+	keyHash := event.KeyHashBan(123)
+	cluster.Notify(&keyHash, true)
+
+	c := &fake.Conn{}
+	err := s.OnSubscribe(c, []byte("key/a/b/c/?last=10"))
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(c.Outgoing))
+	assert.Equal(t, "world", string(c.Outgoing[0].Payload))
 }
 
 func TestPubSub_Subscribe_Buggy(t *testing.T) {

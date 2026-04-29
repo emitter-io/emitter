@@ -17,6 +17,7 @@ package pubsub
 import (
 	"encoding/json"
 	"github.com/emitter-io/emitter/internal/errors"
+	"github.com/emitter-io/emitter/internal/event"
 	"github.com/emitter-io/emitter/internal/message"
 	"github.com/emitter-io/emitter/internal/network/mqtt"
 	"github.com/emitter-io/emitter/internal/security"
@@ -73,6 +74,9 @@ func (s *Service) OnPublish(c service.Conn, packet *mqtt.Publish) *errors.Error 
 		channel.Channel,
 		packet.Payload,
 	)
+	
+	// Set the key hash for tracking/banning purposes
+	msg.KeyHash = key.Hash()
 
 	// If a user have specified a retain flag, retain with a default TTL
 	if packet.Header.Retain {
@@ -82,6 +86,14 @@ func (s *Service) OnPublish(c service.Conn, packet *mqtt.Publish) *errors.Error 
 	// If a user have specified a TTL, use that value
 	if ttl, ok := channel.TTL(); ok && ttl > 0 {
 		msg.TTL = uint32(ttl)
+	}
+
+	// If the key was banned while the message was being processed, reject it.
+	if s.cluster != nil && msg.KeyHash != 0 {
+		keyHash := event.KeyHashBan(msg.KeyHash)
+		if s.cluster.Contains(&keyHash) {
+			return errors.ErrUnauthorized
+		}
 	}
 
 	// Store the message if needed

@@ -93,6 +93,13 @@ func (s *Service) OnSubscribe(c service.Conn, mqttTopic []byte) *errors.Error {
 
 		// Range over the messages in the channel and forward them
 		for _, m := range msgs {
+			if s.cluster != nil && m.KeyHash != 0 {
+				keyHash := event.KeyHashBan(m.KeyHash)
+				if s.cluster.Contains(&keyHash) {
+					continue
+				}
+			}
+
 			msg := m // Copy message
 			c.Send(&msg)
 		}

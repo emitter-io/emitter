@@ -98,5 +98,11 @@ func TestKeyBan(t *testing.T) {
 		// Make sure we have the key if expected
 		expected := event.Ban(tc.expected)
 		assert.Equal(t, tc.expected != "", repl.Contains(&expected))
+
+		if tc.expected != "" {
+			target, _ := (&fake.Decryptor{Contract: uint32(tc.contract2)}).DecryptKey(tc.expected)
+			hashBan := event.KeyHashBan(target.Hash())
+			assert.Equal(t, tc.request != nil && tc.request.Banned, repl.Contains(&hashBan))
+		}
 	}
 }
